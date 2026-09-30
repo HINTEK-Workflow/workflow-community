@@ -1,7 +1,7 @@
 import { evaluateForm, formDocumentSchema, formValuesSchema } from "./form-document";
 
 /**
- * Earlier protocols of the same form for the same facility (or customer) – "följ upp tidigare kontroller" (Daniel
+ * Earlier protocols of the same form for the same facility (or customer) – "följ upp tidigare kontroller" (
  * 2026-09-26). The summary is computed from each protocol's own document, so it works after the form changed or was
  * deleted. At most a handful are shown; this is a follow-up aid, not a report archive.
  */

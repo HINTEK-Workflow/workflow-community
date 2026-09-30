@@ -3,7 +3,7 @@ import { sectionKeys } from "../../lib/kfid/model";
 import { emptyFormValues, type FormValues } from "../../lib/workflow/form-document";
 
 /**
- * Today's control data as answers to the Kontroll före idrifttagning form, for comparing the two reports (Daniel
+ * Today's control data as answers to the Kontroll före idrifttagning form, for comparing the two reports (
  * 2026-09-27). Old controls stay in their own engine; this is only used by the tests. Numbers are written the way the
  * control prints them ("0.4"), so the comparison shows the layout and not the decimal separator.
  */

@@ -30,7 +30,7 @@ import { publisherLabel } from "@/lib/kfid/form-share";
 import { publicInstance } from "@/lib/instance";
 
 /**
- * Who builds forms, and whose forms (Daniel 2026-09-27, replacing "HINTEK only"): HINTEK's superadmin builds HINTEK's
+ * Who builds forms, and whose forms (2026-09-27, replacing "HINTEK only"): HINTEK's superadmin builds HINTEK's
  * forms, shown to every company; a company admin in HINTEK Cloud builds the company's own forms, shown only there.
  * Employees never build forms. Every query in the form builder is limited to the returned scope.
  */
@@ -63,13 +63,13 @@ type FormTask = { id?: string; kind: string; projectId?: string | null; data: { 
  * Binds a protocol to its template version before it is validated or stored. The server never trusts the document a
  * client sends: it always uses the stored, immutable version. A new protocol may only use the currently published
  * version; an existing one keeps the version it was created from, even after the form was changed or unpublished.
- * It also gives the protocol's permission area (Daniel 2026-09-27): the form's for a new protocol, the stored one after.
+ * It also gives the protocol's permission area (2026-09-27): the form's for a new protocol, the stored one after.
  */
 export async function bindFormTask(organizationId: string, task: FormTask): Promise<{ formTemplateId: string | null; formTemplateVersion: number | null; formArea: string | null }> {
   if (task.kind !== "FORM" || task.data.kind !== "FORM") return { formTemplateId: null, formTemplateVersion: null, formArea: null };
   const details = task.data.details as { templateId: string; templateVersion: number; templateName: string; document: FormDocument; values: unknown };
   const existing = task.id ? await prisma.workflowTask.findFirst({ where: { id: task.id, organizationId }, select: { kind: true, formTemplateId: true, formTemplateVersion: true, formArea: true, data: true } }) : null;
-  // A protocol whose form was deleted keeps the copy of the form it was stored with (Daniel 2026-09-26); the client's
+  // A protocol whose form was deleted keeps the copy of the form it was stored with (2026-09-26); the client's
   // document is still never trusted.
   if (existing?.kind === "FORM" && !existing.formTemplateId) {
     const stored = (existing.data as { details?: { document?: unknown; templateId?: string; templateVersion?: number; templateName?: string } } | null)?.details;

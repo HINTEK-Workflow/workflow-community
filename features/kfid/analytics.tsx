@@ -79,7 +79,7 @@ const relativeUpdated = (value: string) => {
 
 /**
  * One compact row in "Senast ändrat": icon, title, type/project, status, when, progression and the next step. Status,
- * bar and action sit in fixed columns so they line up whatever the text length (Daniel 2026-09-29, F19).
+ * bar and action sit in fixed columns so they line up whatever the text length (2026-09-29, F19).
  */
 function LatestRow({ item }: { item: WorkItem }) {
   return (
@@ -125,7 +125,7 @@ function localOverviewWork(data: WorkflowOverviewData, today: string) {
 export function WorkOverview({ localData }: { localData?: WorkflowOverviewData }) {
   const [filter, setFilter] = useState<OverviewWorkFilter>("all"),
     [sort, setSort] = useState<OverviewWorkSort>("updated"),
-    // Folded by default: three compact cards; "Visa alla" opens the full list (Daniel 2026-09-26).
+    // Folded by default: three compact cards; "Visa alla" opens the full list (2026-09-26).
     [expanded, setExpanded] = useState(false),
     [localShown, setLocalShown] = useState(1),
     [remote, setRemote] = useState<WorkPage | null>(null),
@@ -201,7 +201,7 @@ export function WorkOverview({ localData }: { localData?: WorkflowOverviewData }
             <p className="mt-1 text-xs text-muted-foreground">Skapa ett projekt eller en uppgift för att börja arbeta.</p>
           </div>
         ) : !expanded ? (
-          // Folded (Daniel 2026-09-27): what needs attention first, then the latest changed work, each item once.
+          // Folded (2026-09-27): what needs attention first, then the latest changed work, each item once.
           <div className="space-y-5">
             <div>
               <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">I fokus</h3>
@@ -306,7 +306,7 @@ export function Analytics({ admin, projectCount = 0 }: { admin: boolean; project
       .catch((e) => { if (!abort.signal.aborted) setKpiError((e as Error).message); });
     return () => abort.abort();
   }, []);
-  // Order (Daniel 2026-09-26): key figures → folded projects and tasks → task statistics at the bottom.
+  // Order (2026-09-26): key figures → folded projects and tasks → task statistics at the bottom.
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap justify-between gap-4">

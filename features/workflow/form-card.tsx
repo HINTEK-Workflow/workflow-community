@@ -28,7 +28,7 @@ export function FormIcon({ icon, className }: { icon: string; className?: string
 }
 
 export type FormCardData = { name: string; description: string; color: string; icon: string; category: string; version?: number | null; allowStandalone: boolean; allowInProject: boolean; publisher?: string;
-  /** HINTEK's original of a built-in type, or the company's own version of one (Daniel 2026-09-28: the card says which). */
+  /** HINTEK's original of a built-in type, or the company's own version of one (2026-09-28: the card says which). */
   origin?: "original" | "companyVersion";
   /** HINTEK's own form (2026-09-28): marked HINTEK Original in small text; a community form names its author. */
   hintek?: boolean; source?: string; author?: string };
@@ -49,11 +49,11 @@ export function FormTypeCardContent({ form, corner, children }: { form: FormCard
       </span>
     </div>
     <h2 className="section-title mt-5">{form.name || "Namnlöst formulär"}</h2>
-    {/* Short texts (Daniel 2026-09-29): at most three lines, so the cards keep an even height; the whole text is the title. */}
+    {/* Short texts (2026-09-29): at most three lines, so the cards keep an even height; the whole text is the title. */}
     <p className="mt-2 line-clamp-3 flex-1 text-sm leading-6 text-muted-foreground" title={form.description || undefined}>{form.description || `Formulär från ${form.publisher ?? "HINTEK"}.`}</p>
     {usage ? <p className="mt-1 text-xs text-muted-foreground">{usage}.</p> : null}
     {children}
-    {/* Who made the form, in one place (Daniel 2026-09-29): "HINTEK Original" for HINTEK's own, otherwise the publisher
+    {/* Who made the form, in one place (2026-09-29): "HINTEK Original" for HINTEK's own, otherwise the publisher
         (2026-09-27, so shared forms can be told apart) or a community author – with the version. */}
     {origin ? <span className="pointer-events-none absolute bottom-2.5 right-3.5 max-w-[55%] truncate text-right text-[10px] font-medium tracking-wide text-muted-foreground" data-testid={form.hintek ? "hintek-original" : "form-publisher"}>
       {origin}{form.version ? <span className="font-normal"> · version {form.version}</span> : null}

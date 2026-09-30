@@ -19,7 +19,7 @@ export type { FormMedia } from "./form-inputs";
 export type { FormRowOptions } from "./form-table";
 
 /**
- * The form grid (Daniel 2026-09-26): the real 12-column widths from a form width of 32rem, one column on a phone, measured on the
+ * The form grid (2026-09-26): the real 12-column widths from a form width of 32rem, one column on a phone, measured on the
  * form's own width. Classes are written out so Tailwind finds them.
  */
 export const FORM_GRID = "grid grid-cols-12 gap-x-4 gap-y-4";
@@ -33,13 +33,13 @@ export const FORM_SPAN_CLASS: Record<FormWidth, string> = {
 };
 
 /**
- * The task's own basic data drawn inside the form's first section (Daniel 2026-09-27, the control's Grunduppgifter):
+ * The task's own basic data drawn inside the form's first section (2026-09-27, the control's Grunduppgifter):
  * the project choice on top, the place after the fields, and controls beside the fields that start from the task (the
  * customer picker beside Kontaktperson).
  */
 export type FormTaskInline = {
   top?: ReactNode; after?: ReactNode; beside?: Partial<Record<FormPrefill, ReactNode>>;
-  /** The task's Bilder och dokument, drawn before the section with the summary like the control's (Daniel 2026-09-28). */
+  /** The task's Bilder och dokument, drawn before the section with the summary like the control's (2026-09-28). */
   beforeSummary?: ReactNode;
   /** The control's Historik and Färdigställ at the foot of the summary's panel. */
   summaryFooter?: ReactNode;
@@ -75,13 +75,13 @@ export function sectionMainBlock(section: FormSection): FormLeafBlock | null {
 }
 
 /**
- * Draws a form from its document and answers (Daniel 2026-09-26, design v2): the same renderer for a protocol, the
+ * Draws a form from its document and answers (2026-09-26, design v2): the same renderer for a protocol, the
  * builder's preview and "Testa". Formulas are computed by the shared engine while typing; text is shown as text.
  * Every input has the id `form-<blockId>` so the completion guidance can move focus to it. Sections that can be switched
- * off are chosen at the top and hidden while off; folded sections open on a click (Daniel 2026-09-27).
+ * off are chosen at the top and hidden while off; folded sections open on a click (2026-09-27).
  *
  * With `panels` every section is one of Workflow's panels with the light blue header, exactly like the original editors
- * (Daniel 2026-09-27): the block a section is about lends it its heading, description and actions – add row with the
+ * (2026-09-27): the block a section is about lends it its heading, description and actions – add row with the
  * count and the section's picture for measurement rows, "Lägg till …" for object cards, "Sammanställ resultat" for the
  * summary – and the moments can sit inside the first section, like the control's Kontrollmoment.
  */

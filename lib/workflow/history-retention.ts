@@ -1,4 +1,4 @@
-// History kept for a selectable time and deleted by hand (Daniel 2026-09-30). Pure rules shared by the page, the server,
+// History kept for a selectable time and deleted by hand (2026-09-30). Pure rules shared by the page, the server,
 // the nightly job and the tests; no Prisma here.
 
 /** Months a company can keep its history; null keeps it until someone deletes it by hand. */

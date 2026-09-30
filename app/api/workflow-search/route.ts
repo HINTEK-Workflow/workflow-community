@@ -15,7 +15,7 @@ export async function GET(request: Request) {
     const q = querySchema.parse(new URL(request.url).searchParams.get("q"));
     const can = (subject: WorkflowPermissionSubject) =>
       ctx.admin || hasWorkflowPermission(ctx.workflowPermissions, subject, "read");
-    // Protocols follow their form's permission area (Daniel 2026-09-27).
+    // Protocols follow their form's permission area (2026-09-27).
     const readable = readableTaskScope(can).any ? readableTaskWhere(can) : null;
     const text = { contains: q, mode: "insensitive" as const };
     // Files by name as well (2026-09-30), so the app, HINTEK AI and MCP share one search: control attachments with the

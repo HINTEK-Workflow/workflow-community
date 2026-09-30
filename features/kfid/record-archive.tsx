@@ -27,7 +27,7 @@ type CustomerWorkCounts = { projects: number | null; workOrders: number | null; 
 type Item = ControlItem &
   CustomerItem & { number: number; _count?: { controls: number }; work?: CustomerWorkCounts };
 
-/** All of a customer's work in one line (Daniel 2026-09-26); a null count is a module the member may not read. */
+/** All of a customer's work in one line (2026-09-26); a null count is a module the member may not read. */
 export function CustomerWork({ customerId, work }: { customerId: string; work: CustomerWorkCounts }) {
   const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
   const parts: React.ReactNode[] = [

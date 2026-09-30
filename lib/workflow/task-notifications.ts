@@ -68,7 +68,7 @@ export type FollowUpSource = {
 };
 
 /**
- * Flödesvåg 2 (Daniel 2026-09-30): when a work order made from a deviation is finished, the owner of the protocol it came
+ * Flödesvåg 2 (2026-09-30): when a work order made from a deviation is finished, the owner of the protocol it came
  * from gets a reminder in the bell to follow up the deviation. It is shown for FOLLOW_UP_DAYS after the work order was
  * finished and goes away as soon as the protocol has been saved after that (the deviation was followed up). Callers
  * pass only work orders and origins the reader may see, and only origins that are the reader's own (admins: the team's).

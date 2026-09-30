@@ -127,7 +127,7 @@ export type LocalEditorAdapter = {
   ) => Promise<AttachmentItem[]>;
   clearAttachments: (controlId: string) => Promise<void>;
   refresh: () => Promise<void>;
-  /** Timer on a control in the open file (Daniel 2026-09-27); omitted where the file cannot keep time. */
+  /** Timer on a control in the open file (2026-09-27); omitted where the file cannot keep time. */
   timer?: (controlId: string, command: "START" | "PAUSE") => Promise<StoppedTimer[]>;
   timeFor?: (controlId: string) => { totalDurationSec: number; timerRunning: boolean };
   /** The open file's tasks, for "Nästa steg" after the control is completed (read locally, no network). */
@@ -170,7 +170,7 @@ export function Editor({
   const [id, setId] = useState("");
   const [version, setVersion] = useState(0);
   const [status, setStatus] = useState("DRAFT");
-  // Cloud: reported time and the caller's own timer from the server; Local reads the open file (Daniel 2026-09-27).
+  // Cloud: reported time and the caller's own timer from the server; Local reads the open file (2026-09-27).
   const [cloudTime, setCloudTime] = useState({ totalDurationSec: 0, timerRunning: false });
   const [customerPicker, setCustomerPicker] = useState(false);
   const [customerName, setCustomerName] = useState("");
@@ -422,7 +422,7 @@ export function Editor({
         })
         .catch((e) => notify(e.message, true));
   }, [initialCustomerId, controlId, canSave, notify, local]);
-  // A control in a project follows the project (Daniel 2026-09-26): the project's customer is locked in and
+  // A control in a project follows the project (2026-09-26): the project's customer is locked in and
   // "Projekt / anläggning" is prefilled from the project's name and work site, but stays editable.
   const projectList = useMemo(() => local?.projects ?? overview?.projects ?? [], [local?.projects, overview?.projects]);
   const selectedProject = projectList.find((project) => project.id === projectId);
@@ -745,7 +745,7 @@ export function Editor({
       setBusy(false);
     }
   }
-  // Every task editor can start time (Daniel 2026-09-27). An unsaved control is saved first.
+  // Every task editor can start time (2026-09-27). An unsaved control is saved first.
   const time = local?.timeFor && id && version ? local.timeFor(id) : localMode ? { totalDurationSec: 0, timerRunning: false } : cloudTime;
   const timerAvailable = !localMode || Boolean(local?.timer);
   async function toggleTimer() {
@@ -1246,7 +1246,7 @@ export function Editor({
           den nya kontrollen.
         </p>
       )}
-      {/* Same header and button placement as work orders and risk assessments; the old banner surface is gone (Daniel 2026-09-25). */}
+      {/* Same header and button placement as work orders and risk assessments; the old banner surface is gone (2026-09-25). */}
       <EditorHeader
         className="editor-workflow-header editor-heading"
         // Below desktop, Spara lives in the bottom bar and Spara som in the menu.
@@ -1302,7 +1302,7 @@ export function Editor({
           </Button>
         </>}
       />
-      {/* Nästa steg also after a completed control (flödesvåg 2, Daniel 2026-09-30); no follow-up work order here, since a
+      {/* Nästa steg also after a completed control (flödesvåg 2, 2026-09-30); no follow-up work order here, since a
           work order's origin is a task and the control has its own deviations in the protocol. */}
       {status === "COMPLETED" && id && version && user ? <NextSteps task={{ id, kind: "COMMISSIONING_CONTROL", projectId }}
         projectName={selectedProject?.name} localTasks={localMode ? local?.tasks ?? [] : undefined} /> : null}

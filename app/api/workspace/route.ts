@@ -30,8 +30,6 @@ import { reportBrandingSchema } from "@/lib/kfid/report-branding";
 import { extractLogoPrimary } from "@/lib/logo-color";
 import { isHintekOrganization } from "@/lib/branding";
 import { serverExtensions } from "@/lib/extensions/server";
-import { aiProviderStatus } from "@/lib/ai/provider-status";
-import { getWorkflowAgent } from "@/lib/ai/agent-registry";
 import { closeControlTimers } from "@/lib/workflow/timer-server";
 const idSchema = z.string().min(1).max(100);
 const json = (v: unknown) => v as Prisma.InputJsonValue;
@@ -104,9 +102,8 @@ export async function GET(request: Request) {
     const ctx = await context({ skipLegal: action === "overview" });
     const canKfid = (permission: "read" | "create" | "edit" | "complete" | "report") => ctx.admin || hasWorkflowPermission(ctx.workflowPermissions, "kfid", permission);
     if (action === "overview") {
-      const provider = await aiProviderStatus();
-      const reviewAgentEnabled =
-        getWorkflowAgent("kfid-control-review")?.lifecycle === "ENABLED";
+      // HINTEK AI lives in ee/ (2026-09-30); without it the control review is off.
+      const ai = await serverExtensions.aiOverview();
       const legalRequired = (await legalStatus(ctx)).some(
         (document) => document.required && !document.acceptedAt,
       );
@@ -129,14 +126,14 @@ export async function GET(request: Request) {
           canDeleteControls: ctx.canDeleteControls,
           workflowPermissions: ctx.workflowPermissions,
           testAdmin: ctx.testAdmin,
-          aiEnabled: provider.enabled && reviewAgentEnabled,
-          aiConfigured: provider.configured,
+          aiEnabled: ai.enabled,
+          aiConfigured: ai.configured,
           paymentsEnabled: false,
           paymentSandbox: await stripeSandboxAvailable(),
           legalRequired: true,
         });
       const cloudStorage = ctx.organization.storageMode === "HINTEK_CLOUD";
-      // Bounded (Daniel 2026-09-26): the overview carries no control or customer lists. Controls are paged by
+      // Bounded (2026-09-26): the overview carries no control or customer lists. Controls are paged by
       // /api/records and /api/work-items, and customers are read with action=customers by the forms that show them.
       // Only the most recently changed control is sent, for the editor's "Senaste kontrollen" shortcut.
       const [controls, projects, entries, settings, preferences, entryCount] =
@@ -179,7 +176,7 @@ export async function GET(request: Request) {
                   updatedAt: true,
                   archivedAt: true,
                   closedAt: true,
-                  // The frame and fixed fields that tasks in the project inherit (Daniel 2026-09-26).
+                  // The frame and fixed fields that tasks in the project inherit (2026-09-26).
                   startDate: true,
                   responsibleUserId: true,
                   responsibleName: true,
@@ -249,14 +246,14 @@ export async function GET(request: Request) {
         canDeleteControls: ctx.canDeleteControls,
         workflowPermissions: ctx.workflowPermissions,
         testAdmin: ctx.testAdmin,
-        aiEnabled: provider.enabled && reviewAgentEnabled,
-        aiConfigured: provider.configured,
+        aiEnabled: ai.enabled,
+        aiConfigured: ai.configured,
         paymentsEnabled: false,
         paymentSandbox: await stripeSandboxAvailable(),
         legalRequired: false,
       });
     }
-    // Older credit history for admins, one bounded page at a time (Daniel 2026-09-26).
+    // Older credit history for admins, one bounded page at a time (2026-09-26).
     if (action === "creditEntries") {
       if (!ctx.admin) throw new ApiError(403, "Företagsadministratör krävs.");
       const before = new Date(url.searchParams.get("before") ?? "");
@@ -357,7 +354,7 @@ export async function GET(request: Request) {
           take: 25,
           select: { id: true, version: true, createdAt: true, createdBy: true },
         }),
-        // Reported time and the caller's own running timer for the shared editor header (Daniel 2026-09-27).
+        // Reported time and the caller's own running timer for the shared editor header (2026-09-27).
         prisma.workflowTimeEntry.findMany({ where: { controlId: id }, select: { userId: true, durationSec: true, endedAt: true, startedAt: true } }),
       ]);
       const now = Date.now();
@@ -583,7 +580,7 @@ export async function POST(request: Request) {
         if (!project) throw new ApiError(400, "Projektet hittades inte.");
         if (project.archivedAt) throw new ApiError(409, "Återställ projektet innan du sparar kontrollen.");
         if (project.closedAt) throw new ApiError(409, "Projektet är avslutat. Återöppna projektet innan du sparar en kontroll i det.");
-        // A new control in a project, or a changed customer/project, takes the project's customer (Daniel 2026-09-26);
+        // A new control in a project, or a changed customer/project, takes the project's customer (2026-09-26);
         // an older control that already differs keeps saving and is shown as a deviation on the project.
         const changed = !priorLocation || priorLocation.projectId !== projectId || priorLocation.customerId !== customerId;
         if (project.customerId && customerId !== project.customerId && changed) throw new ApiError(400, "En kontroll i projektet har projektets kund.");

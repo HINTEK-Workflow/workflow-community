@@ -22,7 +22,7 @@ import { buildOverviewWork, OVERVIEW_WORK_FILTERS, OVERVIEW_WORK_SORTS, selectOv
 import { createDemoDatabase, DEMO_ADMIN_ID, type DemoActivity, type DemoControl, type DemoDatabase, type DemoTask, type DemoUserId } from "./demo-data";
 
 /**
- * In-browser backend for the public demo (Daniel 2026-09-26, path A). It answers the same /api requests as the
+ * In-browser backend for the public demo (2026-09-26, path A). It answers the same /api requests as the
  * server with the same response shapes, from memory only: nothing reaches the server, nothing is stored and a reload
  * starts over. It reuses the shared pure domain rules (task completion, planning, time correction, key figures,
  * notifications, statistics) and applies the demo user's role and permission profile like the server does.
@@ -742,7 +742,7 @@ function plannedActivities(ctx: Context, request: Request) {
   const linkedProjectId = task?.projectId ?? control?.projectId ?? null;
   if (data.projectId && linkedProjectId && data.projectId !== linkedProjectId) throw new DemoError(400, "Den valda uppgiften tillhör ett annat projekt.");
   {
-    // Same frame rules as the server (Daniel 2026-09-26, decision 4).
+    // Same frame rules as the server (2026-09-26, decision 4).
     const previous = data.id ? ctx.db.activities.find((item) => item.id === data.id) : undefined;
     const active = !["COMPLETED", "CANCELED"].includes(data.status);
     const changed = !previous || previous.startsAt !== data.startsAt || previous.endsAt !== data.endsAt || previous.projectId !== data.projectId || previous.workflowTaskId !== data.workflowTaskId || previous.controlId !== data.controlId;

@@ -1,4 +1,4 @@
--- Deleting a form that has protocols (Daniel 2026-09-26: "Ja, ett formulär ska kunna raderas"). The form, its versions
+-- Deleting a form that has protocols (2026-09-26: "Ja, ett formulär ska kunna raderas"). The form, its versions
 -- and its history are deleted; every protocol keeps its own copy of the form document in its data, so its answers,
 -- formulas, history and PDF stay intact. The protocol's reference to the deleted version becomes NULL.
 ALTER TABLE "WorkflowTask" DROP CONSTRAINT "WorkflowTask_formTemplateId_formTemplateVersion_fkey";

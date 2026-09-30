@@ -18,7 +18,7 @@ function HintekWordmark() {
   );
 }
 
-// Daniel 2026-09-26: the shell always shows HINTEK Workflow. A customer's uploaded logo belongs on reports and
+// 2026-09-26: the shell always shows HINTEK Workflow. A customer's uploaded logo belongs on reports and
 // drives the Customer theme colors, but is never shown in navigation. HINTEK Blue uses a Gugi text wordmark.
 // Fas 1: another installation shows its own name as text; HINTEK's wordmark image only belongs to the default name.
 export function WorkflowBrand({

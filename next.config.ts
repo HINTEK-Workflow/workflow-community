@@ -14,7 +14,7 @@ const eeAliases = {
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["127.0.0.1", "localhost"],
   serverExternalPackages: ["@prisma/client", "bcryptjs"],
-  // The separate pricing page is gone (Daniel 2026-09-29); old links go to the landing page's price section.
+  // The separate pricing page is gone (2026-09-29); old links go to the landing page's price section.
   async redirects() {
     return [{ source: "/pricing", destination: "/#priser", permanent: true }];
   },

@@ -158,7 +158,7 @@ function ScheduleDialog({ schedule, backend, onClose, onSaved }: { schedule: Sch
     setBusy(true); setError("");
     try { await backend.save(parsed.data, forms.find((form) => form.id === parsed.data.templateId)?.name ?? ""); onSaved(); } catch (issue) { setError((issue as Error).message); } finally { setBusy(false); }
   };
-  // Labels above their fields, one rule for the whole dialog (Daniel 2026-09-30: "Frekvens" stood beside its field).
+  // Labels above their fields, one rule for the whole dialog (2026-09-30: "Frekvens" stood beside its field).
   const label = "grid content-start gap-1.5 text-xs font-medium text-muted-foreground";
   const unit = rule.frequency === "DAILY" ? (rule.interval === 1 ? "dag" : "dagar") : rule.frequency === "WEEKLY" ? (rule.interval === 1 ? "vecka" : "veckor") : (rule.interval === 1 ? "månad" : "månader");
   const reminders = draft.reminders ?? defaultScheduleReminders;
@@ -183,7 +183,7 @@ function ScheduleDialog({ schedule, backend, onClose, onSaved }: { schedule: Sch
           {!rule.weekdays.length ? <span className="text-xs text-muted-foreground">Ingen dag vald: samma veckodag som startdatumet.</span> : null}</div> : null}
         <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" className="size-4" checked={draft.active} onChange={(event) => setDraft({ ...draft, active: event.target.checked })} />Aktiv</label>
       </fieldset>
-      {/* Reminders (Daniel 2026-09-30): the bell in the top bar, and an e-mail, to the responsible person – or the admins. */}
+      {/* Reminders (2026-09-30): the bell in the top bar, and an e-mail, to the responsible person – or the admins. */}
       <fieldset className="grid gap-2 rounded-lg border p-4 sm:col-span-2" data-testid="round-reminders"><legend className="px-1 text-xs font-semibold">Påminnelser</legend>
         <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" className="size-4" checked={reminders.bell} onChange={(event) => setDraft({ ...draft, reminders: { ...reminders, bell: event.target.checked } })} />Notis i klockan när ronden ska göras och om den missas</label>
         <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" className="size-4" checked={reminders.email} onChange={(event) => setDraft({ ...draft, reminders: { ...reminders, email: event.target.checked } })} />E-post samma morgon som ronden ska göras</label>

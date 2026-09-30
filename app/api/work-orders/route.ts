@@ -25,7 +25,7 @@ const statusWhere: Record<WorkItemFilter, Prisma.WorkflowTaskWhereInput> = {
 };
 
 /**
- * Mina arbetsordrar (Daniel 2026-09-26): a bounded, server-paged list of work orders with status, customer,
+ * Mina arbetsordrar (2026-09-26): a bounded, server-paged list of work orders with status, customer,
  * responsible, planned date and project. Tenant, module read permission and Cloud storage are checked on the server.
  */
 export async function GET(request: Request) {

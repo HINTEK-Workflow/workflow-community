@@ -12,8 +12,14 @@ export type InstanceFeatures = {
   billing: boolean;
   /** Credits are required for paid actions; off = unlimited use. */
   credits: boolean;
-  /** The operator's AI provider for interpretation and summaries; off = rule-based answers only. */
+  /** HINTEK AI (ee/). AI_ENABLED=false keeps the rule-based answers but switches the AI model off. */
   ai: boolean;
+  /** The API and MCP server with its keys (ee/; 2026-09-30: not in the community edition). */
+  integrations: boolean;
+  /** Sign-in with a Google account (ee/; 2026-09-30: not in the community edition). */
+  googleSignIn: boolean;
+  /** HINTEK's own terms, privacy policy, DPA and credit terms (docs/legal; not in the community edition). */
+  terms: boolean;
   /** The public landing page and its inline editor. */
   landingEditor: boolean;
 };
@@ -56,7 +62,10 @@ export function publicInstance(source: InstanceEnv = process.env): PublicInstanc
     features: {
       billing: EE_PRESENT && flag(source.BILLING_ENABLED),
       credits: EE_PRESENT && flag(source.CREDITS_ENABLED),
-      ai: flag(source.AI_ENABLED),
+      ai: EE_PRESENT && flag(source.AI_ENABLED),
+      integrations: EE_PRESENT,
+      googleSignIn: EE_PRESENT,
+      terms: EE_PRESENT,
       landingEditor: EE_PRESENT && flag(source.LANDING_EDITOR_ENABLED),
     },
   };

@@ -12,14 +12,14 @@ import { currentPreviewTheme, focusPreviewBlock, FORM_PREVIEW_PATH, PREVIEW_CUST
 import { WorkflowTaskEditor } from "../workflow-task-editor";
 
 function Segmented<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: [T, string, React.ReactNode][]; onChange: (value: T) => void }) {
-  // The editor bar's compact height (Daniel 2026-09-27): 32 px on a computer, the 44 px touch height below 1024 px.
+  // The editor bar's compact height (2026-09-27): 32 px on a computer, the 44 px touch height below 1024 px.
   return <div className="flex h-8 rounded-[var(--radius-control)] border bg-card p-0.5 max-lg:h-11" role="group" aria-label={label}>
     {options.map(([option, text, icon]) => <Button key={option} type="button" className="h-full min-h-0! rounded-[calc(var(--radius-control)-2px)] px-2.5" variant={value === option ? "secondary" : "ghost"} aria-pressed={value === option} onClick={() => onChange(option)}>{icon}{text}</Button>)}
   </div>;
 }
 
 /**
- * Utförandeläge (Daniel 2026-09-26, sharpened 2026-09-28): the real task editor with the draft – header, project and
+ * Utförandeläge (2026-09-26, sharpened 2026-09-28): the real task editor with the draft – header, project and
  * customer, panels, Bilder och dokument, Rapport och hantering – exactly as the person filling in the protocol gets it,
  * with example answers and the requirements for completion. "Dator" draws the editor on this page; "Mobil" draws it in
  * a frame of a phone's width, since a phone's look depends on the real viewport. Nothing is stored.

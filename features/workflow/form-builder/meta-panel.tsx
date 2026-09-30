@@ -16,9 +16,9 @@ const label = "grid gap-1.5 text-xs font-medium text-muted-foreground";
 type DocumentSettings = Pick<EditorDocument, "report" | "moments" | "task">;
 
 /**
- * Grunduppgifter (Daniel 2026-09-26): compact at the top and collapsible while working in the editor. Open for a new
+ * Grunduppgifter (2026-09-26): compact at the top and collapsible while working in the editor. Open for a new
  * form, collapsed for an existing one; the card on the right is exactly what Ny uppgift will show. The form's report
- * heading and its moments (Daniel 2026-09-27) are set here too; they are saved with the form's version.
+ * heading and its moments (2026-09-27) are set here too; they are saved with the form's version.
  */
 export function MetaPanel({ meta, status, version, open, onToggle, onChange, settings, onSettings, titleFields = [], limits }: {
   meta: FormMeta; status: string; version: number | null; open: boolean; onToggle: () => void; onChange: (patch: Partial<FormMeta>, group: string) => void;
@@ -69,10 +69,10 @@ export function MetaPanel({ meta, status, version, open, onToggle, onChange, set
           <label className={label}>Rubrik över momenten som kan väljas bort<Input value={settings.moments.label} maxLength={60} placeholder="Moment" onChange={(event) => onSettings({ moments: { ...settings.moments, label: event.target.value } }, "moments:label")} /></label>
           <label className="flex items-center gap-2 self-end text-sm"><input type="checkbox" checked={settings.moments.requireOne} onChange={(event) => onSettings({ moments: { ...settings.moments, requireOne: event.target.checked } }, "moments:requireOne")} />Minst ett moment måste väljas</label>
           <label className={label}>Momenten väljs<select className="form-select" value={settings.moments.placement} onChange={(event) => onSettings({ moments: { ...settings.moments, placement: event.target.value as EditorDocument["moments"]["placement"] } }, "moments:placement")}><option value="top">Överst i uppgiften</option><option value="firstSection">Sist i första avsnittet (som kontrollens grunduppgifter)</option></select></label>
-          {/* The task's own basic data (Daniel 2026-09-27): Workflow's panel, or inside the form like the control. */}
+          {/* The task's own basic data (2026-09-27): Workflow's panel, or inside the form like the control. */}
           <label className={label}>Uppgiftens grunduppgifter (projekt, kund, plats)<select className="form-select" value={settings.task.layout} onChange={(event) => onSettings({ task: { ...settings.task, layout: event.target.value as EditorDocument["task"]["layout"] } }, "task:layout")}><option value="panel">Egen panel före formuläret</option><option value="inline">Inne i formulärets första avsnitt (som kontrollen)</option></select></label>
           <label className={label}>Uppgiftens rubrik följer fältet<select className="form-select" value={settings.task.titleKey} onChange={(event) => onSettings({ task: { ...settings.task, titleKey: event.target.value } }, "task:titleKey")}><option value="">Skrivs av den som fyller i</option>{titleFields.map((field) => <option key={field.key} value={field.key}>{field.label}</option>)}</select></label>
-          {/* The heading and the line under it for a new protocol, exactly like the originals (Daniel 2026-09-28: "Ny kontroll"). */}
+          {/* The heading and the line under it for a new protocol, exactly like the originals (2026-09-28: "Ny kontroll"). */}
           <label className={label}>Rubrik för ett nytt protokoll<Input value={settings.task.newTitle} maxLength={120} placeholder={`Nytt protokoll: ${meta.name || "formulärets namn"}`} onChange={(event) => onSettings({ task: { ...settings.task, newTitle: event.target.value } }, "task:newTitle")} /></label>
           <label className={label}>Text under rubriken tills protokollet är sparat<Input value={settings.task.tagline} maxLength={200} placeholder="Skapa uppgiften fristående eller koppla den till ett projekt." onChange={(event) => onSettings({ task: { ...settings.task, tagline: event.target.value } }, "task:tagline")} /></label>
           <label className="flex items-center gap-2 text-sm md:col-span-2"><input type="checkbox" checked={settings.task.requiredMarks} onChange={(event) => onSettings({ task: { ...settings.task, requiredMarks: event.target.checked } }, "task:requiredMarks")} />Visa * vid obligatoriska fält</label>

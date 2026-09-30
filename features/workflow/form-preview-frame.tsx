@@ -6,7 +6,7 @@ import type { FormDocument, FormValues } from "@/lib/workflow/form-document";
 import { WorkflowTaskEditor } from "./workflow-task-editor";
 
 /**
- * The phone in the form builder's preview (Daniel 2026-09-28: the preview must show exactly what the person filling in
+ * The phone in the form builder's preview (2026-09-28: the preview must show exactly what the person filling in
  * the protocol sees). A phone's look depends on the real viewport width, so the task editor is drawn in a frame of a
  * phone's width at /form-preview and gets the draft, the example answers and the theme from the builder by message.
  * The frame accepts messages from its own origin and its parent window only, fetches nothing and stores nothing.

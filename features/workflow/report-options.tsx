@@ -30,7 +30,7 @@ function relevantSections(kind?: WorkflowTaskKind) {
   return Object.keys(labels) as WorkflowReportSection[];
 }
 
-/** A protocol's report can also be the empty form ("tom mall") or an Excel workbook, like the control (Daniel 2026-09-27). */
+/** A protocol's report can also be the empty form ("tom mall") or an Excel workbook, like the control (2026-09-27). */
 export type ReportVariant = "pdf" | "blank" | "xlsx" | "xlsx-blank";
 
 export function ReportOptionsButton({ kind, choices, disabled, onExport }: { kind?: WorkflowTaskKind; choices?: ProjectReportChoice[]; disabled?: boolean; onExport: (options: WorkflowReportOptions, selected: ProjectReportChoice[], variant?: ReportVariant) => void | Promise<void> }) {

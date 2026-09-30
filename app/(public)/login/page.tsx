@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { AuthShell } from "@/features/auth/components/auth-shell";
 import { LoginForm } from "@/features/auth/components/login-form";
 import { env } from "@/lib/env";
+import { publicInstance } from "@/lib/instance";
 import { getCurrentUser } from "@/lib/auth/session";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -70,7 +71,8 @@ export default async function LoginPage({
         ? "Ditt lösenord är uppdaterat. Logga in med det nya lösenordet."
         : undefined;
   const initialError = mapLoginError(effectiveError);
-  const googleEnabled = Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
+  const { name, features } = publicInstance();
+  const googleEnabled = features.googleSignIn && Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
 
   return (
     <AuthShell
@@ -82,6 +84,8 @@ export default async function LoginPage({
         notice={notice}
         initialError={initialError}
         googleEnabled={googleEnabled}
+        googleOffered={features.googleSignIn}
+        termsOf={features.terms ? name : null}
       />
     </AuthShell>
   );

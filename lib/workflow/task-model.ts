@@ -7,7 +7,7 @@ export type WorkflowTaskKind = (typeof workflowTaskKinds)[number];
 export type WorkflowTaskStatus = (typeof workflowTaskStatuses)[number];
 /**
  * Attachments per task. A protocol places pictures per object (a thermography round has a thermal image and a photo
- * for every object), so it may hold more than a work order or a risk assessment (Daniel 2026-09-26).
+ * for every object), so it may hold more than a work order or a risk assessment (2026-09-26).
  */
 export const workflowTaskAttachmentLimit = (kind: string) => kind === "FORM" ? 60 : 15;
 
@@ -41,7 +41,7 @@ export const riskAssessmentDataSchema = z.object({
 });
 
 /**
- * A protocol from a published form (Daniel 2026-09-26): the template version it was created from, a copy of that
+ * A protocol from a published form (2026-09-26): the template version it was created from, a copy of that
  * version's document (so it opens offline and never changes with the template; the server always replaces the copy
  * with the stored version) and the answers.
  */
@@ -49,7 +49,7 @@ export const formTaskDataSchema = z.object({
   templateId: z.string().min(1).max(100),
   templateVersion: z.number().int().positive(),
   templateName: text(200),
-  /** The form's publisher as shown on the protocol (Daniel 2026-09-27); set by the server from the stored version. */
+  /** The form's publisher as shown on the protocol (2026-09-27); set by the server from the stored version. */
   publisherName: z.string().max(300).optional(),
   document: formDocumentSchema,
   values: formValuesSchema,

@@ -3,7 +3,7 @@ import type { ProjectState, ProjectStatus } from "./project-status";
 import type { TaskStatisticsBucket } from "./task-statistics";
 
 /**
- * Project statistics on Översikt (Daniel 2026-09-27: "the customer should feel secure about the organisation"):
+ * Project statistics on Översikt (2026-09-27: "the customer should feel secure about the organisation"):
  * projects started and closed per period, closed on time, the current status spread, per responsible and a paged
  * list. The status is the shared project status; nothing here reads task content.
  */

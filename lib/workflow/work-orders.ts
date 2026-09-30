@@ -1,7 +1,7 @@
 import { WORK_ITEM_FILTERS, type WorkItemFilter } from "./work-items";
 
 /**
- * Mina arbetsordrar (Daniel 2026-09-26): work orders are their own workflow with a menu group of their own. The list
+ * Mina arbetsordrar (2026-09-26): work orders are their own workflow with a menu group of their own. The list
  * shows status, customer, responsible, planned date and project. "Mina" follows the same rule as Mina uppgifter
  * (assigned to me, or created by me when nobody is assigned); "Alla" shows every work order the member may read.
  * The filters are the same as in Mina uppgifter. Cloud filters and pages in PostgreSQL; Local and the demo use the

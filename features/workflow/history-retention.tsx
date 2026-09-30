@@ -29,7 +29,7 @@ const send = (input: unknown) => api<Record<string, unknown>>("/api/history-rete
 const aYearAgo = () => { const date = new Date(); date.setUTCFullYear(date.getUTCFullYear() - 1); return date.toISOString().slice(0, 10); };
 
 /**
- * Historik och lagring (Daniel 2026-09-30): the company admin chooses how long the work history is kept (the nightly
+ * Historik och lagring (2026-09-30): the company admin chooses how long the work history is kept (the nightly
  * job removes what is older) and can delete older history by hand after seeing exactly how much goes.
  */
 export function HistoryRetention({ notify }: { notify: (text: string, error?: boolean) => void }) {

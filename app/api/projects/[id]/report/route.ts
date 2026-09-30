@@ -36,7 +36,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     for (const task of workflowTasks) requireWorkflowPermission(ctx, workflowSubjectForTask(task.kind, task.formArea), "report");
     if (controls.length) requireWorkflowPermission(ctx, "kfid", "report");
     const result = await PDFDocument.create();
-    // Protocols follow as their own PDFs in the control's look, like the controls (Daniel 2026-09-27).
+    // Protocols follow as their own PDFs in the control's look, like the controls (2026-09-27).
     const protocols = workflowTasks.filter((task) => task.kind === "FORM");
     // The cover lists every chosen task and draws the work orders; the protocols follow as their own parts. Both in the
     // company's report colours and logo (2026-09-30).

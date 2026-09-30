@@ -1,4 +1,4 @@
--- Customer facilities (Daniel 2026-09-26, decision 11/D9 B). Additive: a new register under the customer and an
+-- Customer facilities (2026-09-26, decision 11/D9 B). Additive: a new register under the customer and an
 -- optional link from projects, workflow tasks and controls. The organization's own places stay in "Site" ("Platser").
 CREATE TABLE "CustomerFacility" (
     "id" TEXT NOT NULL,

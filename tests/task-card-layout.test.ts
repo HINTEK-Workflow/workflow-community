@@ -31,7 +31,7 @@ test("moving a card and saving keeps cards that are not offered right now", () =
   assert.deepEqual(saved, { order: ["type:B", "type:A", "form:9"], hidden: ["type:A", "form:9"], slots: { "ELECTRICAL:0": "type:B", "OTHER:0": "type:A", "ELECTRICAL:3": "form:9" } });
 });
 
-// Free placement (Daniel 2026-09-29): 3 favourites, 6 places per category, a card anywhere, new cards in their own category.
+// Free placement (2026-09-29): 3 favourites, 6 places per category, a card anywhere, new cards in their own category.
 const categoryCards = [
   { key: "form:kfid", category: "ELECTRICAL" },
   { key: "form:thermo", category: "ELECTRICAL" },

@@ -30,7 +30,7 @@ const stateBar: Record<ProjectState, string> = { PLANNED: "bg-muted-foreground/5
 const listFilters: [ProjectStatisticsListFilter, string][] = [["period", "Aktiva i perioden"], ["ongoing", "Pågående nu"], ["overdue", "Försenade"], ["closed", "Avslutade i perioden"]];
 
 /**
- * The "Projekt" tab of Statistik (Daniel 2026-09-27): how the organisation's projects progress over time, so a
+ * The "Projekt" tab of Statistik (2026-09-27): how the organisation's projects progress over time, so a
  * company admin can see at a glance that the work is under control. Uses the same period as the task tab.
  */
 export function ProjectStatistics({ from, to, bucket }: { from: string; to: string; bucket: string }) {

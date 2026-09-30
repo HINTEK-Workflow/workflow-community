@@ -3,9 +3,9 @@ import { formMetaSchema } from "./form-publish";
 import type { BuiltinForm } from "./builtin-forms";
 
 /**
- * Riskbedömning as a form (Daniel 2026-09-27, decision B): HINTEK's original, built from the form builder's building
+ * Riskbedömning as a form (2026-09-27, decision B): HINTEK's original, built from the form builder's building
  * blocks – the five-step scales, the risk before and after the protective measure with its level ("15 · Hög"), the
- * 5 × 5 matrix, common measures and approval. In the task it looks exactly like today's risk assessment (Daniel
+ * 5 × 5 matrix, common measures and approval. In the task it looks exactly like today's risk assessment (
  * 2026-09-27): the scales and the matrix side by side in the folded Bedömningsstöd, the risk cards with Före → Efter
  * in the title row and the two rating groups, and the approval with its statement. The PDF has the control's look.
  */

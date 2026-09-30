@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /**
- * Customer facilities (Daniel 2026-09-26, decision 11/D9 B): a property, switchgear or other object under a customer.
+ * Customer facilities (2026-09-26, decision 11/D9 B): a property, switchgear or other object under a customer.
  * Projects, work orders, risk assessments and controls may be linked to one. Shared by Cloud, Local and the demo.
  */
 export const customerFacilityInputSchema = z.object({

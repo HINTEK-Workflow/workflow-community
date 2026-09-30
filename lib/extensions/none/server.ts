@@ -1,4 +1,4 @@
-// The core without ee/ (Fas 2, 2026-09-30): no payment, unlimited use, no landing page, AI model off.
+// The core without ee/ (Fas 2, 2026-09-30): no payment, unlimited use, no landing page, no AI, API or MCP.
 import type { ServerExtensions } from "@/lib/extensions/types";
 
 export const serverExtensions: ServerExtensions = {
@@ -9,8 +9,7 @@ export const serverExtensions: ServerExtensions = {
   }),
   syncCloudSeats: async () => undefined,
   syncCreditExpiryNotices: async () => undefined,
-  aiProviderStatus: async () => null,
-  assistantProvider: async () => null,
+  aiOverview: async () => ({ enabled: false, configured: false }),
   paymentSandboxAvailable: async () => false,
   checkStripeSecretKey: async () => null,
   landing: async () => ({ kind: "hidden" }),

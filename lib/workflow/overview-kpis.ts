@@ -3,7 +3,7 @@ import { capacityWeek, plannedMinutesForUserInWindow, type CapacityActivity } fr
 import type { ProjectStatus } from "./project-status";
 
 /**
- * Key figures for the overview dashboard (Daniel 2026-09-26), shared by Cloud and Local.
+ * Key figures for the overview dashboard (2026-09-26), shared by Cloud and Local.
  * The caller passes data that is already tenant- and permission-filtered and decides the scope:
  * "team" (company admin, or the Local file owner) or "mine" (the same rule as Mina uppgifter).
  * Planned and reported time stay separate values; nothing here is stored or mutated.

@@ -11,7 +11,7 @@ import { kfidForm } from "@/lib/workflow/builtin-kfid-form";
 import { riskForm } from "@/lib/workflow/builtin-risk-form";
 
 /**
- * Invented demo company for the public /demo (Daniel 2026-09-26, approved proposal
+ * Invented demo company for the public /demo (2026-09-26, approved proposal
  * docs/DEMO_DATA_PROPOSAL_20260926.md): "HINTEK Power Solutions AB" with four invented users, three customers with
  * facilities, four projects in different states and all three task types. Everything lives in the visitor's browser
  * memory, is dated relative to today's Swedish date and disappears on reload. No real person, company, address or
@@ -294,8 +294,8 @@ export function createDemoDatabase(now = new Date()): DemoDatabase {
   return {
     organization: { id: "demo-organization", name: DEMO_COMPANY, slug: "hintek-power-solutions-demo", domain: null, storageMode: "HINTEK_CLOUD", weeklyWorkMinutes: 40 * 60 },
     users, customers, projects, tasks, controls, timeEntries, timeEvents, activities, sites, facilities,
-    // HINTEK's built-in inspection types, the same published forms as in Cloud and Local (Daniel 2026-09-26).
-    // HINTEK's originals of the control and the risk assessment are published forms in the demo too (Daniel 2026-09-28).
+    // HINTEK's built-in inspection types, the same published forms as in Cloud and Local (2026-09-26).
+    // HINTEK's originals of the control and the risk assessment are published forms in the demo too (2026-09-28).
     forms: [...BUILTIN_FORMS, ...ROUND_FORMS, kfidForm, riskForm].map((form) => ({ id: form.id, version: 1, name: form.meta.displayName || form.meta.name, description: form.meta.description, color: form.meta.color, icon: form.meta.icon, category: form.meta.category, allowStandalone: form.meta.allowStandalone, allowInProject: form.meta.allowInProject, document: form.document })),
     adminEvents: [
       { id: id("admin"), action: "member_invite", detail: "Elna Bergström lades till som arbetsledare med behörigheten Läsa och rapportera.", createdAt: rel(-40, 10) },

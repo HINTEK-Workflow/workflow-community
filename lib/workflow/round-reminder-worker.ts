@@ -10,7 +10,7 @@ import { dueRoundEmails, type ReminderSchedule } from "./round-reminders";
 type Dependencies = { enabled?: boolean; send?: typeof sendSystemEmail };
 
 /**
- * Sends today's round reminders by e-mail (Daniel 2026-09-30). Off until ROUND_EMAIL_DELIVERY_ENABLED is set, like the
+ * Sends today's round reminders by e-mail (2026-09-30). Off until ROUND_EMAIL_DELIVERY_ENABLED is set, like the
  * other mail; run once each morning (scripts/rounds/run-round-reminders.ts). A delivery row is claimed before sending,
  * so a second run – or two at once – never sends the same reminder twice; a failure is recorded without the address.
  */

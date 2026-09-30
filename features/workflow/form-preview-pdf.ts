@@ -1,7 +1,7 @@
 /**
- * The form builder's PDF in a new tab (Daniel 2026-09-26): an ordinary form post with target="_blank", so the browser –
+ * The form builder's PDF in a new tab (2026-09-26): an ordinary form post with target="_blank", so the browser –
  * also on a phone – shows the PDF in its own viewer and the editor stays where it is. With `values` the PDF shows the
- * answers on screen in the builder's preview (Daniel 2026-09-28); without them the server's example data. Nothing is stored.
+ * answers on screen in the builder's preview (2026-09-28); without them the server's example data. Nothing is stored.
  */
 export function openFormPreviewPdf(input: { meta: unknown; document: unknown; values?: unknown; blank?: boolean; sample?: boolean }) {
   const form = window.document.createElement("form");

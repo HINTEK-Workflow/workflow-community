@@ -11,7 +11,7 @@ import { indicatorBadge, indicatorChoice, indicatorText, type IndicatorTone } fr
 
 export type FormAttachment = { id: string; filename: string; mimeType: string };
 /**
- * Pictures inside the form (Daniel 2026-09-26, field use): a thumbnail for a stored attachment and a direct upload that
+ * Pictures inside the form (2026-09-26, field use): a thumbnail for a stored attachment and a direct upload that
  * stores the file as the task's attachment and returns its id, so a thermal image is taken and placed in one step.
  */
 export type FormMedia = { thumbnail?: (attachmentId: string) => string | null; upload?: (file: File) => Promise<string | null> };
@@ -26,7 +26,7 @@ export function bandClass(band: FormBand | null) {
 export type AnswerChoice = { value: string; text: string; tone: IndicatorTone };
 
 /**
- * A compact group of answer buttons (Daniel 2026-09-29): one frame with the answers side by side, the chosen one filled in
+ * A compact group of answer buttons (2026-09-29): one frame with the answers side by side, the chosen one filled in
  * its colour – green for OK, red for Ej OK or a deviating answer, grey for Ej aktuellt, Ja green and Nej red as well – and
  * the others in a quiet hint of their colour. A second click on the chosen answer clears it.
  */
@@ -41,7 +41,7 @@ export function AnswerButtons({ id, label, value, choices, disabled, compact = f
   </div>;
 }
 
-/** Ja/Nej (and Ej aktuellt) in the same colours as OK/Ej OK everywhere (Daniel 2026-09-30): Ja green, Nej red, Ej aktuellt grey – unless the form says Ja is the deviation, then Ja is red and Nej green. */
+/** Ja/Nej (and Ej aktuellt) in the same colours as OK/Ej OK everywhere (2026-09-30): Ja green, Nej red, Ej aktuellt grey – unless the form says Ja is the deviation, then Ja is red and Nej green. */
 export function YesNo({ id, value, allowNotApplicable, disabled, onChange, label, compact = false, deviationOn = "NONE" }: { id?: string; value: string | null; allowNotApplicable: boolean; disabled: boolean; onChange: (value: string | null) => void; label: string; compact?: boolean; deviationOn?: "NONE" | "YES" | "NO" }) {
   const tone = (answer: "YES" | "NO"): IndicatorTone => deviationOn === "NONE" ? (answer === "YES" ? "success" : "danger") : deviationOn === answer ? "danger" : "success";
   const choices: AnswerChoice[] = [{ value: "YES", text: "Ja", tone: tone("YES") }, { value: "NO", text: "Nej", tone: tone("NO") }, ...(allowNotApplicable ? [{ value: "NA", text: compact ? "E/A" : "Ej aktuellt", tone: "neutral" as const }] : [])];
@@ -120,7 +120,7 @@ export function CameraButton({ label, count = 0, onUpload, className }: { label:
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   return <>
-    {/* A light blue background already at rest (Daniel 2026-09-29), so the camera reads as a button. */}
+    {/* A light blue background already at rest (2026-09-29), so the camera reads as a button. */}
     <Button type="button" variant="ghost" size="icon" className={cn("measurement-camera relative size-8 shrink-0 bg-secondary text-primary hover:bg-primary/15 hover:text-primary", className)} aria-label={label} title={label} disabled={busy} onClick={() => input.current?.click()}>
       {busy ? <LoaderCircle className="size-4 animate-spin" /> : <Camera className="size-5" />}
       {count ? <span className="absolute -bottom-1 -right-1 min-w-4 rounded-full border bg-card px-1 text-center text-[10px] font-semibold leading-4 text-foreground">{count}</span> : null}

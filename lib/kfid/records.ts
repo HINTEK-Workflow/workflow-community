@@ -170,7 +170,7 @@ export async function listRecords(ctx: Context, p: RecordQuery) {
         };
       }
       const customerIds = ids.map((i) => i.id);
-      // The register shows all of a customer's work (Daniel 2026-09-26), counted only for modules the member may read.
+      // The register shows all of a customer's work (2026-09-26), counted only for modules the member may read.
       const may = (subject: "projects" | "kfid" | "work-order" | "risk-assessment") => ctx.admin || hasWorkflowPermission(ctx.workflowPermissions, subject, "read");
       const [rows, projectCounts, taskCounts] = await Promise.all([
         tx.customer.findMany({

@@ -3,11 +3,11 @@ import { formMetaSchema } from "./form-publish";
 import type { BuiltinForm } from "./builtin-forms";
 
 /**
- * Kontroll före idrifttagning as a form (Daniel 2026-09-27, decision B): HINTEK's original, built only from the form
+ * Kontroll före idrifttagning as a form (2026-09-27, decision B): HINTEK's original, built only from the form
  * builder's building blocks – moments that can be switched on and off, measurement rows with Godkänd decided by a
  * condition while Autobedömning is on, the RCD tests as cards in the PDF and two-line rows on screen, Visuell kontroll
  * as tick boxes, Sammanfattning and the Stöd vid bedömning chapter. In the task it looks exactly like today's control
- * (Daniel 2026-09-27): the task's project, customer and place inside Grunduppgifter with the moments below them, the
+ * (2026-09-27): the task's project, customer and place inside Grunduppgifter with the moments below them, the
  * measurement panels with the round add and picture buttons, and the summary with its pills and completion card.
  * Its PDF is drawn by the shared form report and is compared with today's control report in tests/kfid-form.test.ts.
  * The rule profile (KFID-V1-2026.1) is the one in lib/kfid/model.ts; it reproduces V1's assessment and is not a claim
@@ -31,7 +31,7 @@ export const kfidFormDocument: FormDocument = formDocumentSchema.parse({
   schema: 2,
   report: { title: "Kontrollprotokoll", code: KFID_RULE_CODE, taskFacts: false },
   moments: { label: "Kontrollmoment", requireOne: true, placement: "firstSection" },
-  // The header exactly like the control's (Daniel 2026-09-28): "Ny kontroll", the tagline, and Utfört av from the user.
+  // The header exactly like the control's (2026-09-28): "Ny kontroll", the tagline, and Utfört av from the user.
   task: { layout: "inline", titleKey: "proj", requiredMarks: false, newTitle: "Ny kontroll", tagline: "Från första mätningen till ett samlat protokoll." },
   blocks: [
     { id: "kfid-grund", type: "section", title: "Grunduppgifter", description: "Projekt, kontaktperson och mätinstrument.", pdfStyle: "untitled", blocks: [
@@ -129,7 +129,7 @@ export const kfidFormDocument: FormDocument = formDocumentSchema.parse({
         { id: "dok", text: "Dokumentation lämnad (schema / ritning)" },
         { id: "mek", text: "Mekaniskt skydd och infästning OK" },
         { id: "ip", text: "IP-klass och omgivning lämplig" },
-        // Version 4 (Daniel 2026-09-29): the points of the former moments "Före spänningssättning" and "Polaritet och
+        // Version 4 (2026-09-29): the points of the former moments "Före spänningssättning" and "Polaritet och
         // funktionsprov" that no other moment covers (PE is the continuity test, phase sequence the voltage test's
         // rotation, the RCD's function the RCD test) belong to the visual inspection.
         { id: "beroring", text: "Beröringsskydd, kapslingar och lock på plats" },

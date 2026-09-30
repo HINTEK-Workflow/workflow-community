@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { balancedFormWidths, type FormWidth } from "../lib/workflow/form-document";
 
-// Daniel 2026-09-30: "fält upplevs rörigt arrangerade" – rows with a gap are shared evenly so the fields line up.
+// 2026-09-30: "fält upplevs rörigt arrangerade" – rows with a gap are shared evenly so the fields line up.
 const fields = (...widths: FormWidth[]) => widths.map((width) => ({ width, field: true }));
 
 test("Termografering's Mätförutsättningar become full rows of thirds and halves", () => {

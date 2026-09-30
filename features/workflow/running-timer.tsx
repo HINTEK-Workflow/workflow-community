@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { formatTimerClock, formatTimerDuration, timerElapsedSeconds, timerNeedsAttention, type RunningTimer, type StoppedTimer } from "@/lib/workflow/running-timer";
 
 /**
- * Visible time tracking (Daniel 2026-09-26, decisions 6 and 17). A running timer is always shown in the top bar with a
+ * Visible time tracking (2026-09-26, decisions 6 and 17). A running timer is always shown in the top bar with a
  * ticking clock, the task and project, and a pause button; a timer that has run long changes its marker, and stopping a
  * long entry offers to adjust it. Cloud reads the caller's own running entries from the server; Local registers the
  * open file's entries. Start/stop anywhere is announced so every open tab updates at once.

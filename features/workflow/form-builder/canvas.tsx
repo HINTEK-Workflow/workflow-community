@@ -24,7 +24,7 @@ export type CanvasActions = {
 const noop = () => undefined;
 
 /**
- * The sheet (Daniel 2026-09-26): the form drawn as the person filling it in will see it, on a white page that uses the
+ * The sheet (2026-09-26): the form drawn as the person filling it in will see it, on a white page that uses the
  * width of the workspace, in the 12-column grid. Blocks are compact – their tools float above them on hover and when
  * selected – labels are edited in place, and the right edge of a selected block is dragged to change its width.
  */

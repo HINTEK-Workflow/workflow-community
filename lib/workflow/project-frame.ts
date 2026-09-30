@@ -2,7 +2,7 @@ import { z } from "zod";
 import { swedishDayKey } from "@/lib/swedish-time";
 import { facilityLabel } from "./customer-facility";
 
-/** One entry in the project's append-only decision log (Daniel 2026-09-26): date, text and who decided. */
+/** One entry in the project's append-only decision log (2026-09-26): date, text and who decided. */
 export const projectDecisionInputSchema = z.object({
   decidedOn: z.iso.date(),
   text: z.string().trim().min(1, "Beskriv beslutet.").max(2000),
@@ -11,7 +11,7 @@ export const projectDecisionInputSchema = z.object({
 export type ProjectDecision = z.infer<typeof projectDecisionInputSchema> & { id: string; actorName: string; createdAt: string };
 
 /**
- * The project is the frame (Daniel 2026-09-26, decisions 1–4). A project's frame is its start and end date (YYYY-MM-DD,
+ * The project is the frame (2026-09-26, decisions 1–4). A project's frame is its start and end date (YYYY-MM-DD,
  * Swedish calendar days). Existing projects may lack a frame; they are then shown with a prompt to set one, and no
  * frame rule applies. Pure functions, shared by Cloud, Local and the demo.
  */

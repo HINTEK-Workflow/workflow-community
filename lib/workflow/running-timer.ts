@@ -1,7 +1,7 @@
 import { swedishDayKey } from "@/lib/swedish-time";
 
 /**
- * A running timer that has gone on for long is most likely forgotten (Daniel 2026-09-26, decision 6 and 17):
+ * A running timer that has gone on for long is most likely forgotten (2026-09-26, decision 6 and 17):
  * more than 12 hours, or past midnight Swedish time. Used for the top bar marker and the warning when it stops.
  */
 export const LONG_TIMER_SECONDS = 12 * 60 * 60;

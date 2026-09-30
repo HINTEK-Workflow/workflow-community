@@ -13,7 +13,7 @@ const MAX_FORMS = 20;
 const statusText: Record<string, string> = { DRAFT: "Utkast", PUBLISHED: "Publicerad", UNPUBLISHED: "Avpublicerad" };
 
 /**
- * Export and import of forms next to Anpassa under Ny uppgift (Daniel 2026-09-27), so companies can share forms with
+ * Export and import of forms next to Anpassa under Ny uppgift (2026-09-27), so companies can share forms with
  * each other. Export downloads a signed file; import turns a file into drafts in Skapa formulär, to check and publish.
  */
 export function FormShareActions({ onImported }: { onImported?: () => void }) {

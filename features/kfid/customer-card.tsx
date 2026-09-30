@@ -49,7 +49,7 @@ function cloudAdapter(customerId: string): CustomerCardAdapter {
 }
 
 /**
- * The customer card (Daniel 2026-09-26, decision 12B/D10 B): the customer is the hub for its projects, all its tasks,
+ * The customer card (2026-09-26, decision 12B/D10 B): the customer is the hub for its projects, all its tasks,
  * its facilities (decision 11) and its contact details. Tasks are loaded one bounded page at a time.
  */
 export function CustomerCard({ customerId, local, onEdit }: { customerId: string; local?: CustomerCardAdapter; onEdit?: (customer: CustomerItem) => void }) {

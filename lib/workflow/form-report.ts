@@ -6,7 +6,7 @@ import { REPORT_TONES, assessmentCell, checkpointCell, CONTENT_WIDTH, createRepo
 import type { WorkflowReportOptions, WorkflowReportTask } from "./report";
 
 /**
- * A protocol from a form, drawn like the Kontroll före idrifttagning report (Daniel 2026-09-27: the control's report is
+ * A protocol from a form, drawn like the Kontroll före idrifttagning report (2026-09-27: the control's report is
  * the model for every form report): the same heading, fact boxes, measurement tables, cards, tick boxes, summary box,
  * list of attachments, chapter pages, pictures on their own pages and footer, in the company's report colours with its
  * logo. Everything is drawn from the protocol's own copy of the form and computed with the shared engine; nothing in
@@ -342,7 +342,7 @@ function drawGrid(context: Context, table: FormTableBlock) {
   const rows = filled.length ? filled : tableRows({ ...context, values: { ...context.values, tables: { ...context.values.tables, [table.key]: [] } } }, table);
   const fixed = table.rowMode === "fixed";
   const groups = printedColumns(table);
-  // A pdfWidth is in points and a weight is a share (Daniel 2026-09-30: Automatisk frånkoppling printed its columns one
+  // A pdfWidth is in points and a weight is a share (2026-09-30: Automatisk frånkoppling printed its columns one
   // letter wide beside a 54 pt Godkänd). When a table mixes them, a weight counts as WEIGHT_POINTS points.
   const scale = groups.some((group) => group.columns[0].pdfWidth) ? WEIGHT_POINTS : 1;
   const columns: KitColumn[] = widths([
@@ -401,7 +401,7 @@ function objectCard(context: Context, table: FormTableBlock, row: Row, index: nu
     return !["textarea", "images", "assessment"].includes(column.input) && !titled.has(column.key) && !(named && column === nameColumn);
   });
   const deviation = !context.blank && evaluation.deviations.some((item) => item.key === table.key && item.rowId === row.id && item.kind !== "assessment");
-  // The card always names its judgement (Daniel 2026-09-30: "texten Godkänd saknas på JFB"): a row not judged yet
+  // The card always names its judgement (2026-09-30: "texten Godkänd saknas på JFB"): a row not judged yet
   // says "Godkänd: —" in grey – never "Ej godkänd" – and the blank template has a box to tick.
   const judged = assessment && !context.blank ? assessmentCell(judgedValue(evaluation, table, row, assessment.key)) : null;
   const unjudged = judged !== null && !judged.text;

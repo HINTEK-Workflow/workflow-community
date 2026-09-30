@@ -3,7 +3,7 @@ import type { ProjectStatus } from "./project-status";
 export type UrgencyItem = { needsAction: boolean; overdue: boolean; status: string; dueDate?: string; updatedAt: string };
 
 /**
- * The most urgent items for the folded overview (Daniel 2026-09-26): needs action or overdue first,
+ * The most urgent items for the folded overview (2026-09-26): needs action or overdue first,
  * then open work with the nearest due date, then the most recently changed. Completed work only fills up.
  */
 export function mostUrgentWork<T extends UrgencyItem>(items: T[], count = 3) {

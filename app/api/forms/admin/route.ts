@@ -44,7 +44,7 @@ const fileSlug = (name: string) => name.toLowerCase().normalize("NFD").replace(/
 const exportableWhere = (scope: FormScope): Prisma.FormTemplateWhereInput => ({ OR: [{ organizationId: scope.organizationId }, ...(scope.organizationId ? [{ organizationId: null, status: "PUBLISHED" }] : [])] });
 
 /**
- * Export (Daniel 2026-09-27): the chosen forms as a signed file – the published version, or the draft of a form that
+ * Export (2026-09-27): the chosen forms as a signed file – the published version, or the draft of a form that
  * was never published.
  */
 async function exportForms(scope: FormScope, ids: string[]) {
@@ -84,7 +84,7 @@ async function baseOf(template: { baseTemplateId: string | null; baseVersion: nu
 }
 
 /**
- * "Skapa formulär" (Daniel 2026-09-26, companies since 2026-09-27): HINTEK's superadmin works on HINTEK's forms and a
+ * "Skapa formulär" (2026-09-26, companies since 2026-09-27): HINTEK's superadmin works on HINTEK's forms and a
  * company admin on the company's own forms – never another company's. Protocol counts are numbers, never content.
  */
 export async function GET(request: Request) {
@@ -105,7 +105,7 @@ export async function GET(request: Request) {
       });
       return NextResponse.json({ forms: rows.map((row) => ({ id: row.id, name: row.displayName || row.name, status: row.status, own: row.organizationId === scope.organizationId, publisher: publisherLabel(row.publisherName, row.importedFrom) })) }, { headers: { "Cache-Control": "private, no-store" } });
     }
-    // HINTEK's originals (Daniel 2026-09-27, decision B): a company admin sees the published ones it has not yet made its
+    // HINTEK's originals (2026-09-27, decision B): a company admin sees the published ones it has not yet made its
     // own version of, and opens one to change it; the first save becomes the company's copy.
     if (params.get("originals")) {
       if (!scope.organizationId) return NextResponse.json({ originals: [] });
@@ -148,7 +148,7 @@ export async function GET(request: Request) {
     }
     // The ongoing draft to open when the editor starts: the most recently changed form with unpublished changes.
     // HINTEK's originals and a company's version of one are opened from Mina formulär only, never by themselves
-    // (Daniel 2026-09-27: Skapa formulär must not land in Riskbedömning).
+    // (2026-09-27: Skapa formulär must not land in Riskbedömning).
     if (params.get("resume")) {
       const recent = await prisma.formTemplate.findMany({ where: { organizationId: scope.organizationId, id: { notIn: Object.keys(TASK_TYPE_OF_ORIGINAL) }, baseTemplateId: null }, orderBy: { updatedAt: "desc" }, take: PAGE_SIZE, select: templateSelect });
       const latest = await latestVersions(recent.map((item) => item.id));
@@ -197,7 +197,7 @@ const meta = {
 const starterDocument = () => ({ schema: 2 as const, blocks: [{ id: "avsnitt-1", type: "section" as const, title: "", description: "", newPage: false, blocks: [] }] });
 const inputSchema = z.discriminatedUnion("action", [
   // A new form: from the editor's local draft (with content) or just a name.
-  // `baseTemplateId`: the company's own version of a HINTEK original, made by the first save (Daniel 2026-09-27).
+  // `baseTemplateId`: the company's own version of a HINTEK original, made by the first save (2026-09-27).
   z.object({ action: z.literal("create"), ...meta, document: z.unknown().optional(), baseTemplateId: id.optional() }),
   // Removes the company's version so the company uses HINTEK's original again; protocols keep their own copy.
   z.object({ action: z.literal("reset_to_original"), id }),
@@ -208,7 +208,7 @@ const inputSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("unpublish"), id }),
   z.object({ action: z.literal("republish"), id }),
   z.object({ action: z.literal("delete"), id }),
-  // Import (Daniel 2026-09-27): a form file from another company or from HINTEK becomes drafts here.
+  // Import (2026-09-27): a form file from another company or from HINTEK becomes drafts here.
   z.object({ action: z.literal("import"), file: z.unknown(), duplicates: z.enum(["skip", "copy"]).default("skip") }),
 ]);
 
@@ -346,7 +346,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true });
     }
     if (input.action === "reset_to_original" && !template.baseTemplateId) throw new ApiError(409, "Formuläret är inte en version av HINTEK:s original.");
-    // Permanent deletion (Daniel 2026-09-26), also of a published form and of a form with protocols: its versions,
+    // Permanent deletion (2026-09-26), also of a published form and of a form with protocols: its versions,
     // history and the form itself. Protocols are never deleted – each keeps its own copy of the form in its data, and
     // the database sets its reference to NULL – so their answers, history and PDF stay intact.
     await prisma.$transaction(async (tx) => {

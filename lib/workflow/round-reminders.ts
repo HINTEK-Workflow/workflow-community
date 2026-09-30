@@ -1,7 +1,7 @@
 import { scheduleOccurrences, taskRound, type FormScheduleReminders, type FormScheduleRule } from "./form-schedule";
 
 /**
- * Which rounds get an e-mail today (Daniel 2026-09-30), without Prisma or mail so it can be tested: an active round
+ * Which rounds get an e-mail today (2026-09-30), without Prisma or mail so it can be tested: an active round
  * with e-mail on whose rule has an occurrence today, not already done, sent to its responsible person – or to the
  * company's administrators when none is chosen. Deliveries already made are skipped (one per round, day and person).
  */

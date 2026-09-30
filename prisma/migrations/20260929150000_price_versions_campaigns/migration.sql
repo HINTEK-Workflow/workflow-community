@@ -1,4 +1,4 @@
--- Price versions, price change notices and campaign discounts on orders (Daniel 2026-09-29, docs/PLAN_LANDNINGSSIDA_PLANER_PRISER_20260929.md).
+-- Price versions, price change notices and campaign discounts on orders (2026-09-29, docs/PLAN_LANDNINGSSIDA_PLANER_PRISER_20260929.md).
 -- Additive only. Amounts change through a new PriceVersion mirrored to new Stripe prices; existing subscriptions keep their price
 -- until an audited move after a 30-day notice. Orders keep subtotalOre undiscounted (like Stripe) and store the discount separately.
 -- CreateEnum

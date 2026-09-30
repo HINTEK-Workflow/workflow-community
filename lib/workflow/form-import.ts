@@ -2,7 +2,7 @@ import type { FormLimit, FormSection } from "./form-document";
 
 /**
  * Control points from a spreadsheet (2026-09-28): one row per point, for any control – a round, a recurring inspection,
- * a checklist of one's own – read into a form and refined in the builder. Generic on purpose (Daniel 2026-09-29: no
+ * a checklist of one's own – read into a form and refined in the builder. Generic on purpose (2026-09-29: no
  * import for one control type; a separate Import page with AI analysis of documents is planned and can reuse this).
  * Pure: the server reads the file, this turns the rows into sections, checklists, fields and limits; nothing is published.
  */

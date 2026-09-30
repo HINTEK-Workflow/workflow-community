@@ -56,7 +56,7 @@ test("completing a Local task stops its running timer and reports it, like Cloud
   assert.ok(completed.task.timeEntries.every((entry) => entry.endedAt));
 });
 
-test("Local controls run the same per-person timer (Daniel 2026-09-27) and switch with tasks", async () => {
+test("Local controls run the same per-person timer (2026-09-27) and switch with tasks", async () => {
   const { saveLocalControlRecord } = await import("../features/kfid/local-workspace-store");
   const { blankControl } = await import("../lib/kfid/model");
   let workspace = createLocalWorkspace({ id: "control-timer", name: "Tid AB" });

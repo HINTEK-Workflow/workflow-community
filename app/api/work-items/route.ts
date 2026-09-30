@@ -19,7 +19,7 @@ const querySchema = z.object({
 });
 
 /**
- * Mina uppgifter as a server-side list (Daniel 2026-09-26: lists are bounded and paged by the server).
+ * Mina uppgifter as a server-side list (2026-09-26: lists are bounded and paged by the server).
  * The same "mine" rule as before – assigned to me, or created by me when nobody is assigned; controls I created or
  * perform – within the tenant and the member's read permission per module. Filtering, search, counts and paging run in
  * PostgreSQL; only the returned page computes control completion from its content.
@@ -30,7 +30,7 @@ export async function GET(request: Request) {
     requireCloudStorage(ctx);
     const input = querySchema.parse(Object.fromEntries(new URL(request.url).searchParams));
     const can = (subject: WorkflowPermissionSubject) => ctx.admin || hasWorkflowPermission(ctx.workflowPermissions, subject, "read");
-    // Protocols follow their form's permission area (Daniel 2026-09-27).
+    // Protocols follow their form's permission area (2026-09-27).
     const readable = readableTaskScope(can).any;
     const performers = [ctx.user.name, ctx.user.email].filter((value): value is string => Boolean(value));
     const parts: Prisma.Sql[] = [];

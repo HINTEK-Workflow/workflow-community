@@ -13,7 +13,7 @@ import {
   verifyEmailWithToken,
 } from '../lib/auth/service';
 
-// The installation owner (INSTANCE_ADMIN_EMAIL; HINTEK: Daniel) is the only account allowed during the private test.
+// The installation owner (INSTANCE_ADMIN_EMAIL) is the only account allowed during the private test.
 const OWNER = 'owner@instance.test';
 process.env.INSTANCE_ADMIN_EMAIL = OWNER;
 const allowed = { id: 'test-owner', email: OWNER, name: 'Instance Owner', role: 'SUPERADMIN', isActive: true, emailVerifiedAt: new Date(), passwordHash: hashSync('Only-for-unit-test-2026', 4), activeOrganizationId: null, activeOrganization: null, organizationMemberships: [] };

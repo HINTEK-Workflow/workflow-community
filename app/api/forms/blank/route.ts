@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 const identifier = z.string().min(1).max(100);
 
 /**
- * The empty form to fill in by hand, as PDF or Excel (Daniel 2026-09-28: a template needs no saved protocol – the
+ * The empty form to fill in by hand, as PDF or Excel (2026-09-28: a template needs no saved protocol – the
  * conditions belong to sending, not to the template). Any member who may take out reports for the form's area gets
  * the published version's blank form with the company's report colours and logo; nothing is stored.
  */

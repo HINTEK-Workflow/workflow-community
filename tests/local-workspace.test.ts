@@ -186,7 +186,7 @@ test("local controls have sequential numbers, revisions and immutable completion
   const customer = saveLocalCustomerRecord(original, { name: "Kund Ett" });
   const data = blankControl();
   data.meta.proj = "Centralbyte";
-  data.meta.perf = "Daniel";
+  data.meta.perf = "Anna";
   const first = saveLocalControlRecord(customer.workspace, {
     version: 0,
     customerId: customer.customer.id,

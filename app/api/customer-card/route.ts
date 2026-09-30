@@ -24,7 +24,7 @@ const querySchema = z.object({
 const facilitySelect = { id: true, customerId: true, name: true, address: true, postalCode: true, city: true, description: true, isActive: true, version: true } as const;
 
 /**
- * The customer card (Daniel 2026-09-26, decision 12B/D10 B): the customer, its facilities, its projects and one bounded
+ * The customer card (2026-09-26, decision 12B/D10 B): the customer, its facilities, its projects and one bounded
  * page of all its tasks (work orders, risk assessments and controls), filtered by the member's read permission per
  * module. The customer register itself stays open to every member, as before.
  */
@@ -39,7 +39,7 @@ export async function GET(request: Request) {
       select: { id: true, name: true, company: true, address: true, postalCode: true, city: true, email: true, phone: true, mobile: true, notes: true, version: true, deletedAt: true, lat: true, lng: true },
     });
     if (!customer) throw new ApiError(404, "Kunden hittades inte.");
-    // Protocols are listed when any form area is readable; each row is then filtered by its own area (Daniel 2026-09-27).
+    // Protocols are listed when any form area is readable; each row is then filtered by its own area (2026-09-27).
     const taskKinds = (["WORK_ORDER", "RISK_ASSESSMENT", "FORM"] as const).filter((kind) => (kind === "FORM" ? readableTaskScope(can).areas.length > 0 : can(subjectOf(kind))) && (query.kind === "all" || query.kind === kind));
     const withControls = can("kfid") && (query.kind === "all" || query.kind === "COMMISSIONING_CONTROL");
     const take = query.page * TASK_PAGE_SIZE;

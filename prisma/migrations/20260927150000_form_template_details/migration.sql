@@ -1,4 +1,4 @@
--- The form editor (Daniel 2026-09-26, decision 2): basic details shown under Ny uppgift, versioned with every
+-- The form editor (2026-09-26, decision 2): basic details shown under Ny uppgift, versioned with every
 -- publication. Additive with defaults: existing templates and published versions keep what they have, and adding a
 -- column with a constant default does not fire the immutability trigger on "FormTemplateVersion".
 

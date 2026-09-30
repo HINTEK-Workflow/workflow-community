@@ -126,7 +126,7 @@ export function plannedMinutesByProject(activities: CapacityActivity[]) {
 }
 
 /**
- * Planned time per task, to compare with the task's reported time (Daniel 2026-09-26, decision 14). Unlike capacity,
+ * Planned time per task, to compare with the task's reported time (2026-09-26, decision 14). Unlike capacity,
  * completed planning still counts (it was planned); only canceled or deleted planning is left out. Read-only: it never
  * creates or changes reported time.
  */

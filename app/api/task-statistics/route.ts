@@ -34,7 +34,7 @@ export async function GET(request: Request) {
     // One tenant-bound row per task with Swedish creation/completion days. Completed controls are immutable,
     // so their last update is the completion time.
     // A control or risk assessment made as a form after the switch-over counts as a control or risk assessment
-    // (Daniel 2026-09-27); `taskKind` keeps the real kind for the link.
+    // (2026-09-27); `taskKind` keeps the real kind for the link.
     const tasks = Prisma.sql`
       select c.id, 'KFID' as kind, 'KFID' as "taskKind", c.title, c.status, coalesce(nullif(c.performer, ''), 'Ej angivet') as performer,
         c."createdAt" as "createdAt",

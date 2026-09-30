@@ -19,7 +19,7 @@ export type TemplateDetail = {
   /** A company's version of a HINTEK original: which one, from which version, and whether HINTEK has published a newer. */
   base?: { id: string; name: string; version: number | null; latest: number | null; updated: boolean } | null;
 };
-/** A HINTEK original opened by a company admin; the first change becomes the company's own version (Daniel 2026-09-27). */
+/** A HINTEK original opened by a company admin; the first change becomes the company's own version (2026-09-27). */
 export type OriginalBase = { id: string; name: string; version: number };
 export type SaveStatus = { kind: "idle" } | { kind: "saving" } | { kind: "saved"; at: string } | { kind: "error"; message: string } | { kind: "conflict" };
 
@@ -56,7 +56,7 @@ const AUTOSAVE_MS = 5000;
 /**
  * The form being edited: opening (URL form → local recovery copy → ongoing draft → new local draft), undo and redo,
  * saving by hand, autosaving drafts that already exist on the server, and conflicts with another tab. Nothing is
- * written to the server just because the page opened (Daniel 2026-09-26).
+ * written to the server just because the page opened (2026-09-26).
  */
 export function useFormDraft({ confirm }: { confirm: (options: ConfirmOptions) => Promise<boolean> }) {
   const router = useRouter();
@@ -259,7 +259,7 @@ export function useFormDraft({ confirm }: { confirm: (options: ConfirmOptions) =
     return () => window.clearTimeout(timer);
   }, [loading, dirty, snapshot, templateId, revision, base]);
 
-  // Leaving: save when the tab is hidden and once more when the editor closes. No native "leave page?" box (Daniel
+  // Leaving: save when the tab is hidden and once more when the editor closes. No native "leave page?" box (
   // 2026-09-26: never the browser's own dialogs); a new, unsaved form survives as the local recovery copy instead.
   useEffect(() => {
     const hidden = () => { if (document.visibilityState === "hidden" && latest.current.dirty && latest.current.templateId) void save({ autosave: true }); };
@@ -319,7 +319,7 @@ export function useFormDraft({ confirm }: { confirm: (options: ConfirmOptions) =
   }, [open, startNew]);
 
   /**
-   * "Återställ till originalet" (Daniel 2026-09-27): removes the company's version, so the company uses HINTEK's
+   * "Återställ till originalet" (2026-09-27): removes the company's version, so the company uses HINTEK's
    * original again, and opens the original. Protocols made from the company's version keep their own copy.
    */
   const resetToOriginal = useCallback(async () => {

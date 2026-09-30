@@ -11,7 +11,7 @@ export const workflowPermissionMatrix: Record<WorkflowPermissionSubject, readonl
   kfid: ["read", "create", "edit", "complete", "report"],
   "work-order": ["read", "create", "edit", "complete", "reopen", "report"],
   "risk-assessment": ["read", "create", "edit", "complete", "reopen", "report"],
-  // Protocols from published forms (Daniel 2026-09-26): the same actions as work orders.
+  // Protocols from published forms (2026-09-26): the same actions as work orders.
   forms: ["read", "create", "edit", "complete", "reopen", "report"],
 };
 
@@ -46,7 +46,7 @@ export type WorkflowPermissionProfile = z.infer<typeof workflowPermissionProfile
 /** Everything; used for company admins/owners and the Local file owner, never as an employee's default. */
 export const defaultWorkflowPermissionProfile = (): WorkflowPermissionProfile => ({ version: 1, grants: [...allGrants] });
 /**
- * An employee may only do what a company admin has granted (Daniel 2026-09-27): a new invitation starts with no
+ * An employee may only do what a company admin has granted (2026-09-27): a new invitation starts with no
  * access, and a member without a saved profile has none. Admins and owners are unaffected (full access by role).
  */
 export const noWorkflowPermissionProfile = (): WorkflowPermissionProfile => ({ version: 1, grants: [] });
@@ -88,7 +88,7 @@ export function hasWorkflowPermission(profile: WorkflowPermissionProfile, subjec
 }
 
 /**
- * The permission areas a form's protocols can belong to (Daniel 2026-09-27, decision B): Kontroll före idrifttagning and
+ * The permission areas a form's protocols can belong to (2026-09-27, decision B): Kontroll före idrifttagning and
  * Riskbedömning built as forms keep the areas they have always had; every other form is Formulär.
  */
 export const FORM_PERMISSION_AREAS = ["forms", "kfid", "risk-assessment"] as const;

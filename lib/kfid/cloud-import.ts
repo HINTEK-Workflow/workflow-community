@@ -434,13 +434,13 @@ export async function executeCloudWorkspaceImport(input: {
         const projectId = local.projectId ? projectIds.get(local.projectId) ?? null : null;
         const current = item.current;
         // A protocol from a form keeps its template version; the stored, immutable version replaces the file's copy.
-        // It also keeps its form's permission area (Daniel 2026-09-27: controls and risk assessments as forms).
+        // It also keeps its form's permission area (2026-09-27: controls and risk assessments as forms).
         let form: { formTemplateId: string | null; formTemplateVersion: number | null; formArea?: string | null } = { formTemplateId: null, formTemplateVersion: null };
         let data = local.data;
         if (local.data.kind === "FORM") {
           const details = local.data.details;
           const stored = await tx.formTemplateVersion.findUnique({ where: { templateId_version: { templateId: details.templateId, version: details.templateVersion } }, include: { template: { select: { permissionArea: true } } } });
-          // A form deleted after the export (Daniel 2026-09-26): the Cloud protocol's own copy of the form is kept.
+          // A form deleted after the export (2026-09-26): the Cloud protocol's own copy of the form is kept.
           const deleted = !stored && current ? await tx.workflowTask.findFirst({ where: { id: current.id, kind: "FORM", formTemplateId: null }, select: { data: true } }) : null;
           if (!stored && !deleted) throw new ApiError(422, `Protokollet ${local.title} kommer från ett formulär som inte finns hos HINTEK. Återimporten avbröts.`);
           if (stored) {

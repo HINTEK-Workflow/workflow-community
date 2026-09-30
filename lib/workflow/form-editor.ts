@@ -1,14 +1,14 @@
 import { FIELD_INPUTS, formBlockCanBeNarrow, formDocumentSchema, formLeafBlocks, type FormBlock, type FormColumn, type FormCondition, type FormDocument, type FormLeafBlock, type FormSection } from "./form-document";
 
 /**
- * The form editor's document operations (Daniel 2026-09-26, the approved editor). Pure functions: drag and drop, the
+ * The form editor's document operations (2026-09-26, the approved editor). Pure functions: drag and drop, the
  * block buttons and the keyboard shortcuts all call the same operations, so they behave identically and are tested
  * once. The editor always works on a schema 2 document whose top level holds only sections.
  */
 
 export type EditorDocument = { schema: 2; blocks: FormSection[]; report: FormDocument["report"]; moments: FormDocument["moments"]; task: FormDocument["task"]; limits: FormDocument["limits"]; limitObjectKey: string };
 
-/** The form's own settings: the PDF heading and the moments that can be switched on and off (Daniel 2026-09-27). */
+/** The form's own settings: the PDF heading and the moments that can be switched on and off (2026-09-27). */
 export const defaultDocumentSettings = (): Pick<EditorDocument, "report" | "moments" | "task" | "limits" | "limitObjectKey"> => ({ report: { title: "", code: "", taskFacts: true }, moments: { label: "Moment", requireOne: false, placement: "top" }, task: { layout: "panel", titleKey: "", requiredMarks: true, newTitle: "", tagline: "" }, limits: [], limitObjectKey: "" });
 
 export const newId = () => Math.random().toString(36).slice(2, 10);

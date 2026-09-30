@@ -24,7 +24,7 @@ export const formScheduleRuleSchema = z.object({
 export type FormScheduleRule = z.infer<typeof formScheduleRuleSchema>;
 
 /**
- * Reminders for a round (Daniel 2026-09-30): a notice in the bell of the top bar (on from the start) and an e-mail
+ * Reminders for a round (2026-09-30): a notice in the bell of the top bar (on from the start) and an e-mail
  * (chosen per round). They go to the round's responsible person, or to the company's administrators when none is chosen.
  */
 export const formScheduleRemindersSchema = z.object({ bell: z.boolean().default(true), email: z.boolean().default(false) });
@@ -165,7 +165,7 @@ export function roundReminderFor(schedule: Pick<FormSchedule, "assignedToUserId"
 }
 
 /**
- * The rounds to remind about now (Daniel 2026-09-30): an active round with the bell on whose occurrence today is not
+ * The rounds to remind about now (2026-09-30): an active round with the bell on whose occurrence today is not
  * done, or whose latest occurrence within the window was missed or left unfinished. An administrator sees the team's
  * rounds, like the other reminders; anyone else the rounds they are responsible for.
  */

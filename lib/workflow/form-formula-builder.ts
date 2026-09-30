@@ -1,7 +1,7 @@
 import { parseFormula, type FormulaNode } from "./form-formula";
 
 /**
- * The visual formula builder (Daniel 2026-09-26, the approved editor): pick a field, an operator and a value or another
+ * The visual formula builder (2026-09-26, the approved editor): pick a field, an operator and a value or another
  * field. The builder writes an ordinary formula in the existing language, so the engine, the server and the PDF are
  * unchanged, and a formula that does not fit the simple shape stays editable as advanced text.
  */

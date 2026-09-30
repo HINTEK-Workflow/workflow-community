@@ -1,4 +1,4 @@
--- Time on commissioning controls (Daniel 2026-09-26, decision 13): manual registration in Tidrapport. A time entry
+-- Time on commissioning controls (2026-09-26, decision 13): manual registration in Tidrapport. A time entry
 -- belongs to exactly one work order/risk assessment or one control. Additive: existing entries keep their taskId.
 ALTER TABLE "WorkflowTimeEntry" ALTER COLUMN "taskId" DROP NOT NULL;
 ALTER TABLE "WorkflowTimeEntry" ADD COLUMN "controlId" TEXT;

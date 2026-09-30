@@ -65,9 +65,9 @@ function BandsEditor({ bands, onChange }: { bands: FormBand[]; onChange: (bands:
 }
 
 /**
- * Settings for the selected block (Daniel 2026-09-26): grouped as Grund, Alternativ, Validering, Avvikelse, Formel and
+ * Settings for the selected block (2026-09-26): grouped as Grund, Alternativ, Validering, Avvikelse, Formel and
  * Visning. The same panel is the right-hand column on a large screen and a panel on top of the canvas on a smaller one.
- * The building blocks added backwards from the control and the risk assessment (Daniel 2026-09-27) have their settings
+ * The building blocks added backwards from the control and the risk assessment (2026-09-27) have their settings
  * in the same groups: moments, PDF style, measurement rows, Godkänd, scales, levels and prefill.
  */
 export function BlockSettings({ document, block, issues, onPatch, onMove, onDuplicate, onRemove, onMoveToSection }: {

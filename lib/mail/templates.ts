@@ -126,7 +126,7 @@ export function buildOrganizationInvitationEmail(input: {
   });
 }
 
-/** A round to do today (Daniel 2026-09-30): what, where and a link to Driftronder – no answers or customer data beyond the place. */
+/** A round to do today (2026-09-30): what, where and a link to Driftronder – no answers or customer data beyond the place. */
 export function buildRoundReminderEmail(input: { organizationName: string; roundTitle: string; day: string; place: string; roundsUrl: string }) {
   return renderBaseTemplate({
     heading: `Rond idag: ${input.roundTitle}`,

@@ -93,7 +93,7 @@ export function TimeReport({ local, focusTaskId }: { local?: LocalTimeAdapter; f
     appliedFocusTaskId.current = focusedTask.id;
   }, [focusedTask]);
   const entries = useMemo<ReportRow[]>(() => tasks.flatMap((task) => task.timeEntries.map((entry) => ({ ...entry, taskId: task.id, taskTitle: task.title, projectName: projectName(task) }))).sort((a, b) => b.startedAt.localeCompare(a.startedAt)), [tasks]);
-  // "Justera tiden" after a long timer (Daniel 2026-09-26) opens that entry for editing once it has loaded.
+  // "Justera tiden" after a long timer (2026-09-26) opens that entry for editing once it has loaded.
   useEffect(() => {
     let entryId: string | null = null;
     try { entryId = window.sessionStorage.getItem(ADJUST_TIME_ENTRY_KEY); } catch { return; }

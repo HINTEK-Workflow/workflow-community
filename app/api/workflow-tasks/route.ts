@@ -26,7 +26,7 @@ async function verifyReferences(organizationId: string, input: z.infer<typeof wo
     if (!project) throw new ApiError(400, "Projektet hittades inte.");
     if (project.archivedAt) throw new ApiError(409, "Återställ projektet innan du sparar en uppgift i det.");
     if (project.closedAt) throw new ApiError(409, "Projektet är avslutat. Återöppna projektet innan du lägger till eller ändrar uppgifter i det.");
-    // The project is the frame (Daniel 2026-09-26): its customer applies to its tasks, and a new or changed
+    // The project is the frame (2026-09-26): its customer applies to its tasks, and a new or changed
     // "Klart senast" must lie within its start and end. An unchanged older date outside the frame stays a warning.
     if (project.customerId && input.customerId !== project.customerId) throw new ApiError(400, "En uppgift i projektet har projektets kund.");
     const previous = input.id ? await prisma.workflowTask.findFirst({ where: { id: input.id, organizationId }, select: { dueDate: true, projectId: true } }) : null;
@@ -46,7 +46,7 @@ async function verifyReferences(organizationId: string, input: z.infer<typeof wo
     throw new ApiError(400, "Ansvarig användare tillhör inte arbetsytan.");
 }
 
-// History is paged (Daniel 2026-09-26): the list carries the newest revisions and a count; older ones load on request.
+// History is paged (2026-09-26): the list carries the newest revisions and a count; older ones load on request.
 const REVISION_PAGE_SIZE = 10;
 type RevisionRow = { id: string; version: number; snapshot: Prisma.JsonValue; createdAt: Date };
 function revisionView(task: { kind: string; title: string; description: string; status: string; data: Prisma.JsonValue }, revisions: RevisionRow[]) {
@@ -89,7 +89,7 @@ export async function GET(request: Request) {
       });
       return NextResponse.json({ revisions: revisionView(task, page) });
     }
-    // Earlier protocols of the same form for the same facility or customer (follow-up, Daniel 2026-09-26).
+    // Earlier protocols of the same form for the same facility or customer (follow-up, 2026-09-26).
     const historyTemplate = url.searchParams.get("formHistory");
     if (historyTemplate) {
       const canRead = (subject: WorkflowPermissionSubject) => ctx.admin || hasWorkflowPermission(ctx.workflowPermissions, subject, "read");
@@ -156,7 +156,7 @@ export async function GET(request: Request) {
       const next = [...rows].sort((a, b) => (a.dueDate || "9999").localeCompare(b.dueDate || "9999"))[0];
       return NextResponse.json({ next: next ? view(next) : null, open: rows.length });
     }
-    // Bounded reads (Daniel 2026-09-26): the editor asks for one task (`id`) or only the members (`members=only`)
+    // Bounded reads (2026-09-26): the editor asks for one task (`id`) or only the members (`members=only`)
     // instead of every task in the organization with its history.
     const onlyId = url.searchParams.get("id");
     const membersOnly = url.searchParams.get("members") === "only";
@@ -249,7 +249,7 @@ export async function POST(request: Request) {
       requireWorkflowPermission(ctx, workflowSubjectForTask(task.kind, task.formArea), "edit");
       if (task.status === "COMPLETED") throw new ApiError(409, "En slutförd uppgift kan inte tidrapporteras.");
       const now = new Date();
-      // The timer is per person (Daniel 2026-09-26): start and pause only touch the caller's own entry, a colleague's
+      // The timer is per person (2026-09-26): start and pause only touch the caller's own entry, a colleague's
       // running entry keeps going, and starting a new timer pauses the caller's timer on any other task.
       const stopped = await prisma.$transaction(async (tx) => {
         const running = await tx.workflowTimeEntry.findMany({ where: { taskId: task.id, endedAt: null } });
@@ -272,7 +272,7 @@ export async function POST(request: Request) {
 
     const task = input.task;
     // A protocol always uses its stored form version (never a document sent by the client), and follows its form's
-    // permission area – Kontroll före idrifttagning and Riskbedömning as forms keep their own (Daniel 2026-09-27).
+    // permission area – Kontroll före idrifttagning and Riskbedömning as forms keep their own (2026-09-27).
     const form = await bindFormTask(ctx.organizationId, task);
     const subject = workflowSubjectForTask(task.kind, form.formArea);
     requireWorkflowPermission(ctx, subject, task.id ? "edit" : "create");

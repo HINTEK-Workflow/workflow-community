@@ -16,7 +16,7 @@ export function workflowReportOptionsFromUrl(url: string): WorkflowReportOptions
 
 /**
  * The company's name, report colours and logo from Företagsinställningar, as the control's report uses them; a form
- * protocol's report has the same look (Daniel 2026-09-27). A logo that cannot be read is left out.
+ * protocol's report has the same look (2026-09-27). A logo that cannot be read is left out.
  */
 export async function workflowReportIdentity(organizationId: string, fallbackName: string) {
   const settings = await prisma.workspaceSettings.findUnique({ where: { organizationId } });

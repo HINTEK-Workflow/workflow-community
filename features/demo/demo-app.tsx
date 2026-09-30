@@ -16,7 +16,7 @@ import { DEMO_ADMIN_ID, DEMO_COMPANY, type DemoUserId } from "./demo-data";
 export const DEMO_EXIT_HREF = "/demo?exit=1";
 
 type TourStep = { view: View; href: string; title: string; text: string; asAdmin?: boolean };
-// Guided tour (Daniel 2026-09-26): Översikt, Mina uppgifter, a project, Planering, Tidrapport and the company page.
+// Guided tour (2026-09-26): Översikt, Mina uppgifter, a project, Planering, Tidrapport and the company page.
 const tour: TourStep[] = [
   { view: "stats", href: "/?view=stats", title: "Översikt", text: "Nyckeltalen visar teamets läge den här veckan. Under dem ligger de mest angelägna uppgifterna och projekten – belysningsbytet hos Strömkraft är försenat. Byt användare med Visa som för att se samma arbetsyta som medarbetare eller arbetsledare." },
   { view: "tasks", href: "/?view=tasks", title: "Mina uppgifter", text: "Här ser varje användare sitt eget arbete: arbetsorder, riskbedömningar och kontroller före idrifttagning. Öppna en uppgift för att dokumentera, starta tidtagning eller slutföra med signering." },

@@ -52,7 +52,7 @@ function OperandPicker({ operand, names, onChange, label }: { operand: Operand; 
 }
 
 /**
- * A formula made visually (Daniel 2026-09-26): field, operator, value or another field, with the formula shown as
+ * A formula made visually (2026-09-26): field, operator, value or another field, with the formula shown as
  * readable text. "Skriv formel" is the advanced mode with the full language; a formula that does not fit the simple
  * shape opens there.
  */

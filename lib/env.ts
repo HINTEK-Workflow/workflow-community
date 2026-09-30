@@ -51,7 +51,7 @@ const envSchema = z.object({
   INVITATION_DELIVERY_ENABLED: booleanFlag,
   BILLING_SCHEDULER_ENABLED: booleanFlag,
   BILLING_EMAIL_DELIVERY_ENABLED: booleanFlag,
-  // Round reminders by e-mail (Daniel 2026-09-30); off until switched on, like the other mail.
+  // Round reminders by e-mail (2026-09-30); off until switched on, like the other mail.
   ROUND_EMAIL_DELIVERY_ENABLED: booleanFlag,
   // Operations alerts (drift, 2026-09-30): the monitor e-mails ALERT_EMAIL when something fails; off until enabled.
   ALERT_EMAIL_DELIVERY_ENABLED: booleanFlag,

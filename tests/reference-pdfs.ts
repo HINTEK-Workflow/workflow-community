@@ -3,7 +3,7 @@ import { pdfDrawing } from "./helpers/pdf-drawing";
 import { REFERENCE_DIR, referenceReports } from "./fixtures/report-references";
 
 /**
- * Writes today's reference PDFs and their drawings (Daniel 2026-09-27). Run only to lock a deliberately approved look:
+ * Writes today's reference PDFs and their drawings (2026-09-27). Run only to lock a deliberately approved look:
  * `npx tsx tests/reference-pdfs.ts [name …]`. Without names every reference is written.
  */
 const only = new Set(process.argv.slice(2));

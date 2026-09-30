@@ -5,4 +5,9 @@ export const clientExtensions: ClientExtensions = {
   BillingRead: null,
   PricingAdministration: null,
   LandingEditor: null,
+  AssistantPanel: null,
+  SharingPolicyPanel: null,
+  ProviderAdministration: null,
+  AiUsageAdministration: null,
+  IntegrationKeys: null,
 };

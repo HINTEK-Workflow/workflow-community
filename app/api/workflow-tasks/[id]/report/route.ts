@@ -12,7 +12,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     if (!task) throw new ApiError(404, "Uppgiften hittades inte.");
     requireWorkflowPermission(ctx, workflowSubjectForTask(task.kind, task.formArea), "report");
     const identity = await workflowReportIdentity(ctx.organizationId, ctx.organization.name);
-    // A protocol can also be taken out as Excel or as the empty form to fill in by hand, like the control (Daniel 2026-09-27).
+    // A protocol can also be taken out as Excel or as the empty form to fill in by hand, like the control (2026-09-27).
     const query = new URL(request.url).searchParams;
     const blank = query.get("blank") === "1" && task.data.kind === "FORM";
     if (query.get("format") === "xlsx" && task.data.kind === "FORM") {

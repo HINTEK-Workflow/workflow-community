@@ -62,10 +62,12 @@ import {
   WORKFLOW_BRANDING_EVENT,
   type ShellBranding,
 } from "@/lib/branding";
-import { AssistantPanel } from "@/features/ai/assistant-panel";
+import { clientExtensions } from "@ee/client";
 import { LongTimerWarning, RunningTimerIndicator } from "@/features/workflow/running-timer";
 import { MENU_VISIBILITY_EVENT } from "@/lib/workflow/menu-items";
 import { hasWorkflowPermission, type WorkflowPermissionProfile } from "@/lib/workflow/permissions";
+// HINTEK AI lives in ee/ (not in the community edition, 2026-09-30); without it this is null.
+const { AssistantPanel } = clientExtensions;
 
 export type ShellUser = {
   name: string | null;
@@ -74,11 +76,11 @@ export type ShellUser = {
   memberRole: "OWNER" | "ADMIN" | "MEMBER" | null;
   workflowPermissions: WorkflowPermissionProfile;
   organizationName: string | null;
-  /** HINTEK's superadmin, or a company admin in HINTEK Cloud (Daniel 2026-09-27): may open Skapa formulär. */
+  /** HINTEK's superadmin, or a company admin in HINTEK Cloud (2026-09-27): may open Skapa formulär. */
   canBuildForms?: boolean;
   /** The company keeps its data in a local .hwf workspace; search then only reads the open file. */
   localStorageMode?: boolean;
-  /** Menu buttons the person has hidden under Inställningar (Daniel 2026-09-30). */
+  /** Menu buttons the person has hidden under Inställningar (2026-09-30). */
   hiddenMenu?: string[];
 } | null;
 
@@ -134,7 +136,7 @@ export const views = {
     tone: "text-feature-control",
     surface: "bg-feature-control-soft",
   },
-  // Arbetsorder (Daniel 2026-09-26): its own menu group between Mina uppgifter and Nytt projekt.
+  // Arbetsorder (2026-09-26): its own menu group between Mina uppgifter and Nytt projekt.
   work_orders: {
     label: "Mina arbetsordrar",
     icon: ClipboardList,
@@ -214,28 +216,28 @@ export const views = {
     tone: "text-feature-customer",
     surface: "bg-feature-customer-soft",
   },
-  // All keys for API, MCP and external services in one place (Daniel 2026-09-29): company admins in Cloud.
+  // All keys for API, MCP and external services in one place (2026-09-29): company admins in Cloud.
   integrations: {
     label: "API och MCP",
     icon: KeyRound,
     tone: "text-feature-customer",
     surface: "bg-feature-customer-soft",
   },
-  // How long the company's history is kept, and manual deletion (Daniel 2026-09-30): company admins in Cloud.
+  // How long the company's history is kept, and manual deletion (2026-09-30): company admins in Cloud.
   history_retention: {
     label: "Historik och lagring",
     icon: History,
     tone: "text-feature-customer",
     surface: "bg-feature-customer-soft",
   },
-  // "Skapa formulär" (Daniel 2026-09-26): HINTEK's superadmin and, since 2026-09-27, company admins in Cloud; next to HINTEK AI.
+  // "Skapa formulär" (2026-09-26): HINTEK's superadmin and, since 2026-09-27, company admins in Cloud; next to HINTEK AI.
   forms: {
     label: "Skapa formulär",
     icon: FileSpreadsheet,
     tone: "text-feature-control",
     surface: "bg-feature-control-soft",
   },
-  // The landing page, edited in place like Skapa formulär (Daniel 2026-09-30): HINTEK's superadmin only.
+  // The landing page, edited in place like Skapa formulär (2026-09-30): HINTEK's superadmin only.
   landing_editor: {
     label: "Landningssidan",
     icon: PanelsTopLeft,
@@ -258,7 +260,7 @@ export const views = {
 export type View = keyof typeof views;
 
 /**
- * The menu's thin line (Daniel 2026-09-30): the menu scrolls without the browser's scrollbar, and while it is taller
+ * The menu's thin line (2026-09-30): the menu scrolls without the browser's scrollbar, and while it is taller
  * than the screen a 3 px line at its right edge shows how much there is and where you are. Display only.
  */
 function MenuScrollLine({ target }: { target: React.RefObject<HTMLElement | null> }) {
@@ -294,7 +296,7 @@ export function AppShell({
   view: View;
   branding: ShellBranding;
   children: React.ReactNode;
-  /** The public demo (Daniel 2026-09-26): logout ends the demo and the preview note explains the invented data. */
+  /** The public demo (2026-09-26): logout ends the demo and the preview note explains the invented data. */
   demo?: { onExit: () => void };
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -400,11 +402,11 @@ export function AppShell({
   const workOrdersActive = view === "work_orders" || (editingWorkOrder && Boolean(searchParams.get("taskId")));
   const projectsActive = view === "projects" || view === "project";
   // Ny uppgift, Ny arbetsorder, Nytt projekt and Produktadministration are always visible; the round plus to their right
-  // shows or hides Mina uppgifter, Mina arbetsordrar, Mina projekt and the product owner's pages (Daniel 2026-09-27/30).
-  // Every group starts folded (Daniel 2026-09-30: "normalt utgångsläge är att alla knappar är ihopfällda"); the group of
+  // shows or hides Mina uppgifter, Mina arbetsordrar, Mina projekt and the product owner's pages (2026-09-27/30).
+  // Every group starts folded (2026-09-30: "normalt utgångsläge är att alla knappar är ihopfällda"); the group of
   // the open page is always shown.
   const [expanded, setExpanded] = useState<Record<ExpandableGroup, boolean>>({ tasks: false, workOrders: false, projects: false, product: false });
-  // Menu buttons hidden under Inställningar (Daniel 2026-09-30): display only; an open page stays visible.
+  // Menu buttons hidden under Inställningar (2026-09-30): display only; an open page stays visible.
   const [hiddenMenu, setHiddenMenu] = useState<string[]>(user?.hiddenMenu ?? []);
   useEffect(() => {
     const onChange = (event: Event) => setHiddenMenu(((event as CustomEvent<string[]>).detail) ?? []);
@@ -530,11 +532,11 @@ export function AppShell({
   const workflowAdmin = user?.memberRole === "OWNER" || user?.memberRole === "ADMIN";
   const canWorkflow = (subject: "projects" | "kfid" | "work-order" | "risk-assessment" | "forms", action: "read" | "create") => Boolean(user && (workflowAdmin || hasWorkflowPermission(user.workflowPermissions, subject, action)));
   const taskSubjects = ["kfid", "work-order", "risk-assessment", "forms"] as const;
-  // Work orders have their own group (Daniel 2026-09-26), so Ny uppgift is shown for the other task types.
+  // Work orders have their own group (2026-09-26), so Ny uppgift is shown for the other task types.
   const newTaskSubjects = ["kfid", "risk-assessment", "forms"] as const;
   const canCreateWorkOrder = canWorkflow("work-order", "create");
   const canReadWorkOrders = canWorkflow("work-order", "read");
-  // Daniel 2026-09-25/26: tasks | work orders | projects | planning and time | registers, separated by dividers.
+  // 2026-09-25/26: tasks | work orders | projects | planning and time | registers, separated by dividers.
   // Notifications live in the top bar.
   const canCreateTask = newTaskSubjects.some((subject) => canWorkflow(subject, "create"));
   const canReadTasks = taskSubjects.some((subject) => canWorkflow(subject, "read"));
@@ -611,9 +613,9 @@ export function AppShell({
         {mobileControlActions && (
           <div className="mt-3">{mobileControlActions}</div>
         )}
-        {user && (shown("ai") || (user.canBuildForms && shown("forms", view === "forms"))) ? (
+        {user && ((Boolean(AssistantPanel) && shown("ai")) || (user.canBuildForms && shown("forms", view === "forms"))) ? (
           <div className="mt-3 border-t pt-3">
-            {shown("ai") ? <button
+            {(Boolean(AssistantPanel) && shown("ai")) ? <button
               type="button"
               className="workspace-menu-item flex h-11 w-full items-center gap-3 rounded-md px-3 text-left text-sm text-muted-foreground transition-colors hover:bg-muted"
               aria-haspopup="dialog"
@@ -637,10 +639,10 @@ export function AppShell({
         <div className="my-5 border-t" />
         {commercial && shown("credits", view === "credits") ? navItem("credits") : null}
         {user && ["OWNER", "ADMIN"].includes(user.memberRole ?? "") && navItem("administration")}
-        {user && user.role !== "SUPERADMIN" && ["OWNER", "ADMIN"].includes(user.memberRole ?? "") && !user.localStorageMode && navItem("integrations")}
+        {user && user.role !== "SUPERADMIN" && ["OWNER", "ADMIN"].includes(user.memberRole ?? "") && !user.localStorageMode && instance.features.integrations && navItem("integrations")}
         {user && user.role !== "SUPERADMIN" && ["OWNER", "ADMIN"].includes(user.memberRole ?? "") && !user.localStorageMode && navItem("history_retention")}
         {user?.role === "SUPERADMIN" && <div className="mt-4 border-t pt-4" data-testid="product-menu">
-          {/* The round plus sits on the heading and folds the whole section (Daniel 2026-09-30): Produktadministration,
+          {/* The round plus sits on the heading and folds the whole section (2026-09-30): Produktadministration,
               Landningssidan and API och MCP are separate pages, not "Ny X → Mina X". Folded from the start, always open
               while one of its pages is open. */}
           <div className="mb-2 flex items-center gap-2 pl-3 pr-1">
@@ -654,7 +656,7 @@ export function AppShell({
           <div id="product-menu-items" hidden={!productOpen} className="space-y-1">
             {navItem("customer_companies")}
             {instance.features.landingEditor ? navItem("landing_editor") : null}
-            {["OWNER", "ADMIN"].includes(user.memberRole ?? "") && !user.localStorageMode ? navItem("integrations") : null}
+            {["OWNER", "ADMIN"].includes(user.memberRole ?? "") && !user.localStorageMode && instance.features.integrations ? navItem("integrations") : null}
             {["OWNER", "ADMIN"].includes(user.memberRole ?? "") && !user.localStorageMode ? navItem("history_retention") : null}
           </div>
         </div>}
@@ -808,14 +810,15 @@ export function AppShell({
           {children}
         </main>
         <footer className="workspace-footer mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 pb-6 text-xs text-muted-foreground sm:px-8">
-          <span>HINTEK Workflow · Kontroll före idrifttagning</span>
-          <span className="flex flex-wrap gap-3">
-            <Link href="/#priser">Priser</Link>
+          <span>{instance.name} · Kontroll före idrifttagning</span>
+          {/* HINTEK's prices and terms (ee/, docs/legal) – not in the community edition. */}
+          {instance.features.terms ? <span className="flex flex-wrap gap-3">
+            {instance.features.landingEditor ? <Link href="/#priser">Priser</Link> : null}
             <Link href="/legal/terms">Villkor</Link>
             <Link href="/legal/privacy">Integritet</Link>
             <Link href="/legal/dpa">DPA</Link>
             <Link href="/legal/credit-terms">Kreditvillkor</Link>
-          </span>
+          </span> : null}
         </footer>
       </div>
       <nav
@@ -851,7 +854,7 @@ export function AppShell({
           </button>
         </Dialog.Trigger>
       </nav>
-      {user ? (
+      {user && AssistantPanel ? (
         <AssistantPanel
           open={assistantOpen}
           expanded={assistantExpanded}

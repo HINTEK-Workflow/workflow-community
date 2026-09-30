@@ -1,5 +1,5 @@
 /**
- * The menu buttons each person may hide under Inställningar (Daniel 2026-09-30). Only what is shown changes – never
+ * The menu buttons each person may hide under Inställningar (2026-09-30). Only what is shown changes – never
  * what the person may do. Översikt, Hjälp and Inställningar always stay, so the way back is never hidden, and a hidden
  * page that is open is still shown while it is open. Grouped like the menu itself.
  */

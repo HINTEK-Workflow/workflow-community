@@ -8,7 +8,7 @@ import { Panel, ShowMore } from "./ui";
 
 type CreditEntryRow = Overview["entries"][number];
 
-// Credit history for admins (Daniel 2026-09-26): newest 25 first, older pages on request, never the whole ledger.
+// Credit history for admins (2026-09-26): newest 25 first, older pages on request, never the whole ledger.
 export function CreditHistory({ entries, total }: { entries: CreditEntryRow[]; total: number }) {
   const [older, setOlder] = useState<CreditEntryRow[]>([]);
   const [busy, setBusy] = useState(false);

@@ -1,11 +1,11 @@
 import { z } from "zod";
 
 /**
- * The person's own arrangement of the cards under Ny uppgift (Daniel 2026-09-27): order and which cards are shown.
+ * The person's own arrangement of the cards under Ny uppgift (2026-09-27): order and which cards are shown.
  * Cards are identified as `type:<task type>` or `form:<form id>`. Stored in the user's preferences, so it follows the
  * person across devices; it never grants or removes access, it only arranges what the person may already create.
  *
- * Free placement (Daniel 2026-09-29): `slots` places a card on a chosen place – one of 3 favourite places at the top or
+ * Free placement (2026-09-29): `slots` places a card on a chosen place – one of 3 favourite places at the top or
  * one of 6 places in any category, also another category than the form's own. Keyed `<section>:<index>`. A card without
  * a place (for example a newly published form) takes the first free place in its own category, after the saved `order`.
  */

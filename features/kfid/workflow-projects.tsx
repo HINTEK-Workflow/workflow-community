@@ -173,7 +173,7 @@ export function WorkflowProjects({
   const [cloudProjects, setCloudProjects] = useState<WorkflowProject[]>([]);
   const [cloudControls, setCloudControls] = useState<WorkflowTask[]>([]);
   const [cloudCandidates, setCloudCandidates] = useState<(WorkflowTask & { fromProject?: string })[] | null>(null);
-  // "Mina projekt" in Cloud: one tab at a time, a page of cards from the server (Daniel 2026-09-26).
+  // "Mina projekt" in Cloud: one tab at a time, a page of cards from the server (2026-09-26).
   const [listTab, setListTab] = useState<ProjectTab>("ongoing");
   const [listMeta, setListMeta] = useState<ProjectListMeta | null>(null);
   const [listBusy, setListBusy] = useState(false);
@@ -210,7 +210,7 @@ export function WorkflowProjects({
     if (local) return;
     // Mina uppgifter pages its own list from the server; the full project load is not needed there.
     if (view === "tasks") { setLoading(false); return; }
-    // Bounded reads (Daniel 2026-09-26): Mina projekt reads one page of one tab and the project view one project.
+    // Bounded reads (2026-09-26): Mina projekt reads one page of one tab and the project view one project.
     if (view === "projects" || view === "new_project") {
       try {
         const result = await api<ProjectsResponse>(`/api/projects?list=${listTab}&page=1`);
@@ -489,7 +489,7 @@ export function WorkflowProjects({
       />
       {!currentTasks.length && !archived && !closed && canCreateTask ? <ProjectStarter projectId={current.id} customerId={current.customerId}
         canCreate={{ workOrder: can("work-order", "create"), risk: can("risk-assessment", "create"), control: can("kfid", "create") }} /> : null}
-      {/* One board instead of a numbered flow plus the same tasks again in status columns (Daniel 2026-09-26). */}
+      {/* One board instead of a numbered flow plus the same tasks again in status columns (2026-09-26). */}
       <Panel title="Projektets arbetsflöde" description="Uppgifterna som faktiskt är kopplade till projektet, grupperade efter status.">
         <div className="grid items-start gap-3 lg:grid-cols-3">
           <TaskColumn title="Planerade" icon={<CircleDashed />} tasks={groups.planned} empty="Inget väntar på start." plannedMinutes={taskPlannedMinutes} />
@@ -519,7 +519,7 @@ export function WorkflowProjects({
   return <ProjectsPage projects={projects} error={error} canCreate={can("projects", "create")} remote={remoteList} />;
 }
 
-// Paged project history (Daniel 2026-09-26): Cloud sends the newest ten events and a count; Local pages the open file.
+// Paged project history (2026-09-26): Cloud sends the newest ten events and a count; Local pages the open file.
 function ProjectHistory({ project, local }: { project: WorkflowProject; local: boolean }) {
   const [older, setOlder] = useState<NonNullable<WorkflowProject["events"]>>([]);
   const [limit, setLimit] = useState(10);
@@ -545,7 +545,7 @@ function ProjectHistory({ project, local }: { project: WorkflowProject; local: b
 type ProjectDecision = NonNullable<WorkflowProject["decisions"]>[number];
 type ProjectDecisionInput = Pick<ProjectDecision, "decidedOn" | "text" | "decidedBy">;
 
-// The project's decision log (Daniel 2026-09-26): append-only, newest first, paged like the history.
+// The project's decision log (2026-09-26): append-only, newest first, paged like the history.
 function ProjectDecisionLog({ project, local, canAdd, onAdd }: { project: WorkflowProject; local: boolean; canAdd: boolean; onAdd: (decision: ProjectDecisionInput) => Promise<void> }) {
   const [older, setOlder] = useState<ProjectDecision[]>([]);
   const [limit, setLimit] = useState(10);
@@ -717,7 +717,7 @@ function PlanningOverview({ canCreateTask = false, activities, projects, context
   }, [activities, planningTasks]);
   const currentUserId = capacity?.currentUserId ?? "";
   const canQuickFilterTeam = Boolean(teamCapacity?.canViewTeam && teamCapacity.members.some((member) => member.id !== currentUserId));
-  // Daniel 2026-09-25: "Tidsperiod" narrows only the list; the calendar shows whatever period it is navigated to.
+  // 2026-09-25: "Tidsperiod" narrows only the list; the calendar shows whatever period it is navigated to.
   const calendarVisible = useMemo(() => activities
     .filter((activity) => !activity.deletedAt)
     .filter((activity) => projectId === "all" || activity.projectId === projectId)
@@ -932,7 +932,7 @@ function PlannedActivityForm({ project, projects = [], tasks, members, availabil
   const [taskReference, setTaskReference] = useState(existingTask);
   const selectedProject = project ?? projects.find((candidate) => candidate.id === selectedProjectId);
   const availableTasks = project ? tasks : tasks.filter((task) => task.projectId === selectedProjectId);
-  // The project is the frame (Daniel 2026-09-26): planning outside it is blocked unless the project's responsible or
+  // The project is the frame (2026-09-26): planning outside it is blocked unless the project's responsible or
   // an admin records a reason; ending after the task's "Klart senast" is only a warning.
   const [linkedKind, linkedId] = taskReference.split(":");
   const linkedTask = linkedId ? tasks.find((task) => task.id === linkedId && (linkedKind === "workflow") === Boolean(task.kind)) : undefined;
@@ -1049,7 +1049,7 @@ function ProjectCardAdherence({ project, progress }: { project: WorkflowProject;
 function ProjectsPage({ projects, error, canCreate, remote }: { projects: WorkflowProject[]; error: string; canCreate: boolean;
   /** Cloud: the server pages one tab at a time and counts every tab; Local filters the open file. */
   remote?: { tab: ProjectTab; meta: ProjectListMeta | null; busy: boolean; onTab: (tab: ProjectTab) => void; onMore: () => void } }) {
-  // Same tabs as the "Pågående projekt" key figure (Daniel 2026-09-26): one status function decides where a project belongs.
+  // Same tabs as the "Pågående projekt" key figure (2026-09-26): one status function decides where a project belongs.
   const [localTab, setLocalTab] = useState<ProjectTab>("ongoing");
   const tab = remote?.tab ?? localTab;
   const tabOf = (project: WorkflowProject) => { const state = projectStatusOf(project).state; return state === "ARCHIVED" ? "archived" : state === "CLOSED" ? "closed" : "ongoing"; };
@@ -1069,7 +1069,7 @@ function ProjectsPage({ projects, error, canCreate, remote }: { projects: Workfl
 }
 
 /**
- * The link guide (Daniel 2026-09-26, decision 7): shows what differs from the project's frame, with the project's
+ * The link guide (2026-09-26, decision 7): shows what differs from the project's frame, with the project's
  * value preselected. A completed task is only moved; its content is never changed.
  */
 function LinkGuide({ task, project, customers, members, plannedCount, busy, error, onBack, onConfirm }: { task: WorkflowTask & { fromProject?: string }; project: WorkflowProject; customers: CustomerItem[]; members: ProjectMember[]; plannedCount: number; busy: boolean; error: string; onBack: () => void; onConfirm: (apply: LinkChoices) => void }) {
@@ -1134,7 +1134,7 @@ type TaskFilter = "open" | "active" | "planned" | "action" | "done" | "all";
 type RemoteTaskPage = { items: (WorkflowTask & { projectName: string })[]; total: number; page: number; pages: number; counts: Record<TaskFilter, number> };
 
 function TaskList({ tasks, canCreate, remote = false }: { tasks: (WorkflowTask & { projectName: string })[]; canCreate: boolean; remote?: boolean }) {
-  // Compact, filterable cards (Daniel 2026-09-26): open work first, search, and a bounded page instead of one endless grid.
+  // Compact, filterable cards (2026-09-26): open work first, search, and a bounded page instead of one endless grid.
   // Cloud asks the server for one page at a time (/api/work-items); Local filters the open file in memory.
   const [filter, setFilter] = useState<TaskFilter>("open");
   const [query, setQuery] = useState("");
@@ -1233,7 +1233,7 @@ function WorkspaceEmptyState({ kind }: { kind: "projects" | "tasks" }) {
 }
 
 function ProjectForm({ project, customers, members, busy, error, canEditFrame = true, tasks = [], activities = [], onCancel, onSave }: { project?: WorkflowProject; customers: CustomerItem[]; members: ProjectMember[]; busy: boolean; error: string; canEditFrame?: boolean; tasks?: WorkflowTask[]; activities?: PlannedActivity[]; onCancel?: () => void; onSave: (input: ProjectFormInput) => Promise<void> }) {
-  // Changing the frame shows what falls outside first (Daniel 2026-09-26, decision 5).
+  // Changing the frame shows what falls outside first (2026-09-26, decision 5).
   const [preview, setPreview] = useState<{ input: ProjectFormInput; outside: string[]; shiftDays: number } | null>(null);
   const [name, setName] = useState(project?.name ?? ""); const [description, setDescription] = useState(project?.description ?? ""); const [customerId, setCustomerId] = useState(project?.customerId ?? ""); const [responsibleUserId, setResponsibleUserId] = useState(project?.responsibleUserId ?? ""); const [timeBudgetHours, setTimeBudgetHours] = useState(project?.timeBudgetMinutes ? String(project.timeBudgetMinutes / 60) : "");
   const [startDate, setStartDate] = useState(project?.startDate ?? ""); const [dueDate, setDueDate] = useState(project?.dueDate ?? "");
@@ -1243,7 +1243,7 @@ function ProjectForm({ project, customers, members, busy, error, canEditFrame = 
   const [fields, setFields] = useState({ client: project?.client ?? "", contactPerson: project?.contactPerson ?? "", reference: project?.reference ?? "", workSite: project?.workSite ?? "" });
   const [formError, setFormError] = useState("");
   const responsibleName = members.find((member) => member.id === responsibleUserId)?.name ?? "";
-  // New projects need a frame (Daniel 2026-09-26); an existing project may stay without one until someone sets it.
+  // New projects need a frame (2026-09-26); an existing project may stay without one until someone sets it.
   const frameRequired = !project || Boolean(project.startDate || project.dueDate);
   const field = (key: keyof typeof fields, label: string, max: number) => <label className="block space-y-2 text-xs font-medium text-muted-foreground">{label}<Input value={fields[key]} onChange={(event) => setFields((current) => ({ ...current, [key]: event.target.value }))} maxLength={max} /></label>;
   return <form className="space-y-5" onSubmit={(event) => {

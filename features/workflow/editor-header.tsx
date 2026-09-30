@@ -17,7 +17,7 @@ export type EditorTimer = {
   hint?: string;
 };
 
-// Shared page header for every task editor (Daniel 2026-09-25, unified 2026-09-27 with the control as the original):
+// Shared page header for every task editor (2026-09-25, unified 2026-09-27 with the control as the original):
 // eyebrow with the task type, title, status and progress below, a row of facts with icons and the reported time,
 // then secondary actions, the timer and the primary action at the far right. No separate banner surface.
 export function EditorHeader({

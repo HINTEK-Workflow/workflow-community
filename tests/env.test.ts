@@ -158,7 +158,7 @@ test("live Stripe (prepared 2026-09-30) only on the public HTTPS server with a l
   assert.throws(() => parseEnv({ ...live, STRIPE_WEBHOOK_SECRET: "" }), /webhook signing secret/);
   assert.throws(() => parseEnv({ ...live, STRIPE_SANDBOX_ENABLED: "true" }), /cannot be enabled together|sandbox may only run/);
   assert.throws(() => parseEnv({ ...publicServer, STRIPE_CHECKOUT_ENABLED: "true" }), /sandbox or live Stripe/);
-  assert.throws(() => parseEnv({ ...localProduction, ALERT_EMAIL_DELIVERY_ENABLED: "true", ALERT_EMAIL: "drift@hintek.se" }), /Alert email delivery must remain disabled/);
+  assert.throws(() => parseEnv({ ...localProduction, ALERT_EMAIL_DELIVERY_ENABLED: "true", ALERT_EMAIL: "drift@example.test" }), /Alert email delivery must remain disabled/);
 });
 
 test("pilot access (prepared 2026-09-30) is refused on loopback QA", hintekQa, () => {

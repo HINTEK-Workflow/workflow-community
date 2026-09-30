@@ -1,7 +1,7 @@
 import { formLeafBlocks, formOptionalSections, initialFormValues, type FormColumn, type FormDocument, type FormFieldBlock, type FormValues } from "./form-document";
 
 /**
- * Example answers for the editor's preview (Daniel 2026-09-26): with or without deviations, so formulas, totals,
+ * Example answers for the editor's preview (2026-09-26): with or without deviations, so formulas, totals,
  * deviations and the requirements for completion can be checked before publishing. Clearly example data; nothing is
  * stored. Signatures and dates are filled in as a person would.
  */

@@ -31,7 +31,7 @@ export type ReportFile = {
 
 /**
  * The Kontroll före idrifttagning report (V1 layout). It is drawn with the shared report kit, which every form report
- * uses too (Daniel 2026-09-27: this report is the model); tests/report-reference.test.ts keeps it exactly as it was.
+ * uses too (2026-09-27: this report is the model); tests/report-reference.test.ts keeps it exactly as it was.
  */
 export async function createPdfReport(
   data: ControlData,
@@ -99,7 +99,7 @@ export async function createPdfReport(
     const rows = data[key].rows.length ? data[key].rows : template ? ([{}, {}] as Measurement[]) : ([{}] as Measurement[]);
     if (key === "rcd") {
       for (const [index, row] of rows.entries()) {
-        // The card always names its judgement (Daniel 2026-09-30): "Godkänd: —" in grey until the test is judged.
+        // The card always names its judgement (2026-09-30): "Godkänd: —" in grey until the test is judged.
         const judged = assessmentCell(started(row) ? passed("rcd", row) : null);
         const value = (name: string, unit: string) => {
           if (template) return "";

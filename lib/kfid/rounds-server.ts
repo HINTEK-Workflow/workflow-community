@@ -8,7 +8,7 @@ export const ROUND_WINDOW_DAYS = 45;
 
 /**
  * The company's rounds as the person may see them (2026-09-28): schedules of forms they may read, each with what is due,
- * missed and coming from the protocols of the last 45 days. Shared by Driftronder and the bell (Daniel 2026-09-30).
+ * missed and coming from the protocols of the last 45 days. Shared by Driftronder and the bell (2026-09-30).
  */
 export async function loadScheduleViews(ctx: Pick<Context, "organizationId" | "admin" | "workflowPermissions">, today: string) {
   const rows = await prisma.formSchedule.findMany({

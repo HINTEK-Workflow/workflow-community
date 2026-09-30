@@ -3,7 +3,7 @@ import { formBlockVisible, formLeafBlocks, validateFormDocument, type FormDocume
 import { normalizeFormDocument } from "./form-editor";
 
 /**
- * A form's basic details (grunduppgifter) and the checks before publishing (Daniel 2026-09-26, the approved editor,
+ * A form's basic details (grunduppgifter) and the checks before publishing (2026-09-26, the approved editor,
  * decision 2). The details are versioned with every publication, like the document.
  */
 export const FORM_COLORS = ["green", "blue", "violet", "amber", "rose", "cyan"] as const;

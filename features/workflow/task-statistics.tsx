@@ -23,12 +23,12 @@ type TaskStatisticsData = {
 };
 
 const statusLabel: Record<string, string> = { COMPLETED: "Slutförd", DRAFT: "Utkast", PLANNED: "Planerad", IN_PROGRESS: "Pågår", NEEDS_ACTION: "Behöver åtgärdas", PAUSED: "Pausad" };
-// The link follows the real kind: a control made as a form opens as a protocol (Daniel 2026-09-27).
+// The link follows the real kind: a control made as a form opens as a protocol (2026-09-27).
 const taskHref = (item: TaskStatisticsData["recent"]["items"][number]) => (item.taskKind ?? item.kind) === "KFID"
   ? `/?view=new&id=${encodeURIComponent(item.id)}` : `/?view=workflow_task&taskId=${encodeURIComponent(item.id)}&taskType=${item.taskKind ?? item.kind}`;
 
 /**
- * Task statistics for company admins (Daniel 2026-09-26): controls, work orders and risk assessments created and
+ * Task statistics for company admins (2026-09-26): controls, work orders and risk assessments created and
  * completed per period, against V1's target level and per performer. Folded by default at the bottom of the overview.
  */
 export function TaskStatistics() {
@@ -68,7 +68,7 @@ export function TaskStatistics() {
         </Button>
       </div>
       <div id="task-statistics" hidden={!open} className="space-y-5 p-5">
-        {/* Tasks and projects share the period (Daniel 2026-09-27); the task type only applies to tasks. */}
+        {/* Tasks and projects share the period (2026-09-27); the task type only applies to tasks. */}
         <div className="flex w-fit gap-1 rounded-full border bg-card p-1" role="group" aria-label="Visa statistik för">
           {([["tasks", "Uppgifter"], ["projects", "Projekt"]] as const).map(([value, label]) => (
             <Button key={value} type="button" size="sm" className="h-7 rounded-full" variant={tab === value ? "default" : "ghost"} aria-pressed={tab === value} onClick={() => setTab(value)}>{label}</Button>

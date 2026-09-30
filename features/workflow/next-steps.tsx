@@ -19,7 +19,7 @@ export function nextProjectTask<T extends Minimal>(tasks: T[], projectId: string
 }
 
 /**
- * Nästa steg (Daniel 2026-09-30, the guided flow): when a task is completed the person is not left to search – the
+ * Nästa steg (2026-09-30, the guided flow): when a task is completed the person is not left to search – the
  * card offers the project's next open task, the way back to the project or to the protocol a work order came from,
  * a follow-up work order for what the task found, and the reported time. Rule-based and read within the person's permissions;
  * Local reads its own file.

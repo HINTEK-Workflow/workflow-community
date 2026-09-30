@@ -1,4 +1,4 @@
--- Forms (Daniel 2026-09-26, design v2): templates published centrally by the superadmin; protocols are WorkflowTask
+-- Forms (2026-09-26, design v2): templates published centrally by the superadmin; protocols are WorkflowTask
 -- rows of kind FORM that point to the exact, append-only template version they were created from.
 
 CREATE TABLE "FormTemplate" (

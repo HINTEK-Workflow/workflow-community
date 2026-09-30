@@ -7,7 +7,7 @@ import { initialFormValues } from "../../lib/workflow/form-document";
 import { createWorkflowPdfReport, defaultWorkflowReportOptions, type WorkflowReportTask } from "../../lib/workflow/report";
 
 /**
- * Today's reports, locked before the form engine takes over the control and the risk assessment (Daniel 2026-09-27:
+ * Today's reports, locked before the form engine takes over the control and the risk assessment (2026-09-27:
  * the control's PDF must look exactly like today and is the model for every form report). Each case is rendered with
  * fixed data; `tests/reference-pdfs.ts` writes the PDFs and their drawings to tests/fixtures/reference-pdfs,
  * and tests/report-reference.test.ts renders them again and compares.

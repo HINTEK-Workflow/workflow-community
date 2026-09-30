@@ -1,4 +1,4 @@
-// Nightly: deletes each company's work history older than the retention time it chose (Daniel 2026-09-30).
+// Nightly: deletes each company's work history older than the retention time it chose (2026-09-30).
 // Companies that keep history "tills vidare" are skipped. Every deletion leaves one counted line in the company's
 // administration history. Run: npm run history:retention (daily, like rounds:reminders).
 import "dotenv/config";

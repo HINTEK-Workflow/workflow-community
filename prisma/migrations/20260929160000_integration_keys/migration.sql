@@ -1,4 +1,4 @@
--- Central key administration (Daniel 2026-09-29): API and MCP keys issued by Workflow (hash only) and external keys
+-- Central key administration (2026-09-29): API and MCP keys issued by Workflow (hash only) and external keys
 -- fetched from a provider (encrypted). Additive; one row per key, never the plain secret of an issued key.
 -- CreateEnum
 CREATE TYPE "IntegrationKeyKind" AS ENUM ('API', 'MCP', 'EXTERNAL');

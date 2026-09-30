@@ -5,7 +5,7 @@ import { formDocumentSchema } from "@/lib/workflow/form-document";
 import { formMetaSchema } from "@/lib/workflow/form-publish";
 
 /**
- * Sharing forms between companies (Daniel 2026-09-27): a JSON file with one or more forms, their publisher and a
+ * Sharing forms between companies (2026-09-27): a JSON file with one or more forms, their publisher and a
  * signature made by this Workflow server. An imported form becomes a draft in the importing company; the signature
  * only tells whether the publisher named in the file is genuine (made here and unchanged), it never grants anything.
  * Forms are data – fields, tables, formulas and texts – never scripts, styles or pictures.

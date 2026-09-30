@@ -28,7 +28,7 @@ function tiles(kpis: OverviewKpis, scope: "team" | "mine"): Tile[] {
   ];
 }
 
-/** Team and personal key figures at the top of the overview (Daniel 2026-09-26). Details follow further down. */
+/** Team and personal key figures at the top of the overview (2026-09-26). Details follow further down. */
 export function OverviewKpiDashboard({ team, mine, loading = false, error = "" }: { team: OverviewKpis | null; mine: OverviewKpis | null; loading?: boolean; error?: string }) {
   const [scope, setScope] = useState<"team" | "mine">(team ? "team" : "mine");
   const active = scope === "team" && team ? team : mine;

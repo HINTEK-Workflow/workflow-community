@@ -1,4 +1,4 @@
--- Round reminders (Daniel 2026-09-30): per round a bell notice (on by default) and an e-mail (chosen per round), and
+-- Round reminders (2026-09-30): per round a bell notice (on by default) and an e-mail (chosen per round), and
 -- one delivery row per round, day and recipient so an e-mail is never sent twice. Additive.
 ALTER TABLE "FormSchedule" ADD COLUMN "reminders" JSONB NOT NULL DEFAULT '{}';
 

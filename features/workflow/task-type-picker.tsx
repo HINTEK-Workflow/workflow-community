@@ -21,7 +21,7 @@ import { formPermissionArea, hasWorkflowPermission, normalizeWorkflowPermissionP
 import { TASK_TYPE_OF_ORIGINAL } from "@/lib/workflow/builtin-originals";
 
 type PublishedForm = { id: string; version: number; name: string; description: string; color: string; icon: string; category: string; allowStandalone: boolean; allowInProject: boolean; publisher?: string; own?: boolean; baseId?: string | null; area?: string; origin?: "original" | "companyVersion"; hintek?: boolean; source?: string; author?: string };
-// HINTEK's built-in inspection types first, in the order an electrician meets them (Daniel 2026-09-26).
+// HINTEK's built-in inspection types first, in the order an electrician meets them (2026-09-26).
 const BUILTIN_ORDER = ["hintek-kontroll-fore-idrifttagning", "hintek-termografering", "hintek-fortlopande-kontroll", "hintek-isolationsmatning-ebr", "hintek-foljelinematning-ebr", "hintek-driftrond-vattenkraft", "hintek-reservkraft", "hintek-pumpstation", "hintek-riskbedomning", "hintek-skyddsrond"];
 /** Search and category filter appear once the library has more cards than fit at a glance (2026-09-28). */
 const SEARCH_FROM = 7;
@@ -34,17 +34,17 @@ const cardClass = "group relative flex min-h-52 flex-col rounded-xl border bg-ca
 export function TaskTypePicker({ projectId, customerId, permissions, admin = false, superadmin = false, canBuildForms = superadmin, layout = emptyTaskCardLayout, onLayoutChange }: { projectId?: string; customerId?: string; permissions?: WorkflowPermissionProfile; admin?: boolean; superadmin?: boolean; canBuildForms?: boolean; layout?: TaskCardLayout; onLayoutChange?: (layout: TaskCardLayout) => Promise<void> }) {
   const searchParams = useSearchParams();
   const profile = normalizeWorkflowPermissionProfile(permissions);
-  // Arbetsorder has its own menu group (Daniel 2026-09-26) and is no longer a card here.
+  // Arbetsorder has its own menu group (2026-09-26) and is no longer a card here.
   const canCreateWorkOrder = admin || hasWorkflowPermission(profile, "work-order", "create");
-  // A form is created with its permission area (Daniel 2026-09-27): Formulär, or Kontroll före idrifttagning /
+  // A form is created with its permission area (2026-09-27): Formulär, or Kontroll före idrifttagning /
   // Riskbedömning for HINTEK's originals of those types and a company's own versions of them.
   const canCreateArea = (area?: string) => admin || hasWorkflowPermission(profile, formPermissionArea(area), "create");
   const canCreateForms = canCreateArea("forms") || canCreateArea("kfid") || canCreateArea("risk-assessment");
-  // Published forms from HINTEK (Daniel 2026-09-26): each is its own task type under Ny uppgift.
+  // Published forms from HINTEK (2026-09-26): each is its own task type under Ny uppgift.
   const [forms, setForms] = useState<PublishedForm[]>([]);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
-  // Anpassa (Daniel 2026-09-27): move the cards around and choose which are shown; saved per person.
+  // Anpassa (2026-09-27): move the cards around and choose which are shown; saved per person.
   const [editing, setEditing] = useState(false);
   const [draftSlots, setDraftSlots] = useState<Record<string, string>>({});
   const [draftHidden, setDraftHidden] = useState<Set<string>>(new Set());
@@ -73,10 +73,10 @@ export function TaskTypePicker({ projectId, customerId, permissions, admin = fal
   const shownForms = forms.filter((form) => canCreateArea(form.area) && (!projectId || form.allowInProject !== false))
     .sort((a, b) => builtinOrder(a.baseId ?? a.id) - builtinOrder(b.baseId ?? b.id) || categoryOrder(a.category) - categoryOrder(b.category) || a.name.localeCompare(b.name, "sv"));
 
-  // A published original of a built-in type takes that type's card and place (the switch-over, Daniel 2026-09-27).
+  // A published original of a built-in type takes that type's card and place (the switch-over, 2026-09-27).
   // A company's own version wins over HINTEK's original when both are published.
   const replacedBy = new Map(shownForms.filter((form) => TASK_TYPE_OF_ORIGINAL[form.baseId ?? form.id]).sort((a, b) => Number(Boolean(a.baseId)) - Number(Boolean(b.baseId))).map((form) => [TASK_TYPE_OF_ORIGINAL[form.baseId ?? form.id], form] as const));
-  // The card says what it is (Daniel 2026-09-28): HINTEK's original of a built-in type, or the company's own version of one.
+  // The card says what it is (2026-09-28): HINTEK's original of a built-in type, or the company's own version of one.
   const origin = (form: PublishedForm): PublishedForm["origin"] => form.baseId ? "companyVersion" : TASK_TYPE_OF_ORIGINAL[form.id] ? "original" : undefined;
   const formCard = (form: PublishedForm, key: string): TaskCard => ({
     key, name: form.name, form: { ...form, origin: origin(form) },
@@ -84,7 +84,7 @@ export function TaskTypePicker({ projectId, customerId, permissions, admin = fal
     content: null,
     linkLabel: "Skapa protokoll",
   });
-  // The built-in control and risk assessment exist only as HINTEK's originals now (Daniel 2026-09-28): an unpublished
+  // The built-in control and risk assessment exist only as HINTEK's originals now (2026-09-28): an unpublished
   // original leaves no card behind – it waits as a draft under Skapa formulär until it is published again or deleted.
   const originalTypes = new Set<string>(Object.values(TASK_TYPE_OF_ORIGINAL));
   const activeTypes = WORKFLOW_TASK_TYPES.filter((item) => item.id !== "WORK_ORDER" && item.available && !originalTypes.has(item.id) && !replacedBy.has(item.id as never) && (admin || hasWorkflowPermission(profile, workflowSubjectForTask(item.id), "create")));
@@ -105,11 +105,11 @@ export function TaskTypePicker({ projectId, customerId, permissions, admin = fal
       </>,
       linkLabel: "Skapa uppgift",
     })),
-    // A company's version of a HINTEK original keeps the original's place (Daniel 2026-09-27).
+    // A company's version of a HINTEK original keeps the original's place (2026-09-27).
     ...shownForms.filter((form) => !TASK_TYPE_OF_ORIGINAL[form.baseId ?? form.id]).map((form) => formCard(form, `form:${form.baseId ?? form.id}`)),
   ];
   const arranged = arrangeTaskCards(cards, layout);
-  // Free placement (Daniel 2026-09-29): 3 favourite places, then 6 places per category, in the person's own layout.
+  // Free placement (2026-09-29): 3 favourite places, then 6 places per category, in the person's own layout.
   const categoryOf = (card: TaskCard) => card.form ? formCategory(card.form.category) : "OTHER";
   const categoryValues = FORM_CATEGORIES.map(([value]) => value as string);
   const placement = editing
@@ -164,7 +164,7 @@ export function TaskTypePicker({ projectId, customerId, permissions, admin = fal
             <Button type="button" disabled={saving} onClick={() => void finishEditing()}>{saving ? "Sparar…" : "Klar"}</Button>
           </div>
         ) : canArrange || canBuildForms ? (
-          // Export and import of forms sit next to Anpassa (Daniel 2026-09-27), for those who build forms.
+          // Export and import of forms sit next to Anpassa (2026-09-27), for those who build forms.
           <div className="flex flex-wrap justify-end gap-2">
             {canBuildForms ? <FormShareActions /> : null}
             {canArrange ? <Button type="button" variant="outline" onClick={startEditing}><SlidersHorizontal />Anpassa{arranged.hidden.length ? ` (${arranged.hidden.length} dolda)` : ""}</Button> : null}
@@ -244,7 +244,7 @@ export function TaskTypePicker({ projectId, customerId, permissions, admin = fal
         ))}
       </div></section>)}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {/* The last card leads to Skapa formulär (Daniel 2026-09-27): a new task type is a new form. HINTEK and company
+        {/* The last card leads to Skapa formulär (2026-09-27): a new task type is a new form. HINTEK and company
             admins build forms; employees get the same card as an explanation instead of a page they cannot use. */}
         {canBuildForms ? (
           <Link href="/?view=forms&new=1" className={`${cardClass} border-dashed bg-card/60`} data-testid="create-form-card">
@@ -300,7 +300,7 @@ function PlacedCard({ card, hidden, here, first, last, sections, onEarlier, onLa
           <GripVertical className="size-4" />Dra
         </button>
         <div className="flex items-center gap-1">
-          {/* On a computer dragging is enough (Daniel 2026-09-30); the arrows and Flytta till are for touch and narrow screens. */}
+          {/* On a computer dragging is enough (2026-09-30); the arrows and Flytta till are for touch and narrow screens. */}
           <span className="arrange-touch-only items-center gap-1">
             <Button type="button" size="icon" variant="ghost" className="size-8" disabled={first} aria-label={`Flytta ${card.name} tidigare`} onClick={onEarlier}><ChevronLeft /></Button>
             <Button type="button" size="icon" variant="ghost" className="size-8" disabled={last} aria-label={`Flytta ${card.name} senare`} onClick={onLater}><ChevronRight /></Button>

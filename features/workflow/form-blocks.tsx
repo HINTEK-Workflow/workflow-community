@@ -11,7 +11,7 @@ import { bandClass } from "./form-inputs";
 import { indicatorBadge, indicatorText } from "./indicator-tone";
 
 /**
- * The moments of a form (the control's Kontrollmoment, Daniel 2026-09-27): every section that can be switched on and
+ * The moments of a form (the control's Kontrollmoment, 2026-09-27): every section that can be switched on and
  * off, and the Ja/nej switches placed among them (Autobedömning), as tick cards exactly like the control's – with the
  * (i) that explains each moment. `bare` draws the cards without a heading, inside the form's first section.
  */
@@ -58,7 +58,7 @@ export function CheckChecklist({ block, values, onChange, readOnly, label, quiet
 export type FormCompletionSummary = { requirements: FormRequirement[]; issues: FormRequirement[]; ready: boolean; percent: number; warnings?: string[] };
 
 /**
- * Sammanfattning exactly like the control's (Daniel 2026-09-27): approved per moment as pills ("Isolation: 3/4"), the
+ * Sammanfattning exactly like the control's (2026-09-27): approved per moment as pills ("Isolation: 3/4"), the
  * completion card with the requirements left, then the comment – where the author placed it. The form then shows no
  * separate deviation box at the end.
  */

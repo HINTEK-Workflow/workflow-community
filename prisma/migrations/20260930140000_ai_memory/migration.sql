@@ -1,4 +1,4 @@
--- HINTEK AI memory (Daniel 2026-09-30): the company's general AI memory and a pseudonymised memory per user, kept
+-- HINTEK AI memory (2026-09-30): the company's general AI memory and a pseudonymised memory per user, kept
 -- apart from the fixed agent instructions (in code) and the chat history. The user memory is keyed by a keyed hash of
 -- company and user, never by the user's id, name or e-mail. Short by design.
 CREATE TABLE "AiMemory" (

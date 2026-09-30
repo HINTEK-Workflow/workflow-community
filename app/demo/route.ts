@@ -4,7 +4,7 @@ import { DEMO_COOKIE } from "@/lib/demo";
 export const dynamic = "force-dynamic";
 
 /**
- * Starts or ends the public demo (Daniel 2026-09-26). The cookie only switches the page rendering to the in-browser
+ * Starts or ends the public demo (2026-09-26). The cookie only switches the page rendering to the in-browser
  * demo; it carries no identity or access and every /api request in the demo is answered in the browser.
  */
 export function GET(request: Request) {

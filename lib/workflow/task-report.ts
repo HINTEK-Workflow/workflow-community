@@ -6,7 +6,7 @@ import type { WorkflowReportOptions, WorkflowReportTask } from "./report";
 
 /**
  * Work orders, the older risk assessments and the project report's own pages, drawn like the Kontroll före idrifttagning
- * report (Daniel 2026-09-27: the control's report is the model for every report; 2026-09-30: "pdf:er som behöver snyggas
+ * report (2026-09-27: the control's report is the model for every report; 2026-09-30: "pdf:er som behöver snyggas
  * till"): the control's heading, fact boxes, tables, cards and footer in the company's report colours with its logo –
  * the same look as the form protocols. Protocols are drawn by form-report and follow a project report as their own parts.
  */

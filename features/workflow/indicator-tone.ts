@@ -1,4 +1,4 @@
-// One meaning for indicator colors everywhere (Daniel 2026-09-25): green = done/ok, amber = in progress/draft/warning/near a limit,
+// One meaning for indicator colors everywhere (2026-09-25): green = done/ok, amber = in progress/draft/warning/near a limit,
 // red = overdue/over budget/needs action/high risk. Neutral is for planned, paused or cancelled; info is the plain progress blue.
 export type IndicatorTone = "success" | "warning" | "danger" | "neutral" | "info";
 
@@ -26,7 +26,7 @@ const texts: Record<IndicatorTone, string> = {
   info: "text-primary",
 };
 
-// A chosen answer (Daniel 2026-09-29: OK / Ej OK / Ej aktuellt need clear colours): solid, white text.
+// A chosen answer (2026-09-29: OK / Ej OK / Ej aktuellt need clear colours): solid, white text.
 const choices: Record<IndicatorTone, string> = {
   success: "bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-600",
   warning: "bg-amber-500 text-amber-950 hover:bg-amber-600",

@@ -1,4 +1,4 @@
--- Company forms and sharing (Daniel 2026-09-27): a form belongs to HINTEK (organizationId NULL, shown to everyone)
+-- Company forms and sharing (2026-09-27): a form belongs to HINTEK (organizationId NULL, shown to everyone)
 -- or to one company (shown only there). The publisher is stamped by the server; an imported form keeps where it came from.
 ALTER TABLE "FormTemplate" ADD COLUMN "organizationId" TEXT;
 ALTER TABLE "FormTemplate" ADD COLUMN "publisherName" TEXT NOT NULL DEFAULT 'HINTEK';

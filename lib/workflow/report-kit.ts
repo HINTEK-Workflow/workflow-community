@@ -4,7 +4,7 @@ import { type ReportBranding, hexRgb, reportBranding } from "@/lib/kfid/report-b
 
 /**
  * The report kit: the drawing of the Kontroll före idrifttagning report (V1 layout), broken out so that every form
- * report is drawn the same way (Daniel 2026-09-27: the control's PDF must look exactly like today and is the model for
+ * report is drawn the same way (2026-09-27: the control's PDF must look exactly like today and is the model for
  * all form reports). The measures are the control's own; tests/report-reference.test.ts proves the control is unchanged.
  */
 export const PAGE_WIDTH = 595.28;

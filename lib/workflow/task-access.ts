@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client";
 import { readableTaskScope, type WorkflowPermissionSubject } from "./permissions";
 
 /**
- * List filters for the tasks a member may read (Daniel 2026-09-27): work orders and risk assessments by kind, and
+ * List filters for the tasks a member may read (2026-09-27): work orders and risk assessments by kind, and
  * protocols by the permission area of their form, so a control or risk assessment built as a form follows the same
  * permission as before. A protocol without an area belongs to Formulär.
  */

@@ -16,12 +16,12 @@ export async function GET() {
     const ctx = await context();
     requireCloudStorage(ctx);
     const can = (subject: WorkflowPermissionSubject) => ctx.admin || hasWorkflowPermission(ctx.workflowPermissions, subject, "read");
-    // Protocols follow their form's permission area (Daniel 2026-09-27).
+    // Protocols follow their form's permission area (2026-09-27).
     const readable = readableTaskScope(can).any ? readableTaskWhere(can) : null;
     // Organization admins see the team's reminders; members only their own work, using the same rule as "Mina uppgifter".
     const ownTasks = ctx.admin ? {} : { OR: [{ assignedToUserId: ctx.user.id }, { assignedToUserId: null, createdBy: ctx.user.id }] };
     const ownControls = ctx.admin ? {} : { OR: [{ createdBy: ctx.user.id }, ...[ctx.user.name, ctx.user.email].filter((value): value is string => Boolean(value)).map((performer) => ({ performer }))] };
-    // Only tasks that can produce a reminder are read (Daniel 2026-09-26: bounded server reads): needs action, or a
+    // Only tasks that can produce a reminder are read (2026-09-26: bounded server reads): needs action, or a
     // due date no later than the last day of the reminder window. ISO dates compare correctly as text.
     const lastDueDay = swedishDayKey(addSwedishDays(new Date(), NOTIFICATION_DUE_DAYS));
     const reminderCandidates = { OR: [{ status: "NEEDS_ACTION" }, { AND: [{ dueDate: { not: "" } }, { dueDate: { lte: lastDueDay } }] }] };
@@ -41,7 +41,7 @@ export async function GET() {
       ...controls.map((control) => ({ id: control.id, title: control.title, status: control.status, kind: "COMMISSIONING_CONTROL" as const,
         completionErrors: validateForCompletion(normalizeControl(control.data), { attachmentCount: control._count.attachments }).errors.length })),
     ], today);
-    // Rounds due today, missed or left unfinished (Daniel 2026-09-30), for the responsible person – or the admins.
+    // Rounds due today, missed or left unfinished (2026-09-30), for the responsible person – or the admins.
     const rounds = roundNotifications(await loadScheduleViews(ctx, today), { id: ctx.user.id, admin: ctx.admin }, today);
     // Work orders from a deviation finished lately (flödesvåg 2): bounded to the last days and to readable tasks; the
     // protocol they came from must be readable and the reader's own (admins: the team's).

@@ -11,7 +11,7 @@ import { facilityLabel } from "@/lib/workflow/customer-facility";
 import { cloudWorkflowReportTask, workflowReportFont, workflowReportIdentity, workflowReportOptionsFromUrl } from "@/lib/workflow/report-server";
 
 /**
- * A snapshot report (Daniel 2026-09-30): the PDF or Excel of exactly what is on screen, also for a protocol that is not
+ * A snapshot report (2026-09-30): the PDF or Excel of exactly what is on screen, also for a protocol that is not
  * saved or not finished – nothing is saved, so taking out a report never leaves a draft behind. The form version always
  * comes from the server, references are looked up within the company, and a saved task lends its pictures and reported
  * time. Sent as a form post so the PDF can open in a new tab.

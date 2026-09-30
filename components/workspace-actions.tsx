@@ -61,7 +61,7 @@ const RegisterLocalSearchContext = createContext<React.Dispatch<React.SetStateAc
 const NotificationCountContext = createContext<number | null>(null);
 const RegisterNotificationCountContext = createContext<React.Dispatch<React.SetStateAction<number | null>> | null>(null);
 
-/** The active workspace's own running timers for the top bar (Daniel 2026-09-26), Cloud or Local. */
+/** The active workspace's own running timers for the top bar (2026-09-26), Cloud or Local. */
 export type RunningTimerSource = {
   timers: RunningTimer[];
   /** Server time minus browser time, so the ticking clock does not depend on the browser's clock. */

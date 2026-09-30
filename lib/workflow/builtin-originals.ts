@@ -1,5 +1,5 @@
 /**
- * HINTEK's originals of the built-in task types (Daniel 2026-09-27, decision B). While an original – or a company's own
+ * HINTEK's originals of the built-in task types (2026-09-27, decision B). While an original – or a company's own
  * version of it – is published, it takes the place of the old task type: under Ny uppgift and for "Ny kontroll" /
  * "Ny riskbedömning". Unpublishing it brings the old type back, so the switch-over is HINTEK's own, reversible step.
  */

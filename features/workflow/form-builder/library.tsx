@@ -19,20 +19,20 @@ function RibbonItem({ type, label, hint, onAdd }: { type: LibraryType; label: st
   const { setNodeRef, attributes, listeners, isDragging } = useDraggable({ id: `library:${type}`, data: { kind: "library", type } });
   const Icon = LIBRARY_ICON[type];
   return <button ref={setNodeRef} type="button" {...attributes} {...listeners} onClick={() => onAdd(type)} title={`${label} – ${hint}. Dra till arket eller klicka.`} aria-label={`Lägg till ${label}`}
-    // Clear icons and names (Daniel 2026-09-27: never shrunk to save height); the ribbon wraps rather than cutting a name.
+    // Clear icons and names (2026-09-27: never shrunk to save height); the ribbon wraps rather than cutting a name.
     data-tour={`block-${type}`}
     className={cn("group flex min-w-11 shrink-0 touch-none flex-col items-center justify-center gap-1 rounded-lg px-1 py-1 text-[11.5px] font-medium leading-none whitespace-nowrap text-foreground/80 transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-ring", isDragging && "opacity-40")}
     data-testid="library-item">
-    {/* The icon rests in a light box (Daniel 2026-09-29), stronger on hover, so every block reads as a button. */}
+    {/* The icon rests in a light box (2026-09-29), stronger on hover, so every block reads as a button. */}
     <span className="flex size-7 items-center justify-center rounded-md bg-secondary text-primary transition-colors group-hover:bg-primary/15"><Icon className="size-5" /></span><span>{label}</span>
   </button>;
 }
 
 /**
- * The field ribbon (Daniel 2026-09-26): every block type as an icon above the sheet, like a word processor's toolbar.
+ * The field ribbon (2026-09-26): every block type as an icon above the sheet, like a word processor's toolbar.
  * Drag an icon onto the sheet, or click it to add after the selected block. It is the only way to add blocks, so there
  * are no duplicate "Lägg till" menus. The names are never cut: the ribbon wraps to a second row when the width runs out
- * (Daniel 2026-09-27). Phones use the floating button below instead of a ribbon that scrolls sideways.
+ * (2026-09-27). Phones use the floating button below instead of a ribbon that scrolls sideways.
  */
 export function FieldRibbon({ onAdd }: { onAdd: (type: LibraryType) => void }) {
   return <div role="toolbar" aria-label="Fält att lägga till" className="flex flex-wrap items-stretch" data-testid="field-ribbon">
@@ -46,7 +46,7 @@ export function FieldRibbon({ onAdd }: { onAdd: (type: LibraryType) => void }) {
 }
 
 /**
- * On a phone (Daniel 2026-09-27): one floating "Lägg till" button above the bottom menu opens the building blocks as a
+ * On a phone (2026-09-27): one floating "Lägg till" button above the bottom menu opens the building blocks as a
  * panel from below, grouped like the ribbon. A tap adds the block after the selected one and closes the panel, so the
  * sheet keeps the whole screen while building.
  */

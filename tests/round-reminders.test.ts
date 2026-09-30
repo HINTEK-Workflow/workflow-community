@@ -3,7 +3,7 @@ import test from "node:test";
 import { formScheduleInputSchema, parseScheduleReminders, roundNotifications, scheduleViews, type FormSchedule } from "../lib/workflow/form-schedule";
 import { dueRoundEmails, type ReminderSchedule } from "../lib/workflow/round-reminders";
 
-// Round reminders (Daniel 2026-09-30): the bell for today's and missed rounds, and one e-mail per round, day and person.
+// Round reminders (2026-09-30): the bell for today's and missed rounds, and one e-mail per round, day and person.
 const today = "2026-10-01";
 const rule = { frequency: "DAILY" as const, interval: 1, weekdays: [], startDate: "2026-09-01", endDate: "" };
 const base: ReminderSchedule = { id: "s1", organizationId: "o1", title: "Daglig tillsyn", active: true, rule, reminders: { bell: true, email: true }, assignedToUserId: "u-worker", place: "Forsen" };

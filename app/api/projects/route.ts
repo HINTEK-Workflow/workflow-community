@@ -95,7 +95,7 @@ const LINK_CANDIDATE_LIMIT = 200;
  */
 async function linkCandidates(ctx: Awaited<ReturnType<typeof context>>, projectId: string, can: (subject: WorkflowPermissionSubject, action: "read") => boolean) {
   if (!can("projects", "read")) throw new ApiError(403, "Du saknar behörighet att läsa projekt.");
-  // Protocols follow their form's permission area (Daniel 2026-09-27).
+  // Protocols follow their form's permission area (2026-09-27).
   const readable = readableTaskScope((subject) => can(subject, "read")).any ? readableTaskWhere((subject) => can(subject, "read")) : null;
   const elsewhere = { OR: [{ projectId: null }, { projectId: { not: projectId }, workflowProject: { is: { archivedAt: null, closedAt: null } } }] };
   const [tasks, controls] = await Promise.all([
@@ -125,7 +125,7 @@ export async function GET(request: Request) {
     const ctx = await context();
     requireCloudStorage(ctx);
     const can = (subject: WorkflowPermissionSubject, action: "read") => ctx.admin || hasWorkflowPermission(ctx.workflowPermissions, subject, action);
-    // Older project history, one bounded page at a time (Daniel 2026-09-26).
+    // Older project history, one bounded page at a time (2026-09-26).
     // Older decisions, one bounded page at a time (the log is append-only).
     const decisionsFor = new URL(request.url).searchParams.get("decisionsFor");
     if (decisionsFor) {
@@ -156,7 +156,7 @@ export async function GET(request: Request) {
     // Link candidates for "Koppla befintlig uppgift" (decision 7), read only when the dialog opens.
     const candidatesFor = params.get("candidatesFor");
     if (candidatesFor) return NextResponse.json(await linkCandidates(ctx, id.parse(candidatesFor), can));
-    // Bounded reads (Daniel 2026-09-26: fetch only what is shown): "Mina projekt" pages one tab of project cards,
+    // Bounded reads (2026-09-26: fetch only what is shown): "Mina projekt" pages one tab of project cards,
     // the project view reads one project, and only planning still reads every project with its tasks.
     const listTab = z.enum(["ongoing", "closed", "archived"]).optional().parse(params.get("list") ?? undefined);
     const onlyId = params.get("id") ? id.parse(params.get("id")) : null;
@@ -256,7 +256,7 @@ export async function GET(request: Request) {
       orderBy: { updatedAt: "desc" },
       select: { id: true, number: true, title: true, status: true, updatedAt: true, projectId: true, customerId: true, lastOpenedAt: true, createdBy: true, performer: true, data: true, _count: { select: { attachments: true } } },
     }) : [];
-    // Reported time per task is summed in the database instead of sending every time entry (Daniel 2026-09-26);
+    // Reported time per task is summed in the database instead of sending every time entry (2026-09-26);
     // bounded reads only sum the time of the projects they return.
     const projectIds = projects.map((project) => project.id);
     const scoped = !full;
@@ -384,7 +384,7 @@ export async function POST(request: Request) {
     }
     if (input.action === "link") {
       requireWorkflowPermission(ctx, "projects", "edit");
-      // A protocol is checked against its form's area once it is loaded (Daniel 2026-09-27).
+      // A protocol is checked against its form's area once it is loaded (2026-09-27).
       if (input.taskKind !== "FORM") requireWorkflowPermission(ctx, workflowSubjectForTask(input.taskKind), "edit");
       const project = await prisma.project.findFirst({
         where: { id: input.projectId, organizationId: ctx.organizationId },
@@ -393,7 +393,7 @@ export async function POST(request: Request) {
       if (!project) throw new ApiError(404, "Projektet hittades inte.");
       if (project.archivedAt) throw new ApiError(409, "Återställ projektet innan du kopplar en uppgift.");
       if (project.closedAt) throw new ApiError(409, "Projektet är avslutat. Återöppna projektet innan du kopplar en uppgift.");
-      // The link guide (Daniel 2026-09-26, decision 7): the user chose per field whether the project's value applies.
+      // The link guide (2026-09-26, decision 7): the user chose per field whether the project's value applies.
       // A completed task keeps its content; it is only moved. The task's planning follows it into the project.
       const apply = input.apply;
       if (apply.dueDate && taskDueDateError(apply.dueDate, project)) throw new ApiError(400, taskDueDateError(apply.dueDate, project)!);

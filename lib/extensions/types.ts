@@ -1,9 +1,8 @@
 // The boundary between the core and HINTEK's commercial part in ee/ (Fas 2, 2026-09-30). The core only ever reaches
 // ee/ through "@ee/server", "@ee/client" and "@ee/present"; without ee/ they resolve to lib/extensions/none/*.
-// Without ee/: no payment, unlimited use, no landing page, AI model off (rule-based answers remain).
+// Without ee/ (the community edition): no payment, unlimited use, no landing page, and no HINTEK AI, API or MCP
+// server (2026-09-30).
 import type { ComponentType, ReactNode } from "react";
-import type { AiProviderStatus } from "@/lib/ai/provider-status";
-import type { AssistantProviderAdapter } from "@/lib/ai/workflow-assistant";
 
 export type RouteContext = { params: Promise<Record<string, string>> };
 /** Method syntax on purpose: a handler may narrow its params, e.g. { params: Promise<{ id: string }> }. */
@@ -21,7 +20,8 @@ export type EeRouteKey =
   | "billing" | "billing/discount-preview" | "billing/invoice"
   | "pricing" | "administration/pricing" | "administration/price-versions"
   | "superadmin/accounting-export" | "superadmin/bank-payments" | "superadmin/invoice-replacements"
-  | "ai/evals";
+  | "ai/evals" | "ai/chat" | "ai/conversations" | "ai/memory" | "ai/policy" | "ai/quote" | "ai/status"
+  | "superadmin/ai-usage" | "integration-keys" | "mcp" | "v1" | "v1/tool";
 
 export type CloudWriteAccess = {
   allowed: boolean;
@@ -43,8 +43,8 @@ export type ServerExtensions = {
   syncCloudSeats(input: { organizationId: string; actorId: string; reason: string }): Promise<unknown>;
   /** Re-plans the notices about purchased credits that expire. */
   syncCreditExpiryNotices(organizationId: string): Promise<unknown>;
-  aiProviderStatus(): Promise<AiProviderStatus | null>;
-  assistantProvider(): Promise<AssistantProviderAdapter | null>;
+  /** Whether HINTEK AI's control review can run and whether a model provider is configured (workspace overview). */
+  aiOverview(): Promise<{ enabled: boolean; configured: boolean }>;
   paymentSandboxAvailable(): Promise<boolean>;
   /** Asks Stripe whether it accepts the configured secret key; null without ee/. */
   checkStripeSecretKey(): Promise<{ ok: boolean; message: string } | null>;
@@ -61,4 +61,11 @@ export type ClientExtensions = {
   PricingAdministration: ComponentType<{ notify: NotifyFn }> | null;
   /** The landing page's inline editor. */
   LandingEditor: ComponentType | null;
+  /** HINTEK AI: the assistant in the shell, the company's sharing choices, and the product owner's provider and usage views. */
+  AssistantPanel: ComponentType<{ open: boolean; expanded: boolean; onOpenChange: (open: boolean) => void; onExpandedChange: (expanded: boolean) => void }> | null;
+  SharingPolicyPanel: ComponentType | null;
+  ProviderAdministration: ComponentType | null;
+  AiUsageAdministration: ComponentType | null;
+  /** API och MCP: keys, connections and the server's keys. */
+  IntegrationKeys: ComponentType<{ notify: NotifyFn }> | null;
 };

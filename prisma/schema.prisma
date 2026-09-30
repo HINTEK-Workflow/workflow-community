@@ -237,7 +237,7 @@ model Organization {
   isActive                Boolean                    @default(true)
   storageMode             DataStorageMode            @default(LOCAL)
   weeklyWorkMinutes       Int                        @default(2400)
-  // History kept for a selectable time (Daniel 2026-09-30); null keeps it until deleted by hand.
+  // History kept for a selectable time (2026-09-30); null keeps it until deleted by hand.
   historyRetentionMonths  Int?
   createdAt               DateTime                   @default(now())
   updatedAt               DateTime                   @updatedAt
@@ -500,7 +500,7 @@ model Customer {
   @@index([organizationId, deletedAt, name])
 }
 
-// A customer's facility (Daniel 2026-09-26, decision 11/D9 B): a property, switchgear or other object under the
+// A customer's facility (2026-09-26, decision 11/D9 B): a property, switchgear or other object under the
 // customer that projects, work orders, risk assessments and controls can be linked to. The organization's own
 // places are Site ("Platser"). Paused rather than deleted so that linked work keeps its reference; purging the
 // customer removes its facilities and clears the links. Same-tenant links are enforced by a database trigger.
@@ -537,7 +537,7 @@ model Project {
   customerId        String?
   name              String
   description       String            @default("")
-  // The project's frame (Daniel 2026-09-26): start and end, Swedish calendar days; both are required for new projects.
+  // The project's frame (2026-09-26): start and end, Swedish calendar days; both are required for new projects.
   startDate         String            @default("")
   dueDate           String            @default("")
   // Fixed project fields shown read-only in every task and printed in reports; description is the work description.
@@ -551,7 +551,7 @@ model Project {
   responsibleName   String            @default("")
   timeBudgetMinutes Int               @default(0)
   archivedAt        DateTime?
-  // Manual "Avsluta projekt" (Daniel 2026-09-26); only allowed when every task is completed and no planning is active.
+  // Manual "Avsluta projekt" (2026-09-26); only allowed when every task is completed and no planning is active.
   closedAt          DateTime?
   closedBy          String?
   createdBy         String
@@ -591,7 +591,7 @@ model ProjectEvent {
   @@index([organizationId, projectId, createdAt])
 }
 
-// The project's decision log (Daniel 2026-09-26): date, text and who decided. Append-only; never edited or deleted.
+// The project's decision log (2026-09-26): date, text and who decided. Append-only; never edited or deleted.
 model ProjectDecision {
   id             String   @id @default(cuid())
   organizationId String
@@ -670,7 +670,7 @@ model WorkflowTaskRevision {
 }
 
 // A time entry belongs to exactly one work order/risk assessment (taskId) or one commissioning control (controlId,
-// Daniel 2026-09-26 decision 13: manual registration only, controls have no start/pause). A CHECK constraint in the
+// 2026-09-26 decision 13: manual registration only, controls have no start/pause). A CHECK constraint in the
 // migration enforces exactly one of the two.
 model WorkflowTimeEntry {
   id          String        @id @default(cuid())
@@ -1163,7 +1163,7 @@ enum IntegrationKeyKind {
   EXTERNAL
 }
 
-/// Every key a company uses with Workflow, in one place under the company administration (Daniel 2026-09-29).
+/// Every key a company uses with Workflow, in one place under the company administration (2026-09-29).
 /// API and MCP keys are issued by Workflow: shown once, stored only as a SHA-256 hash of the secret part, and they act on
 /// behalf of the admin who created them within their scopes. External keys (the company's own AI key, integrations) are
 /// fetched from the provider, stored encrypted (AES-256-GCM) and never shown again, only their last four characters.
@@ -1198,7 +1198,7 @@ enum PriceVersionStatus {
   RETIRED
 }
 
-/// Versioned amounts (Daniel 2026-09-29): amounts change only through a new version mirrored to new Stripe prices.
+/// Versioned amounts (2026-09-29): amounts change only through a new version mirrored to new Stripe prices.
 /// A version is editable only as DRAFT; READY has validated Stripe prices; exactly one version is ACTIVE.
 model PriceVersion {
   id                      String             @id @default(cuid())
@@ -1626,11 +1626,11 @@ model ControlVisit {
   @@index([userId, organizationId, openedAt])
 }
 
-// Forms (Daniel 2026-09-26, design v2): published centrally by the superadmin, not tenant-bound, and never customer
+// Forms (2026-09-26, design v2): published centrally by the superadmin, not tenant-bound, and never customer
 // data. A version is append-only (a database trigger refuses updates and deletes); protocols point to their version.
 model FormTemplate {
   id               String                @id @default(cuid())
-  // Company forms (Daniel 2026-09-27): NULL = HINTEK's forms, shown to everyone; otherwise only that company's.
+  // Company forms (2026-09-27): NULL = HINTEK's forms, shown to everyone; otherwise only that company's.
   organizationId   String?
   publisherName    String                @default("HINTEK")
   // Who made the form (2026-09-28): HINTEK, the company, or – later – a community author with a licence.
@@ -1640,7 +1640,7 @@ model FormTemplate {
   license          String                @default("")
   // An imported form: the original publisher, whether the file's signature was verified, and the source form.
   importedFrom     Json?
-  // A company's own version of a HINTEK original (Daniel 2026-09-27): the original and the published version it started from.
+  // A company's own version of a HINTEK original (2026-09-27): the original and the published version it started from.
   baseTemplateId   String?
   baseVersion      Int?
   // Whose permission governs the protocols: forms, kfid (Kontroll före idrifttagning) or risk-assessment.
@@ -1747,7 +1747,7 @@ model FormSchedule {
   assignedToUserId String?
   assignedToName   String            @default("")
   rule             Json
-  // Round reminders (Daniel 2026-09-30): { bell, email }.
+  // Round reminders (2026-09-30): { bell, email }.
   reminders        Json              @default("{}")
   active           Boolean           @default(true)
   version          Int               @default(1)
@@ -1765,7 +1765,7 @@ model FormSchedule {
   @@index([organizationId, facilityId])
 }
 
-/// One e-mail reminder per round, day and recipient (Daniel 2026-09-30), so the job never sends twice.
+/// One e-mail reminder per round, day and recipient (2026-09-30), so the job never sends twice.
 model RoundReminderDelivery {
   id             String       @id @default(cuid())
   organizationId String
@@ -1781,7 +1781,7 @@ model RoundReminderDelivery {
   @@index([organizationId, createdAt])
 }
 
-/// HINTEK AI memory (Daniel 2026-09-30): the company's general memory (scope COMPANY, subject "company") and a
+/// HINTEK AI memory (2026-09-30): the company's general memory (scope COMPANY, subject "company") and a
 /// pseudonymised memory per user (scope USER, subject = keyed hash of company and user). At most 2000 characters.
 model AiMemory {
   id             String       @id @default(cuid())

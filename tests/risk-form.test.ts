@@ -10,7 +10,7 @@ import { REFERENCE_DIR, referenceRiskTask } from "./fixtures/report-references";
 import { riskToFormValues } from "./fixtures/risk-to-form";
 import { drawingText, pdfDrawing, type PdfDrawing } from "./helpers/pdf-drawing";
 
-/** Riskbedömning built from the form builder's building blocks (Daniel 2026-09-27, decision B). */
+/** Riskbedömning built from the form builder's building blocks (2026-09-27, decision B). */
 const details = referenceRiskTask.data.kind === "RISK_ASSESSMENT" ? referenceRiskTask.data.details : null!;
 
 test("the risk assessment form is valid", () => {
@@ -55,7 +55,7 @@ test("the PDF keeps everything today's risk report shows, in the control's look"
 
 test("a risk card is named by the hazard, never by the person responsible for the measure (F4)", async () => {
   const values = riskToFormValues(details);
-  values.tables.risker[0].cells.ansvarig = "Daniel Einarsson";
+  values.tables.risker[0].cells.ansvarig = "Anna Exempel";
   const bytes = await createFormProtocolPdf({
     identity: { company: "HINTEK Power Solutions AB" }, fontBytes: new Uint8Array(readFileSync("public/fonts/DejaVuSans.ttf")), options: defaultWorkflowReportOptions,
     task: { ...referenceRiskTask, kind: "FORM", data: { kind: "FORM", details: { templateName: riskForm.meta.name, templateVersion: 1, document: riskFormDocument, values } } },
@@ -63,6 +63,6 @@ test("a risk card is named by the hazard, never by the person responsible for th
   const lines = drawingText(await pdfDrawing(bytes)).flatMap((page) => page.split("\n"));
   const hazard = details.risks[0].hazard.replace(/\s+/g, " ").trim();
   assert.ok(lines.some((line) => line.startsWith("Risk 1: ") && hazard.startsWith(line.slice(8).replace(/…$/, ""))), "the card heading is the hazard");
-  assert.ok(!lines.includes("Risk 1: Daniel Einarsson"));
-  assert.ok(lines.includes("Daniel Einarsson"), "the responsible person is its own value on the card");
+  assert.ok(!lines.includes("Risk 1: Anna Exempel"));
+  assert.ok(lines.includes("Anna Exempel"), "the responsible person is its own value on the card");
 });

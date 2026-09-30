@@ -708,7 +708,7 @@ export function LocalWorkspace({
             const reportProject = workspace.projects.find((project) => project.id === input.projectId);
             const reportTask: WorkflowReportTask = { ...input, projectName: reportProject?.name, projectFields: reportProject ? projectFieldRows({ ...reportProject, facility: localFacility(reportProject.facilityId) }) : undefined, facilityName: localFacility(input.facilityId) ? facilityLabel(localFacility(input.facilityId)!) : undefined, customerName: workspace.customers.find((customer) => customer.id === input.customerId)?.company || workspace.customers.find((customer) => customer.id === input.customerId)?.name, attachments };
             const fileTitle = input.title.replace(/[<>:"/\\|?*\u0000-\u001f]+/g, "-");
-            // A protocol can also be taken out as Excel or as the empty form, like the control (Daniel 2026-09-27).
+            // A protocol can also be taken out as Excel or as the empty form, like the control (2026-09-27).
             if ((variant === "xlsx" || variant === "xlsx-blank") && reportTask.data.kind === "FORM") {
               const { createFormExcel } = await import("@/lib/workflow/form-excel");
               const blank = variant === "xlsx-blank";
@@ -886,7 +886,7 @@ export function LocalWorkspace({
             const result = await PDFDocument.create();
             const coverBytes = await createWorkflowPdfReport({ company: workspace.organization.name, title: "Projektrapport", projectName: project.name, projectFields: projectFieldRows({ ...(workspace.projects.find((item) => item.id === project.id) ?? project), facility: localFacility(project.facilityId) }), tasks: workflowReports, taskCount: workflowReports.length, options, fontBytes });
             const cover = await PDFDocument.load(coverBytes); (await result.copyPages(cover, cover.getPageIndices())).forEach((page) => result.addPage(page));
-            // Protocols follow as their own PDFs in the control's look, like the controls (Daniel 2026-09-27).
+            // Protocols follow as their own PDFs in the control's look, like the controls (2026-09-27).
             for (const protocol of workflowReports.filter((task) => task.kind === "FORM")) {
               const source = await PDFDocument.load(await createWorkflowPdfReport({ company: workspace.organization.name, tasks: [protocol], options, fontBytes }));
               (await result.copyPages(source, source.getPageIndices())).forEach((page) => result.addPage(page));

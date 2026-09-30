@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 export type ConfirmOptions = { title: string; message: string; confirmLabel: string; cancelLabel?: string; tone?: "danger" | "default" };
 
 /**
- * An in-app confirmation card in the Workflow design (Daniel 2026-09-26: never the browser's own confirm box).
+ * An in-app confirmation card in the Workflow design (2026-09-26: never the browser's own confirm box).
  * `confirm(...)` resolves true for the action button and false for Avbryt, Escape or a click outside.
  * Render the returned element once in the component that asks.
  */

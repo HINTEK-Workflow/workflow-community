@@ -5,7 +5,7 @@ export type FormPrefill = Exclude<(typeof FIELD_PREFILLS)[number], "none">;
 export type FormPrefillSource = Partial<Record<FormPrefill, string>>;
 
 /**
- * Fills a protocol's fields from the task (Daniel 2026-09-27, the control's customer picker): the customer and contact
+ * Fills a protocol's fields from the task (2026-09-27, the control's customer picker): the customer and contact
  * person, the e-mail, the facility, the project, the responsible person and today's date. `kinds` limits it to what just
  * changed; `overwrite` replaces an earlier value (a new customer gives a new contact, like the control), otherwise only
  * empty fields are filled. Nothing else in the protocol is touched.

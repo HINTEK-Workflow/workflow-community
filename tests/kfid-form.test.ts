@@ -13,7 +13,7 @@ import { REFERENCE_DIR, referenceControlFull, referenceControlLong, referenceCon
 import { drawingDifference, drawingText, pdfDrawing, type PdfDrawing } from "./helpers/pdf-drawing";
 
 /**
- * The acid test of decision B (Daniel 2026-09-27): Kontroll före idrifttagning built only from the form builder's
+ * The acid test of decision B (2026-09-27): Kontroll före idrifttagning built only from the form builder's
  * building blocks gives the same PDF as today's control – same texts in the same places – and the same degree of
  * completion.
  */
@@ -33,7 +33,7 @@ function task(data: ControlData, attachments: typeof files = [], document: FormD
 }
 /**
  * Version 3 of the form – the last version identical to today's control (its three extra moments were off from the
- * start). Version 4 changes the content on Daniel's request (2026-09-29: two more points in the visual inspection), so
+ * start). Version 4 changes the content on request (2026-09-29: two more points in the visual inspection), so
  * the acid test compares version 3, which must stay today's control.
  */
 const kfidVersion3 = formDocumentSchema.parse(JSON.parse(readFileSync("tests/fixtures/kfid-form-v3.json", "utf8")));

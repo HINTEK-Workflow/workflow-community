@@ -5,6 +5,7 @@ import GoogleProvider from "next-auth/providers/google";
 import type { JWT } from "next-auth/jwt";
 import { prisma } from "@/lib/db";
 import { env } from "@/lib/env";
+import { publicInstance } from "@/lib/instance";
 import {
   findUserForLinkedAuthAccount,
   type GoogleOAuthProfile,
@@ -132,7 +133,8 @@ export const authOptions: NextAuthOptions = {
         };
       },
     }),
-    ...(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
+    // Google sign-in belongs to HINTEK's edition (ee/); the community edition never registers it.
+    ...(publicInstance().features.googleSignIn && env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
       ? [
           GoogleProvider({
             clientId: env.GOOGLE_CLIENT_ID,

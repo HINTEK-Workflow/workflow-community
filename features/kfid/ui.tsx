@@ -35,7 +35,7 @@ export function Panel({
   const headingId = useId();
   return (
     <section aria-labelledby={headingId} className={cn("rounded-xl border bg-card shadow-xs", className)}>
-      {/* Light blue header row against a white content area is the shared panel look (Daniel 2026-09-25). */}
+      {/* Light blue header row against a white content area is the shared panel look (2026-09-25). */}
       <div className={cn("panel-header flex flex-wrap items-center justify-between gap-3 rounded-t-xl border-b px-5 py-4", collapsed && !persistentContent && "rounded-b-xl border-b-0", headerClassName)}>
         <div className="panel-heading flex min-w-0 items-center gap-3">
           {leadingActions}

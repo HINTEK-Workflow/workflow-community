@@ -44,7 +44,7 @@ async function access(
 export async function GET(request: Request) {
   try {
     const user = await administrator();
-    // Older administration history, one bounded page at a time (Daniel 2026-09-26).
+    // Older administration history, one bounded page at a time (2026-09-26).
     const params = new URL(request.url).searchParams;
     if (params.get("events") === "older") {
       const organizationId = user.activeOrganizationId ?? "";

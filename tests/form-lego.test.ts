@@ -4,7 +4,7 @@ import { kfidFormDocument } from "../lib/workflow/builtin-kfid-form";
 import { evaluateForm, formApprovalTotals, formBand, formCanDeviate, formCompletion, formDocumentSchema, formRowStarted, initialFormValues, newFormRow, validateFormDocument, type FormTableBlock } from "../lib/workflow/form-document";
 import { applyFormPrefill } from "../lib/workflow/form-prefill";
 
-/** The building blocks added backwards from Kontroll före idrifttagning and Riskbedömning (Daniel 2026-09-27). */
+/** The building blocks added backwards from Kontroll före idrifttagning and Riskbedömning (2026-09-27). */
 const table = (key: string) => kfidFormDocument.blocks.flatMap((block) => block.type === "section" ? block.blocks : []).find((block): block is FormTableBlock => block.type === "table" && block.key === key)!;
 
 test("sections that can be switched off start off, count nothing while off and at least one must be on", () => {
@@ -119,7 +119,7 @@ test("the builder is told what is wrong with a Godkänd column or a card heading
 
 test("fields start from the task's customer, facility, responsible person and today, like the control's customer picker", () => {
   const values = initialFormValues(kfidFormDocument);
-  // Utfört av starts from the signed-in user (the control's), not from the responsible person (Daniel 2026-09-28).
+  // Utfört av starts from the signed-in user (the control's), not from the responsible person (2026-09-28).
   const source = { customer: "Brf Solgläntan", contact: "Anna Berg", email: "anna@example.se", facility: "Elcentral A1, Storgatan 1", assignee: "Elon Strömberg", user: "Elin Elektriker", today: "2026-09-27" };
   const filled = applyFormPrefill(kfidFormDocument, values, source);
   assert.deepEqual([filled.fields.proj, filled.fields.perf, filled.fields.date, filled.fields.client, filled.fields.addr], ["Elcentral A1, Storgatan 1", "Elin Elektriker", "2026-09-27", "Anna Berg", "anna@example.se"]);
@@ -143,7 +143,7 @@ test("Spara som copies the answers but not signatures, pictures or example rows"
   assert.deepEqual(values.tables.iso[0].cells.bild, ["att-1"], "the original is untouched");
 });
 
-test("the task view exactly like the originals (Daniel 2026-09-27): the new building blocks parse with defaults and the originals use them", async () => {
+test("the task view exactly like the originals (2026-09-27): the new building blocks parse with defaults and the originals use them", async () => {
   const { formRuleSummary } = await import("../lib/workflow/form-document");
   const { riskFormDocument } = await import("../lib/workflow/builtin-risk-form");
   // Additive schema: an older document reads with the defaults, so published versions and protocols are unchanged.

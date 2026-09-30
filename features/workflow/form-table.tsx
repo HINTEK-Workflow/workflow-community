@@ -15,7 +15,7 @@ import { FormIcon } from "./form-card";
 import { indicatorBadge, indicatorText } from "./indicator-tone";
 
 type TableRow = FormValues["tables"][string][number];
-/** The person's own settings that the control already has (Daniel 2026-09-27): new rows on top and the example row button. */
+/** The person's own settings that the control already has (2026-09-27): new rows on top and the example row button. */
 export type FormRowOptions = { rowsOnTop?: boolean; showExamples?: boolean };
 /** A unique id for a row added by the person filling in the form. */
 const newRowId = (count: number) => `row-${Date.now().toString(36)}-${count}`;
@@ -48,7 +48,7 @@ export function addExampleRow(block: FormTableBlock, values: FormValues, rowOpti
 type TableProps = {
   block: FormTableBlock; values: FormValues; evaluation: FormEvaluation; onChange: (values: FormValues) => void; readOnly: boolean; attachments: FormAttachment[]; media?: FormMedia;
   labelOverride?: ReactNode; deviationKeys: Set<string>; rowOptions?: FormRowOptions;
-  /** The table is named like its section, so its own heading is only for screen readers (Daniel 2026-09-27). */
+  /** The table is named like its section, so its own heading is only for screen readers (2026-09-27). */
   quietLabel?: boolean;
   /** The section's panel carries the heading and the add button (the control's measurement panels), so the table draws none. */
   chrome?: "panel";
@@ -60,7 +60,7 @@ type TableProps = {
 };
 
 /**
- * A table (Daniel 2026-09-26/27): a grid of rows, object cards where each row is one object with its fields, results
+ * A table (2026-09-26/27): a grid of rows, object cards where each row is one object with its fields, results
  * and pictures together, or compact measurement rows exactly like the control's – with Godkänd, tick boxes, scales,
  * example rows and suggestions.
  */
@@ -236,7 +236,7 @@ function ObjectCard({ context, row, index, canAdd, onCopy }: { context: CellCont
           <div className="grid grid-cols-2 gap-2">{item.columns.map((column) => <label key={column.id} className="min-w-0 space-y-1 text-[11px] font-medium text-muted-foreground">{column.cardLabel || cellLabel(column)}{mark(column)}{cellControl(context, row, index, column, false)}</label>)}</div>
         </fieldset>
         : <div key={item.column.id} className={cn("field-stack", span(item.column))}>
-          {/* A check box carries its own label beside it; the empty line keeps it level with the inputs (Daniel 2026-09-29). */}
+          {/* A check box carries its own label beside it; the empty line keeps it level with the inputs (2026-09-29). */}
           {item.column.input === "check" ? <span aria-hidden="true">&nbsp;</span> : <span>{item.column.cardLabel || cellLabel(item.column)}{mark(item.column)}</span>}
           {item.column.input === "formula" ? <div className="flex h-10 items-center rounded-[9px] border bg-muted/30 px-3 text-sm">{cellControl(context, row, index, item.column, false)}</div> : cellControl(context, row, index, item.column, false)}
           {item.column.help && !readOnly ? <span className="text-[11px] font-normal text-muted-foreground">{item.column.help}</span> : null}
@@ -248,7 +248,7 @@ function ObjectCard({ context, row, index, canAdd, onCopy }: { context: CellCont
 }
 
 /**
- * Measurement rows (Daniel 2026-09-27) drawn with the control's own classes, so they look exactly like the control:
+ * Measurement rows (2026-09-27) drawn with the control's own classes, so they look exactly like the control:
  * on a wide form one compact line per row under shared column headings – number and camera first, Godkänd and delete
  * last – and on a phone every value with its label. A table whose columns sit on two lines (the RCD test) draws the
  * control's two-line rows with the labels above each value and the note under them.
@@ -325,7 +325,7 @@ function RowCamera({ context, row, column, index }: { context: CellContext; row:
 }
 
 /**
- * The work order of a deviation card (2026-09-28): the card's last line (Daniel 2026-09-29: not among the card's tools),
+ * The work order of a deviation card (2026-09-28): the card's last line (2026-09-29: not among the card's tools),
  * after the remark, the action and the responsible person it is made from. The card becomes a work order in the same
  * project, linked back here; once made, the line says so and opens it.
  */

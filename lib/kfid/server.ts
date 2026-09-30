@@ -14,7 +14,7 @@ import { hasWorkflowPermission, normalizeWorkflowPermissionProfile, type Workflo
 
 export { ApiError } from "@/lib/kfid/errors";
 /**
- * The signed-in person and their active company – or, inside an API/MCP call (Daniel 2026-09-30), the member the verified
+ * The signed-in person and their active company – or, inside an API/MCP call (2026-09-30), the member the verified
  * key acts for and the key's company. Everything after this (membership, permissions, legal gate, write access) is the
  * same for both, so an external client can never do more than the person could in Workflow.
  */

@@ -24,8 +24,10 @@ import { useConfirm } from "./confirm";
 import { blankCompanyProfile as blankProfile } from "@/lib/kfid/company";
 import { LegalDocumentContent } from "@/components/legal-document";
 import { OrganizationStructure } from "./organization-structure";
-import { AiSharingPolicyPanel } from "@/features/ai/sharing-policy-panel";
+import { clientExtensions } from "@ee/client";
 import { applyWorkflowPermissionToggle, noWorkflowPermissionProfile, normalizeWorkflowPermissionProfile, workflowPermissionMatrix, workflowPermissionPresets, type WorkflowPermissionGrant, type WorkflowPermissionSubject } from "@/lib/workflow/permissions";
+// HINTEK AI lives in ee/ (not in the community edition, 2026-09-30); without it this is null.
+const { SharingPolicyPanel } = clientExtensions;
 type Company = {
   id: string;
   name: string;
@@ -182,7 +184,7 @@ export function LegalPanel({
   }
 
   return (
-    // Compact list (Daniel 2026-09-26): reading is the user's choice, so documents stay folded behind a small link.
+    // Compact list (2026-09-26): reading is the user's choice, so documents stay folded behind a small link.
     // Outside the gate the panel itself is folded once everything is accepted.
     <Panel
       title={gate ? "Godkänn juridiska dokument" : "Juridiska dokument"}
@@ -288,7 +290,7 @@ export function LegalPanel({
   );
 }
 type AdministrationEventRow = Data["events"][number];
-// Reference log (Daniel 2026-09-26): folded, newest 25 first, older pages on request; never the whole table.
+// Reference log (2026-09-26): folded, newest 25 first, older pages on request; never the whole table.
 function AdministrationHistory({ events, total }: { events: AdministrationEventRow[]; total: number }) {
   const [older, setOlder] = useState<AdministrationEventRow[]>([]);
   const [busy, setBusy] = useState(false);
@@ -463,7 +465,7 @@ export function Administration({
         </p>
       </div>
       <LegalPanel notify={notify} />
-      <AiSharingPolicyPanel />
+      {SharingPolicyPanel ? <SharingPolicyPanel /> : null}
       <Panel title="Företag">
         <Input
           aria-label="Sök företag"

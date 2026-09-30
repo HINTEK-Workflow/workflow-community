@@ -18,7 +18,7 @@ const querySchema = z.object({
 });
 
 /**
- * Översikt's "Projekt och uppgifter" (Daniel 2026-09-26: fetch only what is shown): the server builds the list with
+ * Översikt's "Projekt och uppgifter" (2026-09-26: fetch only what is shown): the server builds the list with
  * the shared rules in lib/workflow/overview-work.ts and sends one page of ten, the three most urgent items and the
  * counts per filter. Only modules the member may read are included; project status counts all of a project's work.
  */

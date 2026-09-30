@@ -1,7 +1,7 @@
 import { swedishDayKey } from "@/lib/swedish-time";
 
 /**
- * The one project status used everywhere (Daniel 2026-09-26): cards, tabs, the project view, the overview list,
+ * The one project status used everywhere (2026-09-26): cards, tabs, the project view, the overview list,
  * key figures, Local and the demo. Planerat → Pågår → Klar att avsluta → Avslutat (manual) → Arkiverat.
  * Callers pass every task and planned activity linked to the project, not only the ones the viewer may read,
  * so that one project has the same status for everyone; the result carries no task content.

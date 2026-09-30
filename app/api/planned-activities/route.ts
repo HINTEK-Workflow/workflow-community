@@ -39,7 +39,7 @@ async function verifyReferences(ctx: Awaited<ReturnType<typeof context>>, data: 
     data.controlId ? prisma.control.findFirst({ where: { id: data.controlId, organizationId: ctx.organizationId, deletedAt: null }, select: { id: true, projectId: true, status: true, workflowProject: { select: projectSelect } } }) : null,
     data.id ? prisma.plannedActivity.findFirst({ where: { id: data.id, organizationId: ctx.organizationId }, select: { startsAt: true, endsAt: true, projectId: true, workflowTaskId: true, controlId: true } }) : null,
   ]);
-  // The project is the frame (Daniel 2026-09-26, decision 4). Only new planning, or planning whose time, project or
+  // The project is the frame (2026-09-26, decision 4). Only new planning, or planning whose time, project or
   // task changes, is checked; existing planning outside the frame stays as it is and is shown as a deviation.
   const active = !["COMPLETED", "CANCELED"].includes(data.status);
   const changed = !previous || previous.startsAt.toISOString() !== new Date(data.startsAt).toISOString() || previous.endsAt.toISOString() !== new Date(data.endsAt).toISOString()
@@ -120,7 +120,7 @@ export async function GET(request: Request) {
         workflowTask: { select: { id: true, title: true, kind: true, projectId: true } },
         control: { select: { id: true, title: true, projectId: true } },
         assignments: { select: { plannedMinutes: true, startsAt: true, endsAt: true, member: { select: { userId: true, user: { select: { name: true, email: true } } } } } },
-        // Bounded history (Daniel 2026-09-26): the newest events and a count. Snapshots stay in the database and export.
+        // Bounded history (2026-09-26): the newest events and a count. Snapshots stay in the database and export.
         events: { orderBy: { createdAt: "desc" }, take: 10, select: { id: true, kind: true, summary: true, actorName: true, createdAt: true } },
         _count: { select: { events: true } },
       },

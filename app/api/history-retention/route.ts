@@ -15,7 +15,7 @@ import { countHistory, purgeHistory } from "@/lib/workflow/history-retention-ser
 export const dynamic = "force-dynamic";
 
 /**
- * Historik och lagring (Daniel 2026-09-30): the company admin chooses how long the company's work history is kept and
+ * Historik och lagring (2026-09-30): the company admin chooses how long the company's work history is kept and
  * can delete older history by hand. Cloud only – Local keeps its history in its own file.
  */
 async function admin() {

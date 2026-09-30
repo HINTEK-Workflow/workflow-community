@@ -23,7 +23,7 @@ export const suggestionSchema = z
 export const preferencesSchema = z.object({
   autoSave: z.boolean().default(true),
   rowsOnTop: z.boolean().default(false),
-  // Daniel 2026-09-25: HINTEK Blue is the primary direction (docs/design-standard.md), so it is the default for accounts without a saved preference, not a plain neutral light surface.
+  // 2026-09-25: HINTEK Blue is the primary direction (docs/design-standard.md), so it is the default for accounts without a saved preference, not a plain neutral light surface.
   theme: z.enum(themeNames).default("blue"),
   compact: z.boolean().default(false),
   suggestions: z.string().max(5000).default(""),
@@ -38,9 +38,9 @@ export const preferencesSchema = z.object({
   showExamples: z.boolean().default(false),
   textScale: z.enum(["100", "110", "125"]).default("100"),
   fieldSuggestions: suggestionSchema.default({}),
-  // Order and visibility of the cards under Ny uppgift (Daniel 2026-09-27).
+  // Order and visibility of the cards under Ny uppgift (2026-09-27).
   taskCardLayout: taskCardLayoutSchema.default(emptyTaskCardLayout),
-  // Menu buttons the person has chosen to hide (Daniel 2026-09-30); display only, never access.
+  // Menu buttons the person has chosen to hide (2026-09-30); display only, never access.
   hiddenMenuItems: z.array(z.enum(MENU_HIDEABLE)).max(20).catch([]).default([]),
   // Guided tours the person has seen or dismissed (2026-09-28), by tour: when.
   tours: z.record(z.string().max(40), z.string().max(40)).default({}),

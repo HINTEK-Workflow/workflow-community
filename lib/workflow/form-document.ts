@@ -2,10 +2,10 @@ import { z } from "zod";
 import { evaluateFormula, formulaReferences, FormulaCycleError, FormulaError, orderByDependencies, parseFormula, type FormulaNode, type FormulaValue } from "./form-formula";
 
 /**
- * A form (Daniel 2026-09-26, design v2): versioned data – blocks and formulas – drawn and computed by one shared engine.
+ * A form (2026-09-26, design v2): versioned data – blocks and formulas – drawn and computed by one shared engine.
  * Never code, never HTML: text is rendered as text and only the known block types below exist.
  *
- * Schema 2 (the approved editor, Daniel 2026-09-26) is additive: sections, a Hel/Halv width per block, visibility in the
+ * Schema 2 (the approved editor, 2026-09-26) is additive: sections, a Hel/Halv width per block, visibility in the
  * task and the PDF, page breaks, date and time, default values, hard validation and more. Every new property has a
  * default, so a published schema 1 version parses unchanged and is never rewritten.
  */
@@ -18,7 +18,7 @@ const optionalText = (max: number) => z.string().trim().max(max).default("");
 const formula = z.string().trim().min(1, "Ange en formel.").max(500);
 const options = z.array(z.string().trim().min(1).max(120)).max(FORM_LIMITS.options).default([]);
 const number = z.number().finite().nullable().default(null);
-// Layout (schema 2): a controlled 12-column grid (Daniel 2026-09-26: dense like a paper protocol). Blocks snap to
+// Layout (schema 2): a controlled 12-column grid (2026-09-26: dense like a paper protocol). Blocks snap to
 // fixed widths, never free positions, so the form always stacks on a phone and packs the same way in the PDF.
 export const FORM_WIDTHS = ["quarter", "third", "half", "two_thirds", "three_quarters", "full"] as const;
 export type FormWidth = (typeof FORM_WIDTHS)[number];
@@ -30,7 +30,7 @@ const visibility = z.object({ task: z.boolean().default(true), pdf: z.boolean().
 export const FIELD_INPUTS = ["text", "textarea", "number", "date", "datetime", "choice", "yesno"] as const;
 /**
  * Column inputs. "check" is a tick box (true/false, like the control's "Testknapp OK"); "assessment" is the row's
- * Godkänd: decided by a condition, by hand or – with a Ja/nej field such as Autobedömning – either (Daniel 2026-09-27,
+ * Godkänd: decided by a condition, by hand or – with a Ja/nej field such as Autobedömning – either (2026-09-27,
  * built backwards from Kontroll före idrifttagning).
  */
 export const COLUMN_INPUTS = ["text", "number", "choice", "yesno", "formula", "textarea", "date", "images", "check", "assessment", "scale"] as const;
@@ -41,7 +41,7 @@ export const COLUMN_INPUTS = ["text", "number", "choice", "yesno", "formula", "t
 export const TABLE_LAYOUTS = ["grid", "cards", "rows"] as const;
 /** How a row's Godkänd is decided: by its condition, by hand, or by the condition only while a Ja/nej field is Ja. */
 export const ASSESSMENT_MODES = ["auto", "manual", "switch"] as const;
-/** Where a field's first value comes from when the task has it (the control's customer picker, Daniel 2026-09-27). */
+/** Where a field's first value comes from when the task has it (the control's customer picker, 2026-09-27). */
 export const FIELD_PREFILLS = ["none", "customer", "contact", "email", "facility", "project", "assignee", "user", "today"] as const;
 /** A column in the PDF: shown, left out, or joined to the column before it ("24 / 26 ms"). */
 export const COLUMN_PDF = ["show", "hide", "join"] as const;
@@ -49,7 +49,7 @@ export const COLUMN_PDF = ["show", "hide", "join"] as const;
 export const SECTION_PDF_STYLES = ["standard", "untitled", "chapter"] as const;
 const scalar = z.union([z.string().max(2000), z.number().finite(), z.boolean(), z.null()]).default(null);
 /**
- * Levels of a computed value (Daniel 2026-09-27, the risk assessment): from a value upwards the result gets a name and
+ * Levels of a computed value (2026-09-27, the risk assessment): from a value upwards the result gets a name and
  * a colour, e.g. 10–16 "Hög" in red. Shown as "15 · Hög" on screen and in the PDF.
  */
 export const BAND_TONES = ["neutral", "success", "warning", "danger", "critical"] as const;
@@ -82,10 +82,10 @@ const fieldBlock = z.object({
   // Hard validation, unlike the approved interval: a value outside it stops completion.
   allowedMin: number, allowedMax: number, decimals: z.number().int().min(0).max(6).nullable().default(null), maxLength: z.number().int().min(1).max(2000).nullable().default(null),
   width, visibility,
-  // Built backwards from the control (Daniel 2026-09-27): filled in from the task's customer, project or user; a tinted
+  // Built backwards from the control (2026-09-27): filled in from the task's customer, project or user; a tinted
   // box in the PDF (the control's Projekt / anläggning); and, for Ja/nej, a switch among the moments (Autobedömning).
   prefill: z.enum(FIELD_PREFILLS).default("none"), highlight: z.boolean().default(false), momentSwitch: z.boolean().default(false),
-  // Exactly like the originals in the task (Daniel 2026-09-27): a placeholder in the field and a PDF label of its own.
+  // Exactly like the originals in the task (2026-09-27): a placeholder in the field and a PDF label of its own.
   placeholder: optionalText(200), pdfLabel: optionalText(120),
   // 2026-09-28: shown only under a condition; a comment and a deviation of its own on this control point; a
   // configurable limit (per facility) instead of a fixed interval; its history drawn as a trend.
@@ -104,7 +104,7 @@ const columnSchema = z.object({
   // A formula column whose false result is a deviation in that row ("villkor för godkänt").
   passCondition: z.boolean().default(false),
   total: z.enum(["none", "sum", "min", "max", "avg"]).default("none"),
-  // Built backwards from the control (Daniel 2026-09-27): a value for new rows and for the example row, values that
+  // Built backwards from the control (2026-09-27): a value for new rows and for the example row, values that
   // count as not filled in ("Ej mätt"), a requirement that only applies while a Ja/nej field is Ja, suggestions, and
   // how the column is printed – its own heading, a relative width, left out or joined to the column before.
   defaultValue: scalar, exampleValue: scalar, notFilledOptions: options, requiredIf: z.string().trim().max(40).default(""),
@@ -114,7 +114,7 @@ const columnSchema = z.object({
   mode: z.enum(ASSESSMENT_MODES).default("auto"), switchKey: z.string().trim().max(40).default(""),
   // Levels of a formula column ("15 · Hög"). A "scale" column stores 1, 2, 3 … and uses `options` as the step names.
   bands,
-  // The task view exactly like the originals (Daniel 2026-09-27): a placeholder; in object cards a label of its own, a
+  // The task view exactly like the originals (2026-09-27): a placeholder; in object cards a label of its own, a
   // width, a badge in the title row ("Före: 15 · Hög") and a named group of fields ("Före skyddsåtgärd"); in measurement
   // rows a CSS track of its own ("2.3fr", "4.5rem", "minmax(10rem,20%)") and the line it sits on (the RCD test's two lines).
   placeholder: optionalText(200), cardLabel: optionalText(120), cardWidth: z.enum(CARD_WIDTHS).default("auto"), placement: z.enum(COLUMN_PLACEMENTS).default("body"), group: optionalText(120),
@@ -133,7 +133,7 @@ const tableBlock = z.object({
   // An example row that must be removed before completion, and the heading of each card in the PDF with the row's
   // values in braces, e.g. "{placering} · {profil} · typ {typ} · {markstrom} mA".
   allowExample: z.boolean().default(false), cardTitle: z.string().trim().max(200).default(""),
-  // The task view exactly like the originals (Daniel 2026-09-27): another layout on screen than in the PDF (the RCD test:
+  // The task view exactly like the originals (2026-09-27): another layout on screen than in the PDF (the RCD test:
   // cards in the PDF, two-line rows on screen), the Kopiera button, the empty state's words and the plural of a card's name.
   taskLayout: z.enum(["same", ...TABLE_LAYOUTS]).default("same"), copyRows: z.boolean().default(true),
   emptyTitle: optionalText(200), emptyAction: optionalText(120), itemLabelPlural: optionalText(60),
@@ -159,7 +159,7 @@ const leafBlock = z.discriminatedUnion("type", [
     showIf, photos: z.boolean().default(false), deviationTable: z.string().trim().max(40).default("") }),
   tableBlock,
   z.object({ id, type: z.literal("computed"), key, label, formula, unit: optionalText(20), passCondition: z.boolean().default(false), help: optionalText(500), width, visibility, bands, showIf, limitKey, trend }),
-  // "Foto/bilaga": pictures only, or any attached file (Daniel 2026-09-26, decision 5).
+  // "Foto/bilaga": pictures only, or any attached file (2026-09-26, decision 5).
   // `pdfInline`: the pictures are printed in the form; otherwise each gets an attachment page after it (like the control).
   z.object({ id, type: z.literal("images"), key, label, minCount: z.number().int().min(0).max(50).default(0), help: optionalText(500), accept: z.enum(["images", "files"]).default("images"), width, visibility, pdfInline: z.boolean().default(true), showIf }),
   // `statement` is the text beside the tick box ("Jag har granskat riskerna …"); `placeholder` sits in the name field.
@@ -168,7 +168,7 @@ const leafBlock = z.discriminatedUnion("type", [
     showIf, role: z.enum(SIGNATURE_ROLES).default("other"), distinctFrom: z.string().trim().max(40).default("") }),
   // A page break in the PDF; nothing is shown in the task.
   z.object({ id, type: z.literal("pagebreak") }),
-  // Sammanfattning (Daniel 2026-09-27): approved per moment, the deviations and their comment, how complete the
+  // Sammanfattning (2026-09-27): approved per moment, the deviations and their comment, how complete the
   // protocol is and the list of attachments – where the author puts it, like the control's Sammanfattning / avvikelser.
   z.object({ id, type: z.literal("summary"), label: z.string().trim().min(1).max(FORM_LIMITS.label).default("Sammanfattning / avvikelser"), help: optionalText(500), visibility, showIf }),
   // Riskmatris: a reference grid of the products of two scales coloured by the levels (the risk assessment's 5 × 5).
@@ -186,7 +186,7 @@ const sectionBlock = z.object({
   optional: z.boolean().default(false), defaultOn: z.boolean().default(true), pdfStyle: z.enum(SECTION_PDF_STYLES).default("standard"),
   // Folded in the task until opened, like the risk assessment's Bedömningsstöd.
   collapsed: z.boolean().default(false),
-  // Task view only (Daniel 2026-09-27): the explanation behind the (i) of a moment, and a heading that differs from the PDF's.
+  // Task view only (2026-09-27): the explanation behind the (i) of a moment, and a heading that differs from the PDF's.
   help: optionalText(1000), taskTitle: optionalText(200),
   // 2026-09-28: the whole section only under a condition (e.g. "Turbintyp = Kaplan").
   showIf,
@@ -198,12 +198,12 @@ const reportSchema = z.object({ title: z.string().trim().max(120).default(""), c
 export const MOMENT_PLACEMENTS = ["top", "firstSection"] as const;
 const momentsSchema = z.object({ label: z.string().trim().max(60).default("Moment"), requireOne: z.boolean().default(false), placement: z.enum(MOMENT_PLACEMENTS).default("top") });
 /**
- * The task's own basic data (Daniel 2026-09-27, the control's Grunduppgifter): in Workflow's own panel, or inside the
+ * The task's own basic data (2026-09-27, the control's Grunduppgifter): in Workflow's own panel, or inside the
  * form's first section with the project, customer and place among the form's fields – then the task's title follows a
  * field (`titleKey`). `requiredMarks` shows an asterisk at required fields.
  */
 export const TASK_LAYOUTS = ["panel", "inline"] as const;
-// The heading of a new protocol ("Ny kontroll") and the line under it, exactly like the originals (Daniel 2026-09-28).
+// The heading of a new protocol ("Ny kontroll") and the line under it, exactly like the originals (2026-09-28).
 const taskSchema = z.object({ layout: z.enum(TASK_LAYOUTS).default("panel"), titleKey: z.string().trim().max(40).default(""), requiredMarks: z.boolean().default(true), newTitle: optionalText(120), tagline: optionalText(200) });
 /**
  * Configurable limits (2026-09-28): the form names each limit once – what it is, its unit, an alarm range and an inner
@@ -369,7 +369,7 @@ export function formBlockCanBeNarrow(block: FormLeafBlock) {
 export const formBlockWidth = (block: FormLeafBlock): FormWidth => "width" in block && formBlockCanBeNarrow(block) ? block.width : "full";
 
 /**
- * Tidy rows (Daniel 2026-09-30: "fält upplevs rörigt arrangerade"): blocks flow into rows of 12 columns as the grid places
+ * Tidy rows (2026-09-30: "fält upplevs rörigt arrangerade"): blocks flow into rows of 12 columns as the grid places
  * them; a row of 2, 3 or 4 fields that leaves a gap is shared evenly (halves, thirds, quarters), so every row ends at the
  * same edge and the fields line up. Rows that already fill the width, a single block, or rows with other blocks than
  * fields keep the widths the form was built with.
@@ -777,7 +777,7 @@ export function formApprovalTotals(document: FormDocument, values: FormValues, e
 }
 
 /**
- * "Sammanställ resultat" (the control's, Daniel 2026-09-27): a first draft of the summary comment from the answers –
+ * "Sammanställ resultat" (the control's, 2026-09-27): a first draft of the summary comment from the answers –
  * what was checked, approved per moment, the comments on the rows and each tick box's state. Edited freely afterwards.
  */
 export function formRuleSummary(document: FormDocument, values: FormValues, evaluation = evaluateForm(document, values)) {
@@ -819,7 +819,7 @@ export type FormRequirement = { blockId: string; message: string; met: boolean }
 
 /**
  * The same requirements drive the editor's guidance, completion on the server, progression and the report. Like the
- * control (Daniel 2026-09-27), a table asks for its required values row by row and a checklist point by point, so the
+ * control (2026-09-27), a table asks for its required values row by row and a checklist point by point, so the
  * degree of completion reads the same; switched-off sections ask for nothing.
  */
 export function formCompletion(document: FormDocument, values: FormValues, options: { imageCount?: (key: string) => number } = {}) {
@@ -844,7 +844,7 @@ export function formCompletion(document: FormDocument, values: FormValues, optio
       const real = all.filter((row) => !row.example);
       const started = real.filter((row) => formRowStarted(block, row));
       // Fixed rows (L1–PE …) must all be measured. A free row that nobody started – the empty card or row a free table
-      // opens with – is not a requirement; only rows with content need their required columns (Daniel 2026-09-26, field use).
+      // opens with – is not a requirement; only rows with content need their required columns (2026-09-26, field use).
       const rows = block.rowMode === "fixed" ? real : started;
       if (block.required) add(block.id, `${block.label}: fyll i minst en rad.`, started.length > 0);
       if (block.allowExample) add(block.id, `${block.label}: ta bort exempelraden före slutförande.`, !all.some((row) => row.example));
@@ -924,7 +924,7 @@ export function formHasContent(values: FormValues) {
 const withoutKey = <T extends object>(item: T, key: keyof T) => { const rest = { ...item }; delete rest[key]; return rest; };
 
 /**
- * A protocol's answers for "Spara som" (Daniel 2026-09-27: a completed control is continued in a new one, never
+ * A protocol's answers for "Spara som" (2026-09-27: a completed control is continued in a new one, never
  * changed): everything that was filled in, except the signatures (a new protocol is signed anew), the pictures (they
  * belong to the old protocol's attachments) and example rows.
  */

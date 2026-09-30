@@ -2,7 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { MIN_TIME_ENTRY_SECONDS, type StoppedTimer } from "./running-timer";
 
 /**
- * Server side of the per-person timer, shared by tasks and (Daniel 2026-09-27) commissioning controls: every task
+ * Server side of the per-person timer, shared by tasks and (2026-09-27) commissioning controls: every task
  * editor can start time. Stopping an entry finishes it and writes it to the append-only time history.
  */
 type Actor = { organizationId: string; user: { id: string; name?: string | null; email: string } };

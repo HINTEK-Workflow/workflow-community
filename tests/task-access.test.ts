@@ -3,7 +3,7 @@ import test from "node:test";
 import { formPermissionArea, workflowSubjectForTask, type WorkflowPermissionSubject } from "../lib/workflow/permissions";
 import { readableTaskSql, readableTaskWhere } from "../lib/workflow/task-access";
 
-// Kontroll före idrifttagning and Riskbedömning built as forms keep their permission areas (Daniel 2026-09-27).
+// Kontroll före idrifttagning and Riskbedömning built as forms keep their permission areas (2026-09-27).
 test("a protocol follows its form's permission area; one without an area is Formulär", () => {
   assert.equal(workflowSubjectForTask("FORM", "kfid"), "kfid");
   assert.equal(workflowSubjectForTask("FORM", "risk-assessment"), "risk-assessment");

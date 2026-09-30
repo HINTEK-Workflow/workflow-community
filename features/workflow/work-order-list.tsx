@@ -25,7 +25,7 @@ const openHref = (row: WorkOrderRow) => `/?view=workflow_task&taskId=${encodeURI
 const planned = (row: WorkOrderRow) => row.plannedAt ? formatSwedish(row.plannedAt, { dateStyle: "short", timeStyle: "short" }) : "";
 
 /**
- * Mina arbetsordrar (Daniel 2026-09-26): work orders as their own workflow, with status, customer, responsible,
+ * Mina arbetsordrar (2026-09-26): work orders as their own workflow, with status, customer, responsible,
  * planned date and project. Cloud reads one page at a time from the server; Local lists the open file with the same rules.
  */
 export function WorkOrderList({ canCreate, local }: { canCreate: boolean; local?: { tasks: WorkOrderSource[]; userId: string } }) {

@@ -37,7 +37,8 @@ HINTEK's commercial parts are not part of this repository. Without them:
 - there is no payment, subscription or invoicing (Stripe);
 - there are no credits to buy, and use is not limited by credits;
 - there is no public landing page or landing page editor;
-- HINTEK AI answers from its rules only (lists, reminders, time, planning, search); no AI model provider is included.
+- there is no AI assistant, no API and no MCP server;
+- sign-in is with e-mail and password only (no Google sign-in).
 
 ## Private-test mode
 

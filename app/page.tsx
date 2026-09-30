@@ -31,7 +31,7 @@ export default async function HomePage({
   // Signed-out visitors on the bare address get the public landing page; the app itself is unchanged.
   // ?landing=1 shows the public page also to a signed-in person (the editor's "Visa publik sida").
   if ((!user && !params.view && !params.id) || (params.landing === "1" && !params.view)) {
-    // The landing page lives in ee/ (Fas 2) and can be switched off (Daniel 2026-09-30); hidden, switched off by
+    // The landing page lives in ee/ (Fas 2) and can be switched off (2026-09-30); hidden, switched off by
     // LANDING_EDITOR_ENABLED=false (Fas 1) or absent, visitors see only the login and a superadmin the workspace.
     const landing = publicInstance().features.landingEditor
       ? await serverExtensions.landing({ superadmin: user?.role === "SUPERADMIN", preview: params.landing === "1" })
@@ -90,16 +90,16 @@ export default async function HomePage({
     (member) => member.organization.id === user.activeOrganizationId,
   );
   const activeMemberRole = activeMembership?.role ?? null;
-  // Signed-out visitors never see the app shell with locked menu buttons; they meet the login (Daniel 2026-09-30).
+  // Signed-out visitors never see the app shell with locked menu buttons; they meet the login (2026-09-30).
   if (!user) redirect(`/login?returnTo=${encodeURIComponent(`/?view=${view}`)}`);
   if (view === "administration" && activeMemberRole !== "OWNER" && activeMemberRole !== "ADMIN")
     redirect("/?view=stats");
   const { features } = publicInstance();
-  if ((view === "landing_editor" && !features.landingEditor) || (view === "credits" && !features.billing && !features.credits))
+  if ((view === "landing_editor" && !features.landingEditor) || (view === "credits" && !features.billing && !features.credits) || (view === "integrations" && !features.integrations))
     redirect("/?view=stats");
   if ((view === "customer_companies" || view === "landing_editor") && user?.role !== "SUPERADMIN")
     redirect("/?view=stats");
-  // The switch-over (Daniel 2026-09-27, decision B; 2026-09-28: no drafts, all originals): a new control or risk
+  // The switch-over (2026-09-27, decision B; 2026-09-28: no drafts, all originals): a new control or risk
   // assessment is made with HINTEK's original of the form – or the company's own version of it – when it is published.
   // Existing controls and risk assessments open as before. Without a published original there is no card and no old
   // editor: the original waits as a draft under Skapa formulär, so "Ny kontroll" leads to Ny uppgift.
@@ -111,7 +111,7 @@ export default async function HomePage({
     const published = candidates.find((item) => item.baseTemplateId) ?? candidates[0];
     redirect(published ? `/?view=workflow_task&taskType=FORM&formId=${encodeURIComponent(published.id)}${context}` : `/?view=new_task${context}`);
   }
-  // Company admins build their company's forms (Daniel 2026-09-27); /api/forms/admin enforces who builds what.
+  // Company admins build their company's forms (2026-09-27); /api/forms/admin enforces who builds what.
   if (view === "forms" && user?.role !== "SUPERADMIN" && activeMemberRole !== "OWNER" && activeMemberRole !== "ADMIN")
     redirect("/?view=stats");
   const shellUser = user ? {
@@ -124,7 +124,7 @@ export default async function HomePage({
       : normalizeWorkflowPermissionProfile(activeMembership?.workflowPermissions),
     organizationName: user.activeOrganization?.name ?? null,
     localStorageMode: user.activeOrganization?.storageMode === "LOCAL",
-    // The menu buttons the person has hidden under Inställningar (Daniel 2026-09-30).
+    // The menu buttons the person has hidden under Inställningar (2026-09-30).
     hiddenMenu: preferences?.data && typeof preferences.data === "object" && !Array.isArray(preferences.data) && Array.isArray((preferences.data as { hiddenMenuItems?: unknown }).hiddenMenuItems)
       ? ((preferences.data as { hiddenMenuItems: unknown[] }).hiddenMenuItems.filter((item): item is string => typeof item === "string")) : [],
     canBuildForms: user.role === "SUPERADMIN" || ((activeMemberRole === "OWNER" || activeMemberRole === "ADMIN") && user.activeOrganization?.storageMode === "HINTEK_CLOUD"),

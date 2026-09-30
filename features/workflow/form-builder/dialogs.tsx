@@ -41,11 +41,11 @@ export function SidePanel({ open, onOpenChange, title, description, children, si
   </Dialog.Root>;
 }
 
-/** Mina formulär: 20 at a time from the server, with search and a status filter (bounded lists, Daniel 2026-09-26). */
+/** Mina formulär: 20 at a time from the server, with search and a status filter (bounded lists, 2026-09-26). */
 type Original = { id: string; name: string; displayName: string; description: string; icon: string; color: string; publishedVersion: number };
 
 export function FormsPanel({ open, onOpenChange, currentId, onOpen, onOpenOriginal }: { open: boolean; onOpenChange: (open: boolean) => void; currentId: string | null; onOpen: (id: string) => void; onOpenOriginal?: (id: string) => void }) {
-  // HINTEK's originals a company has not made its own version of (Daniel 2026-09-27); empty for HINTEK itself.
+  // HINTEK's originals a company has not made its own version of (2026-09-27); empty for HINTEK itself.
   const [originals, setOriginals] = useState<Original[]>([]);
   useEffect(() => {
     if (!open || !onOpenOriginal) return;
@@ -117,7 +117,7 @@ function IssueList({ title, issues, tone, onSelect }: { title: string; issues: P
 }
 
 /**
- * Publicera version N (Daniel 2026-09-26): checks (errors stop, warnings can be accepted), what changed since the
+ * Publicera version N (2026-09-26): checks (errors stop, warnings can be accepted), what changed since the
  * latest version, what it means for existing protocols, and the card under Ny uppgift exactly as customers see it.
  */
 type PublishProps = {
@@ -194,7 +194,7 @@ function VersionsBody({ detail, busy, onRestore, onUnpublish, onRepublish, onDel
         {detail.status === "UNPUBLISHED" ? <Button type="button" variant="outline" disabled={busy} onClick={onRepublish}>Publicera version {detail.publishedVersion} igen</Button> : null}
       </div>
       <p className="text-xs text-muted-foreground">Avpublicering tar bort typen från Ny uppgift. Protokoll, deras data och PDF:er finns alltid kvar.</p>
-      {/* Permanent deletion (Daniel 2026-09-26), also with protocols: every protocol keeps its own copy of the form. */}
+      {/* Permanent deletion (2026-09-26), also with protocols: every protocol keeps its own copy of the form. */}
       <section aria-label="Radera formuläret" className="rounded-lg border border-destructive/30 p-3">
         <h3 className="text-sm font-semibold">Radera formuläret permanent</h3>
         <p className="mt-1 text-xs text-muted-foreground">Formuläret, alla dess versioner och historiken tas bort och det försvinner från Ny uppgift. Det går inte att ångra.{protocols ? ` De ${protocols} befintliga protokollen raderas inte: de behåller sin egen kopia av formuläret och kan fortfarande öppnas, redigeras och skrivas ut.` : ""}</p>

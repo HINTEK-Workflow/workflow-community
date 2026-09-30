@@ -11,7 +11,7 @@ import {
   type WorkflowPermissionProfile,
 } from "../lib/workflow/permissions";
 
-test("an employee without a saved profile may do nothing until an admin grants it (Daniel 2026-09-27)", () => {
+test("an employee without a saved profile may do nothing until an admin grants it (2026-09-27)", () => {
   const profile = normalizeWorkflowPermissionProfile(null);
   assert.deepEqual(profile, noWorkflowPermissionProfile());
   assert.equal(hasWorkflowPermission(profile, "kfid", "create"), false);

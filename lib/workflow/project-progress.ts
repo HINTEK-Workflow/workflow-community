@@ -4,7 +4,7 @@ import { swedishDayKey } from "@/lib/swedish-time";
 const dayNumber = (key: string) => { const [year, month, day] = key.split("-").map(Number); return Date.UTC(year, month - 1, day) / 86_400_000; };
 
 /**
- * Progression in two separate measures (Daniel 2026-09-26, decision 9): how complete the work is, and whether it
+ * Progression in two separate measures (2026-09-26, decision 9): how complete the work is, and whether it
  * follows the project's time frame. Budget stays a third, separate value. Pure functions shared by Cloud, Local and
  * the demo.
  */

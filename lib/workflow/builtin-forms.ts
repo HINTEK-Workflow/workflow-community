@@ -2,13 +2,13 @@ import { formDocumentSchema, type FormDocument } from "./form-document";
 import { formMetaSchema, type FormMeta } from "./form-publish";
 
 /**
- * HINTEK's own inspection types (Daniel 2026-09-26): Termografering, Fortlöpande kontroll, Isolationsmätning – EBR and
+ * HINTEK's own inspection types (2026-09-26): Termografering, Fortlöpande kontroll, Isolationsmätning – EBR and
  * Följelinemätning – EBR. They are ordinary published forms – versioned data drawn by the shared form engine – so they
  * work in projects, planning, time, progression, PDF, Local and Cloud like every other protocol, and the superadmin
  * can refine them in "Skapa formulär" without a deploy. A migration publishes version 1 once; nothing here runs at
  * request time.
  *
- * No limit values are invented (Daniel's instruction): where a measurement has an acceptance criterion, the person
+ * No limit values are invented (the product owner's instruction): where a measurement has an acceptance criterion, the person
  * enters the requirement from the applicable EBR instruction, standard or client requirement, and the form compares
  * the value with it. See docs/INSPECTION_TYPES_20260926.md for what must be verified against EBR.
  */
@@ -153,7 +153,7 @@ const recurring = document([
       column("kommentar", "Kommentar", "text"),
     ], { startEmpty: true, emptyTitle: "Inga jordfelsbrytare registrerade." }),
   ]),
-  // Version 3 (Daniel 2026-09-29): no "Separata kontrollmoment" – thermography, insulation, follow-wire and earth
+  // Version 3 (2026-09-29): no "Separata kontrollmoment" – thermography, insulation, follow-wire and earth
   // electrode measurements are not part of an ordinary recurring inspection of a building; they have their own protocols.
   section("Anmärkningar och åtgärder", [
     table("anmarkningar", "Anmärkningar", [

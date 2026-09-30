@@ -2,7 +2,7 @@ import { inflateSync } from "node:zlib";
 import { PDFArray, PDFDict, PDFDocument, PDFName, PDFRawStream, PDFRef, PDFStream, type PDFObject } from "pdf-lib";
 
 /**
- * What a PDF draws, page by page, in a form that can be compared between two renderers (Daniel 2026-09-27: the
+ * What a PDF draws, page by page, in a form that can be compared between two renderers (2026-09-27: the
  * control's PDF must look exactly like today). Text is decoded to Unicode through each font's ToUnicode map, so the
  * glyph numbering of a font subset does not matter; resource names get their random suffix removed; numbers are kept
  * so they can be compared with a tolerance. Metadata such as the creation date is not part of the drawing.

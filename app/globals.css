@@ -94,7 +94,7 @@
   * { @apply border-border; }
   html { overflow-y: scroll; scrollbar-gutter: stable; }
   /* A dialog locks the page with a right margin as wide as the scrollbar, as if the scrollbar went away. The page keeps
-     its scrollbar (above), so the margin only moved the page and left an empty strip (Daniel 2026-09-30). */
+     its scrollbar (above), so the margin only moved the page and left an empty strip (2026-09-30). */
   html body[data-scroll-locked] { margin-right: 0 !important; }
   body { @apply bg-background font-sans text-sm text-foreground antialiased; }
   button:not(:disabled), a { -webkit-tap-highlight-color: transparent; }
@@ -120,7 +120,7 @@
   .workflow-card:hover, .workflow-card:focus-within { transform: translateY(-2px); border-color: var(--workflow-card-border-hover); background: color-mix(in srgb, var(--secondary) 40%, var(--card)); box-shadow: 0 8px 20px color-mix(in srgb, var(--foreground) 8%, transparent); }
   .data-table tbody tr:hover td { background: color-mix(in srgb, var(--secondary) 40%, transparent); }
   .panel-header { background: var(--panel-header); }
-  /* Icon box in a light blue panel header: white box with a primary icon, since soft tints vanish on the blue (Daniel 2026-09-27). */
+  /* Icon box in a light blue panel header: white box with a primary icon, since soft tints vanish on the blue (2026-09-27). */
   .panel-icon { @apply flex size-9 shrink-0 items-center justify-center rounded-lg border bg-card text-primary shadow-xs; }
   .field-label { color: var(--workflow-notice-foreground); }
   .workspace-main label, .workspace-modal label { color: var(--workflow-notice-foreground); }
@@ -242,7 +242,7 @@ html[data-theme="blue"] {
   --workflow-notice-foreground: #2c3e55;
   --panel-header: oklch(0.94 0.03 245 / 0.6);
 }
-/* HINTEK Blue chrome (Daniel 2026-09-26): navy #113351 menu, drawer and top bar with white text and plain white icons.
+/* HINTEK Blue chrome (2026-09-26): navy #113351 menu, drawer and top bar with white text and plain white icons.
    The selected item is only a lighter tone, with no extra edge or ring. */
 html[data-theme="blue"] :is(.workspace-sidebar, .workspace-drawer, .workspace-header) {
   --card: #113351;
@@ -268,7 +268,7 @@ html[data-theme="blue"] .workspace-sidebar-note { background: color-mix(in srgb,
 html[data-theme="blue"] .hintek-wordmark { display: none; }
 html[data-theme="blue"] .workflow-brand-text { display: block; overflow: hidden; font-family: Gugi, Inter, sans-serif; font-size: 1.25rem; line-height: 1.75rem; color: #ffffff; white-space: nowrap; text-overflow: ellipsis; }
 
-/* Public landing page (Daniel 2026-09-26): always HINTEK Blue, independent of a signed-in user's theme. */
+/* Public landing page (2026-09-26): always HINTEK Blue, independent of a signed-in user's theme. */
 .landing {
   --background: #f7f9fc; --foreground: #13223a; --card: #ffffff; --card-foreground: #13223a;
   --primary: #0b65c2; --primary-hover: #0952a0; --primary-foreground: #ffffff;
@@ -290,9 +290,9 @@ html[data-theme="blue"] .workflow-brand-text { display: block; overflow: hidden;
 .landing-button-ghost-light { border: 1px solid rgb(255 255 255 / .3); color: #ffffff; }
 .landing-button-ghost-light:hover { background: rgb(255 255 255 / .1); }
 
-/* The landing editor (Daniel 2026-09-30): the page is the canvas; a text shows a dashed outline on hover and a solid one
+/* The landing editor (2026-09-30): the page is the canvas; a text shows a dashed outline on hover and a solid one
    while it is being edited, like a block in Skapa formulär. */
-/* Ny uppgift → Anpassa (Daniel 2026-09-30): the arrows and Flytta till only where dragging is hard – touch or narrow. */
+/* Ny uppgift → Anpassa (2026-09-30): the arrows and Flytta till only where dragging is hard – touch or narrow. */
 .arrange-touch-only { display: none; }
 @media (pointer: coarse), (max-width: 1023px) { .arrange-touch-only { display: flex; } }
 .landing-canvas { background: #f7f9fc; }
@@ -408,7 +408,7 @@ input[data-slot="input"]:focus-visible { border-color: var(--ring); }
 /* App navigation and touch layout. All surfaces follow the selected theme. */
 .workspace-menu-overlay { background: color-mix(in srgb, var(--foreground) 32%, transparent); }
 .workspace-drawer { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
-/* The menu scrolls without a scrollbar strip (Daniel 2026-09-30: "inte den breda listen … bara en tunn linje"): the
+/* The menu scrolls without a scrollbar strip (2026-09-30: "inte den breda listen … bara en tunn linje"): the
    browser's scrollbar is hidden, so the menu never changes width, and a thin line at its right edge shows where in the
    menu you are while it is taller than the screen (MenuScrollLine). */
 .workspace-aside, .workspace-drawer { --menu-scroll: color-mix(in srgb, var(--muted-foreground) 30%, transparent); scrollbar-width: none; }
@@ -417,7 +417,7 @@ input[data-slot="input"]:focus-visible { border-color: var(--ring); }
 .workspace-aside:hover, .workspace-drawer:hover { --menu-scroll: color-mix(in srgb, var(--muted-foreground) 55%, transparent); }
 html[data-theme="blue"] :is(.workspace-aside, .workspace-drawer) { --menu-scroll: rgb(255 255 255 / .2); }
 html[data-theme="blue"] :is(.workspace-aside, .workspace-drawer):hover { --menu-scroll: rgb(255 255 255 / .38); }
-/* Popups scroll with a thin, quiet scrollbar too, instead of the browser's wide one (Daniel 2026-09-30); :where keeps
+/* Popups scroll with a thin, quiet scrollbar too, instead of the browser's wide one (2026-09-30); :where keeps
    it below the menu drawer's own "no scrollbar" rule. */
 :where([role="dialog"], [role="alertdialog"], [role="dialog"] *, [role="alertdialog"] *) { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--muted-foreground) 40%, transparent) transparent; }
 .workspace-drawer .workspace-sidebar-brand { padding-right: 4rem; }
@@ -511,13 +511,13 @@ html[data-theme="blue"] :is(.workspace-aside, .workspace-drawer):hover { --menu-
 @media (prefers-reduced-motion: no-preference) {
   .workspace-drawer[data-state="open"] { animation: workspace-menu-enter .18s ease-out; }
   @keyframes workspace-menu-enter { from { transform: translateX(-100%); } to { transform: translateX(0); } }
-  /* A calm pulse while a timer runs (Daniel 2026-09-26); reduced motion keeps a steady dot. */
+  /* A calm pulse while a timer runs (2026-09-26); reduced motion keeps a steady dot. */
   .running-timer-dot { animation: running-timer-pulse 2s ease-in-out infinite; }
   @keyframes running-timer-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .45; transform: scale(.8); } }
 }
 
 /*
- * One look for a label above its field (Daniel 2026-09-27; the control's Grunduppgifter is the original): 12 px medium
+ * One look for a label above its field (2026-09-27; the control's Grunduppgifter is the original): 12 px medium
  * text in the label colour, flush with the field's left edge and 6 px above it (7 px to the glyphs, as in the original). Unlayered on purpose so it wins over
  * the spacing and colour utilities that grew differently in each editor. Labels laid out in a row (items-center),
  * search fields with an icon and screen-reader-only labels keep their own layout.

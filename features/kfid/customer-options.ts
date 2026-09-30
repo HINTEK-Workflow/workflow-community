@@ -6,7 +6,7 @@ import type { CustomerItem } from "./types";
 
 /**
  * Customer choices with their facilities for the project form, the task editor, the link guide and the round schedule.
- * Read from /api/workspace?action=customers only while such a view is shown (Daniel 2026-09-26: fetch only what is
+ * Read from /api/workspace?action=customers only while such a view is shown (2026-09-26: fetch only what is
  * shown), shared between components and read again after `invalidateCustomerOptions`, for example when a customer is
  * saved. Bounded (2026-09-30): at most CUSTOMER_OPTION_LIMIT are read; a company with more gets a search next to the
  * choice (`CustomerSearchBox`) that asks the server and adds the picked customer to the options.

@@ -29,7 +29,7 @@ type Material = { name: string; quantity: string; unit: string };
 export type WorkflowReportTask = {
   id: string;
   kind: WorkflowTaskKind;
-  /** A protocol's permission area (Daniel 2026-09-27): forms, kfid or risk-assessment. */
+  /** A protocol's permission area (2026-09-27): forms, kfid or risk-assessment. */
   formArea?: string | null;
   title: string;
   description: string;
@@ -37,7 +37,7 @@ export type WorkflowReportTask = {
   progress: number;
   projectId?: string | null;
   projectName?: string;
-  /** The project's fixed fields (Daniel 2026-09-26), printed read-only with the task. */
+  /** The project's fixed fields (2026-09-26), printed read-only with the task. */
   projectFields?: (readonly [string, string])[];
   customerName?: string;
   siteName?: string;
@@ -55,7 +55,7 @@ export type WorkflowReportTask = {
 };
 
 /**
- * A task or project report. A single form protocol is drawn like the control's report (Daniel 2026-09-27); work orders,
+ * A task or project report. A single form protocol is drawn like the control's report (2026-09-27); work orders,
  * older risk assessments and a project report's own pages are drawn in the same look (2026-09-30), in the company's
  * report colours and with its logo when they are passed. `createdAt` is only passed by the reference tests so their
  * PDFs are the same every time.

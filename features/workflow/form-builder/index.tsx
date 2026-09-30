@@ -47,7 +47,7 @@ const collisions: CollisionDetection = (args) => {
 };
 
 /**
- * "Skapa formulär" (Daniel 2026-09-26): straight into an editor. Grunduppgifter on top, then one fixed bar with the
+ * "Skapa formulär" (2026-09-26): straight into an editor. Grunduppgifter on top, then one fixed bar with the
  * editor commands and the field ribbon, and the form as a sheet that uses the width of the workspace. Settings appear
  * only for the selected block. Only the superadmin sees it.
  */
@@ -300,7 +300,7 @@ export function FormBuilder({ userName, tourSeen, onTourSeen }: { userName?: str
       </div>
     </div>
 
-    {/* A HINTEK original opened by a company, and the company's own version of one (Daniel 2026-09-27). */}
+    {/* A HINTEK original opened by a company, and the company's own version of one (2026-09-27). */}
     {tour.offerCard}
     {draft.base ? <p role="status" className="notice" data-testid="form-original-notice">HINTEK:s original, version {draft.base.version}. När du ändrar något sparas det som ert företags egen version – originalet påverkas inte.</p> : null}
     {detail?.base ? <p role="status" className="notice flex flex-wrap items-center gap-2" data-testid="form-copy-notice">Ert företags version av HINTEK:s {detail.base.name}{detail.base.version ? ` (från version ${detail.base.version})` : ""}.{detail.base.updated ? ` HINTEK har publicerat version ${detail.base.latest} av originalet.` : ""}
@@ -324,7 +324,7 @@ export function FormBuilder({ userName, tourSeen, onTourSeen }: { userName?: str
     <DndContext sensors={sensors} collisionDetection={collisions} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={() => setDragging(null)}
       accessibility={{ announcements, screenReaderInstructions: { draggable: "Tryck mellanslag för att lyfta. Flytta med piltangenterna och tryck mellanslag igen för att släppa. Escape avbryter." } }}>
       {/* One fixed bar under the top bar: the editor commands and, while building, the field ribbon. The commands use one
-          compact editor height, like a word processor (Daniel 2026-09-27: "mer anpassade för editorns utformning"):
+          compact editor height, like a word processor (2026-09-27: "mer anpassade för editorns utformning"):
           32 px on a computer; below 1024 px Workflow's 44 px touch height applies. */}
       <div className="sticky top-16 z-30 rounded-xl border bg-card/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/90" data-testid="editor-row" data-tour="builder-bar">
         <div className="flex flex-wrap items-center gap-1.5 px-2 py-1.5">
@@ -361,13 +361,13 @@ export function FormBuilder({ userName, tourSeen, onTourSeen }: { userName?: str
             </DropdownMenu.Root>
           </div>
         </div>
-        {/* The icon ribbon in full width under the buttons, on every screen (Daniel 2026-09-29: not a tool panel beside the sheet). */}
+        {/* The icon ribbon in full width under the buttons, on every screen (2026-09-29: not a tool panel beside the sheet). */}
         {mode === "build" ? <div className="border-t px-2 py-1 max-md:hidden" data-tour="builder-blocks"><FieldRibbon onAdd={(type) => add(type)} /></div> : null}
       </div>
       {notice ? <p role={notice.error ? "alert" : "status"} className={cn("notice flex flex-wrap items-center gap-2", notice.error && "text-destructive")}>{notice.text}{notice.undo ? <Button type="button" size="sm" variant="ghost" onClick={() => { draft.undo(); setNotice(null); }}><Undo2 />Ångra</Button> : null}</p> : null}
 
       {mode === "build" ? <div className={cn("grid items-start gap-4", selected && "xl:grid-cols-[minmax(0,1fr)_22rem]")}>
-        {/* The sheet: white like a page and as wide as the bar with the icons above (Daniel 2026-09-27). A click on the
+        {/* The sheet: white like a page and as wide as the bar with the icons above (2026-09-27). A click on the
             sheet beside the blocks clears the selection. */}
         <div className="min-w-0">
           <div className="min-h-[28rem] w-full rounded-xl border bg-card px-3 pb-8 pt-6 shadow-sm sm:px-6 lg:px-8" onClick={(event) => { if (event.target === event.currentTarget) setSelectedId(null); }} data-testid="form-sheet" data-tour="builder-sheet">
@@ -384,7 +384,7 @@ export function FormBuilder({ userName, tourSeen, onTourSeen }: { userName?: str
           </div>
           <div className="p-4">{settings}</div>
         </aside> : null}
-      </div> : <div className="mx-auto w-full max-w-[76rem]" data-tour="builder-preview">{/* As wide as the task really is (Daniel 2026-09-29): the page's content width, not the builder's wider page. */}<ExecutionPreview document={document} meta={snapshot.meta} area={previewArea} publisher={detail?.publisher} userName={userName} /></div>}
+      </div> : <div className="mx-auto w-full max-w-[76rem]" data-tour="builder-preview">{/* As wide as the task really is (2026-09-29): the page's content width, not the builder's wider page. */}<ExecutionPreview document={document} meta={snapshot.meta} area={previewArea} publisher={detail?.publisher} userName={userName} /></div>}
       {mode === "build" ? <FieldSheetButton onAdd={(type) => add(type)} /> : null}
       <DragOverlay dropAnimation={null}>{dragging ? <div className="rounded-lg border bg-card px-3 py-2 text-sm font-medium shadow-lg">{nameOf(dragging)}</div> : null}</DragOverlay>
     </DndContext>

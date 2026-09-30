@@ -58,7 +58,7 @@ export function AssessmentChecklist({ block, document, values, onChange, readOnl
     {block.items.map((item) => {
       const answer = answers[item.id];
       const images = answer?.images ?? [];
-      // Compact rows (Daniel 2026-09-29): the point, then its camera and answers on the same line.
+      // Compact rows (2026-09-29): the point, then its camera and answers on the same line.
       return <div key={item.id} className={cn("rounded-lg border px-3 py-1.5", answer?.state === "NOT_OK" ? indicatorBadge("danger") : "bg-card")} data-testid="form-checklist-item">
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5"><span className="min-w-0 flex-1 text-sm">{item.text}</span>
           <div className="flex items-center gap-1">

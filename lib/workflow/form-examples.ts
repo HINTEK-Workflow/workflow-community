@@ -1,6 +1,6 @@
 import { formDocumentSchema, type FormDocument } from "./form-document";
 
-/** The design's example form (Daniel 2026-09-26): isolation measurement with a row formula, a total and a result. */
+/** The design's example form (2026-09-26): isolation measurement with a row formula, a total and a result. */
 export const isolationMeasurementForm: FormDocument = formDocumentSchema.parse({
   schema: 1,
   blocks: [

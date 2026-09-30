@@ -1,5 +1,5 @@
 /**
- * The form builder's formula language (Daniel 2026-09-26, design v2): simple Excel-like formulas with Swedish function
+ * The form builder's formula language (2026-09-26, design v2): simple Excel-like formulas with Swedish function
  * names and semicolons, evaluated by this restricted engine only – never `eval`, never arbitrary code. Formulas refer
  * to fields by short name (`uppmatt`), to a table column as a list (`matning.uppmatt`) and, inside a table row, to the
  * same row's cell with brackets (`[uppmatt]`). The same engine runs in the browser, on the server and in the PDF.

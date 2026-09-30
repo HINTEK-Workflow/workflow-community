@@ -38,7 +38,7 @@ type TaskData =
   | { kind: "WORK_ORDER"; details: { executionNotes: string; deviations: string; materials: Material[]; signature: { name: string; confirmed: boolean; signedAt: string | null }; closeNotes: string; source?: { taskId: string; title: string; kind?: WorkflowTaskKind; rowId?: string } } }
   | { kind: "RISK_ASSESSMENT"; details: { risks: Risk[]; generalMeasures: string; approval: { name: string; confirmed: boolean; approvedAt: string | null } } }
   | { kind: "FORM"; details: { templateId: string; templateVersion: number; templateName: string; publisherName?: string; document: FormDocument; values: FormValues } };
-/** The published form version a new protocol is created from (Daniel 2026-09-26). */
+/** The published form version a new protocol is created from (2026-09-26). */
 export type FormTemplateChoice = { templateId: string; version: number; name: string; document: FormDocument; allowStandalone?: boolean; allowInProject?: boolean; area?: string; publisher?: string };
 type TaskRevision = { id: string; version: number; createdAt: string; snapshot: { title: string; description: string; status: WorkflowTaskStatus; progress: number; data: TaskData; completedAt: string | null } };
 export type WorkflowTaskRecord = { id: string; version: number; kind: WorkflowTaskKind; formArea?: string | null; title: string; description: string; status: WorkflowTaskStatus; progress: number; projectId: string | null; customerId: string | null; facilityId?: string | null; siteId: string | null; departmentId: string | null; assignedToUserId: string | null; assignedToName: string; dueDate: string; data: TaskData; totalDurationSec: number; timerRunning: boolean; revisions?: TaskRevision[]; revisionCount?: number; attachments?: { id: string; filename: string; mimeType: string; size: number; createdAt: string }[] };
@@ -57,7 +57,7 @@ const PERSON_FIELDS = ["title", "description", "status", "projectId", "customerI
 const statusLabels: Record<WorkflowTaskStatus, string> = { PLANNED: "Planerad", IN_PROGRESS: "Pågår", PAUSED: "Pausad", NEEDS_ACTION: "Behöver åtgärdas", COMPLETED: "Slutförd" };
 
 /**
- * The form builder's preview (Daniel 2026-09-28): the real task editor with the draft and example answers, so what the
+ * The form builder's preview (2026-09-28): the real task editor with the draft and example answers, so what the
  * builder shows is exactly what the person filling in the protocol gets. Nothing is fetched or stored; the sample
  * customer, project and place stand in for the company's own.
  */
@@ -78,7 +78,7 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
   // A new protocol is created from the form's published version (`formId` from Ny uppgift); an existing one carries its own.
   const searchParams = useSearchParams();
   const formId = preview ? null : searchParams.get("formId");
-  // "Spara som" (Daniel 2026-09-27): a new protocol that starts from another one's answers.
+  // "Spara som" (2026-09-27): a new protocol that starts from another one's answers.
   const copyOf = preview ? null : searchParams.get("copyOf");
   // A round started from Driftronder (2026-09-28): the schedule, its day and the facility it is made at.
   const roundParam = preview ? null : searchParams.get("scheduleId");
@@ -95,7 +95,7 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
       .catch((issue) => { if (active) setFormError((issue as Error).message); });
     return () => { active = false; };
   }, [kind, taskId, formId, form?.templateId]);
-  // A task created in a project inherits the project's frame (Daniel 2026-09-26): the customer is locked to the
+  // A task created in a project inherits the project's frame (2026-09-26): the customer is locked to the
   // project's, the responsible member and "Klart senast" are prefilled and the date must stay within the frame.
   const inherit = (base: WorkflowTaskRecord, project: ProjectItem | undefined): WorkflowTaskRecord => project ? {
     ...base,
@@ -123,7 +123,7 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
     return title === next.title ? next : { ...next, title };
   };
   /**
-   * A protocol's fields that start from the task (Daniel 2026-09-27, like the control's customer picker): customer,
+   * A protocol's fields that start from the task (2026-09-27, like the control's customer picker): customer,
    * contact, e-mail, facility, project, responsible person and today. A new choice replaces what the old one filled in.
    */
   const prefilled = (next: WorkflowTaskRecord, kinds?: FormPrefill[], overwrite = false): WorkflowTaskRecord => {
@@ -220,14 +220,14 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
   const dueDateError = selectedProject ? taskDueDateError(task.dueDate, selectedProject) : null;
 
   const completion = workflowTaskCompletion(task);
-  // The control's Grunduppgifter (Daniel 2026-09-27): a form can draw the task's project, customer and place inside its
+  // The control's Grunduppgifter (2026-09-27): a form can draw the task's project, customer and place inside its
   // own first section instead of Workflow's task panel; the title then follows a field and the customer is picked like
   // the control does it, beside the contact person.
   const inlineTask = task.data.kind === "FORM" && task.data.details.document.task.layout === "inline";
   // Like the control, time starts once the field the title follows is filled in, so the protocol gets its name when it is saved.
   const titleField = inlineTask && task.data.kind === "FORM" && task.data.details.document.task.titleKey ? formLeafBlocks(task.data.details.document).find((block) => block.type === "field" && block.key === (task.data.kind === "FORM" ? task.data.details.document.task.titleKey : "")) : undefined;
   const titleFieldEmpty = Boolean(titleField && task.data.kind === "FORM" && !String(task.data.details.values.fields[titleField.type === "field" ? titleField.key : ""] ?? "").trim());
-  // The same fact row as the control's header (Daniel 2026-09-27): what the task holds, who and when.
+  // The same fact row as the control's header (2026-09-27): what the task holds, who and when.
   const overdue = Boolean(task.dueDate && task.status !== "COMPLETED" && task.dueDate < swedishDayKey(new Date()));
   const headerFacts: EditorFact[] = [
     ...(task.data.kind === "WORK_ORDER" ? [{ icon: Package, label: `${task.data.details.materials.length} material` }] : []),
@@ -237,7 +237,7 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
     // Where the task belongs, as links back (the guided flow, 2026-09-30).
     ...(selectedProject && task.id && !preview ? [{ icon: FolderKanban, label: selectedProject.name, href: `/?view=project&projectId=${encodeURIComponent(selectedProject.id)}`, iconClassName: "text-muted-foreground" }] : []),
     ...(task.data.kind === "WORK_ORDER" && task.data.details.source?.kind && !preview ? [{ icon: Undo2, label: `Från ${task.data.details.source.title || "uppgiften"}`, href: `/?view=workflow_task&taskId=${encodeURIComponent(task.data.details.source.taskId)}&taskType=${task.data.details.source.kind}`, iconClassName: "text-muted-foreground" }] : []),
-    // A form drawn like the control has no Ansvarig field, so an empty one is not announced (Daniel 2026-09-28).
+    // A form drawn like the control has no Ansvarig field, so an empty one is not announced (2026-09-28).
     ...(inlineTask && !task.assignedToName ? [] : [{ icon: UserRound, label: task.assignedToName || "Ingen ansvarig", iconClassName: "text-muted-foreground" }]),
     ...(task.dueDate ? [{ icon: CalendarClock, label: `${overdue ? "Förfallen" : "Klart senast"} ${task.dueDate}`, tone: overdue ? "danger" as const : undefined, iconClassName: overdue ? "text-current" : "text-muted-foreground" }] : []),
   ];
@@ -279,7 +279,7 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
   }
   async function timer(command: "START" | "PAUSE") {
     if (preview) { setMessage(PREVIEW_MESSAGE); return; }
-    // Cloud saves first, also a new task (Daniel 2026-09-27: start time directly); Local saves inside its timer call.
+    // Cloud saves first, also a new task (2026-09-27: start time directly); Local saves inside its timer call.
     if (local && !task.id) { setError("Spara uppgiften innan tidrapporteringen startas."); return; }
     const id = local ? task.id : await save();
     if (!id) return;
@@ -312,7 +312,7 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
     try { for (const item of items) { if (local?.removeAttachment) await local.removeAttachment(task.id, item.id); else await api(`/api/workflow-task-files/${encodeURIComponent(item.id)}`, { method: "DELETE" }); } if (!local) await load(); }
     catch (issue) { setError((issue as Error).message); } finally { setBusy(false); }
   }
-  // A picture taken inside the form (Daniel 2026-09-26): the protocol is saved first, so a new protocol gets its id
+  // A picture taken inside the form (2026-09-26): the protocol is saved first, so a new protocol gets its id
   // and nothing typed is lost, then the file becomes an attachment and its id is placed in the form.
   const formMedia: FormMedia = {
     thumbnail: local ? undefined : (attachmentId) => `/api/workflow-task-files/${encodeURIComponent(attachmentId)}`,
@@ -344,7 +344,7 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
     }
     const blank = variant === "blank" || variant === "xlsx-blank";
     const excel = variant === "xlsx" || variant === "xlsx-blank";
-    // An empty template needs no saved protocol (Daniel 2026-09-28): Local draws it from the form on screen, Cloud from
+    // An empty template needs no saved protocol (2026-09-28): Local draws it from the form on screen, Cloud from
     // the published version. A report of the answers saves an unsaved protocol first, like starting the timer does.
     if (blank && !local && task.data.kind === "FORM") {
       const url = `/api/forms/blank?id=${encodeURIComponent(task.data.details.templateId)}&version=${task.data.details.templateVersion}${excel ? "&format=xlsx" : ""}`;
@@ -352,7 +352,7 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
       const link = document.createElement("a"); link.href = url; link.download = ""; link.click();
       return;
     }
-    // A report of the answers is a snapshot of what is on screen (Daniel 2026-09-30): nothing is saved, so no draft is
+    // A report of the answers is a snapshot of what is on screen (2026-09-30): nothing is saved, so no draft is
     // left behind, and unsaved changes are included. A saved protocol lends its pictures and reported time.
     const snapshotTask = { ...task, title: task.title.trim() || (task.data.kind === "FORM" ? task.data.details.templateName : "") || "Uppgift", customerId: selectedProject?.customerId ?? task.customerId };
     if (local?.report) return local.report(snapshotTask, options, variant);
@@ -425,7 +425,7 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
       <label className="space-y-1 text-xs text-muted-foreground">Avdelning (valfri)<select aria-label="Avdelning" className="form-select" value={task.departmentId || ""} disabled={!task.siteId} onChange={(e) => setTask({ ...task, departmentId: e.target.value || null })}><option value="">Ingen avdelning</option>{selectedSite?.departments.filter((department) => department.isActive || department.id === task.departmentId).map((department) => <option key={department.id} value={department.id}>{department.name}{!department.isActive && " (pausad)"}</option>)}</select></label>
     </div> : null,
   } : undefined;
-  // The task's pictures and documents exactly like the control's panel (Daniel 2026-09-28): cards with the picture, the
+  // The task's pictures and documents exactly like the control's panel (2026-09-28): cards with the picture, the
   // file name and its size; Lägg till fil in the header from the moment the task is saved; before the summary when the
   // form has one, like the control's, otherwise after the form.
   const attachments = task.attachments ?? [];
@@ -451,7 +451,7 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
   </Panel>;
   const formHasSummary = task.data.kind === "FORM" && task.data.details.document.blocks.some((block) => block.type === "section" && sectionHasSummary(block));
   // The control's Historik and Färdigställ at the foot of Sammanfattning, and its Rapport och hantering after the form.
-  // Completing opens one dialog that also asks "Vill du skriva tid?" (Daniel 2026-09-30); what is missing is shown first.
+  // Completing opens one dialog that also asks "Vill du skriva tid?" (2026-09-30); what is missing is shown first.
   const complete = async () => {
     if (!completion.ready) { await save("COMPLETED"); return; }
     setCompleteOpen(true);
@@ -473,8 +473,8 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
       router.push(`/?view=workflow_task&taskId=${encodeURIComponent(result.id)}&taskType=WORK_ORDER`);
     } catch (issue) { setError((issue as Error).message); } finally { setBusy(false); }
   }
-  // No conditions on the buttons (Daniel 2026-09-28): a template is always available and a report saves the protocol first.
-  // Every button at the foot of a task has the ordinary 40 px height (Daniel 2026-09-30: one common height).
+  // No conditions on the buttons (2026-09-28): a template is always available and a report saves the protocol first.
+  // Every button at the foot of a task has the ordinary 40 px height (2026-09-30: one common height).
   const exportButton = (label: string, variant: ReportVariant, show = false) =>
     <Button type="button" variant="outline" disabled={busy} onClick={() => void exportReport(defaultWorkflowReportOptions, undefined, variant, show)}>{show ? <Eye /> : variant === "xlsx" || variant === "xlsx-blank" ? <FileSpreadsheet /> : variant === "pdf" ? <FileDown /> : <FileText />}{label}</Button>;
   if (inlineSlots) {
@@ -512,7 +512,7 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
     {confirmCard}
     {inlineTask ? <CustomerPicker open={customerPicker} onOpenChange={setCustomerPicker} onSelect={(customer) => { chooseCustomer(customer); setCustomerPicker(false); }} localCustomers={local || preview ? customers : undefined} /> : null}
     <EditorHeader
-      // A control or risk assessment made as a form reads as what it is, not as "Formulär" (Daniel 2026-09-27); the
+      // A control or risk assessment made as a form reads as what it is, not as "Formulär" (2026-09-27); the
       // heading of a new protocol, the status and the line under it follow the form, exactly like the originals (2026-09-28).
       eyebrow={task.data.kind === "FORM" ? `${(task.formArea ?? form?.area ?? "forms") === "forms" ? "Formulär · " : ""}${task.data.details.templateName}` : kind === "WORK_ORDER" ? "Arbetsorder" : "Riskbedömning"}
       title={task.id ? task.title : formDocument ? formDocument.task.newTitle || `Nytt protokoll: ${task.data.kind === "FORM" ? task.data.details.templateName : ""}` : kind === "WORK_ORDER" ? "Ny arbetsorder" : "Ny riskbedömning"}
@@ -529,7 +529,7 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
         hint: task.status === "COMPLETED" ? "En slutförd uppgift kan inte tidrapporteras." : titleFieldEmpty && titleField && "label" in titleField ? `Ange ${titleField.label.toLowerCase()} först, så sparas protokollet när tiden startar.` : !task.title.trim() ? "Ange en rubrik först, så sparas uppgiften när tiden startar." : "Spara uppgiften innan tidrapporteringen startas.",
       }}
       actions={<>
-        {/* A completed control is never reopened; it is continued with Spara som (Daniel 2026-09-27). */}
+        {/* A completed control is never reopened; it is continued with Spara som (2026-09-27). */}
         {task.status === "COMPLETED" && task.formArea !== "kfid" ? <Button variant="outline" disabled={busy} onClick={() => void reopen()}><RotateCcw />Återöppna</Button> : null}
         {/* Spara som copies a saved protocol; the control's header shows it from the start, so an unsaved one just saves. */}
         {task.id && task.kind !== "WORK_ORDER" && !preview ? <Button variant="outline" disabled={busy} onClick={() => void createFollowUp()} title="Ny arbetsorder med uppgiftens projekt, kund och anläggning"><Wrench />Skapa arbetsorder</Button> : null}
@@ -582,7 +582,7 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
 }
 
 /**
- * Earlier protocols of the same form for the same facility or customer (Daniel 2026-09-26: follow up earlier
+ * Earlier protocols of the same form for the same facility or customer (2026-09-26: follow up earlier
  * inspections). Shown only when there are any; each opens in its own editor.
  */
 function FormHistory({ taskId, templateId, customerId, facilityId, local }: { taskId: string; templateId: string; customerId: string | null; facilityId: string | null; local?: WorkflowTaskRecord[] }) {
@@ -606,7 +606,7 @@ function FormHistory({ taskId, templateId, customerId, facilityId, local }: { ta
   </Panel>;
 }
 
-// Paged history (Daniel 2026-09-26): Cloud sends the newest versions and a count; older pages load on request.
+// Paged history (2026-09-26): Cloud sends the newest versions and a count; older pages load on request.
 // Local already holds the whole .hwf in memory, so it only pages the rendering.
 function TaskHistory({ taskId, revisions, total, local, bare = false }: { taskId: string; revisions: TaskRevision[]; total: number; local: boolean; /** Without the panel, inside the control's Versionshistorik dialog. */ bare?: boolean }) {
   const [older, setOlder] = useState<TaskRevision[]>([]);
@@ -734,6 +734,6 @@ function RiskBadge({ label, score }: { label: string; score: number }) {
 
 function RiskRating({ id, title, likelihood, consequence, onLikelihood, onConsequence }: { id: string; title: string; likelihood: number; consequence: number; onLikelihood: (value: number) => void; onConsequence: (value: number) => void }) {
   const level = riskAssessment(likelihood * consequence);
-  // The level is shown once in the card header badges (Daniel 2026-09-25), so the rating itself keeps a neutral frame.
+  // The level is shown once in the card header badges (2026-09-25), so the rating itself keeps a neutral frame.
   return <fieldset id={id} tabIndex={-1} className="min-w-0 rounded-lg border bg-muted/30 px-3 pb-3 pt-1"><legend className="px-1 text-xs font-semibold text-foreground">{title}</legend><div className="grid grid-cols-2 gap-2"><label className="space-y-1 text-[11px] font-medium text-muted-foreground">Sannolikhet<select className="form-select" value={likelihood} onChange={(event) => onLikelihood(Number(event.target.value))}>{likelihoodOptions.map((label, index) => <option key={label} value={index + 1}>{index + 1} · {label}</option>)}</select></label><label className="space-y-1 text-[11px] font-medium text-muted-foreground">Konsekvens<select className="form-select" value={consequence} onChange={(event) => onConsequence(Number(event.target.value))}>{consequenceOptions.map((label, index) => <option key={label} value={index + 1}>{index + 1} · {label}</option>)}</select></label></div><p className="sr-only">Risknivå {level.score}, {level.label} ({likelihood} × {consequence})</p></fieldset>;
 }

@@ -21,6 +21,10 @@ type LoginFormProps = {
   notice?: string;
   initialError?: string;
   googleEnabled?: boolean;
+  /** false in the community edition: no Google row at all. */
+  googleOffered?: boolean;
+  /** Whose terms the footer links to; null when this installation publishes none. */
+  termsOf?: string | null;
 };
 
 export function LoginForm({
@@ -28,6 +32,8 @@ export function LoginForm({
   notice,
   initialError,
   googleEnabled = false,
+  googleOffered = true,
+  termsOf = null,
 }: LoginFormProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(initialError ?? null);
@@ -162,7 +168,7 @@ export function LoginForm({
         </Button>
       </form>
 
-      <div className="space-y-4">
+      {googleOffered ? <div className="space-y-4">
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <span className="h-px flex-1 bg-slate-200" />
           Eller fortsätt med
@@ -193,14 +199,14 @@ export function LoginForm({
             Google-inloggning är inte tillgänglig just nu.
           </p>
         ) : null}
-      </div>
+      </div> : null}
 
-      <p className="text-center text-xs leading-5 text-muted-foreground">
-        Läs HINTEK Workflows{" "}
+      {termsOf ? <p className="text-center text-xs leading-5 text-muted-foreground">
+        Läs {termsOf}s{" "}
         <Link href="/legal/terms" className="underline underline-offset-4">tjänstevillkor</Link>,{" "}
         <Link href="/legal/privacy" className="underline underline-offset-4">integritetspolicy</Link>{" "}
         och <Link href="/legal/dpa" className="underline underline-offset-4">DPA</Link>.
-      </p>
+      </p> : null}
     </div>
   );
 }

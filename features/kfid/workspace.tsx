@@ -23,7 +23,6 @@ import { api, action } from "./api";
 import { Panel, Field, Empty, Modal } from "./ui";
 import { Administration, LegalPanel } from "./administration";
 import { CustomerCompanies } from "./customer-companies";
-import { IntegrationKeys } from "./integration-keys";
 import { HistoryRetention } from "@/features/workflow/history-retention";
 import { clientExtensions } from "@ee/client";
 import { Profile } from "./profile";
@@ -66,7 +65,7 @@ import {
 } from "@/lib/branding";
 import { useInstance } from "@/components/instance-provider";
 // HINTEK's commercial views live in ee/ (Fas 2); without it they are null.
-const { BillingRead, LandingEditor } = clientExtensions;
+const { BillingRead, IntegrationKeys, LandingEditor } = clientExtensions;
 
 const blankCustomer = {
   name: "",
@@ -131,7 +130,7 @@ export function Workspace({
     [],
   );
   const [refreshCount, setRefreshCount] = useState(0);
-  // Customers are read only for the views whose forms list them (Daniel 2026-09-26: fetch only what is shown).
+  // Customers are read only for the views whose forms list them (2026-09-26: fetch only what is shown).
   const customerOptions = useCustomerOptions(Boolean(overview) && overview?.organization.storageMode !== "LOCAL" && ["workflow_task", "new_project", "project"].includes(view));
   const refresh = useCallback(async () => {
     if (!user) return;
@@ -290,7 +289,7 @@ export function Workspace({
   else if (view === "administration")
     content = <Administration notify={notify} />;
   else if (view === "integrations")
-    content = <IntegrationKeys notify={notify} />;
+    content = IntegrationKeys ? <IntegrationKeys notify={notify} /> : null;
   else if (view === "history_retention")
     content = <HistoryRetention notify={notify} />;
   else if (view === "customer_companies")
@@ -299,7 +298,7 @@ export function Workspace({
     // The landing editor lives in ee/ (Fas 2); without it page.tsx never opens this view.
     content = user?.role === "SUPERADMIN" && LandingEditor ? <LandingEditor /> : <Panel title="Endast för HINTEK"><p className="text-sm text-muted-foreground">Landningssidan redigeras av HINTEK:s superadmin.</p></Panel>;
   else if (view === "forms")
-    // HINTEK's superadmin builds HINTEK's forms; a company admin in Cloud builds the company's own (Daniel 2026-09-27).
+    // HINTEK's superadmin builds HINTEK's forms; a company admin in Cloud builds the company's own (2026-09-27).
     content = user?.role === "SUPERADMIN" || (overview?.admin && overview.organization.storageMode !== "LOCAL") ? <FormBuilder userName={user?.name || undefined} tourSeen={overview ? Boolean(preferences.tours?.formBuilder) : undefined}
       onTourSeen={async () => { await action({ action: "tour", tour: "formBuilder" }); setPreferences((current) => ({ ...current, tours: { ...current.tours, formBuilder: new Date().toISOString() } })); }} /> : <Panel title="Endast för administratörer"><p className="text-sm text-muted-foreground">Formulär skapas och publiceras av HINTEK och av företagets administratör.</p></Panel>;
   else if (view === "facilities")
@@ -361,7 +360,7 @@ export function Workspace({
     />;
   else if (view === "time" && overview)
     content = <TimeReport focusTaskId={timeTaskId} />;
-  // Mina arbetsordrar (Daniel 2026-09-26): its own menu group; the server checks the module permission.
+  // Mina arbetsordrar (2026-09-26): its own menu group; the server checks the module permission.
   else if (view === "work_orders" && overview)
     content = <WorkOrderList canCreate={Boolean(overview.admin) || hasWorkflowPermission(normalizeWorkflowPermissionProfile(user?.workflowPermissions), "work-order", "create")} />;
   // Driftronder (2026-09-28): recurring rounds; the server filters by the forms the member may read.
@@ -661,12 +660,13 @@ export function Workspace({
                   }
                 />
               </div>
-              {/* Which menu buttons are shown (Daniel 2026-09-30): each person chooses; display only, never access. */}
+              {/* Which menu buttons are shown (2026-09-30): each person chooses; display only, never access. */}
               <fieldset className="space-y-3 rounded-lg border p-4" data-testid="menu-visibility">
                 <legend className="px-1 text-xs font-semibold">Visa i menyn</legend>
                 <p className="text-xs text-muted-foreground">Välj vilka knappar du vill se. Det du döljer finns kvar och kan väljas igen; Översikt, Hjälp och Inställningar visas alltid.</p>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  {MENU_ITEM_GROUPS.map((group) => <div key={group.title} className="space-y-2">
+                  {/* Only the buttons this installation has (HINTEK AI and Krediter live in ee/). */}
+                  {MENU_ITEM_GROUPS.map((group) => ({ ...group, items: group.items.filter((item) => (item.key !== "ai" || Boolean(clientExtensions.AssistantPanel)) && (item.key !== "credits" || instance.features.billing || instance.features.credits)) })).filter((group) => group.items.length).map((group) => <div key={group.title} className="space-y-2">
                     <p className="text-xs font-medium text-muted-foreground">{group.title}</p>
                     {group.items.map((item) => <label key={item.key} className="flex items-center gap-3 text-sm">
                       <Checkbox checked={!preferences.hiddenMenuItems.includes(item.key)} onCheckedChange={(v) => setPreferences((p) => ({ ...p, hiddenMenuItems: v === true ? p.hiddenMenuItems.filter((key) => key !== item.key) : [...p.hiddenMenuItems, item.key] }))} />

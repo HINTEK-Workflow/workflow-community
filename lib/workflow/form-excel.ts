@@ -6,7 +6,7 @@ import { formAnswer } from "./form-report";
 import type { WorkflowReportTask } from "./report";
 
 /**
- * A protocol as an Excel workbook (Daniel 2026-09-27, decision B: the control's Excel export for every form): the facts
+ * A protocol as an Excel workbook (2026-09-27, decision B: the control's Excel export for every form): the facts
  * and simple answers, one sheet per table, the checklists and the summary, styled like the control's workbook. `blank`
  * gives the empty form to fill in by hand, like the control's "tom mall".
  */

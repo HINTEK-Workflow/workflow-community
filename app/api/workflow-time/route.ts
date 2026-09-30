@@ -26,7 +26,7 @@ const json = (value: unknown) => value as Prisma.InputJsonValue;
 export const dynamic = "force-dynamic";
 
 /**
- * What a time entry is registered on: a work order/risk assessment, or (Daniel 2026-09-26, decision 13) a commissioning
+ * What a time entry is registered on: a work order/risk assessment, or (2026-09-26, decision 13) a commissioning
  * control. Controls only get manual registration; the same correction rules and history apply to both.
  */
 type TimeSource = { id: string; title: string; kind: string; formArea?: string | null; status: string; archived: boolean; control: boolean };
@@ -64,7 +64,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ events: events.map((event) => ({ ...event, createdAt: event.createdAt.toISOString() })) }, { headers: { "Cache-Control": "private, no-store" } });
     }
     const params = new URL(request.url).searchParams;
-    // The top bar's running timer (Daniel 2026-09-26): only the caller's own running entries, bounded and readable.
+    // The top bar's running timer (2026-09-26): only the caller's own running entries, bounded and readable.
     if (params.get("running") === "mine") {
       const running = await prisma.workflowTimeEntry.findMany({
         where: { userId: ctx.user.id, endedAt: null, OR: [{ task: { organizationId: ctx.organizationId } }, { control: { organizationId: ctx.organizationId, deletedAt: null } }] },
@@ -75,7 +75,7 @@ export async function GET(request: Request) {
       const canRead = (subject: Parameters<typeof hasWorkflowPermission>[1]) => ctx.admin || hasWorkflowPermission(ctx.workflowPermissions, subject, "read");
       return NextResponse.json({
         now: new Date().toISOString(),
-        // Tasks and (Daniel 2026-09-27) controls run a timer.
+        // Tasks and (2026-09-27) controls run a timer.
         running: running.flatMap(({ task, control, ...entry }) => task && canRead(workflowSubjectForTask(task.kind, task.formArea))
           ? [{ entryId: entry.id, taskId: task.id, taskTitle: task.title, kind: task.kind, projectName: task.project?.name ?? null, startedAt: entry.startedAt.toISOString() }]
           : control && canRead("kfid")
@@ -83,7 +83,7 @@ export async function GET(request: Request) {
             : []),
       }, { headers: { "Cache-Control": "private, no-store" } });
     }
-    // Planning's capacity panel (Daniel 2026-09-26: fetch only what is shown): the caller's own finished time in the
+    // Planning's capacity panel (2026-09-26: fetch only what is shown): the caller's own finished time in the
     // current Swedish week and the weekly working time, nothing else.
     if (params.get("capacity") === "week") {
       const week = capacityWeek(new Date());
@@ -100,7 +100,7 @@ export async function GET(request: Request) {
         schedule: { organizationWeeklyWorkMinutes: ctx.organization.weeklyWorkMinutes, memberWeeklyWorkMinutes: member.weeklyWorkMinutes },
       }, { headers: { "Cache-Control": "private, no-store" } });
     }
-    // Team entries are bounded by a date range (Daniel 2026-09-26: bounded server reads). Default: the last 90 Swedish
+    // Team entries are bounded by a date range (2026-09-26: bounded server reads). Default: the last 90 Swedish
     // days; the admin widens it by choosing an earlier "Från". Own entries (Min vecka, own list) are not bounded.
     const isoDay = z.union([z.literal(""), z.iso.date()]);
     const teamFrom = isoDay.parse(params.get("teamFrom") ?? "") || swedishDayKey(addSwedishDays(new Date(), -90));
@@ -168,7 +168,7 @@ export async function POST(request: Request) {
     ]).parse(await body(request));
     const actorName = ctx.user.name || ctx.user.email;
 
-    // Start/pause on a control (Daniel 2026-09-27: every task editor can start time), per person as for tasks.
+    // Start/pause on a control (2026-09-27: every task editor can start time), per person as for tasks.
     if (input.action === "control_timer") {
       requireWorkflowPermission(ctx, "kfid", "edit");
       const control = await prisma.control.findFirst({ where: { id: input.id, organizationId: ctx.organizationId, deletedAt: null }, select: { id: true, title: true, status: true, workflowProject: { select: { archivedAt: true } } } });

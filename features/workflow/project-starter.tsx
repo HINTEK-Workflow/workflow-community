@@ -11,7 +11,7 @@ import { KFID_FORM_ID, RISK_FORM_ID } from "@/lib/workflow/builtin-originals";
 type PublishedForm = { id: string; name: string; baseId?: string | null; allowInProject?: boolean };
 
 /**
- * Flödesvåg 2 (Daniel 2026-09-30): a new project without tasks suggests its first tasks in the usual order of work –
+ * Flödesvåg 2 (2026-09-30): a new project without tasks suggests its first tasks in the usual order of work –
  * a risk assessment before the work starts, the work order for the work itself and the commissioning control before
  * the installation is taken into use. Rule-based; each suggestion opens the ordinary editor with the project (and its
  * customer) filled in and nothing is created until the person saves. The risk assessment and the control exist as

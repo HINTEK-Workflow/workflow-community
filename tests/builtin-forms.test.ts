@@ -61,7 +61,7 @@ test("object cards: row names, choice deviations, pictures per object and comple
   assert.deepEqual(result.deviations.map((item) => item.message), ["Termograferade objekt, Central A1, grupp 12: Bedömning – Åtgärda omgående."]);
   assert.deepEqual([...formPlacedImageIds(thermography, values)].sort(), ["att-1", "att-2"]);
   const completion = formCompletion(thermography, values);
-  // Required values are asked for row by row, like the control (Daniel 2026-09-27).
+  // Required values are asked for row by row, like the control (2026-09-27).
   assert.ok(completion.issues.some((item) => item.message === "Termograferade objekt, Objekt 2: fyll i objekt / position."), "the unnamed object must be named");
 });
 

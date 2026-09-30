@@ -1,4 +1,4 @@
--- The permission area of a form's protocols (Daniel 2026-09-27, decision B): Kontroll före idrifttagning and
+-- The permission area of a form's protocols (2026-09-27, decision B): Kontroll före idrifttagning and
 -- Riskbedömning built as forms keep the permission areas they have today, so a member limited for Kontroll före
 -- idrifttagning stays limited when controls are protocols. Other forms use the Formulär area as before. A protocol stores
 -- the area of its form when it is created; existing protocols (NULL) belong to Formulär. A company's version of an

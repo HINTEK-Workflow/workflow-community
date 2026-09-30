@@ -20,7 +20,7 @@ function defaults() {
 }
 
 /**
- * Completing a task asks "Vill du skriva tid?" in the same step (Daniel 2026-09-30, the guided flow): a completed task
+ * Completing a task asks "Vill du skriva tid?" in the same step (2026-09-30, the guided flow): a completed task
  * cannot take time from an ordinary member afterwards, so the question comes before the task is locked, with the time
  * reported so far. Writing time is chosen from the start when nothing is reported yet; a running timer is stopped by
  * the completion itself. Nothing is saved until the person confirms.

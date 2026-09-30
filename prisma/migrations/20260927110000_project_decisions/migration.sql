@@ -1,4 +1,4 @@
--- The project's decision log (Daniel 2026-09-26): append-only, tenant-bound through the composite project key.
+-- The project's decision log (2026-09-26): append-only, tenant-bound through the composite project key.
 CREATE TABLE "ProjectDecision" (
     "id" TEXT NOT NULL,
     "organizationId" TEXT NOT NULL,

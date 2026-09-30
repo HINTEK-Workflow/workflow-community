@@ -985,7 +985,7 @@ function closeLocalRunningEntries(workspace: LocalWorkspaceDocument, task: Local
 
 /** Same per-person rule as Cloud: pause closes only the caller's entry, and starting pauses the caller's other timers. */
 export function updateLocalWorkflowTimer(workspace: LocalWorkspaceDocument, taskId: string, command: "START" | "PAUSE", userId: string) {
-  // The id may also be a control (Daniel 2026-09-27: every task editor can start time); same per-person rules.
+  // The id may also be a control (2026-09-27: every task editor can start time); same per-person rules.
   const control = workspace.controls.find((item) => item.id === taskId && !item.deletedAt);
   const current = workspace.workflowTasks.find((item) => item.id === taskId);
   if (!current && !control) throw new Error("Uppgiften hittades inte i den lokala arbetsytan.");

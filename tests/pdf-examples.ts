@@ -8,7 +8,7 @@ import { REFERENCE_DIR, referenceControlFull, referenceReports, referenceRiskTas
 import { riskToFormValues } from "./fixtures/risk-to-form";
 
 /**
- * Before-and-after PDFs for Daniel's review of decision B (2026-09-27): `npx tsx tests/pdf-examples.ts`. Written to
+ * Before-and-after PDFs for the review of decision B (2026-09-27): `npx tsx tests/pdf-examples.ts`. Written to
  * docs/pdf-examples-20260927; the locked references stay in tests/fixtures/reference-pdfs.
  */
 const out = "docs/pdf-examples-20260927";

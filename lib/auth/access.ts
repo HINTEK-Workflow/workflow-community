@@ -1,11 +1,11 @@
 import { instanceAdminEmail } from "@/lib/instance-server";
 
-// Temporary private test: only the installation's owner account (INSTANCE_ADMIN_EMAIL; HINTEK: Daniel) may sign in.
+// Temporary private test: only the installation's owner account (INSTANCE_ADMIN_EMAIL) may sign in.
 // Change deliberately when opening registration.
 export const QA_ROLE_EMAILS = {
   owner: "qa-owner@role-test.invalid",
   worker: "qa-worker@role-test.invalid",
-  // Approved by Daniel 2026-09-26 (form editor, decision 7): a synthetic superadmin for automatic tests of the
+  // Approved by 2026-09-26 (form editor, decision 7): a synthetic superadmin for automatic tests of the
   // superadmin views, with exactly the same loopback, kfid_v3_test and isolated-storage limits as the other two.
   superadmin: "qa-superadmin@role-test.invalid",
 } as const;
@@ -42,7 +42,7 @@ export function isTestEmail(email: string | null | undefined): boolean {
 /**
  * The pilot (prepared 2026-09-30): the addresses in PILOT_ACCESS_EMAILS may sign in too – only on the public HTTPS
  * server, never on a loopback QA instance, so no real identity is ever enabled during private testing. Empty (the
- * default) keeps the private test: only Daniel. Setting the list is the deliberate act of opening the pilot.
+ * default) keeps the private test: only the owner account. Setting the list is the deliberate act of opening the pilot.
  */
 export function pilotAccessEmails(): Set<string> {
   const raw = process.env.PILOT_ACCESS_EMAILS ?? "";
