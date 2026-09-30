@@ -2,13 +2,15 @@ import { UserRole } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { env, absoluteUrl } from "@/lib/env";
 import { sendSystemEmail } from "@/lib/mail/mailer";
+import { mailConfig } from "@/lib/mail/settings-server";
 import { buildOrganizationInvitationEmail } from "@/lib/mail/templates";
 import { hashPassword } from "@/lib/auth/password";
 import { createRawToken, expiresInHours, hashToken } from "@/lib/auth/tokens";
 import { serverExtensions } from "@/lib/extensions/server";
 
-export function invitationDeliveryEnabled() {
-  return env.INVITATION_DELIVERY_ENABLED;
+// Invitations are sent when switched on under E-post (or INVITATION_DELIVERY_ENABLED in .env), never from loopback QA.
+export async function invitationDeliveryEnabled() {
+  return (await mailConfig()).delivery.invitations;
 }
 
 export function invitationActiveKey(organizationId: string, email: string) {
@@ -16,7 +18,7 @@ export function invitationActiveKey(organizationId: string, email: string) {
 }
 
 export async function sendPreparedInvitation(invitationId: string) {
-  if (!invitationDeliveryEnabled())
+  if (!(await invitationDeliveryEnabled()))
     throw new Error("Inbjudningsutskick är avstängt under privat test.");
 
   const candidate = await prisma.organizationInvitation.findUnique({
@@ -83,7 +85,7 @@ export async function sendPreparedInvitation(invitationId: string) {
 }
 
 export async function inspectInvitationToken(rawToken: string) {
-  if (!invitationDeliveryEnabled()) return null;
+  if (!(await invitationDeliveryEnabled())) return null;
   const invitation = await prisma.organizationInvitation.findUnique({
     where: { tokenHash: hashToken(rawToken) },
     include: { organization: { select: { name: true, isActive: true } } },
@@ -108,7 +110,7 @@ export async function acceptInvitationWithToken(
   rawToken: string,
   password: string,
 ) {
-  if (!invitationDeliveryEnabled())
+  if (!(await invitationDeliveryEnabled()))
     return {
       ok: false,
       message: "Inbjudningar öppnas efter den privata testperioden.",

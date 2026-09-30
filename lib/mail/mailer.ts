@@ -1,43 +1,42 @@
 import nodemailer from "nodemailer";
-import { env } from "@/lib/env";
+import { mailConfig } from "@/lib/mail/settings-server";
+import type { MailConfig } from "@/lib/mail/settings";
 
 declare global {
-  var workflowTransporter: ReturnType<typeof nodemailer.createTransport> | undefined;
+  var workflowTransporter: { key: string; transporter: ReturnType<typeof nodemailer.createTransport> } | undefined;
 }
 
-function createTransporter() {
-  return nodemailer.createTransport({
-    host: env.SMTP_HOST,
-    port: env.SMTP_PORT,
-    secure: env.SMTP_SECURE,
-    auth: env.SMTP_USER
-      ? {
-          user: env.SMTP_USER,
-          pass: env.SMTP_PASS,
-        }
-      : undefined,
-  });
-}
-
-function getTransporter() {
-  if (!global.workflowTransporter) {
-    global.workflowTransporter = createTransporter();
+// One transporter per SMTP setting: a change on the E-post page takes effect at the next mail without a restart.
+function transporterFor(transport: MailConfig["transport"]) {
+  const key = JSON.stringify(transport);
+  if (global.workflowTransporter?.key !== key) {
+    global.workflowTransporter = {
+      key,
+      transporter: nodemailer.createTransport({
+        host: transport.host,
+        port: transport.port,
+        secure: transport.secure,
+        auth: transport.user ? { user: transport.user, pass: transport.password } : undefined,
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 20000,
+      }),
+    };
   }
-
-  return global.workflowTransporter;
+  return global.workflowTransporter.transporter;
 }
 
-export async function sendSystemEmail(input: {
-  to: string;
-  bcc?: string[];
-  subject: string;
-  html: string;
-  text: string;
-}) {
-  const transporter = getTransporter();
+type SystemEmail = { to: string; bcc?: string[]; subject: string; html: string; text: string };
 
+/** Sends with the settings that apply now (E-post in the app, otherwise .env). */
+export async function sendSystemEmail(input: SystemEmail) {
+  const config = await mailConfig();
+  return deliverSystemEmail(transporterFor(config.transport), config.from, input);
+}
+
+export function deliverSystemEmail(transporter: ReturnType<typeof nodemailer.createTransport>, from: MailConfig["from"], input: SystemEmail) {
   return transporter.sendMail({
-    from: `"${env.MAIL_FROM_NAME}" <${env.MAIL_FROM_ADDRESS}>`,
+    from: { name: from.name, address: from.address },
     to: input.to,
     bcc: input.bcc,
     subject: input.subject,

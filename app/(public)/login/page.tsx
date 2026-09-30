@@ -86,6 +86,7 @@ export default async function LoginPage({
         googleEnabled={googleEnabled}
         googleOffered={features.googleSignIn}
         termsOf={features.terms ? name : null}
+        demo={features.demoOnLogin}
       />
     </AuthShell>
   );

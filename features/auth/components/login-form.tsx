@@ -10,6 +10,7 @@ import {
   ArrowRight,
   CheckCircle2,
   LoaderCircle,
+  PlayCircle,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,8 @@ type LoginFormProps = {
   googleOffered?: boolean;
   /** Whose terms the footer links to; null when this installation publishes none. */
   termsOf?: string | null;
+  /** The community edition shows a button to the fictional demo (2026-09-30). */
+  demo?: boolean;
 };
 
 export function LoginForm({
@@ -34,6 +37,7 @@ export function LoginForm({
   googleEnabled = false,
   googleOffered = true,
   termsOf = null,
+  demo = false,
 }: LoginFormProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(initialError ?? null);
@@ -199,6 +203,19 @@ export function LoginForm({
             Google-inloggning är inte tillgänglig just nu.
           </p>
         ) : null}
+      </div> : null}
+
+      {demo ? <div className="space-y-3">
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <span className="h-px flex-1 bg-slate-200" />
+          Vill du se hur det fungerar?
+          <span className="h-px flex-1 bg-slate-200" />
+        </div>
+        {/* A plain link: /demo sets the demo cookie, so it must never be prefetched. */}
+        <Button asChild variant="outline" size="lg" className="h-10 w-full">
+          <a href="/demo"><PlayCircle />Visa demo med exempeldata</a>
+        </Button>
+        <p className="text-center text-xs leading-5 text-muted-foreground">Påhittade kunder och uppgifter. Inget sparas och inget konto behövs.</p>
       </div> : null}
 
       {termsOf ? <p className="text-center text-xs leading-5 text-muted-foreground">

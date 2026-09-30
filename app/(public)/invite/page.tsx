@@ -19,7 +19,7 @@ export default async function InvitePage({
   const value = params.token;
   const token = Array.isArray(value) ? value[0] : value;
   const invitation = token ? await inspectInvitationToken(token) : null;
-  const deliveryEnabled = invitationDeliveryEnabled();
+  const deliveryEnabled = await invitationDeliveryEnabled();
 
   return (
     <AuthShell

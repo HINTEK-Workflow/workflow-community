@@ -26,6 +26,8 @@ irm https://raw.githubusercontent.com/HINTEK-Workflow/workflow-community/main/in
 curl -fsSL https://raw.githubusercontent.com/HINTEK-Workflow/workflow-community/main/install.sh | bash
 ```
 
+The login page has a **Visa demo med exempeldata** button: a demo with invented data that runs in the browser, without an account. After signing in, the superadmin sets up e-mail (SMTP server, sender and which mail is sent) under **E-post** in the menu.
+
 Workflow is installed in the folder `workflow-community` in your home folder. Run the same line again to update; your
 settings and data are kept. In that folder, `docker compose down` stops Workflow and `docker compose up -d` starts it
 again.

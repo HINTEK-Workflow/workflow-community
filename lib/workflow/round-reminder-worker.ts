@@ -1,7 +1,8 @@
 import { Prisma } from "@prisma/client";
-import { absoluteUrl, env } from "@/lib/env";
+import { absoluteUrl } from "@/lib/env";
 import { prisma } from "@/lib/db";
 import { sendSystemEmail } from "@/lib/mail/mailer";
+import { mailConfig } from "@/lib/mail/settings-server";
 import { buildRoundReminderEmail } from "@/lib/mail/templates";
 import { formatSwedish, swedishDayKey } from "@/lib/swedish-time";
 import { formScheduleRuleSchema, parseScheduleReminders } from "./form-schedule";
@@ -10,12 +11,12 @@ import { dueRoundEmails, type ReminderSchedule } from "./round-reminders";
 type Dependencies = { enabled?: boolean; send?: typeof sendSystemEmail };
 
 /**
- * Sends today's round reminders by e-mail (2026-09-30). Off until ROUND_EMAIL_DELIVERY_ENABLED is set, like the
+ * Sends today's round reminders by e-mail (2026-09-30). Off until switched on under E-post (or .env), like the
  * other mail; run once each morning (scripts/rounds/run-round-reminders.ts). A delivery row is claimed before sending,
  * so a second run – or two at once – never sends the same reminder twice; a failure is recorded without the address.
  */
 export async function runRoundReminderWorker(now = new Date(), dependencies: Dependencies = {}) {
-  const enabled = dependencies.enabled ?? env.ROUND_EMAIL_DELIVERY_ENABLED;
+  const enabled = dependencies.enabled ?? (await mailConfig()).delivery.roundReminders;
   if (!enabled) return { status: "disabled" as const };
   if (Number.isNaN(now.getTime())) throw new Error("Ogiltig jobbtidpunkt.");
   const send = dependencies.send ?? sendSystemEmail;

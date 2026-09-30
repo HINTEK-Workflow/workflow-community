@@ -24,6 +24,7 @@ import { Panel, Field, Empty, Modal } from "./ui";
 import { Administration, LegalPanel } from "./administration";
 import { CustomerCompanies } from "./customer-companies";
 import { HistoryRetention } from "@/features/workflow/history-retention";
+import { MailSettings } from "@/features/workflow/mail-settings";
 import { clientExtensions } from "@ee/client";
 import { Profile } from "./profile";
 import { SuggestionsEditor } from "./suggestions";
@@ -292,6 +293,8 @@ export function Workspace({
     content = IntegrationKeys ? <IntegrationKeys notify={notify} /> : null;
   else if (view === "history_retention")
     content = <HistoryRetention notify={notify} />;
+  else if (view === "mail_settings")
+    content = user?.role === "SUPERADMIN" ? <MailSettings notify={notify} /> : null;
   else if (view === "customer_companies")
     content = <CustomerCompanies />;
   else if (view === "landing_editor")

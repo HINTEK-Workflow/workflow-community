@@ -14,7 +14,7 @@ test("an empty environment gives the installation's defaults with every part it 
   assert.equal(instance.operator, INSTANCE_DEFAULTS.operator);
   assert.equal(instance.defaultBrand, (INSTANCE_DEFAULTS.name as string) === "HINTEK Workflow");
   // Fas 2: billing, credits, the landing page, HINTEK AI and the API/MCP server exist only with ee/.
-  assert.deepEqual(instance.features, { billing: EE_PRESENT, credits: EE_PRESENT, ai: EE_PRESENT, integrations: EE_PRESENT, googleSignIn: EE_PRESENT, terms: EE_PRESENT, landingEditor: EE_PRESENT });
+  assert.deepEqual(instance.features, { billing: EE_PRESENT, credits: EE_PRESENT, ai: EE_PRESENT, integrations: EE_PRESENT, googleSignIn: EE_PRESENT, terms: EE_PRESENT, demoOnLogin: !EE_PRESENT, landingEditor: EE_PRESENT });
   assert.equal(instanceAdminEmail({}), INSTANCE_DEFAULTS.adminEmail);
 });
 
@@ -39,7 +39,7 @@ test("another installation names itself, its operator and its admin", () => {
   const instance = publicInstance(env);
   assert.equal(instance.name, "Elbolaget Flöde");
   assert.equal(instance.defaultBrand, false);
-  assert.deepEqual(instance.features, { billing: false, credits: false, ai: false, integrations: EE_PRESENT, googleSignIn: EE_PRESENT, terms: EE_PRESENT, landingEditor: false });
+  assert.deepEqual(instance.features, { billing: false, credits: false, ai: false, integrations: EE_PRESENT, googleSignIn: EE_PRESENT, terms: EE_PRESENT, demoOnLogin: !EE_PRESENT, landingEditor: false });
   assert.equal(instanceAdminEmail(env), "admin@elbolaget.se");
   assert.equal(isHintekOrganization({ name: "Elbolaget", slug: "elbolaget" }, instance), true);
   assert.equal(isHintekOrganization({ name: "X", domain: "el.example" }, instance), true);

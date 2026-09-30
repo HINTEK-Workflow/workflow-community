@@ -8,6 +8,7 @@ import { signOut } from "next-auth/react";
 import {
   Building2,
   KeyRound,
+  Mail,
   Bell,
   CalendarClock,
   Repeat,
@@ -227,6 +228,13 @@ export const views = {
   history_retention: {
     label: "Historik och lagring",
     icon: History,
+    tone: "text-feature-customer",
+    surface: "bg-feature-customer-soft",
+  },
+  // The installation's e-mail: SMTP, sender and which mail is sent (2026-09-30): the superadmin.
+  mail_settings: {
+    label: "E-post",
+    icon: Mail,
     tone: "text-feature-customer",
     surface: "bg-feature-customer-soft",
   },
@@ -574,7 +582,7 @@ export function AppShell({
       <div id={`${testId}-items`} hidden={!open}>{child}</div>
     </div>;
   }
-  const productActive = view === "customer_companies" || view === "landing_editor" || view === "integrations" || view === "history_retention";
+  const productActive = view === "customer_companies" || view === "landing_editor" || view === "integrations" || view === "history_retention" || view === "mail_settings";
   const productOpen = expanded.product || productActive;
   const notificationLabel = notificationCount ? `Notiser, ${notificationCount} aktuella` : "Notiser";
   const sidebar = (
@@ -658,6 +666,7 @@ export function AppShell({
             {instance.features.landingEditor ? navItem("landing_editor") : null}
             {["OWNER", "ADMIN"].includes(user.memberRole ?? "") && !user.localStorageMode && instance.features.integrations ? navItem("integrations") : null}
             {["OWNER", "ADMIN"].includes(user.memberRole ?? "") && !user.localStorageMode ? navItem("history_retention") : null}
+            {navItem("mail_settings")}
           </div>
         </div>}
         <div className="mt-auto space-y-1 pt-6">

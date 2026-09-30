@@ -1614,6 +1614,8 @@ model SystemSettings {
   id          String @id @default("global")
   suggestions Json   @default("{}")
   commercial  Json   @default("{}")
+  /// E-post settings made in the app (lib/mail/settings.ts); empty = the server's .env values.
+  mail        Json   @default("{}")
 }
 
 model ControlVisit {

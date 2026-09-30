@@ -129,7 +129,7 @@ export async function GET(request: Request) {
       })),
       activeOrganizationId: user.activeOrganizationId,
       superadmin: user.role === "SUPERADMIN",
-      invitationDeliveryEnabled: invitationDeliveryEnabled(),
+      invitationDeliveryEnabled: await invitationDeliveryEnabled(),
       events,
       eventCount,
     });
@@ -406,7 +406,7 @@ export async function POST(request: Request) {
         return { invitationId: invitation.id, send: true };
       });
       if (result.send) {
-        if (!invitationDeliveryEnabled()) {
+        if (!(await invitationDeliveryEnabled())) {
           if (action === "invitation_send")
             throw new ApiError(
               409,
@@ -426,7 +426,7 @@ export async function POST(request: Request) {
       }
       return NextResponse.json({
         ok: true,
-        status: invitationDeliveryEnabled() ? "PENDING" : "PREPARED",
+        status: (await invitationDeliveryEnabled()) ? "PENDING" : "PREPARED",
       });
     }
     await prisma.$transaction(async (tx) => {
