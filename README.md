@@ -7,6 +7,29 @@ a form builder for your own protocols, with PDF reports. The user interface is i
 This repository is the community edition of [HINTEK Workflow](https://workflow.hintek.se), published under the
 [GNU Affero General Public License v3.0](LICENSE). It is exported from HINTEK's private repository at each release.
 
+## Install in one step
+
+You need [Docker Desktop](https://www.docker.com/products/docker-desktop) (running) and [Git](https://git-scm.com).
+Copy one line into a terminal – for example the terminal in VS Code – and answer two questions (your e-mail address and
+a password). The installer downloads Workflow, creates the settings with new random secrets, picks free ports, starts
+everything, creates your account and opens the browser. The first start takes 5–10 minutes.
+
+**Windows (PowerShell):**
+
+```powershell
+irm https://raw.githubusercontent.com/HINTEK-Workflow/workflow-community/main/install.ps1 | iex
+```
+
+**macOS and Linux:**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/HINTEK-Workflow/workflow-community/main/install.sh | bash
+```
+
+Workflow is installed in the folder `workflow-community` in your home folder. Run the same line again to update; your
+settings and data are kept. In that folder, `docker compose down` stops Workflow and `docker compose up -d` starts it
+again.
+
 ## What is not included
 
 HINTEK's commercial parts are not part of this repository. Without them:
@@ -27,7 +50,7 @@ addresses in `PILOT_ACCESS_EMAILS`. Open sign-up is not available yet.
 - PostgreSQL 16 (the included `docker-compose.yml` can run it)
 - Docker (optional, for running the whole stack in containers)
 
-## Getting started
+## Manual installation (for developers)
 
 ```bash
 cp .env.example .env            # then change AUTH_SECRET, INTEGRATION_KEYS_SECRET and INSTANCE_ADMIN_EMAIL

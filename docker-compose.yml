@@ -1,10 +1,10 @@
 services:
   app:
-    image: ${APP_IMAGE:-kfid-v3:latest}
+    image: ${APP_IMAGE:-workflow-community:local}
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: ${CONTAINER_PREFIX:-hintek-workflow}-app
+    container_name: ${CONTAINER_PREFIX:-workflow}-app
     env_file:
       - .env
     environment:
@@ -20,7 +20,7 @@ services:
 
   postgres:
     image: postgres:16-alpine
-    container_name: ${CONTAINER_PREFIX:-hintek-workflow}-postgres
+    container_name: ${CONTAINER_PREFIX:-workflow}-postgres
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
