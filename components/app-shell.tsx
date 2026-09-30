@@ -648,8 +648,8 @@ export function AppShell({
         <div className="my-5 border-t" />
         {commercial && shown("credits", view === "credits") ? navItem("credits") : null}
         {user && ["OWNER", "ADMIN"].includes(user.memberRole ?? "") && navItem("administration")}
-        {user && user.role !== "SUPERADMIN" && ["OWNER", "ADMIN"].includes(user.memberRole ?? "") && !user.localStorageMode && instance.features.integrations && navItem("integrations")}
-        {user && user.role !== "SUPERADMIN" && ["OWNER", "ADMIN"].includes(user.memberRole ?? "") && !user.localStorageMode && navItem("history_retention")}
+        {user && user.role !== "SUPERADMIN" && ["OWNER", "ADMIN"].includes(user.memberRole ?? "") && !user.localStorageMode && !demo && instance.features.integrations && navItem("integrations")}
+        {user && user.role !== "SUPERADMIN" && ["OWNER", "ADMIN"].includes(user.memberRole ?? "") && !user.localStorageMode && !demo && navItem("history_retention")}
         {user?.role === "SUPERADMIN" && <div className="mt-4 border-t pt-4" data-testid="product-menu">
           {/* The round plus sits on the heading and folds the whole section (2026-09-30): Produktadministration,
               Landningssidan and API och MCP are separate pages, not "Ny X → Mina X". Folded from the start, always open

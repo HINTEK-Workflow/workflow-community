@@ -27,13 +27,21 @@ const tour: TourStep[] = [
   { view: "administration", href: "/?view=administration", title: "Mitt företag och användare", text: "Företagsadministratören styr användare och deras rättigheter per modul. Elis och Elon har Utföra arbete och Elna Läsa och rapportera. Rundturen är klar – utforska vidare eller avsluta demon.", asAdmin: true },
 ];
 
-const store = { step: 0 as number | null, listeners: new Set<() => void>() };
-const setTourStep = (step: number | null) => { store.step = step; store.listeners.forEach((listener) => listener()); };
+// A closed tour stays closed for the rest of the visit, also after a reload (on a phone it covers the page's lower part).
+const TOUR_CLOSED_KEY = "workflow.demo.tour-closed";
+const tourClosed = () => { try { return typeof window !== "undefined" && window.sessionStorage.getItem(TOUR_CLOSED_KEY) === "1"; } catch { return false; } };
+const store = { step: (tourClosed() ? null : 0) as number | null, listeners: new Set<() => void>() };
+const setTourStep = (step: number | null) => {
+  store.step = step;
+  try { if (step === null) window.sessionStorage.setItem(TOUR_CLOSED_KEY, "1"); else window.sessionStorage.removeItem(TOUR_CLOSED_KEY); } catch { /* the tour just opens again */ }
+  store.listeners.forEach((listener) => listener());
+};
 const subscribeTour = (listener: () => void) => { store.listeners.add(listener); return () => { store.listeners.delete(listener); }; };
 const useTourStep = () => useSyncExternalStore(subscribeTour, () => store.step, () => null);
 const useDemoUser = () => useSyncExternalStore(onDemoUserChange, () => demoCurrentUser().id, () => DEMO_ADMIN_ID);
 
 function exitDemo() {
+  try { window.sessionStorage.removeItem(TOUR_CLOSED_KEY); } catch { /* nothing to forget */ }
   // A full navigation lets the route clear the demo cookie and drops the in-memory demo data.
   // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- /demo is a route handler, not a page.
   window.location.assign(DEMO_EXIT_HREF);
