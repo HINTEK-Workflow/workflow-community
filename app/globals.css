@@ -1,0 +1,571 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@font-face {
+  font-family: Gugi;
+  src: url('/picture/fonts/gugi/Gugi-Latin.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: Inter;
+  src: url('/picture/fonts/Inter-Variable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --background: #f5f7fa;
+  --foreground: #18181b;
+  --card: #fff;
+  --card-foreground: #18181b;
+  --popover: #fff;
+  --popover-foreground: #18181b;
+  --primary: #174c72;
+  --primary-hover: #103b5b;
+  --primary-foreground: #ffffff;
+  --secondary: #e8f2f8;
+  --secondary-foreground: #123f60;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --accent: #dcecf5;
+  --accent-foreground: #123f60;
+  --destructive: #b91c1c;
+  --border: #e4e4e7;
+  --input: #d4d4d8;
+  --ring: #2e7eaa;
+  --selection: #c8e3f1;
+  --hintek-brand-start: #2e7eaa;
+  --hintek-brand-end: #103b5b;
+  --hintek-brand-shadow: #174c723d;
+  --feature-control: #6d28d9;
+  --feature-control-soft: #f5f3ff;
+  --feature-customer: #0e7490;
+  --feature-customer-soft: #ecfeff;
+  --feature-credit: #92400e;
+  --feature-credit-soft: #fffbeb;
+  --workflow-card-border: #e3eaf2;
+  --workflow-card-border-hover: #afcfe9;
+  --workflow-field-border: #cfdce8;
+  --workflow-field-border-hover: #9bc5e5;
+  --workflow-notice: #f0f8fe;
+  --workflow-notice-foreground: #334155;
+  --panel-header: #eef5fa;
+  --radius: 0.5rem;
+  --radius-control: 0.5rem;
+}
+
+@theme inline {
+  --font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-feature-control: var(--feature-control);
+  --color-feature-control-soft: var(--feature-control-soft);
+  --color-feature-customer: var(--feature-customer);
+  --color-feature-customer-soft: var(--feature-customer-soft);
+  --color-feature-credit: var(--feature-credit);
+  --color-feature-credit-soft: var(--feature-credit-soft);
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * { @apply border-border; }
+  html { overflow-y: scroll; scrollbar-gutter: stable; }
+  /* A dialog locks the page with a right margin as wide as the scrollbar, as if the scrollbar went away. The page keeps
+     its scrollbar (above), so the margin only moved the page and left an empty strip (Daniel 2026-09-30). */
+  html body[data-scroll-locked] { margin-right: 0 !important; }
+  body { @apply bg-background font-sans text-sm text-foreground antialiased; }
+  button:not(:disabled), a { -webkit-tap-highlight-color: transparent; }
+  a:focus-visible { @apply rounded-md outline-2 outline-offset-4 outline-ring; }
+  ::selection { background: var(--selection); }
+}
+
+@layer components {
+  .page-title { @apply text-2xl font-semibold tracking-tight; }
+  .section-title { @apply text-base font-semibold tracking-tight; }
+  .page-description { @apply text-sm leading-6 text-muted-foreground; }
+}
+
+@layer components {
+  .form-select { @apply h-10 w-full min-w-0 border bg-card px-3 text-sm outline-none disabled:opacity-50; border-color: var(--workflow-field-border); border-radius: 9px; transition: border-color 150ms ease, box-shadow 150ms ease; }
+  .form-select:hover:not(:disabled) { border-color: var(--workflow-field-border-hover); }
+  .form-select:focus-visible { border-color: var(--ring); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 24%, transparent); }
+  .form-textarea { @apply min-h-24 w-full border bg-card p-3 text-sm leading-6 outline-none disabled:opacity-50; border-color: var(--workflow-field-border); border-radius: 9px; transition: border-color 150ms ease, box-shadow 150ms ease; }
+  .form-textarea:hover:not(:disabled) { border-color: var(--workflow-field-border-hover); }
+  .form-textarea:focus-visible { border-color: var(--ring); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 24%, transparent); }
+  .notice { @apply border px-4 py-3 text-sm leading-6; border-color: color-mix(in srgb, var(--workflow-field-border) 80%, transparent); border-radius: 9px; background: var(--workflow-notice); color: var(--workflow-notice-foreground); }
+  .workflow-card { border: 1px solid var(--workflow-card-border); border-radius: 15px; background: var(--card); box-shadow: 0 1px 2px color-mix(in srgb, var(--foreground) 5%, transparent); transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease; }
+  .workflow-card:hover, .workflow-card:focus-within { transform: translateY(-2px); border-color: var(--workflow-card-border-hover); background: color-mix(in srgb, var(--secondary) 40%, var(--card)); box-shadow: 0 8px 20px color-mix(in srgb, var(--foreground) 8%, transparent); }
+  .data-table tbody tr:hover td { background: color-mix(in srgb, var(--secondary) 40%, transparent); }
+  .panel-header { background: var(--panel-header); }
+  /* Icon box in a light blue panel header: white box with a primary icon, since soft tints vanish on the blue (Daniel 2026-09-27). */
+  .panel-icon { @apply flex size-9 shrink-0 items-center justify-center rounded-lg border bg-card text-primary shadow-xs; }
+  .field-label { color: var(--workflow-notice-foreground); }
+  .workspace-main label, .workspace-modal label { color: var(--workflow-notice-foreground); }
+  .stat-card { @apply flex min-w-0 items-center gap-3 rounded-xl border bg-card p-4 shadow-xs; }
+  .stat-icon { @apply flex size-10 shrink-0 items-center justify-center rounded-lg; }
+  .stat-violet .stat-icon { @apply bg-violet-100 text-violet-600; }
+  .stat-emerald .stat-icon { @apply bg-emerald-100 text-emerald-600; }
+  .stat-sky .stat-icon { @apply bg-sky-100 text-sky-600; }
+  .stat-amber .stat-icon { @apply bg-amber-100 text-amber-600; }
+  .section-violet { @apply border-t-2 border-t-violet-500; }
+  .section-cyan { @apply border-t-2 border-t-cyan-500; }
+  .section-amber { @apply border-t-2 border-t-amber-500; }
+  .section-rose { @apply border-t-2 border-t-rose-500; }
+  .table-scroll { @apply w-full max-w-full overflow-x-auto; contain: inline-size; }
+  .data-table { @apply w-full text-left text-sm; }
+  .data-table th { @apply whitespace-nowrap border-b bg-background px-4 py-3 text-xs font-medium text-muted-foreground; }
+  .data-table td { @apply border-b px-4 py-4; }
+  .data-table tr:last-child td { @apply border-b-0; }
+}
+html[data-density="compact"] .data-table td { padding-top: .5rem; padding-bottom: .5rem; }
+html[data-theme="dark"] {
+  --background: #10131c; --foreground: #edf0f7; --card: #191e2a; --card-foreground: #edf0f7;
+  --popover: #191e2a; --popover-foreground: #edf0f7; --primary: #78c1ea; --primary-hover: #91cff0; --primary-foreground: #10131c;
+  --secondary: #17364c; --secondary-foreground: #c5e8fb; --muted: #242a38; --muted-foreground: #a4adc0;
+  --accent: #1c4058; --accent-foreground: #d5effc; --border: #3a4358; --input: #4a556d; --ring: #78c1ea;
+  --selection: #225a7c;
+  --workflow-card-border: #3a4358; --workflow-card-border-hover: #78c1ea;
+  --workflow-field-border: #4a556d; --workflow-field-border-hover: #78c1ea;
+  --workflow-notice: #17364c; --workflow-notice-foreground: #d5effc;
+  --panel-header: #172c42;
+}
+html[data-theme="dark"] .bg-white { background-color: var(--card); }
+html[data-theme="dark"] input[data-slot="input"] {
+  background-color: color-mix(in srgb, var(--input) 30%, var(--card)) !important;
+  color: var(--foreground) !important;
+  color-scheme: dark;
+}
+html[data-theme="dark"] input[data-slot="input"]:disabled {
+  background-color: color-mix(in srgb, var(--input) 80%, var(--card)) !important;
+}
+html[data-theme="dark"] input[data-slot="input"]:-webkit-autofill,
+html[data-theme="dark"] input[data-slot="input"]:-webkit-autofill:hover,
+html[data-theme="dark"] input[data-slot="input"]:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--foreground);
+  -webkit-box-shadow: 0 0 0 1000px var(--card) inset !important;
+  caret-color: var(--foreground);
+}
+
+html[data-theme="customer"] {
+  --background: #f3f7fb;
+  --foreground: #142333;
+  --card: #ffffff;
+  --card-foreground: #142333;
+  --popover: #ffffff;
+  --popover-foreground: #142333;
+  --primary: #174c72;
+  --primary-hover: #103b5b;
+  --primary-foreground: #ffffff;
+  --secondary: #e8f2f8;
+  --secondary-foreground: #123f60;
+  --muted: #edf2f6;
+  --muted-foreground: #536577;
+  --accent: #dcecf5;
+  --accent-foreground: #123f60;
+  --destructive: #a91d2c;
+  --border: #cbd7e1;
+  --input: #aebdca;
+  --ring: #2e7eaa;
+  --selection: #c8e3f1;
+  --feature-control: #28568a;
+  --feature-control-soft: #eaf1fa;
+  --feature-customer: #116b79;
+  --feature-customer-soft: #e7f6f7;
+  --feature-credit: #805315;
+  --feature-credit-soft: #fff6df;
+  --workflow-card-border: #e3eaf2;
+  --workflow-card-border-hover: #afcfe9;
+  --workflow-field-border: #cfdce8;
+  --workflow-field-border-hover: #9bc5e5;
+  --workflow-notice: #f0f8fe;
+  --workflow-notice-foreground: #334155;
+}
+/* HINTEK Blue follows the project-planning reference images: a clear HINTEK blue accent on a light blue-tinted page. */
+html[data-theme="blue"] {
+  --background: #f4f8fc;
+  --foreground: #13223a;
+  --card: #ffffff;
+  --card-foreground: #13223a;
+  --popover: #ffffff;
+  --popover-foreground: #13223a;
+  --primary: #0b65c2;
+  --primary-hover: #0952a0;
+  --primary-foreground: #ffffff;
+  --secondary: #e7f1fc;
+  --secondary-foreground: #0a4d93;
+  --muted: #eef3f8;
+  --muted-foreground: #56657a;
+  --accent: #d8e9fb;
+  --accent-foreground: #0a4d93;
+  --destructive: #c42b2b;
+  --border: #d6e1ec;
+  --input: #b4c3d3;
+  --ring: #2d84d9;
+  --selection: #cfe4fa;
+  --hintek-brand-start: #2d84d9;
+  --hintek-brand-end: #0a4d93;
+  --hintek-brand-shadow: #0b65c233;
+  --feature-control: #6d3fd4;
+  --feature-control-soft: #f3effe;
+  --feature-customer: #0b7c8c;
+  --feature-customer-soft: #e6f7f9;
+  --feature-credit: #9a5a0a;
+  --feature-credit-soft: #fff4dc;
+  --workflow-card-border: #dde7f2;
+  --workflow-card-border-hover: #a9cdf2;
+  --workflow-field-border: #cfdceb;
+  --workflow-field-border-hover: #8fbdec;
+  --workflow-notice: #eaf3fd;
+  --workflow-notice-foreground: #2c3e55;
+  --panel-header: oklch(0.94 0.03 245 / 0.6);
+}
+/* HINTEK Blue chrome (Daniel 2026-09-26): navy #113351 menu, drawer and top bar with white text and plain white icons.
+   The selected item is only a lighter tone, with no extra edge or ring. */
+html[data-theme="blue"] :is(.workspace-sidebar, .workspace-drawer, .workspace-header) {
+  --card: #113351;
+  --background: #1a3e62;
+  --foreground: #ffffff;
+  --muted: #1d4269;
+  --muted-foreground: #d3deea;
+  --secondary: #22496f;
+  --secondary-foreground: #ffffff;
+  --primary: #8ec3f5;
+  --primary-foreground: #113351;
+  --border: #2a5077;
+  --ring: #8ec3f5;
+  color: var(--foreground);
+}
+html[data-theme="blue"] :is(.workspace-aside, .workspace-header) { border-color: #2a5077; }
+html[data-theme="blue"] .workspace-sidebar .workspace-menu-item { color: #ffffff; }
+html[data-theme="blue"] .workspace-sidebar .workspace-menu-item > span:first-child { background: transparent; color: #ffffff; }
+html[data-theme="blue"] .workspace-sidebar .workspace-menu-item-active { background: #24507a; color: #ffffff; box-shadow: none; }
+html[data-theme="blue"] .workspace-sidebar-note { background: color-mix(in srgb, #ffffff 6%, transparent); border-color: var(--border); }
+/* Text wordmark in the self-hosted Gugi font (SIL OFL, public/picture/fonts/gugi). Other themes keep the image wordmark. */
+.workflow-brand-text { display: none; }
+html[data-theme="blue"] .hintek-wordmark { display: none; }
+html[data-theme="blue"] .workflow-brand-text { display: block; overflow: hidden; font-family: Gugi, Inter, sans-serif; font-size: 1.25rem; line-height: 1.75rem; color: #ffffff; white-space: nowrap; text-overflow: ellipsis; }
+
+/* Public landing page (Daniel 2026-09-26): always HINTEK Blue, independent of a signed-in user's theme. */
+.landing {
+  --background: #f7f9fc; --foreground: #13223a; --card: #ffffff; --card-foreground: #13223a;
+  --primary: #0b65c2; --primary-hover: #0952a0; --primary-foreground: #ffffff;
+  --secondary: #e7f1fc; --secondary-foreground: #0a4d93; --muted: #eef3f8; --muted-foreground: #56657a;
+  --border: #dde7f2; --ring: #2d84d9;
+}
+.landing-brand { font-family: Gugi, Inter, sans-serif; color: #113351; white-space: nowrap; }
+.landing-grid { background-image: linear-gradient(to right, color-mix(in srgb, #113351 6%, transparent) 1px, transparent 1px), linear-gradient(to bottom, color-mix(in srgb, #113351 6%, transparent) 1px, transparent 1px); background-size: 40px 40px; }
+.landing-dark { background: radial-gradient(120% 120% at 100% 0%, #1b4d7e 0%, #113351 55%); color: #ffffff; }
+.landing-button { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; height: 2.5rem; padding-inline: 1rem; border-radius: .625rem; font-size: .875rem; font-weight: 600; transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease; }
+.landing-button:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.landing-button-lg { height: 2.75rem; padding-inline: 1.25rem; }
+.landing-button-primary { background: var(--primary); color: var(--primary-foreground); }
+.landing-button-primary:hover { background: var(--primary-hover); }
+.landing-button-outline { border: 1px solid var(--border); background: var(--card); color: var(--foreground); }
+.landing-button-outline:hover { border-color: color-mix(in srgb, var(--primary) 40%, transparent); background: var(--secondary); color: var(--secondary-foreground); }
+.landing-button-light { background: #ffffff; color: #113351; }
+.landing-button-light:hover { background: #e7f1fc; }
+.landing-button-ghost-light { border: 1px solid rgb(255 255 255 / .3); color: #ffffff; }
+.landing-button-ghost-light:hover { background: rgb(255 255 255 / .1); }
+
+/* The landing editor (Daniel 2026-09-30): the page is the canvas; a text shows a dashed outline on hover and a solid one
+   while it is being edited, like a block in Skapa formulär. */
+/* Ny uppgift → Anpassa (Daniel 2026-09-30): the arrows and Flytta till only where dragging is hard – touch or narrow. */
+.arrange-touch-only { display: none; }
+@media (pointer: coarse), (max-width: 1023px) { .arrange-touch-only { display: flex; } }
+.landing-canvas { background: #f7f9fc; }
+.landing-editable { border-radius: 4px; outline: 1px dashed transparent; outline-offset: 2px; cursor: text; transition: outline-color 120ms ease, background-color 120ms ease; }
+.landing-canvas-edit .landing-editable { outline-color: color-mix(in srgb, var(--primary) 22%, transparent); }
+.landing-editable:hover { outline-color: var(--primary); background: color-mix(in srgb, var(--primary) 6%, transparent); }
+.landing-editable:focus { outline: 2px solid var(--ring); background: color-mix(in srgb, var(--primary) 8%, transparent); }
+.landing-dark .landing-editable:hover, .landing-dark .landing-editable:focus { outline-color: #ffffff; background: rgb(255 255 255 / .08); }
+.landing-edit-chip { display: inline-flex; min-height: 2rem; min-width: 2rem; align-items: center; justify-content: center; border-radius: .5rem; background: var(--secondary); color: var(--secondary-foreground); transition: background-color 120ms ease; }
+.landing-edit-chip:hover:not(:disabled) { background: color-mix(in srgb, var(--primary) 18%, var(--secondary)); }
+.landing-edit-chip:disabled { opacity: .4; }
+.landing-dark .landing-edit-chip { background: rgb(255 255 255 / .12); color: inherit; }
+.landing-edit-off { height: 100%; opacity: .5; filter: grayscale(.6); }
+.landing-edit-off:hover, .landing-edit-off:focus-within { opacity: .85; }
+.landing-canvas [data-landing-select] { cursor: pointer; }
+.landing-canvas[data-selected] [data-landing-select]:is(article, tr) { transition: box-shadow 120ms ease; }
+
+input[data-slot="input"] { border-color: var(--workflow-field-border); border-radius: 9px; }
+input[data-slot="input"]:hover:not(:disabled) { border-color: var(--workflow-field-border-hover); }
+input[data-slot="input"]:focus-visible { border-color: var(--ring); }
+
+@layer components {
+  .hintek-mark {
+    background: linear-gradient(145deg, var(--hintek-brand-start), var(--hintek-brand-end));
+    box-shadow: 0 .5rem 1.5rem var(--hintek-brand-shadow);
+  }
+}
+
+.editor-workflow-progress { min-height: 1.5rem; }
+.report-panel .panel-header,
+.local-workspace-panel .panel-header { align-items: flex-start; flex-wrap: nowrap; }
+.report-panel .panel-heading,
+.local-workspace-panel .panel-heading { flex: 1; }
+.report-panel .panel-heading > div,
+.local-workspace-panel .panel-heading > div { min-width: 0; }
+.report-panel .panel-actions,
+.local-workspace-panel .panel-actions { margin-left: auto; }
+/* V1 table structure, using V3 typography, components and theme tokens. */
+.measurement-panel { container-type: inline-size; }
+.measurement-panel .panel-header { padding: 1.5rem 1.25rem; border-bottom: 0; flex-wrap: nowrap; }
+.measurement-panel .panel-heading { min-width: 0; gap: .75rem; }
+.measurement-panel .panel-content { padding-top: .25rem; }
+.measurement-actions { display: flex; flex-shrink: 0; gap: .375rem; }
+.measurement-action { position: relative; width: 2.5rem; height: 2.5rem; border-radius: 50%; border-color: color-mix(in srgb, var(--primary) 40%, var(--card)); background: var(--secondary); color: var(--foreground); }
+.measurement-action:hover { background: var(--accent); }
+.measurement-action > svg { width: 1.375rem; height: 1.375rem; }
+.measurement-count { position: absolute; bottom: -.25rem; right: -.125rem; min-width: 1rem; padding: 0 .125rem; border-radius: 1rem; background: var(--card); color: var(--foreground); font-size: .75rem; line-height: 1rem; font-weight: 600; }
+.measurement-collapse { width: 2.25rem; height: 2.25rem; border: 1px solid var(--border); border-radius: 50%; box-shadow: 0 1px 2px #00000008; }
+.measurement-list { border: 1px solid var(--border); border-radius: .625rem; }
+.measurement-list:empty { display: none; }
+.measurement-row { min-width: 0; padding: .75rem; border-bottom: 1px solid var(--border); }
+.measurement-row:last-child { border-bottom: 0; }
+/* Hidden datalists must not add spacing beneath fields with suggestions. */
+.measurement-row input, .measurement-row select { margin-block: 0; }
+.measurement-row[data-example] { background: color-mix(in srgb, var(--feature-credit-soft) 35%, transparent); }
+.measurement-row:first-child { border-radius: .625rem .625rem 0 0; }
+.measurement-row:last-child { border-radius: 0 0 .625rem .625rem; }
+.measurement-grid, .rcd-top, .rcd-bottom { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); align-items: end; gap: .75rem; }
+.measurement-head { display: none; }
+.rcd-bottom { margin-top: .75rem; }
+.measurement-tools { display: flex; align-items: center; gap: .125rem; height: 2.5rem; }
+.measurement-check { display: flex; flex-direction: column; align-items: center; justify-content: end; gap: .5rem; min-height: 3.75rem; font-size: .75rem; }
+.measurement-check > button { width: 1.375rem; height: 1.375rem; margin-bottom: .5rem; }
+.measurement-check > button > span > svg { width: 1rem; height: 1rem; }
+.measurement-auto-result:disabled { opacity: 1; }
+.measurement-remove { align-self: end; margin-bottom: .25rem; }
+.rcd-indent { display: none; }
+.rcd-guidance { margin-top: .75rem; }
+@container (max-width: 599px) {
+  .measurement-panel .panel-header { padding: 1.25rem .75rem; gap: .5rem; }
+  .measurement-panel .panel-content { padding-left: .75rem; padding-right: .75rem; }
+  .measurement-panel .panel-heading { flex-wrap: wrap; gap: .75rem; }
+  .measurement-row input, .measurement-row select { height: 2.75rem; font-size: 1rem; }
+  .measurement-tools { grid-column: 1 / -1; }
+  .measurement-tools button, .measurement-remove { width: 2.75rem; height: 2.75rem; }
+  .measurement-check { min-height: 4.25rem; }
+  .measurement-check > button { width: 1.5rem; height: 1.5rem; }
+}
+@container (min-width: 800px) {
+  .measurement-iso { --measurement-columns: 3.5rem minmax(0,2.3fr) minmax(0,1.05fr) repeat(2,minmax(0,1fr)) minmax(0,2.4fr) 3.75rem 2rem; }
+  .measurement-cont, .measurement-volt { --measurement-columns: 3.5rem minmax(0,2.3fr) repeat(2,minmax(0,1.3fr)) minmax(0,3fr) 3.75rem 2rem; }
+  .measurement-row:not(.measurement-rcd) { padding: .25rem .75rem; }
+  .measurement-grid { grid-template-columns: var(--measurement-columns); align-items: center; column-gap: .5rem; row-gap: 0; }
+  .measurement-head { display: grid; padding: .625rem .75rem 0; align-items: end; font-size: .75rem; line-height: 1rem; color: var(--foreground); }
+  .measurement-grid input, .measurement-grid select { height: 2.25rem; padding-inline: .5rem; font-size: .875rem; box-shadow: none; }
+  .measurement-grid > div { margin: 0; }
+  .measurement-grid label:not(.measurement-check), .measurement-grid .measurement-check > span { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+  .measurement-grid .measurement-check { min-height: 2.25rem; height: 2.25rem; justify-content: center; }
+  .measurement-grid .measurement-check > button { margin: 0; }
+  .measurement-grid .measurement-tools { height: 2.25rem; }
+  .measurement-grid .measurement-remove { align-self: center; margin: 0; }
+}
+@container (min-width: 950px) {
+  .measurement-rcd { --rcd-place: minmax(10rem, 20%); }
+  .measurement-rcd.measurement-row { padding: 0; }
+  .rcd-top, .rcd-bottom { column-gap: .5rem; row-gap: 0; padding: .625rem .75rem .375rem; margin: 0; }
+  .rcd-top { grid-template-columns: 3.5rem var(--rcd-place) repeat(5,minmax(0,1fr)) minmax(8rem,2.4fr); }
+  .rcd-bottom { grid-template-columns: 3.5rem var(--rcd-place) repeat(5,minmax(0,1fr)) 4.5rem 4.5rem 3.75rem 2rem; border-top: 1px solid var(--border); }
+  .rcd-top label, .rcd-bottom label:not(.measurement-check), .rcd-bottom .measurement-check > span { min-height: 2rem; display: flex; align-items: end; font-size: .75rem; line-height: 1rem; color: var(--foreground); font-weight: 400; }
+  .rcd-top label, .rcd-bottom label > span { overflow-wrap: anywhere; }
+  .rcd-top input, .rcd-top select, .rcd-bottom input { height: 2.25rem; padding-inline: .5rem; font-size: .875rem; box-shadow: none; }
+  .rcd-bottom .measurement-check { gap: .375rem; min-height: 4.625rem; }
+  .rcd-bottom .measurement-check > span { text-align: center; }
+  .rcd-bottom .measurement-check > button { margin-bottom: .4375rem; }
+  .rcd-top .measurement-tools { height: 2.25rem; }
+  .rcd-bottom .measurement-remove { margin-bottom: .125rem; }
+  .rcd-indent { display: block; }
+  .rcd-guidance { margin: 0; padding: .125rem .75rem .5rem; }
+  /* A form's two-line measurement rows (the RCD test as a form) take their tracks from the form's columns. */
+  .form-rows .rcd-top, .form-rows .rcd-bottom { grid-template-columns: var(--line-columns); }
+}
+
+/* App navigation and touch layout. All surfaces follow the selected theme. */
+.workspace-menu-overlay { background: color-mix(in srgb, var(--foreground) 32%, transparent); }
+.workspace-drawer { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+/* The menu scrolls without a scrollbar strip (Daniel 2026-09-30: "inte den breda listen … bara en tunn linje"): the
+   browser's scrollbar is hidden, so the menu never changes width, and a thin line at its right edge shows where in the
+   menu you are while it is taller than the screen (MenuScrollLine). */
+.workspace-aside, .workspace-drawer { --menu-scroll: color-mix(in srgb, var(--muted-foreground) 30%, transparent); scrollbar-width: none; }
+.workspace-aside::-webkit-scrollbar, .workspace-drawer::-webkit-scrollbar { display: none; }
+.menu-scroll-line { position: absolute; right: 2px; z-index: 1; width: 3px; border-radius: 3px; background: var(--menu-scroll); pointer-events: none; transition: background-color 150ms ease; }
+.workspace-aside:hover, .workspace-drawer:hover { --menu-scroll: color-mix(in srgb, var(--muted-foreground) 55%, transparent); }
+html[data-theme="blue"] :is(.workspace-aside, .workspace-drawer) { --menu-scroll: rgb(255 255 255 / .2); }
+html[data-theme="blue"] :is(.workspace-aside, .workspace-drawer):hover { --menu-scroll: rgb(255 255 255 / .38); }
+/* Popups scroll with a thin, quiet scrollbar too, instead of the browser's wide one (Daniel 2026-09-30); :where keeps
+   it below the menu drawer's own "no scrollbar" rule. */
+:where([role="dialog"], [role="alertdialog"], [role="dialog"] *, [role="alertdialog"] *) { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--muted-foreground) 40%, transparent) transparent; }
+.workspace-drawer .workspace-sidebar-brand { padding-right: 4rem; }
+.workspace-menu-close { top: calc(.75rem + env(safe-area-inset-top)); }
+.workspace-bottom-nav { display: none; }
+@media (max-width: 1023px) {
+  html { scroll-padding-top: calc(5rem + env(safe-area-inset-top)); scroll-padding-bottom: calc(6rem + env(safe-area-inset-bottom)); }
+  .workspace-shell { padding-bottom: calc(4.75rem + env(safe-area-inset-bottom)); }
+  .workspace-header { height: calc(4rem + env(safe-area-inset-top)); padding-top: env(safe-area-inset-top); padding-left: max(1rem, env(safe-area-inset-left)); padding-right: max(1rem, env(safe-area-inset-right)); }
+  .workspace-header { transition: transform 180ms ease; will-change: transform; }
+  .workspace-header > div:first-child { max-width: 18rem; flex: 1; }
+  .workspace-profile { padding-inline: .375rem; }
+  .workspace-profile-menu { width: min(20rem, calc(100vw - 1.5rem)); max-height: min(78dvh, 42rem); overflow-y: auto; overscroll-behavior: contain; }
+  .hintek-wordmark { width: 13rem; height: 3rem; }
+  .workspace-header [data-slot="button"], .workspace-menu-close { min-width: 2.75rem; min-height: 2.75rem; }
+  .workspace-menu-item { min-height: 3rem; }
+  .workspace-menu-item:disabled { opacity: .5; }
+  .workspace-main { padding-block: 1.5rem; }
+  .workspace-main .grid > *, .workspace-main .panel-heading { min-width: 0; }
+  .workspace-footer { flex-wrap: wrap; padding-top: .5rem; }
+  .workspace-footer a { display: inline-flex; align-items: center; min-height: 2.75rem; }
+  .workspace-bottom-nav { position: fixed; z-index: 30; bottom: 0; left: 0; right: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: .375rem max(.5rem, env(safe-area-inset-right)) calc(.375rem + env(safe-area-inset-bottom)) max(.5rem, env(safe-area-inset-left)); border-top: 1px solid var(--border); background: var(--card); box-shadow: 0 -.25rem 1.5rem color-mix(in srgb, var(--foreground) 5%, transparent); transition: transform 180ms ease; will-change: transform; }
+  .workspace-bottom-nav > a, .workspace-bottom-nav > button { display: flex; min-width: 0; min-height: 3.875rem; flex-direction: column; align-items: center; justify-content: center; gap: .125rem; border-radius: .75rem; color: var(--muted-foreground); font-size: .6875rem; font-weight: 600; line-height: 1.25rem; cursor: pointer; }
+  .workspace-bottom-nav > button:disabled { opacity: .5; cursor: default; }
+  .workspace-bottom-nav > :focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+  .workspace-bottom-nav .nav-icon { position: relative; display: flex; width: 3rem; height: 2rem; align-items: center; justify-content: center; border-radius: 1rem; }
+  .workspace-bottom-nav svg { width: 1.375rem; height: 1.375rem; stroke-width: 1.8; }
+  .workspace-bottom-nav > :is([aria-current="page"], [data-active], [data-state="open"]) { color: var(--secondary-foreground); }
+  .workspace-bottom-nav > :is([aria-current="page"], [data-active], [data-state="open"]) .nav-icon { background: var(--secondary); }
+  .workspace-bottom-nav .nav-create { color: var(--primary); }
+  .workspace-bottom-nav .nav-create .nav-icon { height: 2.25rem; width: 3.25rem; border-radius: .875rem; background: var(--primary); color: var(--primary-foreground); }
+  .workspace-bottom-nav .nav-dirty { position: absolute; top: .125rem; right: .5rem; width: .4375rem; height: .4375rem; border-radius: 50%; background: var(--primary); }
+  .workspace-shell[data-keyboard-open] .workspace-bottom-nav { display: none; }
+  .workspace-shell[data-chrome-hidden] .workspace-header { transform: translateY(-100%); pointer-events: none; }
+  .workspace-shell[data-chrome-hidden] .workspace-bottom-nav { transform: translateY(100%); pointer-events: none; }
+  .workspace-toast { bottom: calc(5.5rem + env(safe-area-inset-bottom)); right: 1rem; left: 1rem; width: fit-content; max-width: calc(100vw - 2rem); margin-left: auto; }
+  .workspace-main :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select), .workspace-modal :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select) { min-height: 2.75rem; font-size: 1rem; }
+  .workspace-main textarea, .workspace-modal textarea { font-size: 1rem; }
+  .workspace-main [data-slot="button"], .workspace-modal [data-slot="button"], .workspace-profile-menu [role="menuitem"] { min-height: 2.75rem; }
+  .workspace-main [data-slot="button"][data-size^="icon"], .workspace-modal [data-slot="button"][data-size^="icon"] { min-width: 2.75rem; }
+  .workspace-main [role="checkbox"], .workspace-modal [role="checkbox"] { width: 1.5rem; height: 1.5rem; }
+  .context-help summary { width: 2.75rem; height: 2.75rem; border: 1px solid var(--border); border-radius: 50%; }
+  .context-help > div { top: 3rem; max-width: calc(100vw - 3rem); }
+  .control-moments > div { border-radius: .875rem; }
+  .control-moments label { min-height: 2.75rem; flex: 1; font-weight: 500; }
+  .customer-link-button { height: 2.75rem; min-width: 2.75rem; }
+  .mobile-action-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
+  .mobile-action-grid > [data-slot="button"] { width: 100%; white-space: normal; text-align: center; }
+  .mobile-action-grid > p { grid-column: 1 / -1; }
+  .local-workspace-actions { display: grid; grid-template-columns: 1fr; }
+  .local-workspace-actions > [data-slot="button"], .report-notify-button { width: 100%; justify-content: center; }
+  .measurement-panel .panel-header { align-items: start; }
+  .measurement-panel .panel-heading { flex-direction: column-reverse; align-items: start; gap: .75rem; }
+  .measurement-action, .measurement-collapse { width: 2.75rem; height: 2.75rem; }
+  .measurement-tools { gap: .5rem; height: 2.75rem; }
+  .measurement-tools > span { width: 2.5rem; height: 2.5rem; font-size: .875rem; }
+  .measurement-camera { border: 1px solid var(--border); border-radius: 50%; }
+  .measurement-check { min-height: 2.75rem; flex-direction: row; justify-content: start; gap: .75rem; }
+  .measurement-check > button { margin: 0; }
+}
+@media (max-width: 639px) {
+  .mobile-form-action { width: 100%; justify-content: center; }
+  .stat-card { flex-direction: column; align-items: flex-start; gap: .5rem; padding: .75rem; }
+  .stat-card .stat-icon { width: 2rem; height: 2rem; }
+  .dashboard-work-panel .panel-actions { width: 100%; min-width: 0; flex-shrink: 1; }
+  .dashboard-work-panel .panel-actions > div { width: 100%; }
+  .workspace-main { padding-inline: max(.75rem, env(safe-area-inset-left)) max(.75rem, env(safe-area-inset-right)); }
+  .workspace-main .page-title { font-size: 1.375rem; overflow-wrap: anywhere; }
+  .workspace-main .panel-header { padding: 1rem; }
+  .workspace-main .panel-content { padding: 1rem; }
+  .kfid-editor { gap: 1.25rem; }
+  .editor-workflow-description { display: none; }
+  .editor-actions { width: auto; }
+  .editor-primary-save { display: none; }
+  .editor-actions > [data-slot="button"]:first-child { max-width: 10.5rem; }
+  .editor-basics { gap: 1.25rem; }
+  .editor-basics label { color: var(--foreground); }
+  .measurement-panel .panel-content { padding: .25rem .75rem .75rem; }
+  .measurement-list { border: 0; border-radius: 0; }
+  .measurement-row, .measurement-row:first-child, .measurement-row:last-child { padding: 1rem .25rem; border: 0; border-top: 1px solid var(--border); border-radius: 0; }
+  .measurement-grid, .rcd-top, .rcd-bottom { gap: 1rem .75rem; }
+  .measurement-wide, .measurement-tools { grid-column: 1 / -1; }
+  .measurement-remove { justify-self: end; margin: 0; }
+  .rcd-bottom { padding-top: 1rem; border-top: 1px dashed var(--border); margin-top: 1rem; }
+  .workspace-modal { padding: 1.25rem; }
+  .mobile-action-grid { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .workspace-header, .workspace-bottom-nav, .editor-workflow-header { transition: none !important; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .workspace-drawer[data-state="open"] { animation: workspace-menu-enter .18s ease-out; }
+  @keyframes workspace-menu-enter { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+  /* A calm pulse while a timer runs (Daniel 2026-09-26); reduced motion keeps a steady dot. */
+  .running-timer-dot { animation: running-timer-pulse 2s ease-in-out infinite; }
+  @keyframes running-timer-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .45; transform: scale(.8); } }
+}
+
+/*
+ * One look for a label above its field (Daniel 2026-09-27; the control's Grunduppgifter is the original): 12 px medium
+ * text in the label colour, flush with the field's left edge and 6 px above it (7 px to the glyphs, as in the original). Unlayered on purpose so it wins over
+ * the spacing and colour utilities that grew differently in each editor. Labels laid out in a row (items-center),
+ * search fields with an icon and screen-reader-only labels keep their own layout.
+ */
+:is(.workspace-main, .workspace-modal) label:not([class*="items-center"]):not(:has(> svg, > .sr-only)):has(> :is(input:not([type="checkbox"], [type="radio"], [type="file"], [type="hidden"], .sr-only), select, textarea)) {
+  display: block;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 500;
+  color: var(--workflow-notice-foreground);
+}
+:is(.workspace-main, .workspace-modal) label:not([class*="items-center"]):not(:has(> svg, > .sr-only)):has(> :is(input:not([type="checkbox"], [type="radio"], [type="file"], [type="hidden"], .sr-only), select, textarea)) > * {
+  margin-block: 0;
+}
+:is(.workspace-main, .workspace-modal) label:not([class*="items-center"]):not(:has(> svg, > .sr-only)) > :is(input:not([type="checkbox"], [type="radio"], [type="file"], [type="hidden"], .sr-only), select, textarea) {
+  margin-top: 0.375rem;
+}
+/* Help text directly under a field. */
+:is(.workspace-main, .workspace-modal) label:not([class*="items-center"]) > :is(input, select, textarea) ~ :is(span, p):not(.sr-only) {
+  display: block;
+  margin-top: 0.375rem;
+  font-weight: 400;
+}
+/* A label and its field as siblings (form protocols, read-only fields): the same step. */
+:is(.workspace-main, .workspace-modal) .field-stack {
+  display: grid;
+  align-content: start;
+  row-gap: 0.375rem;
+  min-width: 0;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 500;
+  color: var(--workflow-notice-foreground);
+}
+
+/* The guided tour of the form builder (2026-09-28, driver.js): the popover in the design tokens, light and dark. */
+.driver-popover.workflow-tour { background: var(--card); color: var(--foreground); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 12px 32px #0f172a2e; max-width: min(24rem, calc(100vw - 2rem)); padding: 1rem 1.1rem; font-family: inherit; }
+.driver-popover.workflow-tour .driver-popover-title { font-size: 0.95rem; font-weight: 600; color: var(--foreground); }
+.driver-popover.workflow-tour .driver-popover-description { font-size: 0.8125rem; line-height: 1.45; color: var(--muted-foreground); }
+.driver-popover.workflow-tour .driver-popover-progress-text { font-size: 0.75rem; color: var(--muted-foreground); }
+.driver-popover.workflow-tour .driver-popover-footer { gap: 0.375rem; flex-wrap: wrap; }
+.driver-popover.workflow-tour .driver-popover-footer button { height: 2.25rem; padding: 0 0.75rem; border-radius: var(--radius-control, 9px); border: 1px solid var(--border); background: var(--card); color: var(--foreground); font-size: 0.8125rem; font-weight: 500; text-shadow: none; }
+.driver-popover.workflow-tour .driver-popover-footer .driver-popover-next-btn { background: var(--primary); border-color: var(--primary); color: var(--primary-foreground); }
+.driver-popover.workflow-tour .driver-popover-footer button:hover { background: var(--secondary); }
+.driver-popover.workflow-tour .driver-popover-footer .driver-popover-next-btn:hover { background: var(--primary-hover, var(--primary)); }
+.driver-popover.workflow-tour .workflow-tour-skip { margin-right: auto; border-color: transparent; background: transparent; color: var(--muted-foreground); }
+.driver-popover.workflow-tour .driver-popover-close-btn { color: var(--muted-foreground); }
+.driver-popover.workflow-tour .driver-popover-arrow-side-left.driver-popover-arrow { border-left-color: var(--card); }
+.driver-popover.workflow-tour .driver-popover-arrow-side-right.driver-popover-arrow { border-right-color: var(--card); }
+.driver-popover.workflow-tour .driver-popover-arrow-side-top.driver-popover-arrow { border-top-color: var(--card); }
+.driver-popover.workflow-tour .driver-popover-arrow-side-bottom.driver-popover-arrow { border-bottom-color: var(--card); }

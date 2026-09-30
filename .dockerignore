@@ -1,0 +1,17 @@
+.git
+.next
+node_modules
+npm-debug.log
+.env
+.env.local
+storage/*
+!storage/.gitkeep
+!storage/attachments/.gitkeep
+
+storage-test
+tests
+tmp
+backups
+storage-qa
+storage-local
+storage-local-qa

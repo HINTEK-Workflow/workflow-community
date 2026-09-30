@@ -1,0 +1,82 @@
+{
+  "name": "workflow-community",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
+    "start": "next start",
+    "lint": "eslint .",
+    "postinstall": "prisma generate",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:studio": "prisma studio",
+    "build:offline": "esbuild features/kfid/offline-editor.ts --bundle --minify --platform=browser --outfile=public/offline-editor.js",
+    "integrity:check": "tsx scripts/integrity/check.ts",
+    "rounds:reminders": "tsx scripts/rounds/run-round-reminders.ts",
+    "prebuild": "npm run build:offline",
+    "history:retention": "tsx scripts/history/run-retention.ts",
+    "ops:alert": "tsx scripts/ops/send-alert.ts",
+    "admin:create": "tsx scripts/admin/create-admin.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test \"tests/*.test.ts\""
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "@fontsource-variable/jetbrains-mono": "^5.2.8",
+    "@fontsource-variable/manrope": "^5.2.8",
+    "@pdf-lib/fontkit": "^1.1.1",
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "^7.10.0",
+    "bcryptjs": "^3.0.3",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "dotenv": "^17.3.1",
+    "driver.js": "^1.8.0",
+    "exceljs": "^4.4.0",
+    "lucide-react": "^0.577.0",
+    "next": "^16.3.6",
+    "next-auth": "4.24.15",
+    "nodemailer": "^10.0.10",
+    "openai": "^7.23.0",
+    "pdf-lib": "^1.17.1",
+    "pg": "^8.23.0",
+    "radix-ui": "^1.4.3",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "recharts": "^3.10.1",
+    "sharp": "^0.35.4",
+    "stripe": "^22.6.2",
+    "tailwind-merge": "^3.5.0",
+    "tw-animate-css": "^1.4.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/nodemailer": "^7.0.11",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "^16.3.6",
+    "playwright": "^1.63.0",
+    "prisma": "^7.5.0",
+    "shadcn": "^4.0.8",
+    "tailwindcss": "^4",
+    "tsx": "^4.21.0",
+    "typescript": "^5"
+  },
+  "overrides": {
+    "next-auth": {
+      "nodemailer": "$nodemailer"
+    }
+  },
+  "license": "AGPL-3.0-only"
+}

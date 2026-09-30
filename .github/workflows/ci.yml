@@ -1,0 +1,28 @@
+# Typecheck, lint, unit tests and a production build on every push and pull request.
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      CI: "1"
+      APP_URL: http://127.0.0.1:3000
+      AUTH_SECRET: ci-only-placeholder-not-for-runtime-123456789
+      DATABASE_URL: postgresql://build:build@127.0.0.1:5432/workflow
+      SEED_ADMIN_PASSWORD: ci-only-placeholder
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build

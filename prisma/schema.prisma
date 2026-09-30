@@ -1,0 +1,1797 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  SUPERADMIN
+  ADMIN
+  STAFF
+}
+
+enum OrganizationMemberRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum OrganizationInvitationStatus {
+  PREPARED
+  PENDING
+  ACCEPTED
+  REVOKED
+}
+
+enum LegalDocumentType {
+  TERMS
+  PRIVACY
+  DPA
+  CREDIT_TERMS
+}
+
+enum LegalDocumentScope {
+  INDIVIDUAL
+  ORGANIZATION
+}
+
+enum LegalDocumentStatus {
+  DRAFT
+  PUBLISHED
+  REVOKED
+}
+
+enum DataStorageMode {
+  LOCAL
+  HINTEK_CLOUD
+}
+
+enum CloudSubscriptionStatus {
+  PENDING
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  SUSPENDED
+  CANCELED
+}
+
+enum BillingInvoiceStatus {
+  DRAFT
+  OPEN
+  PAID
+  OVERDUE
+  VOID
+  CREDITED
+}
+
+enum BillingNoticeStage {
+  DUE_TODAY
+  DAY_3_REMINDER
+  DAY_7_FINAL_WARNING
+  DAY_8_WRITE_PAUSED
+}
+
+enum BillingNoticeEmailStatus {
+  NOT_REQUESTED
+  QUEUED
+  SENDING
+  SENT
+  CANCELED
+  FAILED
+}
+
+enum CreditExpiryNoticeStage {
+  DAY_30
+  DAY_7
+}
+
+enum CreditPurchaseStatus {
+  PENDING
+  PAID
+  REFUNDED
+}
+
+enum PaymentEventStatus {
+  RECEIVED
+  PROCESSED
+  FAILED
+}
+
+enum BillingPaymentMode {
+  CARD
+  INVOICE_PREPAID
+  INVOICE_CREDIT
+}
+
+enum BillingOrderStatus {
+  DRAFT
+  PENDING_PAYMENT
+  OPEN
+  PAID
+  CANCELED
+  REFUNDED
+}
+
+enum BillingAdjustmentKind {
+  REFUND
+  CREDIT_NOTE
+}
+
+enum BillingAdjustmentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  CANCELED
+  VOID
+}
+
+enum BillingOrderItemKind {
+  CLOUD
+  CREDIT_PACKAGE
+}
+
+enum BankPaymentStatus {
+  UNALLOCATED
+  PARTIALLY_ALLOCATED
+  ALLOCATED
+  OVERPAYMENT
+  REFUNDED
+}
+
+enum CloudEntitlementStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
+
+enum CloudEntitlementSource {
+  CARD_PAYMENT
+  INVOICE_PREPAID_PAYMENT
+  INVOICE_CREDIT_FINALIZED
+  ADMIN_CORRECTION
+}
+
+enum CreditLotOrigin {
+  PURCHASE
+  COMPENSATION
+  LEGACY
+}
+
+enum AiRunStatus {
+  RESERVED
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELED
+}
+
+enum AiConversationStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum AiMessageRole {
+  USER
+  ASSISTANT
+}
+
+enum AiProposalStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  APPLIED
+  EXPIRED
+}
+
+model User {
+  id                      String                  @id @default(cuid())
+  name                    String?
+  image                   String?
+  email                   String                  @unique
+  passwordHash            String?
+  role                    UserRole                @default(STAFF)
+  emailVerifiedAt         DateTime?
+  lastLoginAt             DateTime?
+  isActive                Boolean                 @default(true)
+  activeOrganizationId    String?
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+  activeOrganization      Organization?           @relation("ActiveOrganization", fields: [activeOrganizationId], references: [id], onDelete: SetNull)
+  authAccounts            AuthAccount[]
+  organizationMemberships OrganizationMember[]
+  verificationTokens      VerificationToken[]
+  passwordResetTokens     PasswordResetToken[]
+  legalAcceptances        LegalAcceptance[]
+  aiRuns                  AiRun[]
+  aiConversations         AiConversation[]        @relation("AiConversationCreator")
+  aiMessages              AiMessage[]             @relation("AiMessageAuthor")
+  reviewedAiProposals     AiProposal[]            @relation("AiProposalReviewer")
+  localWorkspaceBindings  LocalWorkspaceBinding[]
+}
+
+model AuthAccount {
+  id                String    @id @default(cuid())
+  userId            String
+  provider          String
+  providerAccountId String
+  email             String?
+  hostedDomain      String?
+  avatarUrl         String?
+  lastUsedAt        DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@index([provider, email])
+}
+
+model Organization {
+  id                      String                     @id @default(cuid())
+  name                    String
+  slug                    String                     @unique
+  domain                  String?
+  isActive                Boolean                    @default(true)
+  storageMode             DataStorageMode            @default(LOCAL)
+  weeklyWorkMinutes       Int                        @default(2400)
+  // History kept for a selectable time (Daniel 2026-09-30); null keeps it until deleted by hand.
+  historyRetentionMonths  Int?
+  createdAt               DateTime                   @default(now())
+  updatedAt               DateTime                   @updatedAt
+  activeUsers             User[]                     @relation("ActiveOrganization")
+  members                 OrganizationMember[]
+  customers               Customer[]
+  customerFacilities      CustomerFacility[]
+  projects                Project[]
+  controls                Control[]
+  workflowTasks           WorkflowTask[]
+  plannedActivities       PlannedActivity[]
+  plannedActivityEvents   PlannedActivityEvent[]
+  workflowTaskAttachments WorkflowTaskAttachment[]
+  sites                   Site[]
+  departments             Department[]
+  wallet                  CreditWallet?
+  invitations             OrganizationInvitation[]
+  legalAcceptances        LegalAcceptance[]
+  cloudSubscriptions      CloudSubscription[]
+  billingInvoices         BillingInvoice[]
+  billingNotices          BillingNotice[]
+  creditExpiryNotices     CreditExpiryNotice[]
+  creditPurchases         CreditPurchase[]
+  paymentEvents           PaymentEvent[]
+  billingPolicy           OrganizationBillingPolicy?
+  stripeCustomers         StripeCustomer[]
+  billingOrders           BillingOrder[]
+  priceChangeNotices      PriceChangeNotice[]
+  integrationKeys         IntegrationKey[]
+  aiMemories              AiMemory[]
+  bankPayments            BankPayment[]
+  cloudEntitlements       CloudEntitlement[]
+  billingAuditEvents      BillingAuditEvent[]
+  billingAdjustments      BillingAdjustment[]
+  cloudImports            CloudImport[]
+  aiRuns                  AiRun[]
+  aiRunEvents             AiRunEvent[]
+  aiConversations         AiConversation[]
+  aiMessages              AiMessage[]
+  aiProposals             AiProposal[]
+  workScheduleEvents      WorkScheduleEvent[]
+  timeEntryEvents         WorkflowTimeEntryEvent[]
+  localWorkspaceBindings  LocalWorkspaceBinding[]
+  formTemplates           FormTemplate[]
+  formLimitProfiles       FormLimitProfile[]
+  formSchedules           FormSchedule[]
+}
+
+model OrganizationMember {
+  canDeleteControls          Boolean                     @default(false)
+  workflowPermissions        Json?
+  weeklyWorkMinutes          Int?
+  isActive                   Boolean                     @default(true)
+  id                         String                      @id @default(cuid())
+  organizationId             String
+  userId                     String
+  role                       OrganizationMemberRole      @default(MEMBER)
+  createdAt                  DateTime                    @default(now())
+  updatedAt                  DateTime                    @updatedAt
+  organization               Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user                       User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workScheduleEvents         WorkScheduleEvent[]         @relation("WorkScheduleMember")
+  plannedActivityAssignments PlannedActivityAssignment[]
+
+  @@unique([organizationId, userId])
+  @@unique([id, organizationId])
+  @@index([userId])
+}
+
+model WorkScheduleEvent {
+  id              String              @id @default(cuid())
+  organizationId  String
+  memberId        String?
+  scope           String
+  previousMinutes Int?
+  nextMinutes     Int?
+  actorName       String              @default("")
+  createdAt       DateTime            @default(now())
+  organization    Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  member          OrganizationMember? @relation("WorkScheduleMember", fields: [memberId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@index([organizationId, createdAt])
+  @@index([organizationId, memberId, createdAt])
+}
+
+model LocalWorkspaceBinding {
+  id                               String       @id @default(cuid())
+  organizationId                   String
+  userId                           String
+  localIdentityId                  String
+  memberWeeklyWorkMinutesAtBinding Int?
+  scheduleBaselineCapturedAt       DateTime?
+  lastLocalScheduleUpdatedAt       DateTime?
+  lastScheduleSyncedAt             DateTime?
+  createdAt                        DateTime     @default(now())
+  revokedAt                        DateTime?
+  revokedByUserId                  String?
+  organization                     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user                             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId, localIdentityId])
+  @@index([organizationId, userId, revokedAt])
+}
+
+model Site {
+  id             String         @id @default(cuid())
+  organizationId String
+  name           String
+  isActive       Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  departments    Department[]
+  controls       Control[]
+  workflowTasks  WorkflowTask[]
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, name])
+  @@index([organizationId, isActive, name])
+}
+
+model Department {
+  id             String         @id @default(cuid())
+  organizationId String
+  siteId         String
+  name           String
+  isActive       Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  site           Site           @relation(fields: [siteId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  controls       Control[]
+  workflowTasks  WorkflowTask[]
+
+  @@unique([id, organizationId])
+  @@unique([id, siteId, organizationId])
+  @@unique([siteId, name])
+  @@index([organizationId, siteId, isActive, name])
+}
+
+model OrganizationInvitation {
+  id                  String                       @id @default(cuid())
+  organizationId      String
+  email               String
+  name                String
+  role                OrganizationMemberRole       @default(MEMBER)
+  canDeleteControls   Boolean                      @default(false)
+  workflowPermissions Json?
+  status              OrganizationInvitationStatus @default(PREPARED)
+  activeKey           String?                      @unique
+  tokenHash           String?                      @unique
+  expiresAt           DateTime?
+  sentAt              DateTime?
+  acceptedAt          DateTime?
+  revokedAt           DateTime?
+  invitedBy           String
+  acceptedUserId      String?
+  createdAt           DateTime                     @default(now())
+  updatedAt           DateTime                     @updatedAt
+  organization        Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status, createdAt])
+  @@index([email, status])
+  @@index([expiresAt])
+}
+
+model LegalDocument {
+  id          String              @id @default(cuid())
+  type        LegalDocumentType
+  scope       LegalDocumentScope
+  status      LegalDocumentStatus @default(DRAFT)
+  version     String
+  title       String
+  content     String
+  contentHash String
+  validFrom   DateTime?
+  publishedAt DateTime?
+  revokedAt   DateTime?
+  createdBy   String
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  acceptances LegalAcceptance[]
+
+  @@unique([type, version])
+  @@index([status, type, publishedAt])
+}
+
+model LegalAcceptance {
+  id                  String        @id @default(cuid())
+  documentId          String
+  scopeKey            String
+  userId              String
+  organizationId      String?
+  organizationRole    String?
+  documentVersion     String
+  documentContentHash String
+  acceptedAt          DateTime      @default(now())
+  document            LegalDocument @relation(fields: [documentId], references: [id], onDelete: Restrict)
+  user                User          @relation(fields: [userId], references: [id], onDelete: Restrict)
+  organization        Organization? @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@unique([documentId, scopeKey])
+  @@index([userId, acceptedAt])
+  @@index([organizationId, acceptedAt])
+}
+
+model VerificationToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  sentTo    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  sentTo    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Customer {
+  id             String             @id @default(cuid())
+  organizationId String
+  name           String
+  company        String             @default("")
+  address        String             @default("")
+  postalCode     String             @default("")
+  city           String             @default("")
+  email          String             @default("")
+  phone          String             @default("")
+  mobile         String             @default("")
+  lat            Float?
+  lng            Float?
+  notes          String             @default("")
+  version        Int                @default(1)
+  deletedAt      DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  organization   Organization       @relation(fields: [organizationId], references: [id])
+  controls       Control[]
+  workflowTasks  WorkflowTask[]
+  projects       Project[]
+  facilities     CustomerFacility[]
+  formSchedules  FormSchedule[]
+
+  @@index([organizationId, deletedAt, name])
+}
+
+// A customer's facility (Daniel 2026-09-26, decision 11/D9 B): a property, switchgear or other object under the
+// customer that projects, work orders, risk assessments and controls can be linked to. The organization's own
+// places are Site ("Platser"). Paused rather than deleted so that linked work keeps its reference; purging the
+// customer removes its facilities and clears the links. Same-tenant links are enforced by a database trigger.
+model CustomerFacility {
+  id             String             @id @default(cuid())
+  organizationId String
+  customerId     String
+  name           String
+  address        String             @default("")
+  postalCode     String             @default("")
+  city           String             @default("")
+  description    String             @default("")
+  isActive       Boolean            @default(true)
+  version        Int                @default(1)
+  createdBy      String
+  updatedBy      String
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer       Customer           @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  projects       Project[]
+  workflowTasks  WorkflowTask[]
+  controls       Control[]
+  limitProfiles  FormLimitProfile[]
+  formSchedules  FormSchedule[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId, customerId, isActive])
+}
+
+model Project {
+  id                String            @id @default(cuid())
+  organizationId    String
+  customerId        String?
+  name              String
+  description       String            @default("")
+  // The project's frame (Daniel 2026-09-26): start and end, Swedish calendar days; both are required for new projects.
+  startDate         String            @default("")
+  dueDate           String            @default("")
+  // Fixed project fields shown read-only in every task and printed in reports; description is the work description.
+  client            String            @default("")
+  contactPerson     String            @default("")
+  reference         String            @default("")
+  workSite          String            @default("")
+  taskTypes         Json              @default("[]")
+  workMoments       Json              @default("[]")
+  responsibleUserId String?
+  responsibleName   String            @default("")
+  timeBudgetMinutes Int               @default(0)
+  archivedAt        DateTime?
+  // Manual "Avsluta projekt" (Daniel 2026-09-26); only allowed when every task is completed and no planning is active.
+  closedAt          DateTime?
+  closedBy          String?
+  createdBy         String
+  updatedBy         String
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  // Same-tenant customer is enforced by the database trigger from migration 20260925180000_tenant_hardening;
+  // a single-column FK is kept so purging a customer still only clears customerId.
+  customer          Customer?         @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  facilityId        String?
+  facility          CustomerFacility? @relation(fields: [facilityId], references: [id], onDelete: SetNull)
+  controls          Control[]
+  workflowTasks     WorkflowTask[]
+  events            ProjectEvent[]
+  decisions         ProjectDecision[]
+  plannedActivities PlannedActivity[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId, updatedAt])
+  @@index([organizationId, customerId])
+}
+
+model ProjectEvent {
+  id             String   @id @default(cuid())
+  organizationId String
+  projectId      String
+  kind           String
+  summary        String
+  taskId         String?
+  actorName      String   @default("")
+  createdBy      String?
+  createdAt      DateTime @default(now())
+  // Composite key: a history row can only belong to a project in the same organization.
+  project        Project  @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@index([organizationId, projectId, createdAt])
+}
+
+// The project's decision log (Daniel 2026-09-26): date, text and who decided. Append-only; never edited or deleted.
+model ProjectDecision {
+  id             String   @id @default(cuid())
+  organizationId String
+  projectId      String
+  decidedOn      String
+  text           String
+  decidedBy      String
+  createdBy      String
+  actorName      String   @default("")
+  createdAt      DateTime @default(now())
+  project        Project  @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@index([organizationId, projectId, decidedOn])
+}
+
+model WorkflowTask {
+  id                  String                   @id @default(cuid())
+  organizationId      String
+  projectId           String?
+  customerId          String?
+  siteId              String?
+  departmentId        String?
+  kind                String
+  title               String
+  description         String                   @default("")
+  status              String                   @default("PLANNED")
+  progress            Int                      @default(0)
+  assignedToUserId    String?
+  assignedToName      String                   @default("")
+  dueDate             String                   @default("")
+  data                Json
+  version             Int                      @default(1)
+  startedAt           DateTime?
+  completedAt         DateTime?
+  createdBy           String
+  updatedBy           String
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+  organization        Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project             Project?                 @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  customer            Customer?                @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  facilityId          String?
+  facility            CustomerFacility?        @relation(fields: [facilityId], references: [id], onDelete: SetNull)
+  site                Site?                    @relation(fields: [siteId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  department          Department?              @relation(fields: [departmentId, siteId, organizationId], references: [id, siteId, organizationId], onDelete: Restrict)
+  revisions           WorkflowTaskRevision[]
+  timeEntries         WorkflowTimeEntry[]
+  attachments         WorkflowTaskAttachment[]
+  plannedActivities   PlannedActivity[]
+  // A protocol from a published form (kind FORM): the exact template version it was created from.
+  formTemplateId      String?
+  // The permission area of the protocol's form (forms, kfid or risk-assessment); NULL is forms.
+  formArea            String?
+  formTemplateVersion Int?
+  formVersion         FormTemplateVersion?     @relation(fields: [formTemplateId, formTemplateVersion], references: [templateId, version], onDelete: SetNull)
+
+  @@unique([id, organizationId])
+  @@index([organizationId, formTemplateId])
+  @@index([organizationId, kind, status, updatedAt])
+  @@index([organizationId, projectId, status])
+  @@index([organizationId, customerId])
+  @@index([organizationId, siteId, departmentId])
+}
+
+model WorkflowTaskRevision {
+  id        String       @id @default(cuid())
+  taskId    String
+  version   Int
+  snapshot  Json
+  createdBy String
+  createdAt DateTime     @default(now())
+  task      WorkflowTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, version])
+  @@index([taskId, createdAt])
+}
+
+// A time entry belongs to exactly one work order/risk assessment (taskId) or one commissioning control (controlId,
+// Daniel 2026-09-26 decision 13: manual registration only, controls have no start/pause). A CHECK constraint in the
+// migration enforces exactly one of the two.
+model WorkflowTimeEntry {
+  id          String        @id @default(cuid())
+  taskId      String?
+  controlId   String?
+  userId      String
+  startedAt   DateTime
+  endedAt     DateTime?
+  durationSec Int           @default(0)
+  note        String        @default("")
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  task        WorkflowTask? @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  control     Control?      @relation(fields: [controlId], references: [id], onDelete: Cascade)
+
+  @@index([taskId, startedAt])
+  @@index([controlId, startedAt])
+  @@index([userId, startedAt])
+}
+
+// Append-only audit of manual time registration and corrections. Deliberately not a foreign key
+// to WorkflowTimeEntry so the history survives deletion of the entry or its task.
+model WorkflowTimeEntryEvent {
+  id             String       @id @default(cuid())
+  organizationId String
+  entryId        String
+  userId         String
+  action         String
+  previous       Json?
+  next           Json?
+  reason         String       @default("")
+  actorUserId    String
+  actorName      String       @default("")
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, entryId, createdAt])
+  @@index([organizationId, userId, createdAt])
+}
+
+model PlannedActivity {
+  id               String                      @id @default(cuid())
+  organizationId   String
+  projectId        String?
+  workflowTaskId   String?
+  controlId        String?
+  title            String
+  description      String                      @default("")
+  kind             String                      @default("TASK")
+  status           String                      @default("PLANNED")
+  startsAt         DateTime
+  endsAt           DateTime
+  assignedToUserId String?
+  assignedToName   String                      @default("")
+  version          Int                         @default(1)
+  deletedAt        DateTime?
+  createdBy        String
+  updatedBy        String
+  createdAt        DateTime                    @default(now())
+  updatedAt        DateTime                    @updatedAt
+  organization     Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project          Project?                    @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  workflowTask     WorkflowTask?               @relation(fields: [workflowTaskId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  control          Control?                    @relation(fields: [controlId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  events           PlannedActivityEvent[]
+  assignments      PlannedActivityAssignment[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId, startsAt, endsAt])
+  @@index([organizationId, projectId, startsAt])
+  @@index([organizationId, workflowTaskId, startsAt])
+  @@index([organizationId, controlId, startsAt])
+  @@index([organizationId, assignedToUserId, startsAt])
+}
+
+model PlannedActivityAssignment {
+  id                String             @id @default(cuid())
+  organizationId    String
+  plannedActivityId String
+  memberId          String
+  plannedMinutes    Int?
+  startsAt          DateTime?
+  endsAt            DateTime?
+  plannedActivity   PlannedActivity    @relation(fields: [plannedActivityId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  member            OrganizationMember @relation(fields: [memberId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@unique([plannedActivityId, memberId])
+  @@index([organizationId, memberId, plannedActivityId])
+}
+
+model PlannedActivityEvent {
+  id                String          @id @default(cuid())
+  organizationId    String
+  plannedActivityId String
+  kind              String
+  summary           String
+  snapshot          Json
+  actorName         String          @default("")
+  createdBy         String?
+  createdAt         DateTime        @default(now())
+  organization      Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  plannedActivity   PlannedActivity @relation(fields: [plannedActivityId, organizationId], references: [id, organizationId], onDelete: Restrict)
+
+  @@index([organizationId, plannedActivityId, createdAt])
+}
+
+model WorkflowTaskAttachment {
+  id             String       @id @default(cuid())
+  organizationId String
+  taskId         String
+  filename       String
+  storagePath    String       @unique
+  mimeType       String
+  size           Int
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  task           WorkflowTask @relation(fields: [taskId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@index([organizationId, taskId])
+}
+
+model Control {
+  id                String              @id @default(cuid())
+  number            Int                 @unique @default(autoincrement())
+  organizationId    String
+  customerId        String?
+  projectId         String?
+  siteId            String?
+  departmentId      String?
+  title             String
+  project           String              @default("")
+  performer         String              @default("")
+  date              String              @default("")
+  status            String              @default("DRAFT")
+  data              Json
+  version           Int                 @default(1)
+  createdBy         String
+  updatedBy         String
+  lockToken         String?
+  lockedBy          String?
+  lockExpiresAt     DateTime?
+  deletedAt         DateTime?
+  lastOpenedAt      DateTime?
+  postedAt          DateTime?
+  postedTo          String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  organization      Organization        @relation(fields: [organizationId], references: [id])
+  customer          Customer?           @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  facilityId        String?
+  facility          CustomerFacility?   @relation(fields: [facilityId], references: [id], onDelete: SetNull)
+  workflowProject   Project?            @relation(fields: [projectId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  site              Site?               @relation(fields: [siteId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  department        Department?         @relation(fields: [departmentId, siteId, organizationId], references: [id, siteId, organizationId], onDelete: Restrict)
+  attachments       Attachment[]
+  generatedResults  GeneratedResult[]
+  revisions         ControlRevision[]
+  aiRuns            AiRun[]
+  plannedActivities PlannedActivity[]
+  timeEntries       WorkflowTimeEntry[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId, deletedAt, updatedAt])
+  @@index([organizationId, siteId, departmentId])
+  @@index([organizationId, projectId, status])
+}
+
+model ControlRevision {
+  id        String   @id @default(cuid())
+  controlId String
+  version   Int
+  data      Json
+  createdBy String
+  createdAt DateTime @default(now())
+  control   Control  @relation(fields: [controlId], references: [id], onDelete: Cascade)
+
+  @@unique([controlId, version])
+}
+
+model Attachment {
+  id             String   @id @default(cuid())
+  organizationId String
+  controlId      String
+  filename       String
+  storagePath    String   @unique
+  mimeType       String
+  size           Int
+  section        String   @default("vis")
+  rowId          String?
+  createdAt      DateTime @default(now())
+  control        Control  @relation(fields: [controlId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@index([organizationId, controlId])
+}
+
+model CloudImport {
+  id                 String       @id @default(cuid())
+  organizationId     String
+  bundleSha256       String
+  sourceWorkspaceId  String
+  snapshotExportedAt DateTime
+  importedBy         String
+  result             Json
+  completedAt        DateTime     @default(now())
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, bundleSha256])
+  @@index([organizationId, completedAt])
+}
+
+model CreditWallet {
+  id               String        @id @default(cuid())
+  organizationId   String        @unique
+  balance          Int           @default(0)
+  testMode         Boolean       @default(true)
+  purchasedBalance Int           @default(0)
+  expiryEnabled    Boolean       @default(true)
+  expiryOverrideAt DateTime?
+  organization     Organization  @relation(fields: [organizationId], references: [id])
+  entries          CreditEntry[]
+  lots             CreditLot[]
+}
+
+model CreditLot {
+  id             String               @id @default(cuid())
+  walletId       String
+  purchaseId     String?              @unique
+  origin         CreditLotOrigin      @default(PURCHASE)
+  sourceKey      String?              @unique
+  credits        Int
+  remaining      Int
+  termsVersion   String?
+  termsHash      String?
+  grantedBy      String?
+  reason         String?
+  noExpiryReason String?
+  expiresAt      DateTime?
+  createdAt      DateTime             @default(now())
+  wallet         CreditWallet         @relation(fields: [walletId], references: [id], onDelete: Restrict)
+  purchase       CreditPurchase?      @relation(fields: [purchaseId], references: [id], onDelete: Restrict)
+  allocations    CreditAllocation[]
+  expiryNotices  CreditExpiryNotice[]
+  aiRunReleases  AiRunCreditRelease[]
+
+  @@index([walletId, expiresAt, createdAt])
+  @@index([walletId, origin, remaining])
+}
+
+model CreditExpiryNotice {
+  id                 String                   @id @default(cuid())
+  organizationId     String
+  lotId              String
+  stage              CreditExpiryNoticeStage
+  title              String
+  message            String
+  credits            Int
+  effectiveAt        DateTime
+  expiresAt          DateTime
+  emailStatus        BillingNoticeEmailStatus @default(QUEUED)
+  emailSentAt        DateTime?
+  emailLastAttemptAt DateTime?
+  emailAttemptCount  Int                      @default(0)
+  emailFailure       String?
+  resolvedAt         DateTime?
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+  organization       Organization             @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  lot                CreditLot                @relation(fields: [lotId], references: [id], onDelete: Restrict)
+
+  @@unique([lotId, stage, expiresAt])
+  @@index([organizationId, resolvedAt, effectiveAt])
+  @@index([emailStatus, createdAt])
+}
+
+model CreditEntry {
+  id             String             @id @default(cuid())
+  walletId       String
+  amount         Int
+  kind           String
+  requestKey     String             @unique
+  description    String
+  createdAt      DateTime           @default(now())
+  wallet         CreditWallet       @relation(fields: [walletId], references: [id])
+  purchase       CreditPurchase?
+  allocations    CreditAllocation[]
+  aiReservations AiRun[]            @relation("AiReservationEntry")
+  aiReleases     AiRun[]            @relation("AiReleaseEntry")
+
+  @@index([walletId, createdAt])
+}
+
+model CreditAllocation {
+  id        String      @id @default(cuid())
+  lotId     String
+  entryId   String
+  amount    Int
+  createdAt DateTime    @default(now())
+  lot       CreditLot   @relation(fields: [lotId], references: [id], onDelete: Restrict)
+  entry     CreditEntry @relation(fields: [entryId], references: [id], onDelete: Restrict)
+
+  @@unique([lotId, entryId])
+  @@index([entryId])
+}
+
+model AiRun {
+  id                                  String               @id @default(cuid())
+  organizationId                      String
+  controlId                           String?
+  subjectType                         String
+  subjectId                           String
+  actorId                             String
+  agentId                             String
+  requestKey                          String
+  status                              AiRunStatus          @default(RESERVED)
+  provider                            String               @default("OPENAI")
+  model                               String
+  reasoningEffort                     String
+  pricingVersion                      String
+  fxSource                            String
+  fxEffectiveDate                     DateTime
+  usdSekRateMicros                    Int
+  inputPriceUsdMicrosPerMillion       Int
+  cachedInputPriceUsdMicrosPerMillion Int
+  outputPriceUsdMicrosPerMillion      Int
+  targetGrossMarginBps                Int
+  creditFloorValueOre                 Int
+  minimumCredits                      Int
+  estimatedInputTokens                Int
+  inputTokenLimit                     Int
+  maxOutputTokens                     Int
+  reservedCredits                     Int
+  inputTokens                         Int?
+  cachedInputTokens                   Int?
+  outputTokens                        Int?
+  providerCostUsdMicros               Int?
+  providerCostOre                     Int?
+  chargedCredits                      Int?
+  releasedCredits                     Int?
+  providerResponseId                  String?              @unique
+  failureCode                         String?
+  reservationEntryId                  String               @unique
+  releaseEntryId                      String?              @unique
+  startedAt                           DateTime?
+  completedAt                         DateTime?
+  failedAt                            DateTime?
+  createdAt                           DateTime             @default(now())
+  updatedAt                           DateTime             @updatedAt
+  organization                        Organization         @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  control                             Control?             @relation(fields: [controlId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  actor                               User                 @relation(fields: [actorId], references: [id], onDelete: Restrict)
+  reservationEntry                    CreditEntry          @relation("AiReservationEntry", fields: [reservationEntryId], references: [id], onDelete: Restrict)
+  releaseEntry                        CreditEntry?         @relation("AiReleaseEntry", fields: [releaseEntryId], references: [id], onDelete: Restrict)
+  events                              AiRunEvent[]
+  creditReleases                      AiRunCreditRelease[]
+  assistantMessage                    AiMessage?
+
+  @@unique([organizationId, requestKey])
+  @@index([organizationId, controlId, createdAt])
+  @@index([organizationId, subjectType, subjectId, createdAt])
+  @@index([organizationId, status, createdAt])
+  @@index([actorId, createdAt])
+}
+
+model AiRunEvent {
+  id             String       @id @default(cuid())
+  runId          String
+  organizationId String
+  actorId        String?
+  action         String
+  data           Json         @default("{}")
+  createdAt      DateTime     @default(now())
+  run            AiRun        @relation(fields: [runId], references: [id], onDelete: Restrict)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@index([runId, createdAt])
+  @@index([organizationId, createdAt])
+}
+
+model AiRunCreditRelease {
+  id        String    @id @default(cuid())
+  runId     String
+  lotId     String
+  amount    Int
+  createdAt DateTime  @default(now())
+  run       AiRun     @relation(fields: [runId], references: [id], onDelete: Restrict)
+  lot       CreditLot @relation(fields: [lotId], references: [id], onDelete: Restrict)
+
+  @@unique([runId, lotId])
+  @@index([lotId])
+}
+
+model AiConversation {
+  id             String               @id @default(cuid())
+  organizationId String
+  createdById    String
+  title          String
+  status         AiConversationStatus @default(ACTIVE)
+  moduleId       String?
+  resourceType   String?
+  resourceId     String?
+  lastMessageAt  DateTime?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  organization   Organization         @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  createdBy      User                 @relation("AiConversationCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  messages       AiMessage[]
+  proposals      AiProposal[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId, createdById, status, lastMessageAt])
+}
+
+model AiMessage {
+  id             String         @id @default(cuid())
+  conversationId String
+  organizationId String
+  authorId       String?
+  role           AiMessageRole
+  content        String
+  citations      Json           @default("[]")
+  model          String?
+  runId          String?        @unique
+  createdAt      DateTime       @default(now())
+  conversation   AiConversation @relation(fields: [conversationId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  author         User?          @relation("AiMessageAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  run            AiRun?         @relation(fields: [runId], references: [id], onDelete: Restrict)
+  proposals      AiProposal[]
+
+  @@index([conversationId, createdAt])
+  @@index([organizationId, authorId, createdAt])
+}
+
+model AiProposal {
+  id                  String           @id @default(cuid())
+  conversationId      String
+  organizationId      String
+  proposedByMessageId String?
+  moduleId            String
+  resourceType        String
+  resourceId          String
+  kind                String
+  status              AiProposalStatus @default(PENDING)
+  payload             Json
+  baseVersion         Int?
+  reviewedById        String?
+  reviewedAt          DateTime?
+  appliedAt           DateTime?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  conversation        AiConversation   @relation(fields: [conversationId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  organization        Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  proposedByMessage   AiMessage?       @relation(fields: [proposedByMessageId], references: [id], onDelete: Restrict)
+  reviewedBy          User?            @relation("AiProposalReviewer", fields: [reviewedById], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, status, createdAt])
+  @@index([conversationId, createdAt])
+  @@index([resourceType, resourceId, status])
+}
+
+model CloudSubscription {
+  id                       String                  @id @default(cuid())
+  organizationId           String
+  providerCustomerId       String?
+  providerSubscriptionId   String?                 @unique
+  providerPriceId          String?
+  providerExtraUserPriceId String?
+  status                   CloudSubscriptionStatus @default(PENDING)
+  priceAmountOre           Int
+  extraUserPriceAmountOre  Int?
+  billableUserCount        Int?
+  currency                 String                  @default("SEK")
+  pricesIncludeVat         Boolean?
+  currentPeriodStart       DateTime?
+  currentPeriodEnd         DateTime?
+  cancelAtPeriodEnd        Boolean                 @default(false)
+  canceledAt               DateTime?
+  createdAt                DateTime                @default(now())
+  updatedAt                DateTime                @updatedAt
+  organization             Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  invoices                 BillingInvoice[]
+
+  @@index([organizationId, status])
+  @@index([providerCustomerId])
+}
+
+enum IntegrationKeyKind {
+  API
+  MCP
+  EXTERNAL
+}
+
+/// Every key a company uses with Workflow, in one place under the company administration (Daniel 2026-09-29).
+/// API and MCP keys are issued by Workflow: shown once, stored only as a SHA-256 hash of the secret part, and they act on
+/// behalf of the admin who created them within their scopes. External keys (the company's own AI key, integrations) are
+/// fetched from the provider, stored encrypted (AES-256-GCM) and never shown again, only their last four characters.
+model IntegrationKey {
+  id              String             @id @default(cuid())
+  organizationId  String
+  kind            IntegrationKeyKind
+  name            String
+  provider        String?
+  scopes          String[]           @default([])
+  displayHint     String
+  secretHash      String?
+  encryptedValue  String?
+  expiresAt       DateTime?
+  lastUsedAt      DateTime?
+  revokedAt       DateTime?
+  revokedById     String?
+  createdById     String
+  // The member the key acts for (API/MCP server, 2026-09-30); null = the admin who created it.
+  actingUserId    String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  organization    Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, kind, revokedAt])
+}
+
+enum PriceVersionStatus {
+  DRAFT
+  READY
+  ACTIVE
+  RETIRED
+}
+
+/// Versioned amounts (Daniel 2026-09-29): amounts change only through a new version mirrored to new Stripe prices.
+/// A version is editable only as DRAFT; READY has validated Stripe prices; exactly one version is ACTIVE.
+model PriceVersion {
+  id                      String             @id @default(cuid())
+  version                 Int                @unique
+  status                  PriceVersionStatus @default(DRAFT)
+  cloudBaseAmountOre      Int
+  cloudExtraUserAmountOre Int
+  includedUsers           Int
+  /// [{ key, name, credits, amountOre }]
+  creditPackages          Json
+  /// { cloud: { priceId, lookupKey }, cloudExtraUser: {...}, credits: { [key]: {...} } }
+  stripePrices            Json               @default("{}")
+  note                    String             @default("")
+  termsVersion            String?
+  creditTermsVersion      String?
+  createdById             String
+  activatedById           String?
+  activatedAt             DateTime?
+  retiredAt               DateTime?
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+  notices                 PriceChangeNotice[]
+
+  @@index([status])
+}
+
+enum PriceChangeNoticeStatus {
+  NOTIFIED
+  MOVED
+  CANCELED
+}
+
+/// In-app notice to a company that its Cloud subscription moves to a new price version; the move is allowed first
+/// when effectiveNotBefore (notice + 30 days) has passed and takes effect from the next period.
+model PriceChangeNotice {
+  id                  String                  @id @default(cuid())
+  organizationId      String
+  subscriptionId      String
+  priceVersionId      String
+  fromPriceAmountOre  Int
+  fromExtraUserAmountOre Int?
+  status              PriceChangeNoticeStatus @default(NOTIFIED)
+  noticedAt           DateTime                @default(now())
+  effectiveNotBefore  DateTime
+  movedAt             DateTime?
+  amendmentOrderId    String?
+  createdById         String
+  movedById           String?
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+  organization        Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  priceVersion        PriceVersion            @relation(fields: [priceVersionId], references: [id], onDelete: Restrict)
+
+  @@unique([subscriptionId, priceVersionId])
+  @@index([organizationId, status])
+}
+
+model OrganizationBillingPolicy {
+  organizationId        String             @id
+  preferredPaymentMode  BillingPaymentMode @default(CARD)
+  invoicePrepaidEnabled Boolean            @default(true)
+  invoiceCreditEnabled  Boolean            @default(false)
+  invoiceDueDays        Int                @default(10)
+  invoiceCreditLimitOre Int?
+  creditApprovedBy      String?
+  creditApprovedAt      DateTime?
+  internalComment       String?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  organization          Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
+
+model StripeCustomer {
+  id                 String       @id @default(cuid())
+  organizationId     String
+  providerCustomerId String       @unique
+  livemode           Boolean      @default(false)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, livemode])
+  @@index([organizationId])
+}
+
+model BillingOrder {
+  id                 String             @id @default(cuid())
+  requestKey         String             @unique
+  organizationId     String
+  createdBy          String
+  paymentMode        BillingPaymentMode
+  status             BillingOrderStatus @default(DRAFT)
+  currency           String             @default("SEK")
+  subtotalOre        Int
+  taxAmountOre       Int
+  totalAmountOre     Int
+  termsVersion       String
+  termsHash          String
+  privacyVersion     String
+  privacyHash        String
+  dpaVersion         String?
+  dpaHash            String?
+  creditTermsVersion String?
+  creditTermsHash    String?
+  providerCheckoutId String?            @unique
+  invoiceDueDays     Int?
+  billableUserCount  Int?
+  /// Price version the order was priced from (null for orders before 2026-09-29).
+  priceVersion       Int?
+  /// Campaign discount on the order, excl. VAT (subtotalOre stays the undiscounted amount, like Stripe).
+  discountAmountOre  Int                @default(0)
+  campaignKey        String?
+  discountCode       String?
+  providerCouponId   String?
+  providerPromotionCodeId String?
+  /// A subscription change (price version move or seat change) is recorded as a new order that amends the previous one.
+  amendsOrderId      String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  organization       Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  items              BillingOrderItem[]
+  invoice            BillingInvoice?
+  amendsOrder        BillingOrder?      @relation("BillingOrderAmendment", fields: [amendsOrderId], references: [id], onDelete: Restrict)
+  amendments         BillingOrder[]     @relation("BillingOrderAmendment")
+
+  @@index([organizationId, status, createdAt])
+}
+
+model BillingOrderItem {
+  id              String               @id @default(cuid())
+  orderId         String
+  kind            BillingOrderItemKind
+  productKey      String
+  description     String
+  quantity        Int                  @default(1)
+  unitAmountOre   Int
+  subtotalOre     Int
+  taxAmountOre    Int
+  totalAmountOre  Int
+  discountAmountOre Int                @default(0)
+  credits         Int?
+  periodStart     DateTime?
+  periodEnd       DateTime?
+  providerPriceId String?
+  createdAt       DateTime             @default(now())
+  order           BillingOrder         @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([orderId, kind])
+}
+
+model BillingInvoice {
+  id                      String                  @id @default(cuid())
+  organizationId          String
+  subscriptionId          String?
+  orderId                 String?                 @unique
+  providerInvoiceId       String?                 @unique
+  providerPaidEventId     String?                 @unique
+  paidOutOfBandRequestKey String?                 @unique
+  providerNumber          String?
+  paymentReference        String?
+  paymentMode             BillingPaymentMode?
+  invoiceDueDays          Int?
+  status                  BillingInvoiceStatus    @default(DRAFT)
+  subtotalOre             Int
+  taxAmountOre            Int
+  totalAmountOre          Int
+  amountPaidOre           Int                     @default(0)
+  currency                String                  @default("SEK")
+  periodStart             DateTime?
+  periodEnd               DateTime?
+  dueAt                   DateTime?
+  finalizedAt             DateTime?
+  paidAt                  DateTime?
+  voidedAt                DateTime?
+  replacesInvoiceId       String?                 @unique
+  replacementRequestKey   String?                 @unique
+  replacementReason       String?
+  replacementActorId      String?
+  firstPaymentFailedAt    DateTime?
+  lastPaymentAttemptAt    DateTime?
+  paymentAttemptCount     Int                     @default(0)
+  nextPaymentAttemptAt    DateTime?
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+  organization            Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  subscription            CloudSubscription?      @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  order                   BillingOrder?           @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  paymentAllocations      BankPaymentAllocation[]
+  entitlements            CloudEntitlement[]
+  adjustments             BillingAdjustment[]
+  notices                 BillingNotice[]
+  replacesInvoice         BillingInvoice?         @relation("InvoiceReplacement", fields: [replacesInvoiceId], references: [id], onDelete: Restrict)
+  replacedByInvoice       BillingInvoice?         @relation("InvoiceReplacement")
+
+  @@index([organizationId, status, createdAt])
+  @@index([subscriptionId])
+}
+
+model BillingNotice {
+  id                 String                   @id @default(cuid())
+  organizationId     String
+  invoiceId          String
+  stage              BillingNoticeStage
+  title              String
+  message            String
+  effectiveAt        DateTime
+  emailStatus        BillingNoticeEmailStatus @default(NOT_REQUESTED)
+  emailSentAt        DateTime?
+  emailLastAttemptAt DateTime?
+  emailAttemptCount  Int                      @default(0)
+  emailFailure       String?
+  resolvedAt         DateTime?
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+  organization       Organization             @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  invoice            BillingInvoice           @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+
+  @@unique([invoiceId, stage])
+  @@index([organizationId, resolvedAt, effectiveAt])
+  @@index([emailStatus, createdAt])
+}
+
+model BankPayment {
+  id              String                  @id @default(cuid())
+  organizationId  String
+  requestKey      String                  @unique
+  amountOre       Int
+  currency        String                  @default("SEK")
+  paidAt          DateTime
+  reference       String
+  internalComment String
+  verifiedBy      String
+  status          BankPaymentStatus       @default(UNALLOCATED)
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+  organization    Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  allocations     BankPaymentAllocation[]
+
+  @@index([organizationId, status, paidAt])
+  @@index([reference])
+}
+
+model BankPaymentAllocation {
+  id            String         @id @default(cuid())
+  bankPaymentId String
+  invoiceId     String
+  amountOre     Int
+  createdAt     DateTime       @default(now())
+  bankPayment   BankPayment    @relation(fields: [bankPaymentId], references: [id], onDelete: Restrict)
+  invoice       BillingInvoice @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+
+  @@unique([bankPaymentId, invoiceId])
+  @@index([invoiceId])
+}
+
+model CloudEntitlement {
+  id                   String                 @id @default(cuid())
+  organizationId       String
+  invoiceId            String?
+  sourcePaymentEventId String?
+  sourceKey            String                 @unique
+  source               CloudEntitlementSource
+  status               CloudEntitlementStatus @default(ACTIVE)
+  periodStart          DateTime
+  periodEnd            DateTime
+  grantedAt            DateTime               @default(now())
+  revokedAt            DateTime?
+  revokeReason         String?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  organization         Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  invoice              BillingInvoice?        @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  sourcePaymentEvent   PaymentEvent?          @relation(fields: [sourcePaymentEventId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status, periodEnd])
+  @@index([invoiceId])
+}
+
+model BillingAuditEvent {
+  id             String       @id @default(cuid())
+  organizationId String
+  actorId        String?
+  action         String
+  entityType     String
+  entityId       String?
+  data           Json         @default("{}")
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, createdAt])
+  @@index([entityType, entityId])
+}
+
+model CreditPurchase {
+  id                      String               @id @default(cuid())
+  organizationId          String
+  packageKey              String
+  credits                 Int
+  subtotalOre             Int
+  taxAmountOre            Int
+  totalAmountOre          Int
+  currency                String               @default("SEK")
+  providerCheckoutId      String?              @unique
+  providerPaymentIntentId String?              @unique
+  status                  CreditPurchaseStatus @default(PENDING)
+  creditEntryId           String?              @unique
+  paidAt                  DateTime?
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
+  organization            Organization         @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  creditEntry             CreditEntry?         @relation(fields: [creditEntryId], references: [id], onDelete: SetNull)
+  lot                     CreditLot?
+  adjustments             BillingAdjustment[]
+
+  @@index([organizationId, status, createdAt])
+}
+
+model BillingAdjustment {
+  id                   String                  @id @default(cuid())
+  organizationId       String
+  invoiceId            String?
+  purchaseId           String?
+  sourcePaymentEventId String?
+  providerAdjustmentId String                  @unique
+  kind                 BillingAdjustmentKind
+  status               BillingAdjustmentStatus
+  amountOre            Int
+  currency             String                  @default("SEK")
+  reason               String?
+  appliedCredits       Int                     @default(0)
+  effectiveAt          DateTime?
+  appliedAt            DateTime?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+  organization         Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  invoice              BillingInvoice?         @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  purchase             CreditPurchase?         @relation(fields: [purchaseId], references: [id], onDelete: Restrict)
+  sourcePaymentEvent   PaymentEvent?           @relation(fields: [sourcePaymentEventId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, kind, status, createdAt])
+  @@index([invoiceId])
+  @@index([purchaseId])
+  @@index([sourcePaymentEventId])
+}
+
+model PaymentEvent {
+  id                 String              @id @default(cuid())
+  organizationId     String?
+  providerEventId    String              @unique
+  eventType          String
+  payloadHash        String?
+  status             PaymentEventStatus  @default(RECEIVED)
+  processedAt        DateTime?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  organization       Organization?       @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  cloudEntitlements  CloudEntitlement[]
+  billingAdjustments BillingAdjustment[]
+
+  @@index([organizationId, createdAt])
+  @@index([status, createdAt])
+}
+
+model GeneratedResult {
+  id             String   @id @default(cuid())
+  organizationId String
+  controlId      String
+  requestKey     String   @unique
+  kind           String
+  status         String   @default("PENDING")
+  content        String?
+  storagePath    String?
+  mimeType       String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  control        Control  @relation(fields: [controlId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@index([organizationId, controlId])
+}
+
+model WorkspaceSettings {
+  id             String  @id @default(cuid())
+  organizationId String  @unique
+  companyName    String  @default("")
+  contactEmail   String  @default("")
+  logoPath       String?
+  themePrimary   String?
+  reportPrimary  String  @default("#174C72")
+  reportAccent   String  @default("#2E7EAA")
+  reportSoft     String  @default("#EDF5F9")
+  suggestions    Json    @default("{}")
+  profile        Json    @default("{}")
+  aiPolicy       Json    @default("{}")
+}
+
+model UserPreferences {
+  userId String @id
+  data   Json   @default("{}")
+}
+
+model AdministrationEvent {
+  id             String   @id @default(cuid())
+  actorId        String
+  organizationId String
+  action         String
+  detail         String
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, createdAt])
+}
+
+model SystemSettings {
+  id          String @id @default("global")
+  suggestions Json   @default("{}")
+  commercial  Json   @default("{}")
+}
+
+model ControlVisit {
+  userId         String
+  organizationId String
+  controlId      String
+  openedAt       DateTime @default(now())
+
+  @@id([userId, organizationId, controlId])
+  @@index([userId, organizationId, openedAt])
+}
+
+// Forms (Daniel 2026-09-26, design v2): published centrally by the superadmin, not tenant-bound, and never customer
+// data. A version is append-only (a database trigger refuses updates and deletes); protocols point to their version.
+model FormTemplate {
+  id               String                @id @default(cuid())
+  // Company forms (Daniel 2026-09-27): NULL = HINTEK's forms, shown to everyone; otherwise only that company's.
+  organizationId   String?
+  publisherName    String                @default("HINTEK")
+  // Who made the form (2026-09-28): HINTEK, the company, or – later – a community author with a licence.
+  origin           String                @default("COMPANY")
+  authorName       String                @default("")
+  authorUrl        String                @default("")
+  license          String                @default("")
+  // An imported form: the original publisher, whether the file's signature was verified, and the source form.
+  importedFrom     Json?
+  // A company's own version of a HINTEK original (Daniel 2026-09-27): the original and the published version it started from.
+  baseTemplateId   String?
+  baseVersion      Int?
+  // Whose permission governs the protocols: forms, kfid (Kontroll före idrifttagning) or risk-assessment.
+  permissionArea   String                @default("forms")
+  name             String
+  description      String                @default("")
+  color            String                @default("green")
+  displayName      String                @default("")
+  internalNote     String                @default("")
+  icon             String                @default("file-spreadsheet")
+  category         String                @default("OTHER")
+  allowStandalone  Boolean               @default(true)
+  allowInProject   Boolean               @default(true)
+  status           String                @default("DRAFT")
+  draft            Json
+  draftRevision    Int                   @default(1)
+  publishedVersion Int?
+  createdBy        String
+  updatedBy        String
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  versions         FormTemplateVersion[]
+  events           FormTemplateEvent[]
+  organization     Organization?         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  baseTemplate     FormTemplate?         @relation("FormTemplateCopies", fields: [baseTemplateId], references: [id], onDelete: SetNull)
+  copies           FormTemplate[]        @relation("FormTemplateCopies")
+
+  @@unique([organizationId, baseTemplateId])
+  @@index([status, updatedAt])
+  @@index([organizationId, status, updatedAt])
+}
+
+model FormTemplateVersion {
+  id              String         @id @default(cuid())
+  templateId      String
+  version         Int
+  name            String
+  description     String         @default("")
+  color           String         @default("green")
+  displayName     String         @default("")
+  icon            String         @default("file-spreadsheet")
+  category        String         @default("OTHER")
+  allowStandalone Boolean        @default(true)
+  allowInProject  Boolean        @default(true)
+  document        Json
+  hash            String
+  publishedBy     String
+  publisherName   String         @default("HINTEK")
+  importedFrom    Json?
+  createdAt       DateTime       @default(now())
+  template        FormTemplate   @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  protocols       WorkflowTask[]
+
+  @@unique([templateId, version])
+}
+
+model FormTemplateEvent {
+  id          String       @id @default(cuid())
+  templateId  String
+  action      String
+  summary     String
+  actorUserId String
+  actorName   String
+  createdAt   DateTime     @default(now())
+  template    FormTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([templateId, createdAt])
+}
+
+/// Limit profiles (2026-09-28): a company's own limit values for one form family at one facility, optionally per
+/// object there (objectName, e.g. unit G1). The form only names the limits; the numbers belong to the facility.
+model FormLimitProfile {
+  id             String           @id @default(cuid())
+  organizationId String
+  // The form family: the HINTEK original's id also for a company's version of it. No foreign key, so the values
+  // survive a deleted or replaced form.
+  templateId     String
+  facilityId     String
+  objectName     String           @default("")
+  values         Json
+  version        Int              @default(1)
+  updatedBy      String
+  updatedByName  String           @default("")
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  facility       CustomerFacility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, templateId, facilityId, objectName])
+  @@index([organizationId, facilityId])
+}
+
+/// Återkommande kontroller (2026-09-28): a round of one form at a facility, customer or project, repeated daily,
+/// weekly or monthly (rule, lib/workflow/form-schedule.ts). Protocols are made when a round is started and carry
+/// the schedule and the day in their answers (values.round); nothing is created in advance.
+model FormSchedule {
+  id               String            @id @default(cuid())
+  organizationId   String
+  templateId       String
+  title            String
+  customerId       String?
+  facilityId       String?
+  projectId        String?
+  assignedToUserId String?
+  assignedToName   String            @default("")
+  rule             Json
+  // Round reminders (Daniel 2026-09-30): { bell, email }.
+  reminders        Json              @default("{}")
+  active           Boolean           @default(true)
+  version          Int               @default(1)
+  deletedAt        DateTime?
+  createdBy        String
+  updatedBy        String
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer         Customer?         @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  facility         CustomerFacility? @relation(fields: [facilityId], references: [id], onDelete: SetNull)
+  reminderDeliveries RoundReminderDelivery[]
+
+  @@index([organizationId, active, deletedAt])
+  @@index([organizationId, facilityId])
+}
+
+/// One e-mail reminder per round, day and recipient (Daniel 2026-09-30), so the job never sends twice.
+model RoundReminderDelivery {
+  id             String       @id @default(cuid())
+  organizationId String
+  scheduleId     String
+  occurrence     String
+  userId         String
+  status         String
+  failure        String?
+  createdAt      DateTime     @default(now())
+  schedule       FormSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  @@unique([scheduleId, occurrence, userId])
+  @@index([organizationId, createdAt])
+}
+
+/// HINTEK AI memory (Daniel 2026-09-30): the company's general memory (scope COMPANY, subject "company") and a
+/// pseudonymised memory per user (scope USER, subject = keyed hash of company and user). At most 2000 characters.
+model AiMemory {
+  id             String       @id @default(cuid())
+  organizationId String
+  scope          String
+  subject        String
+  content        String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, scope, subject])
+}

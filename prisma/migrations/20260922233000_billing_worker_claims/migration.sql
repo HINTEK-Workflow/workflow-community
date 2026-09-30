@@ -1,0 +1,5 @@
+ALTER TYPE "BillingNoticeEmailStatus" ADD VALUE 'SENDING' AFTER 'QUEUED';
+
+ALTER TABLE "BillingNotice"
+ADD COLUMN "emailLastAttemptAt" TIMESTAMP(3),
+ADD COLUMN "emailAttemptCount" INTEGER NOT NULL DEFAULT 0;

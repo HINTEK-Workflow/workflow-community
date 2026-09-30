@@ -1,0 +1,4 @@
+﻿services:
+  app:
+    volumes:
+      - ./storage-local:/app/storage
