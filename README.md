@@ -70,6 +70,12 @@ any account exists.
 For production, run `npm run build` and `npm run start`, or `docker compose up -d --build`. Use an HTTPS `APP_URL`
 behind a reverse proxy.
 
+## Your own terms
+
+Workflow ships no terms of its own: whoever runs an installation is responsible for them. The links *Tjänstevillkor*,
+*Integritetspolicy* and *DPA* show a short description of each document until you add your own text as
+`legal/terms.md`, `legal/privacy.md` and `legal/dpa.md` (see [legal/README.md](legal/README.md)).
+
 ## Configuration
 
 All settings are environment variables; `.env.example` lists them. The installation's identity:

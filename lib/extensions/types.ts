@@ -48,6 +48,8 @@ export type ServerExtensions = {
   paymentSandboxAvailable(): Promise<boolean>;
   /** Asks Stripe whether it accepts the configured secret key; null without ee/. */
   checkStripeSecretKey(): Promise<{ ok: boolean; message: string } | null>;
+  /** HINTEK's published legal document by key; null without ee/ (the installation's own texts are used instead). */
+  legalDocument(key: string): Promise<{ title: string; version: string; content: string } | null>;
   /** The public landing page for a signed-out visitor, or a superadmin's preview. */
   landing(input: { superadmin: boolean; preview: boolean }): Promise<LandingDecision>;
 };

@@ -18,8 +18,6 @@ export type InstanceFeatures = {
   integrations: boolean;
   /** Sign-in with a Google account (ee/; 2026-09-30: not in the community edition). */
   googleSignIn: boolean;
-  /** HINTEK's own terms, privacy policy, DPA and credit terms (docs/legal; not in the community edition). */
-  terms: boolean;
   /** A "Visa demo" button on the login page (2026-09-30: only in the community edition). */
   demoOnLogin: boolean;
   /** The public landing page and its inline editor. */
@@ -67,7 +65,6 @@ export function publicInstance(source: InstanceEnv = process.env): PublicInstanc
       ai: EE_PRESENT && flag(source.AI_ENABLED),
       integrations: EE_PRESENT,
       googleSignIn: EE_PRESENT,
-      terms: EE_PRESENT,
       demoOnLogin: !EE_PRESENT,
       landingEditor: EE_PRESENT && flag(source.LANDING_EDITOR_ENABLED),
     },

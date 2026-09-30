@@ -12,5 +12,6 @@ export const serverExtensions: ServerExtensions = {
   aiOverview: async () => ({ enabled: false, configured: false }),
   paymentSandboxAvailable: async () => false,
   checkStripeSecretKey: async () => null,
+  legalDocument: async () => null,
   landing: async () => ({ kind: "hidden" }),
 };

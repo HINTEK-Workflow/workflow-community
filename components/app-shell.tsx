@@ -64,6 +64,7 @@ import {
   type ShellBranding,
 } from "@/lib/branding";
 import { clientExtensions } from "@ee/client";
+import { LEGAL_LINKS } from "@ee/present";
 import { LongTimerWarning, RunningTimerIndicator } from "@/features/workflow/running-timer";
 import { MENU_VISIBILITY_EVENT } from "@/lib/workflow/menu-items";
 import { hasWorkflowPermission, type WorkflowPermissionProfile } from "@/lib/workflow/permissions";
@@ -820,14 +821,11 @@ export function AppShell({
         </main>
         <footer className="workspace-footer mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 pb-6 text-xs text-muted-foreground sm:px-8">
           <span>{instance.name} · Kontroll före idrifttagning</span>
-          {/* HINTEK's prices and terms (ee/, docs/legal) – not in the community edition. */}
-          {instance.features.terms ? <span className="flex flex-wrap gap-3">
+          {/* The installation's legal documents (LEGAL_LINKS: HINTEK's four, the community edition's three). */}
+          <span className="flex flex-wrap gap-3">
             {instance.features.landingEditor ? <Link href="/#priser">Priser</Link> : null}
-            <Link href="/legal/terms">Villkor</Link>
-            <Link href="/legal/privacy">Integritet</Link>
-            <Link href="/legal/dpa">DPA</Link>
-            <Link href="/legal/credit-terms">Kreditvillkor</Link>
-          </span> : null}
+            {LEGAL_LINKS.map((link) => <Link key={link.key} href={`/legal/${link.key}`}>{link.label}</Link>)}
+          </span>
         </footer>
       </div>
       <nav

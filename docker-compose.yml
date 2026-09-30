@@ -16,6 +16,8 @@ services:
       - "127.0.0.1:${APP_PORT:-3000}:3000"
     volumes:
       - ${STORAGE_PATH:-./storage}:/app/storage
+      # Your own legal texts (legal/README.md), read directly so a change needs no rebuild.
+      - ./legal:/app/legal:ro
     restart: unless-stopped
 
   postgres:
