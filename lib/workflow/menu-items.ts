@@ -20,6 +20,7 @@ export const MENU_ITEM_GROUPS = [
   ] },
   { title: "Verktyg", items: [
     { key: "ai", label: "HINTEK AI" },
+    { key: "import", label: "Import" },
     { key: "forms", label: "Skapa formulär" },
   ] },
   { title: "Företag", items: [

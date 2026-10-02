@@ -197,5 +197,29 @@ test("the task view exactly like the originals (2026-09-27): the new building bl
     "Kontroll av Elcentral A1.", "Isolation: 1 av 1 kontrollrader godkända.", "Isolation — Grupp 1: Ny kabel",
     "Märkning och skyltning utförd: kontrollerat.", "Dokumentation lämnad (schema / ritning): ej bekräftat.", "Mekaniskt skydd och infästning OK: ej bekräftat.", "IP-klass och omgivning lämplig: ej bekräftat.",
     "Beröringsskydd, kapslingar och lock på plats: ej bekräftat.", "Polaritet och funktion hos manöverdon kontrollerad: ej bekräftat.",
+    // A conclusion closes the summary (2026-10-01).
+    "Bedömning: inga avvikelser hittills, men 5 punkter är inte bekräftade.",
   ].join("\n"));
+});
+
+test("the material for a written summary names every deviation's row; the rules' own summary stays as it is", async () => {
+  const { formRuleSummary, formSummaryMaterial, initialFormValues, newFormRow, formLeafBlocks } = await import("../lib/workflow/form-document");
+  const { kfidFormDocument } = await import("../lib/workflow/builtin-kfid-form");
+  const table = formLeafBlocks(kfidFormDocument).find((block) => block.type === "table" && block.key === "iso");
+  assert.ok(table && table.type === "table");
+  const values = initialFormValues(kfidFormDocument);
+  values.fields.auto = "YES";
+  values.sections["kfid-iso"] = true;
+  values.tables.iso = [{ ...newFormRow(table, "i1"), cells: { objekt: "Grupp 7 – uttag kök", u: "500 V", mohm: "0,2", limit: "1" } }];
+  const summary = formRuleSummary(kfidFormDocument, values);
+  assert.equal(summary.includes("Grupp 7"), false, "the summary only counts the rows");
+  const material = formSummaryMaterial(kfidFormDocument, values);
+  assert.ok(material.startsWith(summary), "the rules' summary first, unchanged");
+  assert.match(material, /Avvikelser:\n• Isolation, Grupp 7 – uttag kök: inte godkänd\./);
+  values.deviationComment = "Åtgärdas av beställaren.";
+  assert.match(formSummaryMaterial(kfidFormDocument, values), /Anteckning: Åtgärdas av beställaren\.$/);
+  // Nothing wrong: nothing added.
+  values.deviationComment = "";
+  values.tables.iso = [{ ...newFormRow(table, "i1"), cells: { objekt: "Grupp 1", u: "500 V", mohm: "250", limit: "1" } }];
+  assert.equal(formSummaryMaterial(kfidFormDocument, values), formRuleSummary(kfidFormDocument, values));
 });

@@ -183,6 +183,8 @@ enum AiProposalStatus {
   REJECTED
   APPLIED
   EXPIRED
+  /// An applied proposal whose result the person took back (fas 2).
+  UNDONE
 }
 
 model User {
@@ -1011,6 +1013,8 @@ model AiRun {
   releasedCredits                     Int?
   providerResponseId                  String?              @unique
   failureCode                         String?
+  /// Where in Workflow the run was asked for (chat, tip, summary, import); empty for older runs.
+  surface                             String?
   reservationEntryId                  String               @unique
   releaseEntryId                      String?              @unique
   startedAt                           DateTime?
@@ -1104,10 +1108,17 @@ model AiMessage {
   @@index([organizationId, authorId, createdAt])
 }
 
+/// What HINTEK AI proposed and what the person did with it. The payload is the validated input of the ordinary tool
+/// that carries it out; the result holds what was created, so it can be undone (plan 2026-10-01, fas 2). A proposal
+/// made on a page has no conversation.
 model AiProposal {
   id                  String           @id @default(cuid())
-  conversationId      String
+  conversationId      String?
   organizationId      String
+  /// The person the proposal was made for; only they may use, dismiss or undo it.
+  createdById         String?
+  runId               String?
+  result              Json             @default("{}")
   proposedByMessageId String?
   moduleId            String
   resourceType        String
@@ -1121,7 +1132,7 @@ model AiProposal {
   appliedAt           DateTime?
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt
-  conversation        AiConversation   @relation(fields: [conversationId, organizationId], references: [id, organizationId], onDelete: Restrict)
+  conversation        AiConversation?  @relation(fields: [conversationId, organizationId], references: [id, organizationId], onDelete: Restrict)
   organization        Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   proposedByMessage   AiMessage?       @relation(fields: [proposedByMessageId], references: [id], onDelete: Restrict)
   reviewedBy          User?            @relation("AiProposalReviewer", fields: [reviewedById], references: [id], onDelete: Restrict)
@@ -1129,6 +1140,7 @@ model AiProposal {
   @@index([organizationId, status, createdAt])
   @@index([conversationId, createdAt])
   @@index([resourceType, resourceId, status])
+  @@index([organizationId, createdById, createdAt])
 }
 
 model CloudSubscription {
@@ -1599,6 +1611,23 @@ model UserPreferences {
   data   Json   @default("{}")
 }
 
+/// One short digest per company and day (plan 2026-10-01, fas 4): what the rules counted (facts) and the text, written
+/// by the AI model (source AI) or by the rules when it could not run (RULES). Numbers and project names only.
+model AiDailyDigest {
+  id             String   @id @default(cuid())
+  organizationId String
+  /// The Swedish calendar day the digest is about, YYYY-MM-DD.
+  day            String
+  text           String
+  facts          Json
+  source         String
+  runId          String?
+  createdAt      DateTime @default(now())
+
+  @@unique([organizationId, day])
+  @@index([organizationId, createdAt])
+}
+
 model AdministrationEvent {
   id             String   @id @default(cuid())
   actorId        String
@@ -1616,6 +1645,8 @@ model SystemSettings {
   commercial  Json   @default("{}")
   /// E-post settings made in the app (lib/mail/settings.ts); empty = the server's .env values.
   mail        Json   @default("{}")
+  /// HINTEK AI credit settings made in the app (ee/ai/credit-settings.ts); empty = the defaults.
+  ai          Json   @default("{}")
 }
 
 model ControlVisit {

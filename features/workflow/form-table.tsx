@@ -233,7 +233,12 @@ function ObjectCard({ context, row, index, canAdd, onCopy }: { context: CellCont
     <div className="@container"><div className="mt-3 grid grid-cols-2 gap-3 @3xl:grid-cols-4">
       {items.map((item) => item.kind === "group"
         ? <fieldset key={item.name} className="col-span-2 min-w-0 rounded-lg border bg-muted/30 px-3 pb-3 pt-1"><legend className="px-1 text-xs font-semibold text-foreground">{item.name}</legend>
-          <div className="grid grid-cols-2 gap-2">{item.columns.map((column) => <label key={column.id} className="min-w-0 space-y-1 text-[11px] font-medium text-muted-foreground">{column.cardLabel || cellLabel(column)}{mark(column)}{cellControl(context, row, index, column, false)}</label>)}</div>
+          {/* The group's fields are laid out like the card's others (2026-10-01, Handlingsplan): the label above,
+              the field under it, and a check box level with the inputs beside it with its own label only. */}
+          <div className="grid grid-cols-2 items-start gap-x-3 gap-y-3">{item.columns.map((column) => <div key={column.id} className="field-stack min-w-0">
+            {column.input === "check" ? <span aria-hidden="true">&nbsp;</span> : <span>{column.cardLabel || cellLabel(column)}{mark(column)}</span>}
+            {column.input === "formula" ? <div className="flex h-10 items-center rounded-[9px] border bg-muted/30 px-3 text-sm">{cellControl(context, row, index, column, false)}</div> : cellControl(context, row, index, column, false)}
+          </div>)}</div>
         </fieldset>
         : <div key={item.column.id} className={cn("field-stack", span(item.column))}>
           {/* A check box carries its own label beside it; the empty line keeps it level with the inputs (2026-09-29). */}

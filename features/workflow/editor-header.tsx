@@ -33,6 +33,7 @@ export function EditorHeader({
   primaryAction,
   className,
   actionsClassName,
+  flow,
 }: {
   eyebrow: string;
   title: string;
@@ -48,6 +49,8 @@ export function EditorHeader({
   className?: string;
   /** Classes for the action buttons (not the timer, which is always reachable, also on mobile). */
   actionsClassName?: string;
+  /** The progress line with its tip (2026-10-01), between the icon row and the first panel. */
+  flow?: React.ReactNode;
 }) {
   const allFacts: EditorFact[] = [...(facts ?? []), ...(timer ? [{ icon: Clock3, label: `${formatTimerDuration(timer.totalDurationSec)} rapporterad`, iconClassName: "text-muted-foreground" }] : [])];
   return (
@@ -85,6 +88,7 @@ export function EditorHeader({
           ))}
         </div>
       ) : null}
+      {flow}
     </div>
   );
 }

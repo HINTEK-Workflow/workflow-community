@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { api } from "@/features/kfid/api";
 import { useConfirm } from "@/features/kfid/confirm";
 import { Panel } from "@/features/kfid/ui";
+import { useInstance } from "@/components/instance-provider";
 import { formatSwedish } from "@/lib/swedish-time";
 import {
   countTotal,
@@ -37,7 +38,10 @@ export function HistoryRetention({ notify }: { notify: (text: string, error?: bo
   const [error, setError] = useState("");
   const [months, setMonths] = useState<HistoryRetentionMonths>(null);
   const [before, setBefore] = useState(aYearAgo);
-  const [chosen, setChosen] = useState<Set<HistoryCategory>>(() => new Set(HISTORY_CATEGORY_KEYS));
+  // HINTEK AI and its chats exist only in HINTEK's edition (ee/).
+  const { features } = useInstance();
+  const categories = HISTORY_CATEGORIES.filter((category) => category.key !== "ai" || features.ai);
+  const [chosen, setChosen] = useState<Set<HistoryCategory>>(() => new Set(HISTORY_CATEGORY_KEYS.filter((key) => key !== "ai" || features.ai)));
   const [preview, setPreview] = useState<{ key: string; counts: HistoryCounts } | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirmCard, confirmElement] = useConfirm();
@@ -83,8 +87,10 @@ export function HistoryRetention({ notify }: { notify: (text: string, error?: bo
     {confirmElement}
     {heading}
     <Panel title="Vad som räknas som historik" description="Bara arbetshistorik kan raderas.">
-      <ul className="grid gap-2 text-sm sm:grid-cols-2">{HISTORY_CATEGORIES.map((category) => <li key={category.key} className="rounded-lg border bg-muted/20 p-3"><p className="font-medium">{category.label}</p><p className="mt-1 text-xs text-muted-foreground">{category.note}</p></li>)}</ul>
-      <p className="mt-3 flex gap-2 text-xs text-muted-foreground"><ShieldCheck className="size-4 shrink-0 text-primary" />Behålls alltid: projektens beslutslogg, godkända villkor, order, fakturor, betalningar, krediter och AI-körningarnas kostnadslogg – de är underlag för avtal och bokföring.</p>
+      <ul className="grid gap-2 text-sm sm:grid-cols-2">{categories.map((category) => <li key={category.key} className="rounded-lg border bg-muted/20 p-3"><p className="font-medium">{category.label}</p><p className="mt-1 text-xs text-muted-foreground">{category.note}</p></li>)}</ul>
+      <p className="mt-3 flex gap-2 text-xs text-muted-foreground"><ShieldCheck className="size-4 shrink-0 text-primary" />{features.billing || features.ai
+        ? "Behålls alltid: projektens beslutslogg, godkända villkor, order, fakturor, betalningar, krediter och AI-körningarnas kostnadslogg – de är underlag för avtal och bokföring."
+        : "Behålls alltid: projektens beslutslogg och godkända villkor – de är underlag för avtal."}</p>
     </Panel>
     <Panel title="Lagringstid" description="Historik som är äldre än lagringstiden raderas automatiskt varje natt. Välj Tills vidare om historiken bara ska raderas för hand.">
       <div className="flex flex-wrap items-end gap-3">
@@ -99,7 +105,7 @@ export function HistoryRetention({ notify }: { notify: (text: string, error?: bo
       <div className="grid gap-4 lg:grid-cols-[14rem_minmax(0,1fr)]">
         <label className="grid content-start gap-1.5 text-xs font-medium text-muted-foreground">Radera historik äldre än<Input type="date" value={before} max={new Date().toISOString().slice(0, 10)} onChange={(event) => setBefore(event.target.value)} data-testid="purge-before" /></label>
         <fieldset className="grid gap-2"><legend className="mb-1 text-xs font-medium text-muted-foreground">Vad som raderas</legend>
-          {HISTORY_CATEGORIES.map((category) => <label key={category.key} className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-1" checked={chosen.has(category.key)} onChange={(event) => setChosen((current) => { const next = new Set(current); if (event.target.checked) next.add(category.key); else next.delete(category.key); return next; })} />
+          {categories.map((category) => <label key={category.key} className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-1" checked={chosen.has(category.key)} onChange={(event) => setChosen((current) => { const next = new Set(current); if (event.target.checked) next.add(category.key); else next.delete(category.key); return next; })} />
             <span>{category.label}{counts ? <span className="ml-2 text-xs text-muted-foreground" data-testid={`purge-count-${category.key}`}>{counts[category.key]} st</span> : null}</span></label>)}
         </fieldset>
       </div>

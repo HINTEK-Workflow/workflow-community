@@ -3,19 +3,27 @@
 import { Fragment, useState } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { Dialog } from "radix-ui";
-import { AlignLeft, Calendar, CheckSquare, ClipboardCheck, Columns3, FileText, Grid3x3, Hash, Heading, Image as ImageIcon, Info, LayoutList, ListChecks, PenLine, Plus, Ruler, Scissors, Sigma, SquareDashed, ToggleLeft, Type, X, type LucideIcon } from "lucide-react";
+import { AlignLeft, Cable, Calendar, CheckSquare, ClipboardCheck, Columns3, Eye, FileText, Gauge, Grid3x3, Hash, Heading, Image as ImageIcon, Info, LayoutGrid, LayoutList, ListChecks, PenLine, Plus, PowerOff, Rows3, Ruler, Scissors, ShieldAlert, Sigma, SquareDashed, ToggleLeft, TriangleAlert, Type, X, Zap, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { LIBRARY, type LibraryType } from "@/lib/workflow/form-editor";
+import { PRESET_GROUP, PRESET_LIBRARY, type PresetType } from "@/lib/workflow/form-presets";
 
-export const LIBRARY_ICON: Record<LibraryType, LucideIcon> = {
+/** A ribbon entry: a block type, or a ready-made control block from the originals (2026-10-01). */
+export type RibbonType = LibraryType | PresetType;
+
+export const LIBRARY_ICON: Record<RibbonType, LucideIcon> = {
   section: SquareDashed, heading: Heading, text: AlignLeft, pagebreak: Scissors, text_field: Type, long_text: FileText, number: Hash, measurement: Ruler, datetime: Calendar,
   yesno: ToggleLeft, single_choice: LayoutList, multiple_choice: CheckSquare, checklist: ListChecks, table: Columns3, attachment: ImageIcon, signature: PenLine, computed: Sigma,
   note: Info, summary: ClipboardCheck, matrix: Grid3x3,
+  // The control's own blocks, so JFB-prov and the others are found in the ribbon where the product owner looked for them.
+  kfid_iso: Zap, kfid_cont: Cable, kfid_volt: Gauge, kfid_rcd: ShieldAlert, kfid_zs: PowerOff, kfid_vis: Eye, risk_table: TriangleAlert, measurement_rows: Rows3, object_cards: LayoutGrid,
 };
-const GROUPS = ["Struktur", "Fält", "Resultat"] as const;
+const GROUPS = ["Struktur", "Fält", "Resultat", PRESET_GROUP] as const;
+/** Everything the ribbon offers: the block types and, in the group Kontroll, the ready-made control blocks. */
+export const RIBBON: { type: RibbonType; label: string; hint: string; group: (typeof GROUPS)[number] }[] = [...LIBRARY, ...PRESET_LIBRARY];
 
-function RibbonItem({ type, label, hint, onAdd }: { type: LibraryType; label: string; hint: string; onAdd: (type: LibraryType) => void }) {
+function RibbonItem({ type, label, hint, onAdd }: { type: RibbonType; label: string; hint: string; onAdd: (type: RibbonType) => void }) {
   const { setNodeRef, attributes, listeners, isDragging } = useDraggable({ id: `library:${type}`, data: { kind: "library", type } });
   const Icon = LIBRARY_ICON[type];
   return <button ref={setNodeRef} type="button" {...attributes} {...listeners} onClick={() => onAdd(type)} title={`${label} – ${hint}. Dra till arket eller klicka.`} aria-label={`Lägg till ${label}`}
@@ -32,14 +40,15 @@ function RibbonItem({ type, label, hint, onAdd }: { type: LibraryType; label: st
  * The field ribbon (2026-09-26): every block type as an icon above the sheet, like a word processor's toolbar.
  * Drag an icon onto the sheet, or click it to add after the selected block. It is the only way to add blocks, so there
  * are no duplicate "Lägg till" menus. The names are never cut: the ribbon wraps to a second row when the width runs out
- * (2026-09-27). Phones use the floating button below instead of a ribbon that scrolls sideways.
+ * (2026-09-27). Phones use the floating button below instead of a ribbon that scrolls sideways. The fourth group,
+ * Kontroll (2026-10-01), holds the ready-made blocks of Kontroll före idrifttagning and the risk assessment.
  */
-export function FieldRibbon({ onAdd }: { onAdd: (type: LibraryType) => void }) {
+export function FieldRibbon({ onAdd }: { onAdd: (type: RibbonType) => void }) {
   return <div role="toolbar" aria-label="Fält att lägga till" className="flex flex-wrap items-stretch" data-testid="field-ribbon">
     {GROUPS.map((group, index) => <Fragment key={group}>
       {index ? <span aria-hidden="true" className="mx-0.5 my-2.5 w-px shrink-0 bg-border" /> : null}
       <div role="group" aria-label={group} className="contents">
-        {LIBRARY.filter((item) => item.group === group).map((item) => <RibbonItem key={item.type} type={item.type} label={item.label} hint={item.hint} onAdd={onAdd} />)}
+        {RIBBON.filter((item) => item.group === group).map((item) => <RibbonItem key={item.type} type={item.type} label={item.label} hint={item.hint} onAdd={onAdd} />)}
       </div>
     </Fragment>)}
   </div>;
@@ -50,7 +59,7 @@ export function FieldRibbon({ onAdd }: { onAdd: (type: LibraryType) => void }) {
  * panel from below, grouped like the ribbon. A tap adds the block after the selected one and closes the panel, so the
  * sheet keeps the whole screen while building.
  */
-export function FieldSheetButton({ onAdd }: { onAdd: (type: LibraryType) => void }) {
+export function FieldSheetButton({ onAdd }: { onAdd: (type: RibbonType) => void }) {
   const [open, setOpen] = useState(false);
   return <Dialog.Root open={open} onOpenChange={setOpen}>
     <Dialog.Trigger asChild>
@@ -69,7 +78,7 @@ export function FieldSheetButton({ onAdd }: { onAdd: (type: LibraryType) => void
           {GROUPS.map((group) => <section key={group} aria-label={group}>
             <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{group}</h3>
             <div className="grid grid-cols-4 gap-1.5">
-              {LIBRARY.filter((item) => item.group === group).map((item) => {
+              {RIBBON.filter((item) => item.group === group).map((item) => {
                 const Icon = LIBRARY_ICON[item.type];
                 return <button key={item.type} type="button" aria-label={`Lägg till ${item.label}`} onClick={() => { onAdd(item.type); setOpen(false); }}
                   className="flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border bg-card px-1 py-2 text-center text-[11px] font-medium leading-tight text-foreground/80 hover:border-primary/40 hover:bg-secondary hover:text-primary" data-testid="field-sheet-item">

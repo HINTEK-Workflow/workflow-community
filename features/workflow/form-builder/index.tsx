@@ -10,14 +10,16 @@ import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/features/kfid/confirm";
 import { cn } from "@/lib/utils";
 import { formatSwedish } from "@/lib/swedish-time";
-import { formLeafBlocks, validateFormDocument, type FormLeafBlock, type FormSection } from "@/lib/workflow/form-document";
-import { createBlock, duplicateBlock, emptySection, findEditorBlock, insertBlock, insertionPoint, insertSection, LIBRARY, locate, moveBlock, moveBlockTo, moveSectionTo, removeBlock, uniqueKey, updateBlock, type EditorDocument, type LibraryType } from "@/lib/workflow/form-editor";
+import { formDocumentSchema, formLeafBlocks, validateFormDocument, type FormLeafBlock, type FormSection } from "@/lib/workflow/form-document";
+import { PENDING_FORM_IMPORT_KEY } from "@/lib/workflow/form-import";
+import { createBlock, duplicateBlock, emptySection, findEditorBlock, insertBlock, insertionPoint, insertSection, locate, moveBlock, moveBlockTo, moveSectionTo, removeBlock, uniqueKey, updateBlock, type EditorDocument } from "@/lib/workflow/form-editor";
+import { createPreset, isPresetType } from "@/lib/workflow/form-presets";
 import type { PublishIssue } from "@/lib/workflow/form-publish";
 import { indicatorBadge } from "../indicator-tone";
 import { FormCanvas, type CanvasActions } from "./canvas";
 import { FormsPanel, PublishDialog, SidePanel, statusText, VersionsDialog } from "./dialogs";
 import { blockName } from "./labels";
-import { FieldRibbon, FieldSheetButton } from "./library";
+import { FieldRibbon, FieldSheetButton, RIBBON, type RibbonType } from "./library";
 import { LimitsEditor } from "./rounds-settings";
 import { MetaPanel } from "./meta-panel";
 import { ExecutionPreview } from "./preview";
@@ -82,6 +84,22 @@ export function FormBuilder({ userName, tourSeen, onTourSeen }: { userName?: str
     });
   };
 
+  // Control points handed over from the Import page (2026-10-01): added to the new form once, then forgotten.
+  useEffect(() => {
+    if (draft.loading || draft.templateId) return;
+    type Pending = { name?: string; sections?: unknown[]; limits?: unknown[] };
+    let pending: Pending | null = null;
+    try { const raw = window.sessionStorage.getItem(PENDING_FORM_IMPORT_KEY); if (raw) { pending = JSON.parse(raw) as Pending; window.sessionStorage.removeItem(PENDING_FORM_IMPORT_KEY); } } catch { pending = null; }
+    if (!pending || !pending.sections?.length) return;
+    try {
+      const parsed = formDocumentSchema.parse({ schema: 2, blocks: pending.sections, limits: pending.limits ?? [] });
+      const sections = parsed.blocks.filter((block): block is FormSection => block.type === "section");
+      draft.changeDocument((current) => ({ ...current, blocks: [...current.blocks.filter((section) => section.blocks.length || section.title), ...sections], limits: [...current.limits, ...parsed.limits.filter((limit) => !current.limits.some((item) => item.key === limit.key))] }));
+      if (pending.name && !snapshot.meta.name.trim()) draft.changeMeta({ name: pending.name.slice(0, 120) });
+      setNotice({ text: `${sections.reduce((sum, section) => sum + section.blocks.length, 0)} block importerades i ${sections.length} avsnitt från Import. Granska dem och spara utkastet.` });
+    } catch { setNotice({ text: "Kontrollpunkterna från Import kunde inte läsas in.", error: true }); }
+  }, [draft.loading, draft.templateId]); // eslint-disable-line react-hooks/exhaustive-deps -- runs once when a new form has opened
+
   // A new form starts with Grunduppgifter open; an existing one starts collapsed. They fold away by themselves once
   // the form has a name and its first block, so the sheet gets the room.
   useEffect(() => { if (!draft.loading) setMetaOpen(!draft.templateId); }, [draft.loading, draft.templateId]);
@@ -106,11 +124,23 @@ export function FormBuilder({ userName, tourSeen, onTourSeen }: { userName?: str
 
   // ---------- document operations (the same for drag, buttons and keys) ----------
   const select = useCallback((id: string | null) => { setSelectedId(id); if (id) setMode("build"); }, []);
-  const add = useCallback((type: LibraryType, at?: { sectionId: string; index: number }) => {
+  const add = useCallback((type: RibbonType, at?: { sectionId: string; index: number }) => {
     if (type === "section") {
       const section = emptySection("Nytt avsnitt");
       draft.changeDocument((current) => insertSection(current, section, selectedId));
       select(section.id);
+      return;
+    }
+    // A ready-made control block (2026-10-01): a moment of the control lands as a section, a card or row table as a block.
+    if (isPresetType(type)) {
+      const preset = createPreset(type, document);
+      if (preset.kind === "section") {
+        draft.changeDocument((current) => insertSection(current, preset.section, at ? at.sectionId : selectedId));
+        select(preset.section.id);
+        return;
+      }
+      draft.changeDocument((current) => insertBlock(current, preset.block, at ?? insertionPoint(current, selectedId)));
+      select(preset.block.id);
       return;
     }
     // Made from the rendered document (state updaters run later), so the new block can be selected at once.
@@ -173,7 +203,7 @@ export function FormBuilder({ userName, tourSeen, onTourSeen }: { userName?: str
   );
   const nameOf = useCallback((id: string | number) => {
     const text = String(id);
-    if (text.startsWith("library:")) return LIBRARY.find((item) => `library:${item.type}` === text)?.label ?? "Fältet";
+    if (text.startsWith("library:")) return RIBBON.find((item) => `library:${item.type}` === text)?.label ?? "Fältet";
     if (text.startsWith("body:")) { const section = findEditorBlock(document, text.slice(5)); return section?.type === "section" ? `slutet av ${section.title || "avsnittet"}` : "avsnittet"; }
     const block = findEditorBlock(document, text);
     return !block ? "blocket" : block.type === "section" ? `avsnittet ${block.title || "utan rubrik"}` : blockName(block);
@@ -188,7 +218,7 @@ export function FormBuilder({ userName, tourSeen, onTourSeen }: { userName?: str
   const onDragEnd = ({ active, over }: DragEndEvent) => {
     setDragging(null);
     if (!over || active.id === over.id) return;
-    const from = active.data.current as { kind: string; type?: LibraryType } | undefined;
+    const from = active.data.current as { kind: string; type?: RibbonType } | undefined;
     const to = over.data.current as { kind: string; sectionId?: string } | undefined;
     const target = (current: EditorDocument): { sectionId: string; index: number } | null => {
       if (to?.kind === "block") { const at = locate(current, String(over.id)); return at ? { sectionId: current.blocks[at.section].id, index: at.index } : null; }

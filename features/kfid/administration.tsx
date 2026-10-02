@@ -24,10 +24,9 @@ import { useConfirm } from "./confirm";
 import { blankCompanyProfile as blankProfile } from "@/lib/kfid/company";
 import { LegalDocumentContent } from "@/components/legal-document";
 import { OrganizationStructure } from "./organization-structure";
-import { clientExtensions } from "@ee/client";
+import { useInstance } from "@/components/instance-provider";
 import { applyWorkflowPermissionToggle, noWorkflowPermissionProfile, normalizeWorkflowPermissionProfile, workflowPermissionMatrix, workflowPermissionPresets, type WorkflowPermissionGrant, type WorkflowPermissionSubject } from "@/lib/workflow/permissions";
 // HINTEK AI lives in ee/ (not in the community edition, 2026-09-30); without it this is null.
-const { SharingPolicyPanel } = clientExtensions;
 type Company = {
   id: string;
   name: string;
@@ -328,6 +327,7 @@ export function Administration({
 }: {
   notify: (text: string, error?: boolean) => void;
 }) {
+  const { features } = useInstance();
   const [data, setData] = useState<Data | null>(null),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
@@ -465,7 +465,6 @@ export function Administration({
         </p>
       </div>
       <LegalPanel notify={notify} />
-      {SharingPolicyPanel ? <SharingPolicyPanel /> : null}
       <Panel title="Företag">
         <Input
           aria-label="Sök företag"
@@ -492,7 +491,7 @@ export function Administration({
                 <div><dt className="text-xs text-muted-foreground">Status och lagring</dt><dd className="mt-1">{c.isActive ? "Aktivt" : "Pausat"} · {c.storageMode === "LOCAL" ? "Lokal lagring" : "HINTEK Cloud"}</dd></div>
                 <div><dt className="text-xs text-muted-foreground">Kontakt</dt><dd className="mt-1 break-all">{c.profile.email || "—"}</dd></div>
                 <div><dt className="text-xs text-muted-foreground">Innehåll</dt><dd className="mt-1">{c._count.customers} kunder · {c._count.controls} kontroller</dd></div>
-                <div><dt className="text-xs text-muted-foreground">Konto</dt><dd className="mt-1">{c.wallet?.balance ?? 0} krediter{c.invitations.length ? ` · ${c.invitations.length} väntande` : ""}</dd></div>
+                <div><dt className="text-xs text-muted-foreground">Konto</dt><dd className="mt-1">{features.credits ? `${c.wallet?.balance ?? 0} krediter` : "—"}{c.invitations.length ? ` · ${c.invitations.length} väntande` : ""}</dd></div>
               </dl>
               <div className={`mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 ${c.isActive && c.id !== data.activeOrganizationId ? "md:grid-cols-3" : ""}`}>
                 <Button variant="outline" onClick={() => edit(c)}>Företagsuppgifter</Button>
@@ -537,7 +536,7 @@ export function Administration({
                     ? ` · ${c.invitations.length} väntande`
                     : ""}{" "}
                   · {c._count.customers} kunder · {c._count.controls} kontroller
-                  · {c.wallet?.balance ?? 0} krediter
+                  {features.credits ? ` · ${c.wallet?.balance ?? 0} krediter` : ""}
                 </p>
                 <div className="mt-5 flex flex-wrap gap-2">
                   <Button variant="outline" size="sm" onClick={() => edit(c)}>

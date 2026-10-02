@@ -34,7 +34,8 @@ export function CompleteTaskDialog({ open, onOpenChange, title, lockText, totalD
   totalDurationSec: number; timerRunning: boolean;
   /** False where time cannot be written here (no permission, or a preview). */
   canReportTime: boolean;
-  onComplete: (time: CompletionTime | null) => Promise<boolean>;
+  /** True when done; a message when it failed – shown in the dialog itself (2026-10-01: "inget händer"). */
+  onComplete: (time: CompletionTime | null) => Promise<boolean | string>;
 }) {
   const [writeTime, setWriteTime] = useState(false);
   const [fields, setFields] = useState(defaults);
@@ -58,7 +59,10 @@ export function CompleteTaskDialog({ open, onOpenChange, title, lockText, totalD
     setBusy(true); setProblem("");
     try {
       const done = await onComplete(writeTime && startedAt && endedAt ? { startedAt: startedAt.toISOString(), endedAt: endedAt.toISOString(), note: note.trim() } : null);
-      if (done) onOpenChange(false);
+      if (done === true) onOpenChange(false);
+      else setProblem(typeof done === "string" && done ? done : "Det gick inte att slutföra. Kontrollera uppgifterna och försök igen.");
+    } catch (issue) {
+      setProblem(issue instanceof Error ? issue.message : "Det gick inte att slutföra.");
     } finally { setBusy(false); }
   };
   return <Modal open={open} onOpenChange={(next) => { if (!busy) onOpenChange(next); }} title={title} className="max-w-lg">

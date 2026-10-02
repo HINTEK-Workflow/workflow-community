@@ -508,12 +508,16 @@ html[data-theme="blue"] :is(.workspace-aside, .workspace-drawer):hover { --menu-
 @media (prefers-reduced-motion: reduce) {
   .workspace-header, .workspace-bottom-nav, .editor-workflow-header { transition: none !important; }
 }
+.ai-shimmer-text { color: var(--muted-foreground); }
 @media (prefers-reduced-motion: no-preference) {
   .workspace-drawer[data-state="open"] { animation: workspace-menu-enter .18s ease-out; }
   @keyframes workspace-menu-enter { from { transform: translateX(-100%); } to { transform: translateX(0); } }
   /* A calm pulse while a timer runs (2026-09-26); reduced motion keeps a steady dot. */
   .running-timer-dot { animation: running-timer-pulse 2s ease-in-out infinite; }
   @keyframes running-timer-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .45; transform: scale(.8); } }
+  /* HINTEK AI's waiting text (2026-10-02): a soft light that passes over the words, as in other chats. */
+  .ai-shimmer-text { background: linear-gradient(90deg, var(--muted-foreground) 35%, var(--foreground) 50%, var(--muted-foreground) 65%) 0 0 / 300% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: ai-shimmer 2.2s linear infinite; }
+  @keyframes ai-shimmer { from { background-position: 100% 0; } to { background-position: 0 0; } }
 }
 
 /*
@@ -569,3 +573,18 @@ html[data-theme="blue"] :is(.workspace-aside, .workspace-drawer):hover { --menu-
 .driver-popover.workflow-tour .driver-popover-arrow-side-right.driver-popover-arrow { border-right-color: var(--card); }
 .driver-popover.workflow-tour .driver-popover-arrow-side-top.driver-popover-arrow { border-top-color: var(--card); }
 .driver-popover.workflow-tour .driver-popover-arrow-side-bottom.driver-popover-arrow { border-bottom-color: var(--card); }
+
+/* Vägledning (2026-10-01): a field that is missing, reached from Kvar att fylla i, the progress line or a
+   disabled-looking Slutför, is marked light red until it is changed. */
+.flow-attention {
+  border-radius: 0.5rem;
+  background-color: color-mix(in srgb, #ef4444 7%, var(--card));
+  box-shadow: 0 0 0 1px color-mix(in srgb, #ef4444 60%, transparent);
+  transition: background-color 200ms, box-shadow 200ms;
+}
+/* Only the field itself (2026-10-01): its own border turns red, without an extra ring around it. */
+:is(input, textarea, select).flow-attention,
+:is(input, textarea, select).flow-attention:focus-visible {
+  border-color: color-mix(in srgb, #ef4444 75%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, #ef4444 16%, transparent);
+}

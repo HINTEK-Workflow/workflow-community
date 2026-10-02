@@ -4,7 +4,7 @@ import { facilityLabel } from "@/lib/workflow/customer-facility";
 import { useEffect, useRef, useState } from "react";
 import { formatSwedish, swedishDayKey } from "@/lib/swedish-time";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CalendarClock, CheckCircle2, Copy, Eye, FileDown, FileSpreadsheet, FileText, FolderKanban, History, Package, Paperclip, Plus, RotateCcw, Save, ShieldAlert, ShieldCheck, Trash2, Undo2, Upload, UserRound, Users, Wrench, Zap } from "lucide-react";
+import { CalendarClock, CheckCircle2, Copy, FileText, FolderKanban, History, Package, Paperclip, Plus, RotateCcw, Save, ShieldAlert, ShieldCheck, Trash2, Undo2, Upload, UserRound, Users, Wrench, Zap } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -16,20 +16,23 @@ import { openFormPreviewPdf } from "./form-preview-pdf";
 import { api } from "@/features/kfid/api";
 import type { CustomerItem, ProjectItem } from "@/features/kfid/types";
 import { workflowTaskAttachmentLimit, workflowTaskCompletion, workflowTaskProgress, type WorkflowTaskKind, type WorkflowTaskStatus } from "@/lib/workflow/task-model";
-import { defaultWorkflowReportOptions, type WorkflowReportOptions } from "@/lib/workflow/report";
+import type { WorkflowReportOptions } from "@/lib/workflow/report";
 import { ReportOptionsButton, type ReportVariant } from "./report-options";
 import { EditorHeader, type EditorFact } from "./editor-header";
 import { indicatorBadge } from "./indicator-tone";
 import { announceTimerChange } from "./running-timer";
 import { projectFieldRows, taskDueDateError } from "@/lib/workflow/project-frame";
 import type { StoppedTimer } from "@/lib/workflow/running-timer";
-import { copyFormValues, formApprovalTotals, formLeafBlocks, initialFormValues, type FormDocument, type FormTableBlock, type FormValues } from "@/lib/workflow/form-document";
+import { copyFormValues, formApprovalTotals, formLeafBlocks, formOptionalSections, formSectionActive, initialFormValues, type FormDocument, type FormTableBlock, type FormValues } from "@/lib/workflow/form-document";
 import { applyFormPrefill, type FormPrefill, type FormPrefillSource } from "@/lib/workflow/form-prefill";
 import { FormRenderer, sectionHasSummary, type FormActions, type FormMedia, type FormRowOptions, type FormTaskInline } from "./form-renderer";
 import { FormLimitsPanel, FormTrendPanel, type LocalLimits } from "./form-task-extras";
 import { selectFormHistory, type FormHistoryItem } from "@/lib/workflow/form-history";
 import { CompleteTaskDialog, type CompletionTime } from "./complete-task-dialog";
 import { NextSteps, type LinkedTask } from "./next-steps";
+import { clientExtensions } from "@ee/client";
+import { FlowGuide, focusTarget } from "./flow-guide";
+import { formFlow, riskFlow, workOrderFlow } from "@/lib/workflow/task-flow";
 import { CustomerSearchBox } from "@/features/kfid/customer-search-box";
 
 type Risk = { id: string; hazard: string; likelihood: number; consequence: number; protectiveMeasure: string; residualLikelihood: number; residualConsequence: number };
@@ -54,6 +57,7 @@ const emptyData = (kind: WorkflowTaskKind, form?: FormTemplateChoice | null): Ta
 /** What the person edits; everything else (version, time, attachments, history) always comes from the server. */
 const PERSON_FIELDS = ["title", "description", "status", "projectId", "customerId", "facilityId", "siteId", "departmentId", "assignedToUserId", "assignedToName", "dueDate", "data"] as const;
 
+const { WorkOrderProposal, RiskMeasuresAssist, ProtocolReview } = clientExtensions;
 const statusLabels: Record<WorkflowTaskStatus, string> = { PLANNED: "Planerad", IN_PROGRESS: "Pågår", PAUSED: "Pausad", NEEDS_ACTION: "Behöver åtgärdas", COMPLETED: "Slutförd" };
 
 /**
@@ -116,6 +120,9 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
   };
   const blankTask = (): WorkflowTaskRecord => inherit({ id: "", version: 0, kind, title: kind === "FORM" && form ? (roundParam && roundTitleParam && occurrenceParam ? `${roundTitleParam} ${occurrenceParam}` : form.name) : "", description: "", status: "PLANNED", progress: 0, projectId: null, customerId: customerId ?? null, facilityId: facilityParam ?? null, siteId: null, departmentId: null, assignedToUserId: null, assignedToName: "", dueDate: "", data: blankData(), totalDurationSec: 0, timerRunning: false }, projects.find((project) => project.id === projectId));
   const [task, setTask] = useState<WorkflowTaskRecord>(blankTask);
+  // The newest task, for what is applied after an answer has arrived (HINTEK AI's proposals, 2026-10-02).
+  const latestTask = useRef(task);
+  useEffect(() => { latestTask.current = task; });
   // The task's title follows a field when the form says so (the control's Projekt / anläggning), else stays as typed.
   const titled = (next: WorkflowTaskRecord): WorkflowTaskRecord => {
     if (next.data.kind !== "FORM" || !next.data.details.document.task.titleKey) return next;
@@ -147,6 +154,8 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  // The last save's error, for the completion dialog that covers the page's message.
+  const lastError = useRef("");
   const [customerPicker, setCustomerPicker] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   // The guided flow (2026-09-30): completing asks for time in the same step; linked work orders show their state.
@@ -241,21 +250,20 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
     ...(inlineTask && !task.assignedToName ? [] : [{ icon: UserRound, label: task.assignedToName || "Ingen ansvarig", iconClassName: "text-muted-foreground" }]),
     ...(task.dueDate ? [{ icon: CalendarClock, label: `${overdue ? "Förfallen" : "Klart senast"} ${task.dueDate}`, tone: overdue ? "danger" as const : undefined, iconClassName: overdue ? "text-current" : "text-muted-foreground" }] : []),
   ];
-  const focusRequirement = (field: string) => {
-    const element = document.getElementById(field);
-    element?.scrollIntoView({ behavior: "smooth", block: "center" });
-    element?.focus({ preventScroll: true });
-  };
+  // Leads to the field and marks it light red (2026-10-01); a panel's own field when the id is a section.
+  // With a message it is also shown as a toast, so it is seen where the person is (2026-10-01).
+  const focusRequirement = (field: string, message?: string) => { focusTarget(field, message); };
 
   async function save(status = task.status, time: CompletionTime | null = null): Promise<string | false> {
     // Where a new protocol may be used follows its form (decision 2); the server checks the same.
     const usageProblem = !task.id && kind === "FORM" && form ? (task.projectId && form.allowInProject === false ? `${form.name} kan inte kopplas till ett projekt.` : !task.projectId && form.allowStandalone === false ? `${form.name} måste kopplas till ett projekt. Välj projekt.` : "") : "";
-    if (usageProblem) { setError(usageProblem); setMessage(""); return false; }
+    if (usageProblem) { lastError.current = usageProblem; setError(usageProblem); setMessage(""); return false; }
     if (preview) { setError(""); setMessage(PREVIEW_MESSAGE); return false; }
     if (status === "COMPLETED" && !completion.ready) {
-      setError("Komplettera uppgifterna nedan innan du slutför.");
+      // Said once, in the toast; the page's own list shows the rest (2026-10-01: no extra box at the top).
+      setError("");
       setMessage("");
-      focusRequirement(completion.issues[0].field);
+      focusRequirement(completion.issues[0].field, `Kvar före slutförande: ${completion.issues[0].message}`);
       return false;
     }
     setBusy(true); setError(""); setMessage("");
@@ -275,7 +283,7 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
       if (!task.id) router.replace(`/?view=workflow_task&taskId=${encodeURIComponent(result.id)}&taskType=${kind}`);
       if (!local) await load();
       return result.id;
-    } catch (issue) { setError((issue as Error).message); return false; } finally { setBusy(false); }
+    } catch (issue) { lastError.current = (issue as Error).message; setError((issue as Error).message); return false; } finally { setBusy(false); }
   }
   async function timer(command: "START" | "PAUSE") {
     if (preview) { setMessage(PREVIEW_MESSAGE); return; }
@@ -452,14 +460,49 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
   const formHasSummary = task.data.kind === "FORM" && task.data.details.document.blocks.some((block) => block.type === "section" && sectionHasSummary(block));
   // The control's Historik and Färdigställ at the foot of Sammanfattning, and its Rapport och hantering after the form.
   // Completing opens one dialog that also asks "Vill du skriva tid?" (2026-09-30); what is missing is shown first.
+  // Slutför is never a dead button (2026-10-01: "jag klickar på den grå knappen och inget händer"): with
+  // something missing it leads to the first missing field, marked light red, and says what to do; an unsaved task is
+  // saved first.
   const complete = async () => {
-    if (!completion.ready) { await save("COMPLETED"); return; }
+    if (!completion.ready) {
+      const issue = completion.issues[0];
+      // Said once, in the toast, while the page moves to the field; the list under Slutför shows all that is left.
+      setMessage(""); setError("");
+      focusRequirement(issue.field, `Kvar före slutförande: ${issue.message}${completion.issues.length > 1 ? ` (och ${completion.issues.length - 1} till)` : ""}`);
+      return;
+    }
+    if (!task.id && !(await save())) return;
     setCompleteOpen(true);
   };
-  const completeWith = async (time: CompletionTime | null) => Boolean(await save("COMPLETED", time));
+  const completeWith = async (time: CompletionTime | null): Promise<boolean | string> => {
+    lastError.current = "";
+    return (await save("COMPLETED", time)) ? true : lastError.current || "Uppgiften kunde inte slutföras.";
+  };
   // Rows of a protocol that are meant to be followed up as work orders but have none yet, named in the dialog.
   const rowsWithoutOrder = task.data.kind === "FORM" ? formLeafBlocks(task.data.details.document).filter((block): block is FormTableBlock => block.type === "table" && block.workOrders)
     .reduce((sum, block) => sum + (task.data.kind === "FORM" ? (task.data.details.values.tables[block.key] ?? []).filter((row) => !row.example && !row.workOrderId && Object.values(row.cells).some((value) => value !== null && value !== "" && value !== false && !(Array.isArray(value) && !value.length))).length : 0), 0) : 0;
+  // HINTEK AI's proposed measures for a risk assessment form (2026-10-02): the table with a hazard and a measure column.
+  // Only rows with a hazard and no measure are offered; a proposal is put in – and undone – on the newest values.
+  const riskTable = task.data.kind === "FORM" ? formLeafBlocks(task.data.details.document).find((block): block is FormTableBlock => block.type === "table" && ["fara", "atgard"].every((key) => block.columns.some((column) => column.key === key))) ?? null : null;
+  const cellText = (value: unknown) => (typeof value === "string" ? value.trim() : "");
+  const scaleValue = (value: unknown) => Math.min(5, Math.max(1, Math.round(Number(value)) || 1));
+  const risksWithoutMeasure = riskTable && task.data.kind === "FORM"
+    ? (task.data.details.values.tables[riskTable.key] ?? []).filter((row) => !row.example && cellText(row.cells.fara) && !cellText(row.cells.atgard)).slice(0, 40)
+      .map((row) => ({ id: row.id, hazard: cellText(row.cells.fara).slice(0, 500), likelihood: scaleValue(row.cells.sannolikhet), consequence: scaleValue(row.cells.konsekvens) }))
+    : [];
+  const applyRiskMeasures = (measures: { riskId: string; measure: string }[]) => {
+    const key = riskTable?.key ?? "";
+    const write = (pick: (row: { id: string; cells: Record<string, unknown> }) => string | null) => {
+      const now = latestTask.current;
+      if (now.data.kind !== "FORM") return;
+      const values = now.data.details.values;
+      setTask({ ...now, data: { ...now.data, details: { ...now.data.details, values: { ...values, tables: { ...values.tables, [key]: (values.tables[key] ?? []).map((row) => { const next = pick(row); return next === null ? row : { ...row, cells: { ...row.cells, atgard: next } }; }) } } } } });
+    };
+    // Only fields that are still empty are filled; undo empties only the ones that still hold the proposed text.
+    const filled = new Map<string, string>();
+    write((row) => { const item = measures.find((candidate) => candidate.riskId === row.id); if (!item || cellText(row.cells.atgard)) return null; filled.set(row.id, item.measure); return item.measure; });
+    return () => write((row) => (filled.has(row.id) && row.cells.atgard === filled.get(row.id) ? "" : null));
+  };
   // A follow-up work order from a saved task (2026-09-30): the task's project, customer, facility and place come along
   // and the work order links back to it.
   async function createFollowUp() {
@@ -473,21 +516,15 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
       router.push(`/?view=workflow_task&taskId=${encodeURIComponent(result.id)}&taskType=WORK_ORDER`);
     } catch (issue) { setError((issue as Error).message); } finally { setBusy(false); }
   }
-  // No conditions on the buttons (2026-09-28): a template is always available and a report saves the protocol first.
-  // Every button at the foot of a task has the ordinary 40 px height (2026-09-30: one common height).
-  const exportButton = (label: string, variant: ReportVariant, show = false) =>
-    <Button type="button" variant="outline" disabled={busy} onClick={() => void exportReport(defaultWorkflowReportOptions, undefined, variant, show)}>{show ? <Eye /> : variant === "xlsx" || variant === "xlsx-blank" ? <FileSpreadsheet /> : variant === "pdf" ? <FileDown /> : <FileText />}{label}</Button>;
   if (inlineSlots) {
     inlineSlots.beforeSummary = formHasSummary ? attachmentsPanel : undefined;
     inlineSlots.summaryFooter = <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t pt-4">
       <Button type="button" variant="outline" disabled={!task.id || busy} onClick={() => setHistoryOpen(true)}><History />Historik</Button>
-      <Button type="button" disabled={busy || !task.id || task.status === "COMPLETED" || !completion.ready} title={completion.ready ? "Färdigställ och lås protokollet" : completion.issues[0]?.message} onClick={() => void complete()}><CheckCircle2 />Färdigställ</Button>
+      <Button id="task-complete" type="button" disabled={busy || task.status === "COMPLETED"} className={completion.ready ? undefined : "opacity-60"} title={completion.ready ? "Färdigställ och lås protokollet" : `Klicka för att se vad som saknas: ${completion.issues[0]?.message ?? ""}`} onClick={() => void complete()}><CheckCircle2 />Färdigställ</Button>
     </div>;
   }
   const reportPanel = inlineTask ? <Panel title="Rapport och hantering" description="Rapport, export och tomma mallar för protokollet." className="report-panel" collapsible defaultCollapsed
-    persistentContent={<div><p className="mb-2 text-xs font-medium text-muted-foreground">Rapport och export</p><div className="flex flex-wrap gap-2">
-      {exportButton("Förhandsgranska", "pdf", true)}{exportButton("PDF", "pdf")}{exportButton("Excel", "xlsx")}{exportButton("PDF-mall", "blank")}{exportButton("Excel-mall", "xlsx-blank")}
-    </div></div>}>
+    persistentContent={<div className="flex flex-wrap items-center gap-2"><ReportOptionsButton kind="FORM" disabled={busy} onExport={exportReport} /></div>}>
     <p className="text-xs leading-5 text-muted-foreground">{local ? "Rapporter skapas på den här datorn. Ett osparat protokoll sparas i arbetsytan när rapporten skapas; tomma mallar kan tas ut när som helst." : "Ett osparat protokoll sparas när rapporten skapas. Tomma mallar kan tas ut när som helst. Rapporten ritas med företagets färger och logotyp."}</p>
   </Panel> : null;
   const formDocument = task.data.kind === "FORM" ? task.data.details.document : null;
@@ -508,6 +545,22 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
       } catch (issue) { setError((issue as Error).message); return null; }
     },
   };
+  // The progress line (2026-10-01): the steps of this kind of task, from the same rules as progress and Slutför.
+  const flow = task.data.kind === "WORK_ORDER"
+    ? workOrderFlow({ saved: Boolean(task.id), title: task.title, status: task.status, assigned: Boolean(task.assignedToUserId || task.assignedToName.trim()), dueDate: task.dueDate, timerRunning: task.timerRunning, totalDurationSec: task.totalDurationSec, executionNotes: task.data.details.executionNotes, signatureName: task.data.details.signature.name, signatureConfirmed: task.data.details.signature.confirmed })
+    : task.data.kind === "RISK_ASSESSMENT"
+      ? riskFlow({ saved: Boolean(task.id), title: task.title, status: task.status, risks: task.data.details.risks, approvalName: task.data.details.approval.name, approvalConfirmed: task.data.details.approval.confirmed })
+      : formFlow({ saved: Boolean(task.id), title: titleFieldEmpty ? "" : task.title, status: task.status, issues: completion.issues, signatureBlocks: formLeafBlocks(task.data.details.document).filter((block) => block.type === "signature").map((block) => block.id), titleFieldLabel: titleField && "label" in titleField ? titleField.label : undefined,
+        moments: formMoments(task.data.details.document, task.data.details.values) });
+  const flowGuide = <FlowGuide flow={flow} page={task.id || `new-${kind}`} missing={completion.issues.map((issue) => issue.message)}
+    pageLabel={task.data.kind === "FORM" ? task.data.details.templateName : kind === "WORK_ORDER" ? "Arbetsorder" : "Riskbedömning"}
+    advisor={preview ? undefined : {
+      kind: task.data.kind, currentTaskId: task.id, saved: Boolean(task.id), completed: task.status === "COMPLETED", today: swedishDayKey(new Date()), dueDate: task.dueDate,
+      unsavedNew: !task.id && Boolean(task.title.trim()) && !titleFieldEmpty, timerAvailable: true, timerRunning: task.timerRunning, totalDurationSec: task.totalDurationSec,
+      deviationsNoted: task.data.kind === "WORK_ORDER" && Boolean(task.data.details.deviations.trim()), rowsWithoutOrder,
+      highResidualRisks: task.data.kind === "RISK_ASSESSMENT" ? task.data.details.risks.filter((risk) => risk.residualLikelihood * risk.residualConsequence >= 10).length : 0,
+    }}
+    handlers={{ startTimer: () => void timer("START"), complete: () => void complete(), save: () => void save() }} />;
   return <div className="space-y-6">
     {confirmCard}
     {inlineTask ? <CustomerPicker open={customerPicker} onOpenChange={setCustomerPicker} onSelect={(customer) => { chooseCustomer(customer); setCustomerPicker(false); }} localCustomers={local || preview ? customers : undefined} /> : null}
@@ -533,9 +586,16 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
         {task.status === "COMPLETED" && task.formArea !== "kfid" ? <Button variant="outline" disabled={busy} onClick={() => void reopen()}><RotateCcw />Återöppna</Button> : null}
         {/* Spara som copies a saved protocol; the control's header shows it from the start, so an unsaved one just saves. */}
         {task.id && task.kind !== "WORK_ORDER" && !preview ? <Button variant="outline" disabled={busy} onClick={() => void createFollowUp()} title="Ny arbetsorder med uppgiftens projekt, kund och anläggning"><Wrench />Skapa arbetsorder</Button> : null}
+        {/* HINTEK AI words a work order from the saved task's deviations; nothing is created until the person confirms. */}
+        {task.id && !preview && !local && WorkOrderProposal ? <WorkOrderProposal taskId={task.id} task={task as unknown as Record<string, unknown>} disabled={busy} /> : null}
+        {/* Granska med AI: a second pair of eyes on a saved protocol with results; it changes nothing. */}
+        {task.id && task.data.kind === "FORM" && !preview && !local && ProtocolReview && formApprovalTotals(task.data.details.document, task.data.details.values).some((total) => total.total > 0) ? <ProtocolReview taskId={task.id} disabled={busy} /> : null}
+        {/* … and a measure for each risk of a risk assessment form that has none yet. */}
+        {riskTable && !preview && !local && task.status !== "COMPLETED" && RiskMeasuresAssist ? <RiskMeasuresAssist title={task.title} taskId={task.id || undefined} risks={risksWithoutMeasure} onApply={applyRiskMeasures} disabled={busy} /> : null}
         {task.data.kind === "FORM" && (task.id || inlineTask) ? <Button variant="outline" disabled={busy} onClick={() => { if (task.id) router.push(`/?view=workflow_task&taskType=FORM&formId=${encodeURIComponent(task.data.kind === "FORM" ? task.data.details.templateId : "")}&copyOf=${encodeURIComponent(task.id)}`); else void save(); }}><Copy />Spara som</Button> : null}
       </>}
       primaryAction={<Button disabled={busy || task.status === "COMPLETED" || !task.title.trim()} onClick={() => void save()}><Save />{busy ? "Arbetar…" : "Spara"}</Button>}
+      flow={flowGuide}
     />
     {(error || message) && <p role={error ? "alert" : "status"} className={error ? "notice text-destructive" : "notice"}>{error || message}</p>}
     {task.status === "COMPLETED" && task.id && !preview ? <NextSteps task={task} projectName={selectedProject?.name} source={task.data.kind === "WORK_ORDER" ? task.data.details.source ?? null : null}
@@ -571,12 +631,12 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
     {task.data.kind === "FORM" && !preview ? <FormTrendPanel document={task.data.details.document} values={task.data.details.values} templateId={task.data.details.templateId} templateVersion={task.data.details.templateVersion} taskId={task.id}
       facilityId={task.facilityId ?? null} customerId={(selectedProject?.customerId ?? task.customerId) || null} local={local?.tasks} /> : null}
     {task.data.kind === "FORM" ? <FormRenderer panels actions={formActions} inline={inlineSlots} title={task.data.details.templateName} document={task.data.details.document} values={task.data.details.values} attachments={task.attachments} media={formMedia} rowOptions={rowOptions} readOnly={task.status === "COMPLETED"} onChange={(values) => { preview?.onValuesChange?.(values); setTask((current) => current.data.kind === "FORM" ? titled({ ...current, data: { ...current.data, details: { ...current.data.details, values } } }) : current); }} />
-      : task.data.kind === "WORK_ORDER" ? <WorkOrderFields data={task.data} onChange={(data) => setTask({ ...task, data })} /> : <RiskFields data={task.data} onChange={(data) => setTask({ ...task, data })} />}
+      : task.data.kind === "WORK_ORDER" ? <WorkOrderFields data={task.data} onChange={(data) => setTask({ ...task, data })} /> : <RiskFields data={task.data} onChange={(data) => setTask({ ...task, data })} title={task.title} taskId={task.id || undefined} assist={!local && !preview && task.status !== "COMPLETED"} />}
     </div>
     </fieldset>
     {inlineTask && formHasSummary ? null : attachmentsPanel}
     {task.id && !inlineTask ? <TaskHistory key={task.id} taskId={task.id} revisions={task.revisions ?? []} total={task.revisionCount ?? task.revisions?.length ?? 0} local={Boolean(local)} /> : null}
-    {inlineTask ? reportPanel : <Panel title="Slutför uppgiften" description="Kontrollera dokumentationen innan uppgiften markeras som slutförd.">{task.status !== "COMPLETED" && <div className="mb-4 rounded-lg border bg-muted/20 p-4"><p className="text-sm font-medium">{completion.ready ? "Dokumentationen är klar för slutförande." : "Kvar att fylla i före slutförande"}</p>{completion.issues.length > 0 && <ul className="mt-2 space-y-2">{completion.issues.map((issue) => <li key={`${issue.field}:${issue.message}`}><button type="button" className="text-left text-sm text-primary underline underline-offset-4" onClick={() => focusRequirement(issue.field)}>{issue.message}</button></li>)}</ul>}<p className="mt-3 text-xs text-muted-foreground">Du kan spara ofullständigt arbete. Projekt, kund, tid, material och bilagor är valfria. 100 procent visas när uppgiften är slutförd.</p></div>}<div className="flex flex-wrap items-center justify-between gap-4"><p className="text-sm text-muted-foreground">Slutförandet sparas i uppgiftens historik. En slutförd uppgift kan inte tidrapporteras.</p><div className="flex flex-wrap gap-2">{task.id && (!local || local.report) && <ReportOptionsButton kind={task.kind} onExport={exportReport} />}<Button disabled={busy || !task.id || task.status === "COMPLETED"} onClick={() => void complete()}><CheckCircle2 />Slutför uppgift</Button></div></div></Panel>}
+    {inlineTask ? reportPanel : <Panel title="Slutför uppgiften" description="Kontrollera dokumentationen innan uppgiften markeras som slutförd.">{task.status !== "COMPLETED" && <div className="mb-4 rounded-lg border bg-muted/20 p-4"><p className="text-sm font-medium">{completion.ready ? "Dokumentationen är klar för slutförande." : "Kvar att fylla i före slutförande"}</p>{completion.issues.length > 0 && <ul className="mt-2 space-y-2">{completion.issues.map((issue) => <li key={`${issue.field}:${issue.message}`}><button type="button" className="text-left text-sm text-primary underline underline-offset-4" onClick={() => focusRequirement(issue.field)}>{issue.message}</button></li>)}</ul>}<p className="mt-3 text-xs text-muted-foreground">Du kan spara ofullständigt arbete. Projekt, kund, tid, material och bilagor är valfria. 100 procent visas när uppgiften är slutförd.</p></div>}<div className="flex flex-wrap items-center justify-between gap-4"><p className="text-sm text-muted-foreground">Slutförandet sparas i uppgiftens historik. En slutförd uppgift kan inte tidrapporteras.</p><div className="flex flex-wrap gap-2">{task.id && (!local || local.report) && <ReportOptionsButton kind={task.kind} onExport={exportReport} />}<Button id="task-complete" disabled={busy || task.status === "COMPLETED"} className={completion.ready ? undefined : "opacity-60"} title={completion.ready ? undefined : `Klicka för att se vad som saknas: ${completion.issues[0]?.message ?? ""}`} onClick={() => void complete()}><CheckCircle2 />Slutför uppgift</Button></div></div></Panel>}
     {inlineTask ? <Modal open={historyOpen} onOpenChange={setHistoryOpen} title="Versionshistorik" className="max-w-3xl">{task.id ? <TaskHistory key={task.id} bare taskId={task.id} revisions={task.revisions ?? []} total={task.revisionCount ?? task.revisions?.length ?? 0} local={Boolean(local)} /> : null}</Modal> : null}
   </div>;
 }
@@ -671,8 +731,24 @@ function WorkOrderFields({ data, onChange }: { data: Extract<TaskData, { kind: "
   return <><Panel title="Utförande" description="Dokumentera utfört arbete, material, anteckningar och avvikelser."><div className="grid gap-4 lg:grid-cols-2"><label className="space-y-2 text-xs font-medium text-muted-foreground">Utfört arbete<textarea aria-label="Utfört arbete" id="task-execution" className="form-textarea min-h-28" value={details.executionNotes} onChange={(e) => onChange({ ...data, details: { ...details, executionNotes: e.target.value } })} /></label><label className="space-y-2 text-xs font-medium text-muted-foreground">Avvikelser<textarea aria-label="Avvikelser" className="form-textarea min-h-28" value={details.deviations} onChange={(e) => onChange({ ...data, details: { ...details, deviations: e.target.value } })} /></label></div><div className="mt-5 flex items-center justify-between"><h3 className="text-sm font-semibold">Material</h3><Button size="sm" variant="outline" onClick={() => onChange({ ...data, details: { ...details, materials: [...details.materials, { id: crypto.randomUUID(), name: "", quantity: "", unit: "" }] } })}><Plus />Lägg till material</Button></div><div className="mt-3 space-y-2">{details.materials.map((material) => <div key={material.id} className="grid gap-2 rounded-lg border p-3 sm:grid-cols-[1fr_8rem_8rem_auto]"><Input aria-label="Material" placeholder="Material" value={material.name} onChange={(e) => onChange({ ...data, details: { ...details, materials: details.materials.map((item) => item.id === material.id ? { ...item, name: e.target.value } : item) } })} /><Input aria-label="Mängd" placeholder="Mängd" value={material.quantity} onChange={(e) => onChange({ ...data, details: { ...details, materials: details.materials.map((item) => item.id === material.id ? { ...item, quantity: e.target.value } : item) } })} /><Input aria-label="Enhet" placeholder="Enhet" value={material.unit} onChange={(e) => onChange({ ...data, details: { ...details, materials: details.materials.map((item) => item.id === material.id ? { ...item, unit: e.target.value } : item) } })} /><Button variant="ghost" size="icon" aria-label="Ta bort material" onClick={() => onChange({ ...data, details: { ...details, materials: details.materials.filter((item) => item.id !== material.id) } })}><Trash2 /></Button></div>)}</div></Panel><Panel title="Signering och avslut" description="Signeringen ingår i arbetsorderns slutdokumentation."><div className="grid gap-4 lg:grid-cols-2"><label className="space-y-2 text-xs font-medium text-muted-foreground">Namn på den som signerar<Input id="task-signature-name" value={details.signature.name} onChange={(e) => onChange({ ...data, details: { ...details, signature: { ...details.signature, name: e.target.value } } })} /></label><label className="flex h-10 items-center gap-2.5 self-end text-sm"><Checkbox id="task-signature-confirmed" checked={details.signature.confirmed} onCheckedChange={(checked) => onChange({ ...data, details: { ...details, signature: { ...details.signature, confirmed: checked === true } } })} />Jag intygar att dokumentationen är granskad</label></div><label className="mt-4 block space-y-2 text-xs font-medium text-muted-foreground">Avslutande kommentar<textarea aria-label="Avslutande kommentar" className="form-textarea" value={details.closeNotes} onChange={(e) => onChange({ ...data, details: { ...details, closeNotes: e.target.value } })} /></label></Panel></>;
 }
 
-function RiskFields({ data, onChange }: { data: Extract<TaskData, { kind: "RISK_ASSESSMENT" }>; onChange: (data: Extract<TaskData, { kind: "RISK_ASSESSMENT" }>) => void }) {
+function RiskFields({ data, onChange, title = "", taskId, assist = false }: { data: Extract<TaskData, { kind: "RISK_ASSESSMENT" }>; onChange: (data: Extract<TaskData, { kind: "RISK_ASSESSMENT" }>) => void; title?: string; taskId?: string; assist?: boolean }) {
   const details = data.details;
+  // HINTEK AI's proposed measures are put in after the person has read them, and may be undone later: both work on
+  // the newest data, not on what the page held when the proposal was asked for.
+  const latest = useRef({ data, onChange });
+  useEffect(() => { latest.current = { data, onChange }; });
+  const applyMeasures = (measures: { riskId: string; measure: string }[]) => {
+    const now = latest.current;
+    // Only fields that are still empty are filled; what the person has written since is never replaced.
+    const filled = measures.filter((item) => now.data.details.risks.some((risk) => risk.id === item.riskId && !risk.protectiveMeasure.trim()));
+    now.onChange({ ...now.data, details: { ...now.data.details, risks: now.data.details.risks.map((risk) => { const item = filled.find((candidate) => candidate.riskId === risk.id); return item ? { ...risk, protectiveMeasure: item.measure.slice(0, 1000) } : risk; }) } });
+    return () => {
+      const current = latest.current;
+      // Undo empties only the fields that still hold the proposed text.
+      current.onChange({ ...current.data, details: { ...current.data.details, risks: current.data.details.risks.map((risk) => filled.some((item) => item.riskId === risk.id && item.measure.slice(0, 1000) === risk.protectiveMeasure) ? { ...risk, protectiveMeasure: "" } : risk) } });
+    };
+  };
+  const withoutMeasure = details.risks.filter((risk) => risk.hazard.trim() && !risk.protectiveMeasure.trim()).slice(0, 40).map((risk) => ({ id: risk.id, hazard: risk.hazard.trim(), likelihood: risk.likelihood, consequence: risk.consequence }));
   const update = (id: string, values: Partial<Risk>) => onChange({ ...data, details: { ...details, risks: details.risks.map((risk) => risk.id === id ? { ...risk, ...values } : risk) } });
   const addRisk = () => onChange({ ...data, details: { ...details, risks: [...details.risks, { id: crypto.randomUUID(), hazard: "", likelihood: 1, consequence: 1, protectiveMeasure: "", residualLikelihood: 1, residualConsequence: 1 }] } });
   return <>
@@ -686,7 +762,7 @@ function RiskFields({ data, onChange }: { data: Extract<TaskData, { kind: "RISK_
         <RiskMatrix />
       </div>
     </Panel>
-    <Panel title="Identifierade risker" description="Beskriv faran och skyddsåtgärden och bedöm risken före och efter åtgärden." actions={details.risks.length ? <Button id="task-add-risk" size="sm" variant="outline" onClick={addRisk}><Plus />Lägg till risk</Button> : undefined}>
+    <Panel title="Identifierade risker" description="Beskriv faran och skyddsåtgärden och bedöm risken före och efter åtgärden." actions={details.risks.length ? <>{assist && RiskMeasuresAssist ? <RiskMeasuresAssist title={title} taskId={taskId} risks={withoutMeasure} onApply={applyMeasures} /> : null}<Button id="task-add-risk" size="sm" variant="outline" onClick={addRisk}><Plus />Lägg till risk</Button></> : undefined}>
       <div className="space-y-3">{details.risks.length ? details.risks.map((risk, index) => {
         const initial = riskAssessment(risk.likelihood * risk.consequence);
         const residual = riskAssessment(risk.residualLikelihood * risk.residualConsequence);
@@ -736,4 +812,12 @@ function RiskRating({ id, title, likelihood, consequence, onLikelihood, onConseq
   const level = riskAssessment(likelihood * consequence);
   // The level is shown once in the card header badges (2026-09-25), so the rating itself keeps a neutral frame.
   return <fieldset id={id} tabIndex={-1} className="min-w-0 rounded-lg border bg-muted/30 px-3 pb-3 pt-1"><legend className="px-1 text-xs font-semibold text-foreground">{title}</legend><div className="grid grid-cols-2 gap-2"><label className="space-y-1 text-[11px] font-medium text-muted-foreground">Sannolikhet<select className="form-select" value={likelihood} onChange={(event) => onLikelihood(Number(event.target.value))}>{likelihoodOptions.map((label, index) => <option key={label} value={index + 1}>{index + 1} · {label}</option>)}</select></label><label className="space-y-1 text-[11px] font-medium text-muted-foreground">Konsekvens<select className="form-select" value={consequence} onChange={(event) => onConsequence(Number(event.target.value))}>{consequenceOptions.map((label, index) => <option key={label} value={index + 1}>{index + 1} · {label}</option>)}</select></label></div><p className="sr-only">Risknivå {level.score}, {level.label} ({likelihood} × {consequence})</p></fieldset>;
+}
+
+/** The moments a form asks the person to pick (the control's Isolation, Kontinuitet …), as a step on the progress line. */
+function formMoments(document: FormDocument, values: FormValues) {
+  const optional = formOptionalSections(document);
+  if (!document.moments.requireOne || !optional.length) return undefined;
+  const label = /^moment$/i.test(document.moments.label.trim()) ? "Moment" : document.moments.label.trim() || "Moment";
+  return { label: label === "Moment" ? "Kontrollmoment" : label, met: optional.some((section) => formSectionActive(section, values)), target: `form-${optional[0].id}` };
 }

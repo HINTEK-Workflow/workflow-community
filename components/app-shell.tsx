@@ -67,9 +67,11 @@ import { clientExtensions } from "@ee/client";
 import { LEGAL_LINKS } from "@ee/present";
 import { LongTimerWarning, RunningTimerIndicator } from "@/features/workflow/running-timer";
 import { MENU_VISIBILITY_EVENT } from "@/lib/workflow/menu-items";
+import { ASSISTANT_ASK_EVENT } from "@/lib/workflow/flow-advisor";
+import type { AssistantAsk } from "@/lib/extensions/types";
 import { hasWorkflowPermission, type WorkflowPermissionProfile } from "@/lib/workflow/permissions";
 // HINTEK AI lives in ee/ (not in the community edition, 2026-09-30); without it this is null.
-const { AssistantPanel } = clientExtensions;
+const { AssistantPanel, ImportPage } = clientExtensions;
 
 export type ShellUser = {
   name: string | null;
@@ -225,6 +227,13 @@ export const views = {
     tone: "text-feature-customer",
     surface: "bg-feature-customer-soft",
   },
+  // What HINTEK AI may read and do (2026-10-01: "sidan går inte att hitta"): a tab under Mitt företag.
+  ai_settings: {
+    label: "HINTEK AI",
+    icon: Sparkles,
+    tone: "text-primary",
+    surface: "bg-secondary",
+  },
   // How long the company's history is kept, and manual deletion (2026-09-30): company admins in Cloud.
   history_retention: {
     label: "Historik och lagring",
@@ -243,6 +252,14 @@ export const views = {
   forms: {
     label: "Skapa formulär",
     icon: FileSpreadsheet,
+    tone: "text-feature-control",
+    surface: "bg-feature-control-soft",
+  },
+  // Import (2026-10-01): files become customers, projects, work orders, planning, control points or attachments.
+  // Lives in ee/ next to HINTEK AI; Cloud companies only.
+  import: {
+    label: "Import",
+    icon: Upload,
     tone: "text-feature-control",
     surface: "bg-feature-control-soft",
   },
@@ -317,6 +334,18 @@ export function AppShell({
   const [confirmCard, confirmElement] = useConfirm();
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [assistantExpanded, setAssistantExpanded] = useState(false);
+  // "Fråga HINTEK AI" on a tip (2026-10-01): opens the panel and sends the question with the page's step.
+  const [assistantAsk, setAssistantAsk] = useState<AssistantAsk | null>(null);
+  useEffect(() => {
+    const onAsk = (event: Event) => {
+      const detail = (event as CustomEvent<{ question: string; page: unknown }>).detail;
+      if (!detail?.question) return;
+      setAssistantAsk({ id: Date.now(), question: detail.question, page: detail.page });
+      setAssistantOpen(true);
+    };
+    window.addEventListener(ASSISTANT_ASK_EVENT, onAsk);
+    return () => window.removeEventListener(ASSISTANT_ASK_EVENT, onAsk);
+  }, []);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const [chromeHidden, setChromeHidden] = useState(false);
   const lastScrollY = useRef(0);
@@ -583,8 +612,8 @@ export function AppShell({
       <div id={`${testId}-items`} hidden={!open}>{child}</div>
     </div>;
   }
-  const productActive = view === "customer_companies" || view === "landing_editor" || view === "integrations" || view === "history_retention" || view === "mail_settings";
-  const productOpen = expanded.product || productActive;
+  const productActive = view === "customer_companies" || view === "landing_editor" || view === "mail_settings";
+  const companyActive = view === "administration" || view === "integrations" || view === "history_retention" || view === "ai_settings";
   const notificationLabel = notificationCount ? `Notiser, ${notificationCount} aktuella` : "Notiser";
   const sidebar = (
     <div className="workspace-sidebar flex min-h-full flex-col bg-card">
@@ -622,7 +651,7 @@ export function AppShell({
         {mobileControlActions && (
           <div className="mt-3">{mobileControlActions}</div>
         )}
-        {user && ((Boolean(AssistantPanel) && shown("ai")) || (user.canBuildForms && shown("forms", view === "forms"))) ? (
+        {user && ((Boolean(AssistantPanel) && shown("ai")) || (Boolean(ImportPage) && !user.localStorageMode && !demo && shown("import", view === "import")) || (user.canBuildForms && shown("forms", view === "forms"))) ? (
           <div className="mt-3 border-t pt-3">
             {(Boolean(AssistantPanel) && shown("ai")) ? <button
               type="button"
@@ -642,33 +671,17 @@ export function AppShell({
                 Beta
               </span>
             </button> : null}
+            {Boolean(ImportPage) && !user.localStorageMode && !demo && shown("import", view === "import") ? navItem("import") : null}
             {user.canBuildForms && shown("forms", view === "forms") ? navItem("forms") : null}
           </div>
         ) : null}
         <div className="my-5 border-t" />
         {commercial && shown("credits", view === "credits") ? navItem("credits") : null}
-        {user && ["OWNER", "ADMIN"].includes(user.memberRole ?? "") && navItem("administration")}
-        {user && user.role !== "SUPERADMIN" && ["OWNER", "ADMIN"].includes(user.memberRole ?? "") && !user.localStorageMode && !demo && instance.features.integrations && navItem("integrations")}
-        {user && user.role !== "SUPERADMIN" && ["OWNER", "ADMIN"].includes(user.memberRole ?? "") && !user.localStorageMode && !demo && navItem("history_retention")}
-        {user?.role === "SUPERADMIN" && <div className="mt-4 border-t pt-4" data-testid="product-menu">
-          {/* The round plus sits on the heading and folds the whole section (2026-09-30): Produktadministration,
-              Landningssidan and API och MCP are separate pages, not "Ny X → Mina X". Folded from the start, always open
-              while one of its pages is open. */}
-          <div className="mb-2 flex items-center gap-2 pl-3 pr-1">
-            <p className="min-w-0 flex-1 text-xs font-medium text-muted-foreground">{instance.operator} · produktägare</p>
-            <button type="button" onClick={() => toggleExpanded("product")} aria-expanded={productOpen} aria-controls="product-menu-items" disabled={productActive}
-              aria-label={`${productOpen ? "Dölj" : "Visa"} ${instance.operator} · produktägare`} title={`${productOpen ? "Dölj" : "Visa"} ${instance.operator} · produktägare`}
-              className="flex size-7 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:border-primary hover:bg-secondary hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-60">
-              <Plus className={cn("size-3.5 transition-transform", productOpen && "rotate-45")} />
-            </button>
-          </div>
-          <div id="product-menu-items" hidden={!productOpen} className="space-y-1">
-            {navItem("customer_companies")}
-            {instance.features.landingEditor ? navItem("landing_editor") : null}
-            {["OWNER", "ADMIN"].includes(user.memberRole ?? "") && !user.localStorageMode && instance.features.integrations ? navItem("integrations") : null}
-            {["OWNER", "ADMIN"].includes(user.memberRole ?? "") && !user.localStorageMode ? navItem("history_retention") : null}
-            {navItem("mail_settings")}
-          </div>
+        {/* Menystädning (2026-10-01): HINTEK AI, API och MCP and Historik och lagring are tabs under Mitt
+            företag; Landningssidan and E-post tabs under Produktadministration. One button each, the tabs on the page. */}
+        {user && ["OWNER", "ADMIN"].includes(user.memberRole ?? "") && navItem("administration", companyActive)}
+        {user?.role === "SUPERADMIN" && <div className="mt-1" data-testid="product-menu">
+          {navItem("customer_companies", productActive)}
         </div>}
         <div className="mt-auto space-y-1 pt-6">
           {navItem("help")}
@@ -686,7 +699,10 @@ export function AppShell({
           {demo ? "Demo" : "Förhandsversion"}
         </div>
         <p className="mt-1.5 text-xs leading-5 text-muted-foreground">
-          {demo ? "Påhittat företag och påhittade användare. Inget sparas och allt nollställs när sidan laddas om." : "Privat test av Kontroll före idrifttagning. Köp och AI aktiveras i sista steget."}
+          {/* Purchases and AI exist only in HINTEK's edition (ee/); the community edition says what applies there. */}
+          {demo ? "Påhittat företag och påhittade användare. Inget sparas och allt nollställs när sidan laddas om."
+            : instance.features.billing || instance.features.ai ? "Privat test av Kontroll före idrifttagning. Köp och AI aktiveras i sista steget."
+            : "Privat testläge: bara installationens ägarkonto kan logga in."}
         </p>
       </div>
     </div>
@@ -867,6 +883,7 @@ export function AppShell({
           expanded={assistantExpanded}
           onOpenChange={setAssistantOpen}
           onExpandedChange={setAssistantExpanded}
+          ask={assistantAsk}
         />
       ) : null}
     </div>

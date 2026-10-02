@@ -426,6 +426,14 @@ export async function POST(request: Request) {
       await prisma.userPreferences.upsert({ where: { userId: ctx.user.id }, create: { userId: ctx.user.id, data }, update: { data } });
       return NextResponse.json({ ok: true });
     }
+    // Beslutsstöd (2026-10-01): how often tips are shown and which are muted, merged like a tour.
+    if (action === "advisor") {
+      const advisor = preferencesSchema.shape.advisor.parse(input.advisor);
+      const stored = await prisma.userPreferences.findUnique({ where: { userId: ctx.user.id } });
+      const data = { ...preferencesSchema.parse(stored?.data ?? {}), advisor };
+      await prisma.userPreferences.upsert({ where: { userId: ctx.user.id }, create: { userId: ctx.user.id, data }, update: { data } });
+      return NextResponse.json({ ok: true, advisor });
+    }
     if (action === "preferences") {
       const data = preferencesSchema.parse(input.data);
       await prisma.userPreferences.upsert({

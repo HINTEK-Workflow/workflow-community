@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CalendarDays, ChevronLeft, ChevronRight, Clock3, Download, Pencil, Trash2, Users } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Clock3, FileSpreadsheet, Pencil, Trash2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api } from "@/features/kfid/api";
@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { personInitials, personSolidTone } from "@/features/workflow/person-tone";
 import { summarizeReportedWeek } from "@/lib/workflow/time-summary";
 import { ADJUST_TIME_ENTRY_KEY } from "@/features/workflow/running-timer";
+import { ExportMenu } from "@/features/workflow/export-menu";
 import { timeCorrectionRequiresReason, TIME_CORRECTION_REASON_MAX, type TimeEntryEvent } from "@/lib/workflow/time-correction";
 import { effectiveWeeklyWorkMinutes, weeklyWorkRemainingMinutes } from "@/lib/workflow/work-schedule";
 import { addSwedishDays, formatSwedish, formatSwedishTime, fromSwedishDateTimeInput, startOfSwedishDay, startOfSwedishMonth, swedishDayKey, swedishMonday, swedishParts, toSwedishDateTimeInput } from "@/lib/swedish-time";
@@ -176,7 +177,8 @@ export function TimeReport({ local, focusTaskId }: { local?: LocalTimeAdapter; f
   const editingOwner = editing ? team?.members.find((member) => member.id === editing.userId)?.name : undefined;
 
   return <div className="space-y-6">
-    <div className="flex flex-wrap items-start justify-between gap-4"><div><h1 className="page-title">Tidrapport</h1><p className="page-description mt-2">Registrera, flytta och följ din rapporterade tid per uppgift och projekt.</p></div><Button variant="outline" disabled={!visibleEntries.length} onClick={() => downloadCsv(`tidrapport-${dateKey(days[0])}-${dateKey(days.at(-1)!)}.csv`, [["Datum", "Start", "Slut", "Tid (min)", "Projekt", "Uppgift", "Anteckning"], ...visibleEntries.map((entry) => csvRow(entry))])}><Download />Exportera CSV</Button></div>
+    <div className="flex flex-wrap items-start justify-between gap-4"><div><h1 className="page-title">Tidrapport</h1><p className="page-description mt-2">Registrera, flytta och följ din rapporterade tid per uppgift och projekt.</p></div><ExportMenu title="Exportera tidrapport" description={`Dina ${visibleEntries.length} visade poster ${dateKey(days[0])} – ${dateKey(days.at(-1)!)}. Filen öppnas i Excel.`} disabled={!visibleEntries.length}
+      formats={[{ id: "csv", label: "CSV", icon: FileSpreadsheet, primary: true, run: () => downloadCsv(`tidrapport-${dateKey(days[0])}-${dateKey(days.at(-1)!)}.csv`, [["Datum", "Start", "Slut", "Tid (min)", "Projekt", "Uppgift", "Anteckning"], ...visibleEntries.map((entry) => csvRow(entry))]) }]} /></div>
     <div className="notice flex items-start gap-3"><Clock3 className="mt-0.5 size-4 shrink-0 text-primary" /><p>Tid registreras på en uppgift. När du flyttar posten till en annan uppgift följer tiden automatiskt den uppgiftens projekt. Ändringar sparas i tidpostens historik.</p></div>
     {focusedTask && reportTask === focusedTask.id ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 text-sm" role="status"><p><span className="font-medium">Tidrapport för:</span> {focusedTask.title}</p><Button type="button" size="sm" variant="outline" onClick={() => setReportTask("")}>Visa alla uppgifter</Button></div> : null}
 
@@ -269,7 +271,8 @@ function TeamTime({ team, tasks, taskById, busy, onEdit, onDelete, lockedReason,
   }), [from, person, project, rows, task, to]);
   const totalSeconds = filtered.reduce((sum, entry) => sum + entry.durationSec, 0);
   const personName = (userId: string) => names.get(userId) ?? "Tidigare medlem";
-  return <Panel title="Teamets rapporterade tid" description="Alla medarbetares tid i organisationen. Som administratör kan du korrigera poster; ändringar av andras tid kräver en kommentar och sparas i historiken." leadingActions={<Users className="size-4 text-primary" aria-hidden="true" />} actions={<Button size="sm" variant="outline" disabled={!filtered.length} onClick={() => downloadCsv("teamets-tidrapport.csv", [["Medarbetare", "Datum", "Start", "Slut", "Tid (min)", "Projekt", "Uppgift", "Anteckning"], ...filtered.map((entry) => csvRow(entry, personName(entry.userId)))])}><Download />Exportera CSV</Button>}>
+  return <Panel title="Teamets rapporterade tid" description="Alla medarbetares tid i organisationen. Som administratör kan du korrigera poster; ändringar av andras tid kräver en kommentar och sparas i historiken." leadingActions={<Users className="size-4 text-primary" aria-hidden="true" />} actions={<ExportMenu title="Exportera teamets tid" description={`${filtered.length} poster med dagens filter. Filen öppnas i Excel.`} disabled={!filtered.length} testId="team-export-menu"
+    formats={[{ id: "csv", label: "CSV", icon: FileSpreadsheet, primary: true, run: () => downloadCsv("teamets-tidrapport.csv", [["Medarbetare", "Datum", "Start", "Slut", "Tid (min)", "Projekt", "Uppgift", "Anteckning"], ...filtered.map((entry) => csvRow(entry, personName(entry.userId)))]) }]} />}>
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
       {/* Distinct accessible names: the personal list on the same page has its own Projekt/Uppgift filters. */}
       <label className="text-xs font-medium text-muted-foreground">Medarbetare<select aria-label="Teamets medarbetare" className="form-select mt-1" value={person} onChange={(event) => setPerson(event.target.value)}><option value="">Alla medarbetare</option>{team.members.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}</select></label>

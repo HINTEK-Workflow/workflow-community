@@ -20,8 +20,8 @@ export type EeRouteKey =
   | "billing" | "billing/discount-preview" | "billing/invoice"
   | "pricing" | "administration/pricing" | "administration/price-versions"
   | "superadmin/accounting-export" | "superadmin/bank-payments" | "superadmin/invoice-replacements"
-  | "ai/evals" | "ai/chat" | "ai/conversations" | "ai/memory" | "ai/policy" | "ai/quote" | "ai/status"
-  | "superadmin/ai-usage" | "integration-keys" | "mcp" | "v1" | "v1/tool";
+  | "ai/evals" | "ai/chat" | "ai/conversations" | "ai/digest" | "ai/memory" | "ai/policy" | "ai/proposals" | "ai/review" | "ai/quote" | "ai/status"
+  | "superadmin/ai-usage" | "superadmin/ai-credit-settings" | "integration-keys" | "mcp" | "v1" | "v1/tool" | "import";
 
 export type CloudWriteAccess = {
   allowed: boolean;
@@ -56,6 +56,9 @@ export type ServerExtensions = {
 
 export type NotifyFn = (message: string, isError?: boolean) => void;
 
+/** A question from the decision support, with the step the person stands on (kinds and steps only, never names). */
+export type AssistantAsk = { id: number; question: string; page: unknown };
+
 export type ClientExtensions = {
   /** Fakturering och köp for a company admin; null without ee/. */
   BillingRead: ComponentType<{ endpoint?: string; sandboxQa?: boolean }> | null;
@@ -64,10 +67,25 @@ export type ClientExtensions = {
   /** The landing page's inline editor. */
   LandingEditor: ComponentType | null;
   /** HINTEK AI: the assistant in the shell, the company's sharing choices, and the product owner's provider and usage views. */
-  AssistantPanel: ComponentType<{ open: boolean; expanded: boolean; onOpenChange: (open: boolean) => void; onExpandedChange: (expanded: boolean) => void }> | null;
+  /** `ask`: a question from a tip's "Fråga HINTEK AI", sent with the page's step (2026-10-01). */
+  /** "Skriv med AI" beside Sammanställ resultat (2026-10-01); null in the community edition. */
+  /** `current`: the field's text now (an empty field may be filled directly; a written one gets a proposal). */
+  SummaryAssist: ComponentType<{ draft: string; label: string; onText: (text: string) => void; disabled?: boolean; current?: string; sourceId?: string }> | null;
+  /** HINTEK AI's proposals (2026-10-02): a work order from a task's deviations, measures for a risk assessment's risks and planning for a project's tasks. Nothing is created until the person confirms. */
+  /** `task`: the task as the page holds it; the button is shown only when it has deviations to act on. */
+  WorkOrderProposal: ComponentType<{ taskId: string; task: Record<string, unknown>; disabled?: boolean }> | null;
+  RiskMeasuresAssist: ComponentType<{ title: string; taskId?: string; risks: { id: string; hazard: string; likelihood: number; consequence: number }[]; onApply: (measures: { riskId: string; measure: string }[]) => () => void; disabled?: boolean }> | null;
+  PlanningProposal: ComponentType<{ projectId: string; disabled?: boolean; onApplied?: () => void }> | null;
+  /** Dagsammanställningen on Översikt (2026-10-02): the night's short digest of the day before, for the team. */
+  DailyDigestCard: ComponentType | null;
+  /** "Granska med AI" (2026-10-02): the reviewer reads a saved protocol or control and points at what to check; it changes nothing. `unsaved`: why it cannot be reviewed right now. */
+  ProtocolReview: ComponentType<{ taskId?: string; controlId?: string; disabled?: boolean; unsaved?: string }> | null;
+  AssistantPanel: ComponentType<{ open: boolean; expanded: boolean; onOpenChange: (open: boolean) => void; onExpandedChange: (expanded: boolean) => void; ask?: AssistantAsk | null }> | null;
   SharingPolicyPanel: ComponentType | null;
   ProviderAdministration: ComponentType | null;
   AiUsageAdministration: ComponentType | null;
   /** API och MCP: keys, connections and the server's keys. */
   IntegrationKeys: ComponentType<{ notify: NotifyFn }> | null;
+  /** The Import page (2026-10-01): files become customers, projects, work orders, planning, control points or attachments; rule- and AI-driven. */
+  ImportPage: ComponentType<{ canBuildForms?: boolean }> | null;
 };

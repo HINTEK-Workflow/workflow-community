@@ -8,12 +8,15 @@ import { Panel, ShowMore } from "./ui";
 import { indicatorBadge, indicatorBar, indicatorText, progressTone, statusTone } from "@/features/workflow/indicator-tone";
 import { api } from "./api";
 import { OverviewKpiDashboard } from "@/features/workflow/overview-kpis";
+import { clientExtensions } from "@ee/client";
 import { TaskStatistics } from "@/features/workflow/task-statistics";
 import { swedishDayKey } from "@/lib/swedish-time";
 import { buildOverviewWork, selectOverviewWork, type OverviewWorkFilter, type OverviewWorkItem, type OverviewWorkSort } from "@/lib/workflow/overview-work";
 import type { OverviewKpis } from "@/lib/workflow/overview-kpis";
 import { summarizeProjectStatus, type ProjectStatus } from "@/lib/workflow/project-status";
 import type { ControlItem } from "./types";
+
+const { DailyDigestCard } = clientExtensions;
 export type ProjectOverview = {
   id: string;
   name: string;
@@ -322,6 +325,8 @@ export function Analytics({ admin, projectCount = 0 }: { admin: boolean; project
           <Button asChild><Link href="/?view=new_task"><Plus />Ny uppgift</Link></Button>
         </div>
       </div>
+      {/* Dagsammanställningen (2026-10-02): the night's short digest, where the company has chosen it. */}
+      {DailyDigestCard ? <DailyDigestCard /> : null}
       <OverviewKpiDashboard key={kpis ? "ready" : "loading"} team={kpis?.team ?? null} mine={kpis?.mine ?? null} loading={!kpis} error={kpiError} />
       <WorkOverview />
       {admin ? <TaskStatistics /> : null}

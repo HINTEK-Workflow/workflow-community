@@ -1,4 +1,17 @@
-import { formLeafBlocks, formOptionalSections, initialFormValues, type FormColumn, type FormDocument, type FormFieldBlock, type FormValues } from "./form-document";
+import { formLeafBlocks, formOptionalSections, initialFormValues, newFormRow, type FormColumn, type FormDocument, type FormFieldBlock, type FormValues } from "./form-document";
+
+/**
+ * The answers the builder's sheet is drawn with (2026-10-01: "jag vill veta hur objektet ser ut direkt"): every
+ * moment on, and one fresh row in each table a person adds rows to, so measurement rows and object cards show their
+ * real look instead of an empty state. Nothing is typed in; the row is the one the round add button would give.
+ */
+export function canvasValues(document: FormDocument): FormValues {
+  const values = initialFormValues(document);
+  for (const section of formOptionalSections(document)) values.sections[section.id] = true;
+  for (const block of formLeafBlocks(document))
+    if (block.type === "table" && block.rowMode === "free" && !(values.tables[block.key] ?? []).length) values.tables[block.key] = [newFormRow(block, `canvas-${block.id}`)];
+  return values;
+}
 
 /**
  * Example answers for the editor's preview (2026-09-26): with or without deviations, so formulas, totals,

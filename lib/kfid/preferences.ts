@@ -44,6 +44,14 @@ export const preferencesSchema = z.object({
   hiddenMenuItems: z.array(z.enum(MENU_HIDEABLE)).max(20).catch([]).default([]),
   // Guided tours the person has seen or dismissed (2026-09-28), by tour: when.
   tours: z.record(z.string().max(40), z.string().max(40)).default({}),
+  // Beslutsstöd (2026-10-01): how often tips are shown, and the tips the person never wants again.
+  advisor: z.object({
+    level: z.enum(["often", "normal", "rarely", "off"]).catch("normal").default("normal"),
+    muted: z.array(z.string().max(40)).max(40).catch([]).default([]),
+    // Whether a proposal the person asked HINTEK AI for goes straight into an empty field (2026-10-02); off = a
+    // proposal to use or dismiss.
+    autofill: z.boolean().catch(false).default(false),
+  }).catch({ level: "normal", muted: [], autofill: false }).default({ level: "normal", muted: [], autofill: false }),
 });
 export type Preferences = z.infer<typeof preferencesSchema>;
 export const defaultPreferences = preferencesSchema.parse({});

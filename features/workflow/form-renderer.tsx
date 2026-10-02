@@ -6,14 +6,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Panel } from "@/features/kfid/ui";
 import { cn } from "@/lib/utils";
-import { balancedFormWidths, evaluateForm, formBand, formBlockVisible, formBlockWidth, formCompletion, formConditionMet, formLeafBlocks, formLimitFor, formLimitLevel, formRuleSummary, formSectionShown, type FormBlock, type FormDocument, type FormEvaluation, type FormLeafBlock, type FormSection, type FormValues, type FormWidth } from "@/lib/workflow/form-document";
+import { balancedFormWidths, evaluateForm, formBand, formBlockVisible, formBlockWidth, formCompletion, formConditionMet, formLeafBlocks, formLimitFor, formLimitLevel, formRuleSummary, formSummaryMaterial, formSectionShown, type FormBlock, type FormDocument, type FormEvaluation, type FormLeafBlock, type FormSection, type FormValues, type FormWidth } from "@/lib/workflow/form-document";
 import { formatResultValue } from "@/lib/workflow/form-formula";
 import type { FormPrefill } from "@/lib/workflow/form-prefill";
 import { CheckChecklist, MatrixBlock, MomentsPanel, NoteBlock, SummaryBlock, type FormCompletionSummary } from "./form-blocks";
 import { AssessmentChecklist } from "./form-checklist";
 import { bandClass, FieldRemark, ImagePicker, LimitHint, SignatureBlock, YesNo, type FormAttachment, type FormMedia } from "./form-inputs";
 import { addExampleRow, addTableRow, FormTable, tableHasExample, tableItemName, tableScreenLayout, type FormRowOptions } from "./form-table";
+import { clientExtensions } from "@ee/client";
 import { indicatorBadge, indicatorText } from "./indicator-tone";
+
+const { SummaryAssist } = clientExtensions;
 
 export type { FormMedia } from "./form-inputs";
 export type { FormRowOptions } from "./form-table";
@@ -167,6 +170,27 @@ export function FormRenderer({ document, values, onChange, readOnly = false, att
 }
 
 /**
+ * What a section's panel is made of (the task and the builder's sheet draw the same thing, 2026-10-01): the
+ * block the section is about, whether it is measurement rows or object cards, the moment's picture block that becomes
+ * the round button in the header, and the panel's title and description.
+ */
+export function sectionPanelChrome(section: FormSection, values: FormValues) {
+  const main = sectionMainBlock(section);
+  const rowsTable = main?.type === "table" && tableScreenLayout(main) === "rows" ? main : null;
+  const cardsTable = main?.type === "table" && tableScreenLayout(main) === "cards" ? main : null;
+  // A moment's picture block (printed after the protocol) is not a block in the task: a measurement panel takes it from
+  // the round picture button in its header, like the control's; other moments leave pictures to Bilder och dokument.
+  const sectionImages = section.optional ? section.blocks.find((block): block is Extract<FormLeafBlock, { type: "images" }> => block.type === "images" && !block.pdfInline && formBlockVisible(block, "task")) : undefined;
+  const rows = rowsTable ? values.tables[rowsTable.key] ?? [] : [];
+  const description = rowsTable ? undefined : section.description || (main && "help" in main ? main.help : "") || undefined;
+  const title = section.taskTitle || section.title || (main && "label" in main ? main.label : "") || "Avsnitt";
+  // The panel carries the heading of the block the section is about and, for measurement rows, object cards and the
+  // summary, its actions too; a plain table keeps its own add button under the rows.
+  const chromed = rowsTable ?? cardsTable ?? (main?.type === "summary" ? main : null);
+  return { main, rowsTable, cardsTable, sectionImages, rows, description, title, chromed };
+}
+
+/**
  * One section as a Workflow panel, exactly like the original editors: the light blue header with the title and
  * description, the actions of the block the section is about, and the content – with the task's own controls and the
  * moments inside the first section when the form says so.
@@ -179,16 +203,9 @@ function SectionPanel({ section, first, inline, moments, grid, leafProps, footer
   footer?: ReactNode;
 }) {
   const { values, onChange, readOnly, media, rowOptions, document } = leafProps;
-  const main = sectionMainBlock(section);
-  const rowsTable = main?.type === "table" && tableScreenLayout(main) === "rows" ? main : null;
-  const cardsTable = main?.type === "table" && tableScreenLayout(main) === "cards" ? main : null;
-  // A moment's picture block (printed after the protocol) is not a block in the task: a measurement panel takes it from
-  // the round picture button in its header, like the control's; other moments leave pictures to Bilder och dokument.
-  const sectionImages = section.optional ? section.blocks.find((block): block is Extract<FormLeafBlock, { type: "images" }> => block.type === "images" && !block.pdfInline && formBlockVisible(block, "task")) : undefined;
+  const chrome = sectionPanelChrome(section, values);
+  const { main, rowsTable, cardsTable, sectionImages, rows, description, title, chromed } = chrome;
   const headerImages = sectionImages && rowsTable && media?.upload && !readOnly ? sectionImages : undefined;
-  const rows = rowsTable ? values.tables[rowsTable.key] ?? [] : [];
-  const description = rowsTable ? undefined : section.description || (main && "help" in main ? main.help : "") || undefined;
-  const title = section.taskTitle || section.title || (main && "label" in main ? main.label : "") || "Avsnitt";
   const leadingActions = rowsTable && !readOnly ? <div className="measurement-actions">
     <Button type="button" size="icon" variant="outline" className="measurement-action" title={`Lägg till rad – ${rows.length} rader`} aria-label={`Lägg till rad i ${rowsTable.label}`} onClick={() => onChange(addTableRow(rowsTable, values, rowOptions))}>
       <Plus /><span className="measurement-count" aria-label={`${rows.length} rader`}>{rows.length}</span>
@@ -199,11 +216,12 @@ function SectionPanel({ section, first, inline, moments, grid, leafProps, footer
   const actions = cardsTable && !readOnly && (values.tables[cardsTable.key] ?? []).length
     ? <Button type="button" size="sm" variant="outline" onClick={() => onChange(addTableRow(cardsTable, values, rowOptions))}><Plus />Lägg till {tableItemName(cardsTable).toLowerCase()}</Button>
     : main?.type === "summary" && !readOnly && document
-      ? <Button type="button" variant="outline" onClick={() => onChange({ ...values, deviationComment: formRuleSummary(document, values) })}><RefreshCw />Sammanställ resultat</Button>
+      ? <span className="inline-flex flex-wrap items-center justify-end gap-2">
+        <Button type="button" variant="outline" onClick={() => onChange({ ...values, deviationComment: formRuleSummary(document, values) })}><RefreshCw />Sammanställ resultat</Button>
+        {/* HINTEK AI writes from the rules' summary, where the company's AI is on (2026-10-01). */}
+        {SummaryAssist ? <SummaryAssist draft={formSummaryMaterial(document, values)} label={document.report.title || "Protokollet"} current={values.deviationComment ?? ""} onText={(text) => onChange({ ...values, deviationComment: text })} /> : null}
+      </span>
       : undefined;
-  // The panel carries the heading of the block the section is about and, for measurement rows, object cards and the
-  // summary, its actions too; a plain table keeps its own add button under the rows.
-  const chromed = rowsTable ?? cardsTable ?? (main?.type === "summary" ? main : null);
   const content = grid(section.blocks, section.id, section.title, main?.id ?? null, chromed?.id ?? null, first ? inline?.beside : undefined, sectionImages ? [sectionImages.id] : []);
   if (!content && !moments && !(first && (inline?.top || inline?.after))) return null;
   return <Panel title={title} description={description} collapsible={section.optional || section.collapsed} defaultCollapsed={section.collapsed} className={rowsTable ? "measurement-panel" : undefined} leadingActions={leadingActions} actions={actions}>

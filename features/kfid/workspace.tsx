@@ -20,6 +20,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { api, action } from "./api";
+import { AdvisorLevelPicker, AdvisorSettingsProvider } from "@/features/workflow/flow-guide";
+import { WORKSPACE_TOAST_EVENT, type WorkspaceToast, type WorkspaceToastAction } from "@/lib/workflow/toast";
+import { COMPANY_VIEWS, PRODUCT_VIEWS, SectionTabs, companyTabs, productTabs } from "@/features/workflow/section-tabs";
+import { WorkflowGuide } from "@/features/workflow/workflow-guide";
 import { Panel, Field, Empty, Modal } from "./ui";
 import { Administration, LegalPanel } from "./administration";
 import { CustomerCompanies } from "./customer-companies";
@@ -66,7 +70,7 @@ import {
 } from "@/lib/branding";
 import { useInstance } from "@/components/instance-provider";
 // HINTEK's commercial views live in ee/ (Fas 2); without it they are null.
-const { BillingRead, IntegrationKeys, LandingEditor } = clientExtensions;
+const { BillingRead, ImportPage, IntegrationKeys, LandingEditor, SharingPolicyPanel } = clientExtensions;
 
 const blankCustomer = {
   name: "",
@@ -106,7 +110,7 @@ export function Workspace({
   useCloudRunningTimers(Boolean(user && overview && overview.organization.storageMode !== "LOCAL"));
   const [loading, setLoading] = useState(Boolean(user));
   const [error, setError] = useState("");
-  const [toast, setToast] = useState<{ text: string; error: boolean } | null>(
+  const [toast, setToast] = useState<{ text: string; error: boolean; actions?: WorkspaceToastAction[] } | null>(
     null,
   );
   const [preferences, setPreferences] =
@@ -131,6 +135,11 @@ export function Workspace({
     [],
   );
   const [refreshCount, setRefreshCount] = useState(0);
+  // Beslutsstöd (2026-10-01): the person's tip setting is saved at once, merged on the server.
+  const saveAdvisor = useCallback(async (advisor: Preferences["advisor"]) => {
+    setPreferences((current) => ({ ...current, advisor }));
+    try { await action({ action: "advisor", advisor }); } catch (issue) { setToast({ text: (issue as Error).message, error: true }); }
+  }, []);
   // Customers are read only for the views whose forms list them (2026-09-26: fetch only what is shown).
   const customerOptions = useCustomerOptions(Boolean(overview) && overview?.organization.storageMode !== "LOCAL" && ["workflow_task", "new_project", "project"].includes(view));
   const refresh = useCallback(async () => {
@@ -210,9 +219,20 @@ export function Workspace({
   ]);
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(null), 6500);
+    // An error stays a little longer, so it can be read after the page has moved to the field.
+    // One with buttons (Ångra) stays long enough to be used.
+    const t = setTimeout(() => setToast(null), toast.actions?.length ? 15000 : toast.error ? 10000 : 6500);
     return () => clearTimeout(t);
   }, [toast]);
+  // Messages from anywhere on the page (Slutför leading to a missing field) are shown as this toast.
+  useEffect(() => {
+    const show = (event: Event) => {
+      const detail = (event as CustomEvent<WorkspaceToast>).detail;
+      if (detail?.text) setToast({ text: detail.text, error: Boolean(detail.error), actions: detail.actions });
+    };
+    window.addEventListener(WORKSPACE_TOAST_EVENT, show);
+    return () => window.removeEventListener(WORKSPACE_TOAST_EVENT, show);
+  }, []);
   const perform = async (input: unknown, message: string) => {
     setBusy(true);
     try {
@@ -291,6 +311,8 @@ export function Workspace({
     content = <Administration notify={notify} />;
   else if (view === "integrations")
     content = IntegrationKeys ? <IntegrationKeys notify={notify} /> : null;
+  else if (view === "ai_settings")
+    content = SharingPolicyPanel && overview?.organization.storageMode !== "LOCAL" ? <SharingPolicyPanel /> : <Panel title="HINTEK AI"><p className="text-sm text-muted-foreground">HINTEK AI finns i HINTEK Cloud. I Local stannar allt i den egna filen.</p></Panel>;
   else if (view === "history_retention")
     content = <HistoryRetention notify={notify} />;
   else if (view === "mail_settings")
@@ -304,6 +326,10 @@ export function Workspace({
     // HINTEK's superadmin builds HINTEK's forms; a company admin in Cloud builds the company's own (2026-09-27).
     content = user?.role === "SUPERADMIN" || (overview?.admin && overview.organization.storageMode !== "LOCAL") ? <FormBuilder userName={user?.name || undefined} tourSeen={overview ? Boolean(preferences.tours?.formBuilder) : undefined}
       onTourSeen={async () => { await action({ action: "tour", tour: "formBuilder" }); setPreferences((current) => ({ ...current, tours: { ...current.tours, formBuilder: new Date().toISOString() } })); }} /> : <Panel title="Endast för administratörer"><p className="text-sm text-muted-foreground">Formulär skapas och publiceras av HINTEK och av företagets administratör.</p></Panel>;
+  else if (view === "import")
+    // Import (2026-10-01) writes through the same tools as the API; a Local workspace keeps its data in the file.
+    content = ImportPage && overview?.organization.storageMode !== "LOCAL" ? <ImportPage canBuildForms={user?.role === "SUPERADMIN" || Boolean(overview?.admin)} />
+      : <Panel title="Import"><p className="text-sm text-muted-foreground">Import finns i HINTEK Cloud. I Local ligger dina data i den egna filen; använd Lagring för att öppna eller läsa in en fil.</p></Panel>;
   else if (view === "facilities")
     content = <><div className="mb-6"><h1 className="page-title">Platser</h1><p className="page-description mt-2">Företagets egna platser och avdelningar som kan kopplas till arbetet. Kundens anläggningar finns på kundkortet.</p></div><OrganizationStructure notify={notify} editable={Boolean(overview?.admin)} /></>;
   else if (view === "new_task")
@@ -669,7 +695,7 @@ export function Workspace({
                 <p className="text-xs text-muted-foreground">Välj vilka knappar du vill se. Det du döljer finns kvar och kan väljas igen; Översikt, Hjälp och Inställningar visas alltid.</p>
                 <div className="grid gap-4 sm:grid-cols-2">
                   {/* Only the buttons this installation has (HINTEK AI and Krediter live in ee/). */}
-                  {MENU_ITEM_GROUPS.map((group) => ({ ...group, items: group.items.filter((item) => (item.key !== "ai" || Boolean(clientExtensions.AssistantPanel)) && (item.key !== "credits" || instance.features.billing || instance.features.credits)) })).filter((group) => group.items.length).map((group) => <div key={group.title} className="space-y-2">
+                  {MENU_ITEM_GROUPS.map((group) => ({ ...group, items: group.items.filter((item) => (item.key !== "ai" || Boolean(clientExtensions.AssistantPanel)) && (item.key !== "import" || Boolean(clientExtensions.ImportPage)) && (item.key !== "credits" || instance.features.billing || instance.features.credits)) })).filter((group) => group.items.length).map((group) => <div key={group.title} className="space-y-2">
                     <p className="text-xs font-medium text-muted-foreground">{group.title}</p>
                     {group.items.map((item) => <label key={item.key} className="flex items-center gap-3 text-sm">
                       <Checkbox checked={!preferences.hiddenMenuItems.includes(item.key)} onCheckedChange={(v) => setPreferences((p) => ({ ...p, hiddenMenuItems: v === true ? p.hiddenMenuItems.filter((key) => key !== item.key) : [...p.hiddenMenuItems, item.key] }))} />
@@ -678,6 +704,21 @@ export function Workspace({
                   </div>)}
                 </div>
               </fieldset>
+              {/* Beslutsstöd (2026-10-01): how often tips appear under the progress line; saved at once. */}
+              <fieldset className="space-y-3 rounded-lg border p-4" data-testid="advisor-settings">
+                <legend className="px-1 text-xs font-semibold">Tips i arbetsflödet</legend>
+                <p className="text-xs text-muted-foreground">Under progressionslinjen visas ibland ett tips om nästa steg. Tipsen bygger på regler i Workflow och kostar inga krediter; bara knappen Fråga HINTEK AI använder AI.</p>
+                <AdvisorLevelPicker level={preferences.advisor.level} name="advisor-level-settings" onChange={(level) => void saveAdvisor({ ...preferences.advisor, level })} />
+                {preferences.advisor.muted.length ? <Button type="button" size="sm" variant="outline" onClick={() => void saveAdvisor({ ...preferences.advisor, muted: [] })}>Visa avstängda tips igen ({preferences.advisor.muted.length})</Button> : null}
+              </fieldset>
+              {/* HINTEK AI's proposals (2026-10-02: "normalt bara förslag, men användaren ska kunna välja"); saved at once. */}
+              {clientExtensions.SummaryAssist ? <fieldset className="space-y-3 rounded-lg border p-4" data-testid="ai-autofill-settings">
+                <legend className="px-1 text-xs font-semibold">Förslag från HINTEK AI</legend>
+                <label className="flex cursor-pointer items-start gap-2.5 text-sm">
+                  <Checkbox className="mt-0.5" checked={preferences.advisor.autofill} onCheckedChange={(value) => void saveAdvisor({ ...preferences.advisor, autofill: value === true })} />
+                  <span><span className="block font-medium">Fyll i tomma fält direkt</span><span className="block text-xs text-muted-foreground">Av: HINTEK AI visar ett förslag som du väljer att använda. På: ett förslag du har bett om skrivs direkt i fältet när det är tomt, och du kan ångra. Att skapa eller ändra uppgifter och planering kräver alltid att du bekräftar.</span></span>
+                </label>
+              </fieldset> : null}
               <Button type="submit" className="mobile-form-action" disabled={busy}>
                 <Save />
                 Spara inställningar
@@ -935,22 +976,12 @@ export function Workspace({
       <>
         {heading(
           "Hjälp och verktyg",
-          "Så arbetar du med kontroll före idrifttagning.",
+          "Så hänger uppgifter, tid, slutförande och projekt ihop.",
         )}
-        <div className="grid gap-6 lg:grid-cols-2">
-          <Panel title="Arbetsflödet">
-            <ol className="list-decimal space-y-4 pl-5 text-sm leading-6">
-              <li>Skapa en kund eller börja direkt med Ny kontroll.</li>
-              <li>Fyll i projekt, instrument och relevanta mätmoment.</li>
-              <li>Spara kontrollen och komplettera med bilder och dokument.</li>
-              <li>
-                Granska resultat och sammanfattning. Skapa PDF eller Excel.
-              </li>
-              <li>
-                Färdigställ när du är klar. Ändringar görs sedan i en kopia.
-              </li>
-            </ol>
-            <p className="notice mt-5">
+        <WorkflowGuide />
+        <div className="mt-6 grid gap-6 lg:grid-cols-2">
+          <Panel title="Kontroll före idrifttagning">
+            <p className="text-sm leading-6">
               Autobedömning återger V1:s regler. Jordfelsbrytarens profil
               använder tider och testknapp; granska även de övriga provvärdena.
             </p>
@@ -959,8 +990,14 @@ export function Workspace({
         </div>
       </>
     );
+  // Mitt företag and Produktadministration are one menu button each with tabs (2026-10-01, menystädning).
+  const sectionTabs = (COMPANY_VIEWS as readonly string[]).includes(view) && !overview?.legalRequired
+    ? <SectionTabs label="Mitt företag" current={view} tabs={companyTabs({ admin: Boolean(overview?.admin), cloud: overview?.organization.storageMode !== "LOCAL", ai: Boolean(SharingPolicyPanel) && instance.features.ai, integrations: Boolean(IntegrationKeys) && instance.features.integrations })} />
+    : (PRODUCT_VIEWS as readonly string[]).includes(view) && user?.role === "SUPERADMIN"
+      ? <SectionTabs label="Produktadministration" current={view} tabs={productTabs({ landingEditor: Boolean(LandingEditor) && instance.features.landingEditor })} />
+      : null;
   return (
-    <>
+    <AdvisorSettingsProvider value={overview ? preferences.advisor : undefined} onSave={overview ? (next) => saveAdvisor({ ...next, autofill: Boolean(next.autofill) }) : undefined}>
       {toast && (
         <div
           role={toast.error ? "alert" : "status"}
@@ -969,7 +1006,12 @@ export function Workspace({
           <AlertCircle
             className={`mt-0.5 size-4 shrink-0 ${toast.error ? "text-red-600" : "text-emerald-600"}`}
           />
-          <p className="max-w-md text-sm leading-6">{toast.text}</p>
+          <div className="max-w-md">
+            <p className="text-sm leading-6">{toast.text}</p>
+            {toast.actions?.length ? <div className="mt-2 flex flex-wrap gap-2">
+              {toast.actions.map((item) => <Button key={item.label} type="button" size="sm" variant="outline" data-testid="toast-action" onClick={() => { setToast(null); item.run(); }}>{item.label}</Button>)}
+            </div> : null}
+          </div>
           <Button
             variant="ghost"
             size="icon"
@@ -980,6 +1022,7 @@ export function Workspace({
           </Button>
         </div>
       )}
+      {sectionTabs}
       {content}
       {overview?.organization.storageMode === "LOCAL" && !overview.legalRequired && (
         <div hidden={loading || Boolean(error) || !["stats", "notifications", "new", "controls", "customers", "new_project", "projects", "planning", "rounds", "project", "tasks", "work_orders", "time", "workflow_task"].includes(view)}>
@@ -1076,6 +1119,6 @@ export function Workspace({
           </Button>
         </form>
       </Modal>
-    </>
+    </AdvisorSettingsProvider>
   );
 }

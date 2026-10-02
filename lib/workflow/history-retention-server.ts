@@ -31,6 +31,14 @@ const statements: Record<HistoryCategory, (org: string, before: Date) => Stateme
   ai: (org, before) => [{
     count: Prisma.sql`SELECT count(*)::int AS n FROM "AiConversation" c WHERE c."organizationId" = ${org} AND coalesce(c."lastMessageAt", c."createdAt") < ${before} AND NOT EXISTS (SELECT 1 FROM "AiProposal" p WHERE p."conversationId" = c.id)`,
     remove: Prisma.sql`DELETE FROM "AiConversation" c WHERE c."organizationId" = ${org} AND coalesce(c."lastMessageAt", c."createdAt") < ${before} AND NOT EXISTS (SELECT 1 FROM "AiProposal" p WHERE p."conversationId" = c.id)`,
+  }, {
+    // The nightly digests: old ones say nothing about how things stand now.
+    count: Prisma.sql`SELECT count(*)::int AS n FROM "AiDailyDigest" d WHERE d."organizationId" = ${org} AND d."createdAt" < ${before}`,
+    remove: Prisma.sql`DELETE FROM "AiDailyDigest" d WHERE d."organizationId" = ${org} AND d."createdAt" < ${before}`,
+  }, {
+    // Proposals made on a page (no conversation): what was proposed and what the person did with it.
+    count: Prisma.sql`SELECT count(*)::int AS n FROM "AiProposal" p WHERE p."organizationId" = ${org} AND p."conversationId" IS NULL AND p."createdAt" < ${before}`,
+    remove: Prisma.sql`DELETE FROM "AiProposal" p WHERE p."organizationId" = ${org} AND p."conversationId" IS NULL AND p."createdAt" < ${before}`,
   }],
   administration: (org, before) => [
     direct("AdministrationEvent", org, before),

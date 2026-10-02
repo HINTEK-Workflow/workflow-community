@@ -2,7 +2,7 @@
 "use client";
 import { controlProgress } from "@/lib/workflow/project-progress";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { formatSwedish } from "@/lib/swedish-time";
+import { formatSwedish, swedishDayKey } from "@/lib/swedish-time";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useConfirm } from "./confirm";
@@ -15,11 +15,9 @@ import {
   FileText,
   Trash2,
   CheckCircle2,
-  Sparkles,
   Send,
   History,
   RefreshCw,
-  Camera,
   ShieldCheck,
   Zap,
   Paperclip,
@@ -70,8 +68,13 @@ import { ContextHelp } from "@/features/workflow/context-help";
 import { api, action } from "./api";
 import { Panel, Field, Modal } from "./ui";
 import { EditorHeader } from "@/features/workflow/editor-header";
+import { ExportMenu } from "@/features/workflow/export-menu";
 import { NextSteps } from "@/features/workflow/next-steps";
+import { FlowGuide, focusTarget } from "@/features/workflow/flow-guide";
+import { CompleteTaskDialog, type CompletionTime } from "@/features/workflow/complete-task-dialog";
+import { controlFlow } from "@/lib/workflow/task-flow";
 import { announceTimerChange } from "@/features/workflow/running-timer";
+import { clientExtensions } from "@ee/client";
 import type { StoppedTimer } from "@/lib/workflow/running-timer";
 import type {
   Overview,
@@ -153,6 +156,8 @@ const controlHelp: Record<string, string> = {
   vis: "Inspektion av installationens utförande: märkning, förskruvningar, infästning och miljö.",
   auto: "Sätter Godkänd automatiskt i varje kontrollrad utifrån gränsvärdena.",
 };
+const { SummaryAssist, ProtocolReview } = clientExtensions;
+
 export function Editor({
   user,
   controlId,
@@ -172,6 +177,10 @@ export function Editor({
   const [status, setStatus] = useState("DRAFT");
   // Cloud: reported time and the caller's own timer from the server; Local reads the open file (2026-09-27).
   const [cloudTime, setCloudTime] = useState({ totalDurationSec: 0, timerRunning: false });
+  // Färdigställ asks "Vill du skriva tid?" like every other task (2026-10-01: same behaviour everywhere).
+  const [completeOpen, setCompleteOpen] = useState(false);
+  // Why the last save failed, for the completion dialog.
+  const lastSaveError = useRef("");
   const [customerPicker, setCustomerPicker] = useState(false);
   const [customerName, setCustomerName] = useState("");
   const [customerId, setCustomerId] = useState<string | null>(null);
@@ -626,15 +635,15 @@ export function Editor({
     };
   }, [id, hasSaved, readOnly, notify, localMode]);
   async function save(copy = false, complete = false, quiet = false) {
+    // A failure is also kept for the completion dialog, which covers the page's notice.
+    const fail = (message: string) => { lastSaveError.current = message; notify(message, true); };
     if (!localMode && !online) {
-      notify(
-        "Du är offline. Utkastet finns lokalt; anslut till internet för att spara på servern.",
-        true,
-      );
+      fail(
+        "Du är offline. Utkastet finns lokalt; anslut till internet för att spara på servern.");
       return null;
     }
     if (!canSave) {
-      notify("Logga in för att spara kontrollen.", true);
+      fail("Logga in för att spara kontrollen.");
       return null;
     }
     if (saving.current) return null;
@@ -648,10 +657,7 @@ export function Editor({
           attachmentCount: attachments.length,
         });
         if (!completion.complete) {
-          notify(
-            `Kontrollen kan inte färdigställas. ${completion.errors[0].message}`,
-            true,
-          );
+          fail(`Kontrollen kan inte färdigställas. ${completion.errors[0].message}`);
           return null;
         }
       }
@@ -738,7 +744,7 @@ export function Editor({
       return result.id;
     } catch (e) {
       setSaveError(true);
-      notify((e as Error).message, true);
+      fail((e as Error).message);
       return null;
     } finally {
       saving.current = false;
@@ -1102,9 +1108,29 @@ export function Editor({
       notify((error as Error).message, true);
     }
   }
-  async function completeControl() {
-    if (await confirmCard({ title: "Färdigställa kontrollen?", message: "Den låses för ändringar; du kan senare skapa en kopia med Spara som.", confirmLabel: "Färdigställ" }))
-      void save(false, true);
+  function completeControl() {
+    setCompleteOpen(true);
+  }
+  // Time written when completing is registered first, while the control can still take time (Cloud).
+  // A failure is told in the dialog (2026-10-01: "händer inget när jag klickar"): an autosave under way is
+  // waited for, and time already written is removed again when the control cannot be completed, so a retry never
+  // doubles it.
+  async function completeWith(entry: CompletionTime | null): Promise<boolean | string> {
+    for (let wait = 0; saving.current && wait < 50; wait++) await new Promise((resolve) => setTimeout(resolve, 100));
+    if (saving.current) return "Kontrollen sparas just nu. Vänta ett ögonblick och försök igen.";
+    let entryId = "";
+    if (entry && id) {
+      try { entryId = (await api<{ id: string }>("/api/workflow-time", { method: "POST", body: JSON.stringify({ action: "save", entry: { taskId: id, ...entry } }) })).id; }
+      catch (e) { return `Tiden kunde inte sparas: ${(e as Error).message}`; }
+    }
+    lastSaveError.current = "";
+    const done = await save(false, true);
+    if (!done) {
+      if (entryId) await api("/api/workflow-time", { method: "POST", body: JSON.stringify({ action: "delete", id: entryId }) }).catch(() => undefined);
+      return lastSaveError.current || "Kontrollen kunde inte färdigställas.";
+    }
+    if (entry) setCloudTime((current) => ({ ...current, totalDurationSec: current.totalDurationSec + Math.round((Date.parse(entry.endedAt) - Date.parse(entry.startedAt)) / 1000) }));
+    return true;
   }
   function runWorkspaceControlAction(actionId: WorkspaceControlActionId) {
     if (actionId === "save") void save();
@@ -1185,6 +1211,8 @@ export function Editor({
       attachmentCount: attachments.length,
     });
   const completionError = completion.errors[0]?.message;
+  // The progress line (2026-10-01): the control's steps from its own completion rules.
+  const flow = controlFlow({ saved: Boolean(id && version), completed: status === "COMPLETED", errors: completion.errors });
   const workspaceControlActions = useMemo<WorkspaceControlAction[]>(
     () => [
       { id: "copy", label: "Spara som", group: "control", disabled: !user || busy },
@@ -1301,7 +1329,13 @@ export function Editor({
             {busy ? "Arbetar…" : dirty ? "Spara ändringar" : "Spara"}
           </Button>
         </>}
+        flow={<FlowGuide flow={flow} page={id || "new-control"} pageLabel="Kontroll före idrifttagning" missing={completion.errors.map((error) => error.message)}
+          advisor={{ kind: "COMMISSIONING_CONTROL", currentTaskId: id, saved: Boolean(id && version), completed: status === "COMPLETED", today: swedishDayKey(new Date()),
+            unsavedNew: !version && Boolean(data.meta.proj.trim()) && dirty, timerAvailable, timerRunning: time.timerRunning, totalDurationSec: time.totalDurationSec, failedPoints: Math.max(0, total - passed) }}
+          handlers={{ startTimer: () => { if (!time.timerRunning) void toggleTimer(); }, complete: () => { if (completion.complete && !dirty) completeControl(); else void save(); }, save: () => void save() }} />}
       />
+      <CompleteTaskDialog open={completeOpen} onOpenChange={setCompleteOpen} title="Färdigställ kontrollen" lockText="Kontrollen låses för ändringar; du kan senare skapa en kopia med Spara som."
+        totalDurationSec={time.totalDurationSec} timerRunning={time.timerRunning} canReportTime={!localMode && Boolean(user)} onComplete={completeWith} />
       {/* Nästa steg also after a completed control (flödesvåg 2, 2026-09-30); no follow-up work order here, since a
           work order's origin is a task and the control has its own deviations in the protocol. */}
       {status === "COMPLETED" && id && version && user ? <NextSteps task={{ id, kind: "COMMISSIONING_CONTROL", projectId }}
@@ -1789,7 +1823,7 @@ export function Editor({
       <Panel
         title="Sammanfattning"
         description="Granska resultat och skriv avvikelser, åtgärder eller hänvisningar."
-        actions={
+        actions={<>
           <Button
             variant="outline"
             disabled={readOnly}
@@ -1803,7 +1837,8 @@ export function Editor({
             <RefreshCw />
             Sammanställ resultat
           </Button>
-        }
+          {SummaryAssist && !readOnly ? <SummaryAssist draft={data.vis.comment.trim() ? `${ruleSummary(data)}\n\nAnteckning: ${data.vis.comment}` : ruleSummary(data)} label="Kontroll före idrifttagning" current={data.vis.comment} onText={(text) => change((d) => ({ ...d, vis: { ...d.vis, comment: text } }))} /> : null}
+        </>}
       >
         <div className="mb-4 flex flex-wrap gap-2">
           {counts.map((c) => (
@@ -1906,52 +1941,22 @@ export function Editor({
           </Button>
           <Button
             type="button"
-            disabled={!version || readOnly || dirty || busy || !completion.complete}
-            title={completion.complete ? "Färdigställ och lås kontrollen" : completionError}
-            onClick={completeControl}
+            // Never a dead button (2026-10-01): with something missing it leads there, marked light red.
+            disabled={!version || readOnly || busy}
+            className={completion.complete ? undefined : "opacity-60"}
+            title={completion.complete ? "Färdigställ och lås kontrollen" : `Klicka för att se vad som saknas: ${completionError ?? ""}`}
+            onClick={() => { if (completion.complete) completeControl(); else { notify(`Kvar före färdigställande: ${completionError}`, true); focusTarget(flow.current?.target ?? "Grunduppgifter"); } }}
+            id="task-complete"
           >
             <CheckCircle2 />
             Färdigställ
           </Button>
         </div>
-        <div className="mobile-action-grid mt-4 flex flex-wrap items-center gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            disabled={localMode || !id || dirty || !overview?.aiEnabled}
-            title={
-              localMode
-                ? "AI-granskning kräver en sparad Cloud-kontroll."
-                : !id
-                  ? "Spara kontrollen innan AI-granskning."
-                  : dirty
-                    ? "Spara dina senaste ändringar innan AI-granskning."
-                    : !overview?.aiEnabled
-                      ? "AI-provider är avstängd av servern."
-                      : "Granska den sparade kontrollen med HINTEK AI."
-            }
-          >
-            <Sparkles />
-            AI-granska kontroll
-          </Button>
-          <Button variant="outline" disabled>
-            <Camera />
-            AI-bildtolkning
-          </Button>
-          <p className="basis-full text-xs leading-5 text-muted-foreground" role="status">
-            {localMode
-              ? "AI-granskning skickar aldrig Local-filer. Spara en separat kontroll i HINTEK Cloud om funktionen ska användas senare."
-              : !id
-                ? "Spara kontrollen först. Därefter visas maxkostnaden innan en AI-granskning kan startas."
-                : dirty
-                  ? "Spara de senaste ändringarna så att AI:n granskar rätt version."
-                  : overview?.aiEnabled
-                    ? "Maxkostnaden visas och reserveras före start. Minsta slutliga uttag är 5 krediter; outnyttjad reservation återförs automatiskt."
-                    : overview?.aiConfigured
-                      ? "AI-anslutningen finns på servern men är avstängd. Inga kontrolluppgifter skickas och inga krediter dras."
-                      : "AI-kontrollgranskaren och kreditmotorn är förberedda. Servernyckel och providerläge är ännu inte aktiverade, så inga uppgifter skickas och inga krediter dras."}
-          </p>
-        </div>
+        {/* Granska med AI (2026-10-02): HINTEK AI's reviewer reads the saved control and points at what to check; it
+            changes nothing. Lives in ee/; the community edition has none. */}
+        {ProtocolReview && !localMode ? <div className="mobile-action-grid mt-4 flex flex-wrap items-center gap-3">
+          <ProtocolReview controlId={id || undefined} unsaved={!id ? "Spara kontrollen innan den granskas." : dirty ? "Spara dina senaste ändringar, så granskas rätt version." : undefined} />
+        </div> : null}
       </Panel>
       <Panel
         title="Rapport och hantering"
@@ -1961,17 +1966,23 @@ export function Editor({
         defaultCollapsed
         persistentContent={
           <>
-            <div className="mb-5 hidden lg:block">
-              <p className="mb-2 text-xs font-medium text-muted-foreground">Rapport och export</p>
-              <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="outline" disabled={!version || dirty || busy || !canPrint} onClick={() => void report("pdf", true)}><Eye />Förhandsgranska</Button>
-                <Button type="button" variant="outline" disabled={!version || dirty || busy || !canPrint} onClick={() => void report("pdf")}><FileDown />PDF</Button>
-                <Button type="button" variant="outline" disabled={!version || dirty || busy || !canSave} onClick={() => void report("xlsx")}><FileSpreadsheet />Excel</Button>
-                <Button type="button" variant="outline" disabled={!version || dirty || busy || !canSave} onClick={() => void report("json")}><Download />JSON</Button>
-                <Button type="button" variant="outline" disabled={!user || busy} onClick={() => importInput.current?.click()}><Upload />Importera JSON</Button>
-                <Button type="button" variant="outline" disabled={!version || dirty || busy || !canPrint} onClick={() => void report("pdf_template")}><FileText />PDF-mall</Button>
-                <Button type="button" variant="outline" disabled={!version || dirty || busy || !canSave} onClick={() => void report("xlsx_template")}><FileSpreadsheet />Excel-mall</Button>
-              </div>
+            {/* The shared Exportera window (2026-10-01: one look everywhere); importing stays its own button. */}
+            <div className="mb-5 flex flex-wrap gap-2">
+              <ExportMenu
+                title="Exportera kontrollen"
+                description="Rapporten och filerna bygger på den sparade versionen av kontrollen."
+                disabled={busy}
+                note={!version ? "Spara kontrollen först." : dirty ? "Spara ändringarna först, så kommer de med." : undefined}
+                formats={[
+                  { id: "preview", label: "Förhandsgranska", icon: Eye, disabled: !version || dirty || !canPrint, run: () => report("pdf", true) },
+                  { id: "pdf", label: "PDF", icon: FileDown, primary: true, disabled: !version || dirty || !canPrint, run: () => report("pdf") },
+                  { id: "xlsx", label: "Excel", icon: FileSpreadsheet, disabled: !version || dirty || !canSave, run: () => report("xlsx") },
+                  { id: "json", label: "JSON", icon: Download, disabled: !version || dirty || !canSave, run: () => report("json") },
+                  { id: "pdf_template", label: "PDF-mall", icon: FileText, ignoresSelection: true, disabled: !version || dirty || !canPrint, run: () => report("pdf_template") },
+                  { id: "xlsx_template", label: "Excel-mall", icon: FileSpreadsheet, ignoresSelection: true, disabled: !version || dirty || !canSave, run: () => report("xlsx_template") },
+                ]}
+              />
+              <Button type="button" variant="outline" disabled={!user || busy} onClick={() => importInput.current?.click()}><Upload />Importera JSON</Button>
             </div>
             <Field
               id="installer-email"
@@ -2017,9 +2028,6 @@ export function Editor({
               ? "Rapporter skapas på den här datorn. Ladda ned arbetsytefilen för varaktig lagring."
               : "Rapporter skapas på den här datorn. Spara kontrollen i den lokala mappen före export."
             : "Spara kontrollen före rapport eller export."}
-        </p>
-        <p className="mt-3 text-xs text-muted-foreground lg:hidden">
-          Rapport-, export- och statusåtgärder finns i huvudmenyn.
         </p>
       </Panel>
       <Modal

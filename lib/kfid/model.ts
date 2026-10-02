@@ -458,6 +458,15 @@ export function validateForCompletion(
   };
 }
 export function ruleSummary(d: ControlData) {
+  // A conclusion line (2026-10-01): the rows that are not approved and the visual points that are not confirmed.
+  const counted = totals(d);
+  const rows = counted.reduce((sum, section) => sum + section.total, 0);
+  const notApproved = counted.reduce((sum, section) => sum + section.total - section.ok, 0) + (d.active.vis ? visualFields.filter((field) => d.vis.checks[field.key] === false).length : 0);
+  const unconfirmed = d.active.vis ? visualFields.filter((field) => d.vis.checks[field.key] === undefined).length : 0;
+  const conclusion = !rows && !d.active.vis ? "Inga kontrollmoment är valda ännu."
+    : notApproved ? `Bedömning: ${notApproved} ${notApproved === 1 ? "punkt är" : "punkter är"} inte godkända – åtgärdas före idrifttagning.`
+    : unconfirmed ? `Bedömning: inga avvikelser hittills, men ${unconfirmed} ${unconfirmed === 1 ? "punkt är" : "punkter är"} inte bekräftade.`
+    : "Bedömning: inga avvikelser – installationen kan tas i drift enligt kontrollen.";
   return [
     d.meta.proj
       ? `Kontroll av ${d.meta.proj}.`
@@ -481,6 +490,7 @@ export function ruleSummary(d: ControlData) {
             `${f.label}: ${d.vis.checks[f.key] ? "kontrollerat" : "ej bekräftat"}.`,
         )
       : []),
+    conclusion,
   ].join("\n");
 }
 const coordinate = (max: number) =>

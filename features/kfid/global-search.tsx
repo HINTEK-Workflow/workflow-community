@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Modal } from "./ui";
 import { api } from "./api";
 import { useLocalWorkspaceSearch, type WorkspaceSearchResult } from "@/components/workspace-actions";
+import { useInstance } from "@/components/instance-provider";
 
 // Totalkontrollen F6 (2026-09-29): a task without a responsible person shows its status in Swedish, never the raw code.
 const taskStatusLabel = (status: string) => ({ PLANNED: "Planerad", IN_PROGRESS: "Pågår", PAUSED: "Pausad", NEEDS_ACTION: "Behöver åtgärdas", COMPLETED: "Slutförd", DRAFT: "Utkast" } as Record<string, string>)[status] ?? "";
@@ -29,6 +30,7 @@ const commands = [
 ];
 export function GlobalSearch({ localMode = false }: { localMode?: boolean } = {}) {
   const localSearch = useLocalWorkspaceSearch();
+  const { features } = useInstance();
   const [open, setOpen] = useState(false),
     [q, setQ] = useState(""),
     [controls, setControls] = useState<WorkspaceSearchResult["controls"]>([]),
@@ -128,6 +130,8 @@ export function GlobalSearch({ localMode = false }: { localMode?: boolean } = {}
           <section>
             <h3 className="mb-2 text-xs text-muted-foreground">Gå till</h3>
             {commands
+              // The Krediter page exists only with credits (HINTEK's edition).
+              .filter((c) => c.href !== "/?view=credits" || features.credits || features.billing)
               .filter((c) =>
                 c.label
                   .toLocaleLowerCase("sv")

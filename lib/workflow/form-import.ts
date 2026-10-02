@@ -36,6 +36,9 @@ const FREQUENCY_TEXT: Record<string, string> = { rond: "varje rond", vecka: "vec
 
 export type ImportResult = { sections: FormSection[]; limits: FormLimit[]; issues: string[]; points: number };
 
+/** Where the Import page leaves control points for Skapa formulär (sessionStorage, read once when a new form opens). */
+export const PENDING_FORM_IMPORT_KEY = "hintek.import.form-sections";
+
 /**
  * Rows → sections: points judged OK/Ej OK are gathered in one checklist per section (with a camera when a row asks
  * for a photo), Ja/nej, text, choice and date points become fields, and measured values become number fields with a

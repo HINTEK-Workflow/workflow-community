@@ -1,5 +1,6 @@
 "use client";
 
+import { clientExtensions } from "@ee/client";
 import { useConfirm } from "./confirm";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -15,6 +16,8 @@ import { Empty, Modal, Panel, ShowMore } from "./ui";
 import type { ControlItem, CustomerItem, ProjectItem } from "./types";
 import type { WorkflowReportOptions } from "@/lib/workflow/report";
 import { ReportOptionsButton, type ProjectReportChoice } from "@/features/workflow/report-options";
+import { FlowGuide } from "@/features/workflow/flow-guide";
+import { projectFlow } from "@/lib/workflow/task-flow";
 import { defaultWorkflowPermissionProfile, hasWorkflowPermission, workflowSubjectForTask, type WorkflowPermissionAction, type WorkflowPermissionProfile, type WorkflowPermissionSubject } from "@/lib/workflow/permissions";
 import { summarizeProjectBudget } from "@/lib/workflow/project-budget";
 import { canManageProjectLifecycle, summarizeProjectStatus, type ProjectStatus } from "@/lib/workflow/project-status";
@@ -30,6 +33,8 @@ import { personInitials, personSolidTone, personSurfaceTone } from "@/features/w
 import { budgetTone, indicatorBadge, indicatorBar, indicatorText, progressTone, statusTone, type IndicatorTone } from "@/features/workflow/indicator-tone";
 import { ProjectStarter } from "@/features/workflow/project-starter";
 import { CustomerSearchBox } from "./customer-search-box";
+
+const { PlanningProposal } = clientExtensions;
 
 export type WorkflowTask = Pick<ControlItem, "id" | "title" | "status" | "updatedAt"> & {
   number?: number;
@@ -451,6 +456,10 @@ export function WorkflowProjects({
     const locked = archived || closed;
     const canManage = Boolean(local) || canManageProjectLifecycle({ admin, userId: currentUserId, responsibleUserId: current.responsibleUserId, canEditProjects: can("projects", "edit") });
     const frameIssues = projectFrameIssues(current, currentTasks);
+    const readyToClose = status.state === "READY_TO_CLOSE";
+    const today = swedishDayKey(new Date());
+    const duePassed = Boolean(current.dueDate && current.dueDate < today);
+    const frameMissing = !current.startDate && !current.dueDate ? "start- och slutdatum" : !current.startDate ? "startdatum" : !current.dueDate ? "slutdatum" : null;
     const taskPlannedMinutes = plannedMinutesByTask(plannedActivities);
     const reportChoices: ProjectReportChoice[] = currentTasks.map((task) => ({ id: task.id, kind: task.kind ?? "COMMISSIONING_CONTROL", title: task.title, status: task.status }));
     return <div className="space-y-6">
@@ -458,11 +467,15 @@ export function WorkflowProjects({
         <div className="min-w-0"><Link className="text-sm text-primary hover:underline" href="/?view=projects">← Mina projekt</Link><h1 className="page-title mt-2">{current.name}</h1><p className="page-description mt-1">{current.description || "Gemensam arbetsyta för projektets uppgifter."}</p></div>
         <div className="flex flex-wrap justify-end gap-2">{can("projects", "report") && currentTasks.length > 0 && (!local || local.report) && <ReportOptionsButton choices={reportChoices} onExport={(options, selected) => exportProjectReport(current, options, selected)} />}{archived ? can("projects", "archive") && <Button variant="outline" disabled={busy} onClick={() => void setArchived(current.id, false)}><RotateCcw />Återställ projekt</Button> : <>{can("projects", "edit") && <Button variant="outline" onClick={() => setEditing(true)}><Pencil />Redigera</Button>}{!closed && can("projects", "edit") && <Button variant="outline" onClick={() => setLinking(true)}><Link2 />Koppla befintlig uppgift</Button>}{can("projects", "archive") && <Button variant="outline" disabled={busy} onClick={() => void setArchived(current.id, true)}><Archive />Arkivera</Button>}{closed ? canManage && <Button disabled={busy} onClick={() => void setClosed(current.id, false)}><RotateCcw />Återöppna projekt</Button> : canCreateTask && <Button asChild><Link href={`/?view=new_task&projectId=${encodeURIComponent(current.id)}`}><Plus />Skapa ny uppgift</Link></Button>}</>}</div>
       </div>
+      {/* The project's flow (2026-10-01): the same progress line as the tasks, between the heading and the panels. */}
+      <FlowGuide flow={projectFlow({ closed, archived, taskCount: currentTasks.length, startedCount: groups.active.length, completedCount: groups.done.length })} page={`project-${current.id}`} label="Projektets flöde" pageLabel="Projekt"
+        advisor={{ kind: "PROJECT", saved: true, completed: locked, today, dueDate: current.dueDate || undefined, project: { taskCount: currentTasks.length, openCount: currentTasks.length - groups.done.length, closed: locked, readyToCloseShown: readyToClose } }} />
       {archived && <div className="notice">Projektet är arkiverat och skrivskyddat. Rapporter och historik går fortfarande att läsa. Återställ projektet för att redigera eller lägga till arbete.</div>}
       {closed && <div data-testid="project-closed-notice" className="notice">Projektet är avslutat. Nya uppgifter och ny planering är spärrade; rapporter och historik går att läsa. {canManage ? "Återöppna projektet om arbetet ska fortsätta." : "Projektansvarig eller en administratör kan återöppna det."}</div>}
-      {status.state === "READY_TO_CLOSE" && <div data-testid="project-ready-to-close" className={cn("flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4 text-sm", indicatorBadge("success"))}><span><strong>Klar att avsluta.</strong> Alla uppgifter är slutförda och ingen planering är aktiv. {canManage ? "Avsluta projektet när arbetet är klart, eller återuppta arbetet." : "Projektansvarig eller en administratör kan avsluta det."}</span><div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => setReopening(true)}><RotateCcw />Återuppta arbete</Button>{canManage && <Button size="sm" disabled={busy} onClick={() => void setClosed(current.id, true)}><CheckCircle2 />Avsluta projekt</Button>}</div></div>}
+      {readyToClose && <div data-testid="project-ready-to-close" className={cn("flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4 text-sm", indicatorBadge("success"))}><span><strong>Klar att avsluta.</strong> Alla uppgifter är slutförda och ingen planering är aktiv.{duePassed ? ` Slutdatumet ${current.dueDate} har passerat.` : ""} {canManage ? "Avsluta projektet när arbetet är klart, eller återuppta arbetet." : "Projektansvarig eller en administratör kan avsluta det."}</span><div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => setReopening(true)}><RotateCcw />Återuppta arbete</Button>{canManage && <Button id="project-close" size="sm" disabled={busy} onClick={() => void setClosed(current.id, true)}><CheckCircle2 />Avsluta projekt</Button>}</div></div>}
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-      {!locked && !hasProjectFrame(current) && <div data-testid="project-frame-missing" className={cn("flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4 text-sm", indicatorBadge("warning"))}><span><strong>Projektet saknar tidsram.</strong> Ange start- och slutdatum så att uppgifter och planering kan följa projektets ram.</span>{canManage && can("projects", "edit") ? <Button size="sm" variant="outline" onClick={() => setEditing(true)}><CalendarDays />Ange tidsram</Button> : null}</div>}
+      {/* Hidden once the project is ready to close; otherwise it names exactly what is missing (2026-10-02). */}
+      {!locked && !readyToClose && frameMissing && <div data-testid="project-frame-missing" className={cn("flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4 text-sm", indicatorBadge("warning"))}><span><strong>Projektet saknar {frameMissing}.</strong> Ange {frameMissing === "start- och slutdatum" ? "dem" : "det"} så att uppgifter och planering kan följa projektets ram.</span>{canManage && can("projects", "edit") ? <Button size="sm" variant="outline" onClick={() => setEditing(true)}><CalendarDays />Ange tidsram</Button> : null}</div>}
       {frameIssues.length > 0 && <section data-testid="project-frame-issues" aria-label="Avvikelser mot projektets ramar" className={cn("rounded-xl border p-4 text-sm", indicatorBadge("warning"))}><p className="flex items-center gap-2 font-semibold"><AlertTriangle className="size-4" />Avvikelser mot projektets ramar</p><ul className="mt-2 space-y-1">{frameIssues.map((issue) => <li key={`${issue.taskId}-${issue.kind}`}><span className="font-medium">{issue.title}:</span> {issue.message}</li>)}</ul><p className="mt-2 text-xs opacity-80">Ändra uppgiften så att den följer projektet. Inget ändras automatiskt.</p></section>}
       {projectFieldRows(current).length > 0 && <Panel title="Projektets uppgifter" description="Gäller alla uppgifter i projektet och skrivs ut i rapporterna."><dl data-testid="project-fields" className="grid gap-3 text-sm sm:grid-cols-2">{projectFieldRows(current).map(([label, value]) => <div key={label} className={label === "Arbetsbeskrivning" ? "sm:col-span-2" : undefined}><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-0.5 whitespace-pre-wrap">{value}</dd></div>)}</dl></Panel>}
       <Panel title="Projektprogression" description="Beräknas från uppgifternas verkliga status och innehåll – inga obligatoriska steg.">
@@ -486,10 +499,12 @@ export function WorkflowProjects({
         canEdit={(activity) => !locked && can("projects", "edit") && (!activity.workflowTaskId || (() => { const task = currentTasks.find((candidate) => candidate.id === activity.workflowTaskId); return Boolean(task && canEditTask(task)); })()) && (!activity.controlId || can("kfid", "edit"))}
         onSave={savePlannedActivity}
         onRemove={removePlannedActivity}
+        aiAction={PlanningProposal && !local && can("projects", "create") && !locked ? <PlanningProposal projectId={current.id} disabled={busy} onApplied={() => void load()} /> : undefined}
       />
       {!currentTasks.length && !archived && !closed && canCreateTask ? <ProjectStarter projectId={current.id} customerId={current.customerId}
         canCreate={{ workOrder: can("work-order", "create"), risk: can("risk-assessment", "create"), control: can("kfid", "create") }} /> : null}
       {/* One board instead of a numbered flow plus the same tasks again in status columns (2026-09-26). */}
+      <div id="project-tasks" />
       <Panel title="Projektets arbetsflöde" description="Uppgifterna som faktiskt är kopplade till projektet, grupperade efter status.">
         <div className="grid items-start gap-3 lg:grid-cols-3">
           <TaskColumn title="Planerade" icon={<CircleDashed />} tasks={groups.planned} empty="Inget väntar på start." plannedMinutes={taskPlannedMinutes} />
@@ -875,7 +890,9 @@ function TeamCapacityPanel({ teamCapacity, anchor }: { teamCapacity: PlanningTea
   </Panel>;
 }
 
-function PlanningPanel({ project, tasks, activities, availabilityActivities, members, currentUserId, canViewTeamAvailability, busy, error, canCreate, canEdit, canFrameException, onSave, onRemove }: {
+function PlanningPanel({ project, tasks, activities, availabilityActivities, members, currentUserId, canViewTeamAvailability, busy, error, canCreate, canEdit, canFrameException, onSave, onRemove, aiAction }: {
+  /** "Föreslå planering" from HINTEK AI, where the company's AI is on. */
+  aiAction?: React.ReactNode;
   canFrameException?: (project: WorkflowProject) => boolean;
   project: WorkflowProject;
   tasks: WorkflowTask[];
@@ -897,7 +914,7 @@ function PlanningPanel({ project, tasks, activities, availabilityActivities, mem
   const budgetSummary = summarizeProjectBudget(project.timeBudgetMinutes, tasks.reduce((sum, task) => sum + (task.totalDurationSec ?? 0), 0));
   const openCreate = () => { setEditing(undefined); setOpen(true); };
   const openEdit = (activity: PlannedActivity) => { setEditing(activity); setOpen(true); };
-  return <Panel title="Planering och tidsbudget" description="Planerad tid och faktisk rapporterad tid är separata. Kalenderbokningar skapar aldrig tidrapporter.">
+  return <Panel title="Planering och tidsbudget" description="Planerad tid och faktisk rapporterad tid är separata. Kalenderbokningar skapar aldrig tidrapporter." actions={aiAction}>
     {confirmElement}
     <div className="grid gap-3 sm:grid-cols-3">
       <div className="rounded-xl border bg-muted/40 p-4"><p className="text-xs font-medium text-muted-foreground">Tidsbudget</p><p className="mt-1 text-xl font-semibold">{budgetSummary.hasBudget ? formatMinutes(budgetSummary.budgetMinutes) : "Inte angiven"}</p></div>

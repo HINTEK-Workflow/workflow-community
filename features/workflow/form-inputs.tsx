@@ -158,11 +158,11 @@ export function FieldRemark({ label, value, readOnly, onChange }: { label: strin
  */
 export function SignatureBlock({ block, label, required, value, readOnly, onChange }: { block: Extract<FormLeafBlock, { type: "signature" }>; label: ReactNode; required: ReactNode; value?: FormValues["signatures"][string]; readOnly: boolean; onChange: (value: FormValues["signatures"][string]) => void }) {
   const signature = value ?? { name: "", confirmed: false, signedAt: null };
-  return <fieldset id={`form-${block.id}`} aria-label={block.label} className="grid min-w-0 items-end gap-x-4 gap-y-2 @lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]" data-testid="form-signature">
+  return <fieldset id={`form-${block.id}`} aria-label={block.label} className="grid min-w-0 items-end gap-x-4 gap-y-2 pb-4 @lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]" data-testid="form-signature">
     <label className="space-y-2 text-xs font-medium text-muted-foreground">{label}{required}<Input placeholder={block.placeholder || undefined} value={signature.name} disabled={readOnly} onChange={(event) => onChange({ ...signature, name: event.target.value })} /></label>
-    <div className="grid gap-0.5">
+    <div className="relative">
       <label className="flex min-h-10 items-center gap-2.5 text-sm"><input type="checkbox" className="size-4 shrink-0" disabled={readOnly} checked={signature.confirmed} onChange={(event) => onChange({ ...signature, confirmed: event.target.checked, signedAt: event.target.checked ? new Date().toISOString() : null })} /><span className="leading-5">{block.statement || "Bekräftad"}</span></label>
-      {signature.confirmed && signature.signedAt ? <span className="pl-6.5 text-[11px] text-muted-foreground">Bekräftad {formatSwedish(signature.signedAt, { dateStyle: "short", timeStyle: "short" })}</span> : null}
+      {signature.confirmed && signature.signedAt ? <span className="absolute left-0 top-full pl-6.5 text-[11px] leading-4 text-muted-foreground">Bekräftad {formatSwedish(signature.signedAt, { dateStyle: "short", timeStyle: "short" })}</span> : null}
     </div>
   </fieldset>;
 }

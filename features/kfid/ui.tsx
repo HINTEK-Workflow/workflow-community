@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { indicatorBadge } from "@/features/workflow/indicator-tone";
+import { useFlowHint } from "@/features/workflow/flow-hint-store";
 export function Panel({
   title,
   description,
@@ -31,10 +32,14 @@ export function Panel({
   headerClassName?: string;
 }) {
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
+  // The progress line's current step, when it is done in this panel (2026-10-01).
+  const flowHint = useFlowHint(title);
   const contentId = useId();
   const headingId = useId();
   return (
-    <section aria-labelledby={headingId} className={cn("rounded-xl border bg-card shadow-xs", className)}>
+    // The panel where the current step is done carries the step's marker (2026-10-01: "jag fattade inte att
+    // dessa hörde ihop"): the same ring as the current dot on the progress line, and the step's number and name.
+    <section aria-labelledby={headingId} className={cn("rounded-xl border bg-card shadow-xs", flowHint && "border-primary/45 ring-4 ring-primary/10", className)} data-flow-current={flowHint ? "" : undefined}>
       {/* Light blue header row against a white content area is the shared panel look (2026-09-25). */}
       <div className={cn("panel-header flex flex-wrap items-center justify-between gap-3 rounded-t-xl border-b px-5 py-4", collapsed && !persistentContent && "rounded-b-xl border-b-0", headerClassName)}>
         <div className="panel-heading flex min-w-0 items-center gap-3">
@@ -48,6 +53,14 @@ export function Panel({
             )}
           </div>
         </div>
+        {flowHint ? <div className="panel-flow-hint flex min-w-0 flex-1 basis-72 items-start justify-end gap-2.5 text-right max-sm:justify-start max-sm:text-left" data-testid="flow-current" role="status">
+          <span className="min-w-0">
+            <span className="block text-xs font-semibold text-primary">Nu: steg {flowHint.number} av {flowHint.total} · {flowHint.step}</span>
+            <span className="block text-xs leading-5 text-muted-foreground">{flowHint.hint}</span>
+          </span>
+          {/* The same marker as the current dot on the line. */}
+          <span aria-hidden="true" className="mt-1 block size-[11px] shrink-0 rounded-full border-2 border-primary bg-card ring-4 ring-primary/20 max-sm:order-first" />
+        </div> : null}
         <div className="panel-actions flex shrink-0 flex-wrap items-center gap-2">
           {actions}
           {collapsible && (

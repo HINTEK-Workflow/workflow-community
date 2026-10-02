@@ -3,6 +3,7 @@ import { useRef } from "react";
 import { Download, Printer, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Modal } from "./ui";
+import { useInstance } from "@/components/instance-provider";
 export function ReportPreview({
   url,
   onClose,
@@ -10,6 +11,7 @@ export function ReportPreview({
   url: string | null;
   onClose: () => void;
 }) {
+  const { features } = useInstance();
   const frame = useRef<HTMLIFrameElement>(null);
   const inlineUrl = url?.startsWith("blob:") ? url : `${url}?inline=true`;
   return (
@@ -50,8 +52,7 @@ export function ReportPreview({
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Rapporten är redan skapad. Förhandsgranskning, utskrift och ny
-            nedladdning använder inga fler krediter.
+            Rapporten är redan skapad.{features.credits ? " Förhandsgranskning, utskrift och ny nedladdning använder inga fler krediter." : ""}
           </p>
           <iframe
             ref={frame}

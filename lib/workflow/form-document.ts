@@ -777,6 +777,17 @@ export function formApprovalTotals(document: FormDocument, values: FormValues, e
 }
 
 /**
+ * What a written summary is made from (2026-10-02): the rules' summary, then every deviation with its row – the
+ * summary itself only counts them ("0 av 1 godkända"), and a text about the result must be able to say which row it
+ * was – and the person's own note. Only material for a writer; the field still gets the rules' summary as it is.
+ */
+export function formSummaryMaterial(document: FormDocument, values: FormValues, evaluation = evaluateForm(document, values)) {
+  const rows = evaluation.deviations.filter((deviation) => deviation.kind !== "limit").slice(0, 20).map((deviation) => `• ${deviation.message}`);
+  const note = values.deviationComment?.trim();
+  return [formRuleSummary(document, values, evaluation), ...(rows.length ? ["", "Avvikelser:", ...rows] : []), ...(note ? ["", `Anteckning: ${note}`] : [])].join("\n");
+}
+
+/**
  * "Sammanställ resultat" (the control's, 2026-09-27): a first draft of the summary comment from the answers –
  * what was checked, approved per moment, the comments on the rows and each tick box's state. Edited freely afterwards.
  */
@@ -805,6 +816,13 @@ export function formRuleSummary(document: FormDocument, values: FormValues, eval
   }
   for (const item of evaluation.deviations.filter((deviation) => deviation.kind === "limit")) lines.push(`Larm: ${item.message}`);
   for (const alert of evaluation.alerts) lines.push(`Varning: ${alert.message}`);
+  // A conclusion (2026-10-01: the summary said only "Kontrollprotokoll."): what was found, in one line.
+  const deviations = evaluation.deviations.length;
+  const unconfirmed = active.reduce((sum, block) => sum + (block.type === "checklist" && block.mode === "check" ? block.items.filter((item) => values.checklists[block.key]?.[item.id]?.state !== "OK").length : 0), 0);
+  lines.push(lines.length === 1 ? "Inga kontrollpunkter är registrerade ännu."
+    : deviations ? `Bedömning: ${deviations} ${deviations === 1 ? "avvikelse" : "avvikelser"} – åtgärdas och följs upp före slutligt godkännande.`
+    : unconfirmed ? `Bedömning: inga avvikelser hittills, men ${unconfirmed} ${unconfirmed === 1 ? "punkt är" : "punkter är"} inte bekräftade.`
+    : "Bedömning: inga avvikelser – de kontrollerade punkterna är godkända.");
   return lines.join("\n");
 }
 
