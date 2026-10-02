@@ -23,6 +23,8 @@ declare module "next-auth" {
 
 declare module "next-auth/jwt" {
   interface JWT {
+    /** When the person signed in (seconds); a password change after it ends the session. */
+    authAt?: number;
     role?: UserRole;
     activeOrganizationId?: string | null;
     activeOrganizationName?: string | null;

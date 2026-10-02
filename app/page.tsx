@@ -41,6 +41,7 @@ export default async function HomePage({
   }
   const validViews = [
     "stats",
+    "setup",
     "notifications",
     "new_task",
     "workflow_task",

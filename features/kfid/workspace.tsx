@@ -16,6 +16,7 @@ import {
   Upload,
   Palette,
   RotateCcw,
+  Rocket,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -25,7 +26,7 @@ import { WORKSPACE_TOAST_EVENT, type WorkspaceToast, type WorkspaceToastAction }
 import { PRODUCT_VIEWS, SETTINGS_VIEWS, SectionTabs, productTabs, settingsTabs } from "@/features/workflow/section-tabs";
 import { WorkflowGuide } from "@/features/workflow/workflow-guide";
 import { Panel, Field, Empty, Modal } from "./ui";
-import { Administration, LegalPanel } from "./administration";
+import { Administration } from "./administration";
 import { CustomerCompanies } from "./customer-companies";
 import { HistoryRetention } from "@/features/workflow/history-retention";
 import { MailSettings } from "@/features/workflow/mail-settings";
@@ -39,6 +40,9 @@ import { DETAIL_LEVELS, DETAIL_LEVEL_EVENT, DETAIL_LEVEL_LABEL, type DetailLevel
 import { CreditHistory } from "./credit-history";
 import { RecordArchive } from "./record-archive";
 import { Analytics } from "./analytics";
+import { SetupGuide } from "./setup-guide";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Calculator } from "./calculator";
 import { Editor } from "./editor";
 import { LocalWorkspace } from "./local-workspace";
@@ -108,6 +112,10 @@ export function Workspace({
 }) {
   const [overview, setOverview] = useState<Overview | null>(null);
   const instance = useInstance();
+  const router = useRouter();
+  // Kom igång (2026-10-02): open while the agreements are missing and through the remaining steps after them.
+  const [setupOpen, setSetupOpen] = useState(false);
+  useEffect(() => { if (overview?.legalRequired) setSetupOpen(true); }, [overview?.legalRequired]);
   const notificationFeed = useTaskNotificationFeed({ enabled: Boolean(user && overview && overview.organization.storageMode !== "LOCAL"), resetKey: overview?.organization.id });
   useCloudRunningTimers(Boolean(user && overview && overview.organization.storageMode !== "LOCAL"));
   const [loading, setLoading] = useState(Boolean(user));
@@ -307,8 +315,19 @@ export function Workspace({
         </Button>
       </Panel>
     );
-  else if (overview?.legalRequired)
-    content = <LegalPanel notify={notify} gate onAccepted={refresh} />;
+  else if (overview && (overview.legalRequired || setupOpen || view === "setup"))
+    content = <SetupGuide key="setup-guide" admin={overview.admin} gate={overview.legalRequired} aiAvailable={Boolean(SharingPolicyPanel) && instance.features.ai && overview.organization.storageMode !== "LOCAL"}
+      companyName={overview.settings?.companyName || overview.organization.name} contactEmail={overview.settings?.contactEmail ?? ""} notify={notify}
+      onLegalAccepted={refresh}
+      onClose={async () => {
+        if (overview.admin) {
+          await action({ action: "tour", tour: "setup" }).catch(() => undefined);
+          setPreferences((current) => ({ ...current, tours: { ...current.tours, setup: new Date().toISOString() } }));
+        }
+        setSetupOpen(false);
+        if (view === "setup") router.replace("/?view=stats");
+        await refresh();
+      }} />;
   else if (view === "administration")
     content = <Administration notify={notify} />;
   else if (view === "integrations")
@@ -785,7 +804,15 @@ export function Workspace({
       </>
     );
   else if (view === "stats")
-    content = <Analytics admin={Boolean(overview?.admin)} projectCount={overview?.projects.length ?? 0} />;
+    content = <>
+      {overview?.admin && !preferences.tours.setup ? <div className="mb-6 flex flex-wrap items-center gap-3 rounded-xl border bg-secondary/40 p-4" data-testid="setup-banner">
+        <span className="panel-icon"><Rocket className="size-4" /></span>
+        <div className="min-w-0 flex-1"><p className="font-medium">Ställ in Workflow</p><p className="text-xs text-muted-foreground">Fem korta steg: avtal, företaget, säkerhet, HINTEK AI och var du börjar.</p></div>
+        <Button asChild className="mobile-form-action"><Link href="/?view=setup">Starta guiden</Link></Button>
+        <Button type="button" variant="ghost" className="mobile-form-action" onClick={() => { setPreferences((current) => ({ ...current, tours: { ...current.tours, setup: new Date().toISOString() } })); void action({ action: "tour", tour: "setup" }).catch(() => undefined); }}>Inte nu</Button>
+      </div> : null}
+      <Analytics admin={Boolean(overview?.admin)} projectCount={overview?.projects.length ?? 0} />
+    </>;
   else if (view === "settings")
     content = (
       <>
@@ -1002,7 +1029,7 @@ export function Workspace({
               </Button>
             </form>
           </Panel>
-          <div className="space-y-6"><Profile notify={notify} /><InstallApp /></div>
+          <div className="space-y-6"><Profile notify={notify} /><InstallApp />{overview?.admin ? <Panel title="Kom igång" description="Guiden för att ställa in Workflow: avtal, företaget, säkerhet, HINTEK AI och var du börjar."><Button asChild variant="outline"><Link href="/?view=setup"><Rocket />Öppna guiden</Link></Button></Panel> : null}{clientExtensions.MyAppConnections ? <clientExtensions.MyAppConnections notify={notify} /> : null}</div>
         </div>
         <div className="mt-6">
           <SuggestionsEditor notify={notify} refresh={refresh} />

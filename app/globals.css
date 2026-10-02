@@ -118,6 +118,15 @@
   .notice { @apply border px-4 py-3 text-sm leading-6; border-color: color-mix(in srgb, var(--workflow-field-border) 80%, transparent); border-radius: 9px; background: var(--workflow-notice); color: var(--workflow-notice-foreground); }
   .workflow-card { border: 1px solid var(--workflow-card-border); border-radius: 15px; background: var(--card); box-shadow: 0 1px 2px color-mix(in srgb, var(--foreground) 5%, transparent); transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease; }
   .workflow-card:hover, .workflow-card:focus-within { transform: translateY(-2px); border-color: var(--workflow-card-border-hover); background: color-mix(in srgb, var(--secondary) 40%, var(--card)); box-shadow: 0 8px 20px color-mix(in srgb, var(--foreground) 8%, transparent); }
+  /* A whole card that opens on a tap (2026-10-02: on a phone you had to hit the link exactly). The card is
+     .tap-card; its main link is .stretched-link and covers the card; other buttons in it sit above with .tap-above. */
+  .tap-card { position: relative; }
+  .stretched-link::after { content: ""; position: absolute; inset: 0; z-index: 1; border-radius: inherit; }
+  .tap-card .tap-above { position: relative; z-index: 2; }
+  /* Without a mouse there is no hover: a pressed card answers the finger, and a chevron shows what opens. */
+  @media (hover: none) {
+    .workflow-card:active, .tap-card:active { transform: scale(0.985); background: color-mix(in srgb, var(--secondary) 60%, var(--card)); }
+  }
   .data-table tbody tr:hover td { background: color-mix(in srgb, var(--secondary) 40%, transparent); }
   .panel-header { background: var(--panel-header); }
   /* Icon box in a light blue panel header: white box with a primary icon, since soft tints vanish on the blue (2026-09-27). */

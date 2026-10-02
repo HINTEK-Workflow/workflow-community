@@ -41,6 +41,7 @@ import {
   Send,
   Settings2,
   Sparkles,
+  Rocket,
   FileSpreadsheet,
   Users,
   Upload,
@@ -297,6 +298,13 @@ export const views = {
     icon: Building2,
     tone: "text-feature-customer",
     surface: "bg-feature-customer-soft",
+  },
+  // Kom igång (2026-10-02): the setup guide, opened from the overview or Mina inställningar.
+  setup: {
+    label: "Kom igång",
+    icon: Rocket,
+    tone: "text-primary",
+    surface: "bg-secondary",
   },
   settings: {
     label: "Inställningar",

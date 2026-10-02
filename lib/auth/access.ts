@@ -72,6 +72,16 @@ export function pilotAccessEmails(): Set<string> {
   return new Set(raw.split(",").map((item) => item.trim().toLowerCase()).filter((item) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(item)));
 }
 
+/**
+ * Who may sign in with a password or Google and receive password-reset and verification mail: the owner account and
+ * the pilot list (2026-10-02: a pilot address could not sign in or reset its password, since only the owner's
+ * address was checked). Loopback QA identities keep their own /qa entrance.
+ */
+export function mayAuthenticate(email: string | null | undefined): boolean {
+  const normalized = email?.trim().toLowerCase();
+  return isTestEmail(normalized) || (Boolean(normalized) && pilotAccessEmails().has(normalized!));
+}
+
 export function isAllowedPrivateEmail(email: string | null | undefined): boolean {
   const normalized = email?.trim().toLowerCase();
   return isTestEmail(normalized) || (Boolean(normalized) && pilotAccessEmails().has(normalized!)) ||
@@ -80,4 +90,9 @@ export function isAllowedPrivateEmail(email: string | null | undefined): boolean
 
 export function canAccessTest(user: { email: string; isActive: boolean } | null | undefined): boolean {
   return Boolean(user?.isActive && isAllowedPrivateEmail(user.email));
+}
+
+/** A session started before the latest password change has ended (2026-10-02). */
+export function sessionOutdated(authAt: number | undefined, passwordChangedAt: Date | null | undefined) {
+  return Boolean(passwordChangedAt && authAt && authAt < Math.floor(passwordChangedAt.getTime() / 1000));
 }

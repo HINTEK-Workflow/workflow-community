@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Panel, Field } from "./ui";
@@ -37,6 +38,11 @@ export function Profile({
         method: "POST",
         body: JSON.stringify(input),
       });
+      if ((input as { action?: string }).action === "password") {
+        // Every session from before the change has ended, this one too: sign in again with the new password.
+        await signOut({ callbackUrl: "/login?reset=1" });
+        return;
+      }
       notify("Ditt konto är uppdaterat.");
       setCurrent("");
       setPassword("");

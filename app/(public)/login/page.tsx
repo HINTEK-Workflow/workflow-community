@@ -1,4 +1,3 @@
-import { UserRole } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { AuthShell } from "@/features/auth/components/auth-shell";
 import { LoginForm } from "@/features/auth/components/login-form";
@@ -48,21 +47,16 @@ export default async function LoginPage({
 }) {
   const user = await getCurrentUser();
 
-  if (user?.role === UserRole.SUPERADMIN && user.emailVerifiedAt) {
-    redirect("/");
-  }
-
-  if (user?.role === UserRole.SUPERADMIN && !user.emailVerifiedAt) {
-    redirect(`/verify-email?email=${encodeURIComponent(user.email)}`);
-  }
-
   const params = await searchParams;
   const returnTo = normalizeReturnTo(firstValue(params.returnTo));
+  // Someone already signed in goes on to where they were headed (2026-10-02: a signed-in member met "superadmin krävs").
+  if (user?.emailVerifiedAt) redirect(returnTo);
+  if (user && !user.emailVerifiedAt) redirect(`/verify-email?email=${encodeURIComponent(user.email)}`);
+
   const reset = firstValue(params.reset);
   const verified = firstValue(params.verified);
   const error = firstValue(params.error);
-  const effectiveError =
-    user && user.role !== UserRole.SUPERADMIN ? "superadmin_required" : error;
+  const effectiveError = error;
 
   const notice =
     verified === "1"
@@ -77,7 +71,7 @@ export default async function LoginPage({
   return (
     <AuthShell
       title="Välkommen tillbaka"
-      description="Logga in för att fortsätta till din arbetsyta. Under testperioden är inloggningen endast öppen för det inbjudna testkontot."
+      description="Logga in för att fortsätta till din arbetsyta."
     >
       <LoginForm
         returnTo={returnTo}

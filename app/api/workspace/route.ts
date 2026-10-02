@@ -419,7 +419,7 @@ export async function POST(request: Request) {
     }
     // A guided tour seen or dismissed (2026-09-28): merged into the stored preferences, never a stale full copy.
     if (action === "tour") {
-      const tour = z.enum(["formBuilder"]).parse(input.tour);
+      const tour = z.enum(["formBuilder", "setup"]).parse(input.tour);
       const stored = await prisma.userPreferences.findUnique({ where: { userId: ctx.user.id } });
       const current = preferencesSchema.parse(stored?.data ?? {});
       const data = { ...current, tours: { ...current.tours, [tour]: new Date().toISOString() } };

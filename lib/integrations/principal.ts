@@ -13,6 +13,8 @@ export type IntegrationPrincipal = {
   organizationId: string;
   actingUserId: string;
   scopes: string[];
+  /** An app connected through OAuth (2026-10-02) rather than an issued key; only changes how it is named in logs. */
+  via?: "oauth";
 };
 
 const storage = new AsyncLocalStorage<IntegrationPrincipal>();

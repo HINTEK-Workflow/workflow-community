@@ -7,7 +7,7 @@ import {
   buildPasswordResetEmail,
 } from "@/lib/mail/templates";
 import { hashPassword } from "@/lib/auth/password";
-import { canAccessTest, isTestEmail } from "@/lib/auth/access";
+import { canAccessTest, mayAuthenticate } from "@/lib/auth/access";
 import {
   createRawToken,
   expiresInHours,
@@ -32,6 +32,7 @@ export const authUserSelect = {
   role: true,
   emailVerifiedAt: true,
   lastLoginAt: true,
+  passwordChangedAt: true,
   isActive: true,
   activeOrganizationId: true,
   activeOrganization: {
@@ -105,7 +106,7 @@ export async function findUserById(id: string) {
 }
 
 export async function requestPasswordReset(email: string) {
-  if (!isTestEmail(email)) return;
+  if (!mayAuthenticate(email)) return;
   const user = await prisma.user.findUnique({
     where: { email: normalizeEmail(email) },
     select: {
@@ -157,7 +158,7 @@ export async function requestPasswordReset(email: string) {
 }
 
 export async function sendVerificationEmail(email: string) {
-  if (!isTestEmail(email)) return;
+  if (!mayAuthenticate(email)) return;
   const user = await prisma.user.findUnique({
     where: { email: normalizeEmail(email) },
     select: {
@@ -271,6 +272,7 @@ export async function resetPasswordWithToken(
       where: { id: token.userId },
       data: {
         passwordHash,
+        passwordChangedAt: new Date(),
       },
     }),
     prisma.passwordResetToken.update({

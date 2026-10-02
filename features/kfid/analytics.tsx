@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Plus, ArrowUpRight, ChevronDown, ClipboardCheck, FolderKanban, LayoutList } from "lucide-react";
+import { Plus, ArrowUpRight, ChevronDown, ClipboardCheck, FolderKanban, LayoutList, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Panel, ShowMore } from "./ui";
@@ -49,15 +49,16 @@ const updatedLabel = (value: string) =>
 
 function WorkCard({ item }: { item: WorkItem }) {
   return (
-    <div className="workflow-card flex min-w-0 flex-col gap-2.5 p-3.5">
+    <div className="workflow-card tap-card flex min-w-0 flex-col gap-2.5 p-3.5">
       <div className="flex min-w-0 items-start gap-3">
         <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${item.kind === "PROJECT" ? "bg-secondary text-primary" : "bg-feature-control-soft text-feature-control"}`}>
           {item.kind === "PROJECT" ? <FolderKanban className="size-4" /> : <ClipboardCheck className="size-4" />}
         </span>
         <div className="min-w-0 flex-1">
-          <Link href={item.href} className="block truncate text-sm font-semibold hover:text-primary">{item.title}</Link>
+          <Link href={item.href} className="stretched-link block truncate text-sm font-semibold hover:text-primary">{item.title}</Link>
           <p className="truncate text-xs text-muted-foreground">{item.kind === "PROJECT" ? "Projekt" : item.taskType}{item.projectName ? ` · ${item.projectName}` : ""}</p>
         </div>
+        <ChevronRight className="mt-1 size-4 shrink-0 text-primary" aria-hidden="true" />
       </div>
       <div className="flex flex-wrap items-center gap-1.5">
         <Badge variant="outline" className={indicatorBadge(statusTone(item.status))}>{item.status}</Badge>
@@ -86,13 +87,13 @@ const relativeUpdated = (value: string) => {
  */
 function LatestRow({ item }: { item: WorkItem }) {
   return (
-    <li className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-3.5 py-2.5 sm:grid-cols-[minmax(0,1fr)_9rem_8rem_9rem]">
+    <li className="tap-card grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-3.5 py-2.5 hover:bg-secondary/40 sm:grid-cols-[minmax(0,1fr)_9rem_8rem_9rem]">
       <div className="flex min-w-0 items-center gap-3">
         <span className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${item.kind === "PROJECT" ? "bg-secondary text-primary" : "bg-feature-control-soft text-feature-control"}`}>
           {item.kind === "PROJECT" ? <FolderKanban className="size-4" /> : <ClipboardCheck className="size-4" />}
         </span>
         <div className="min-w-0">
-          <Link href={item.href} className="block truncate text-sm font-medium hover:text-primary">{item.title}</Link>
+          <Link href={item.href} className="stretched-link block truncate text-sm font-medium hover:text-primary">{item.title}</Link>
           <p className="truncate text-xs text-muted-foreground">{item.kind === "PROJECT" ? "Projekt" : item.taskType}{item.projectName ? ` · ${item.projectName}` : ""} · {relativeUpdated(item.updatedAt)}</p>
         </div>
       </div>
@@ -101,7 +102,7 @@ function LatestRow({ item }: { item: WorkItem }) {
         <div className="flex items-baseline justify-between text-xs"><span className={`font-semibold ${item.progress === 100 ? indicatorText("success") : ""}`}>{item.progress}%</span></div>
         <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted"><div className={`h-full rounded-full ${indicatorBar(progressTone({ percent: item.progress, attention: item.needsAction || item.overdue }))}`} style={{ width: `${item.progress}%` }} /></div>
       </div>
-      <Button asChild size="sm" variant="ghost" className="justify-self-end"><Link href={item.href} aria-label={`${item.action}: ${item.title}`}>{item.action}<ArrowUpRight /></Link></Button>
+      <Button asChild size="sm" variant="ghost" className="tap-above justify-self-end"><Link href={item.href} aria-label={`${item.action}: ${item.title}`}>{item.action}<ArrowUpRight /></Link></Button>
     </li>
   );
 }
@@ -255,13 +256,13 @@ export function WorkOverview({ localData }: { localData?: WorkflowOverviewData }
                 </div>
                 <div className="grid gap-2">
                   {items.map((item) => (
-                    <div key={`${item.kind}-${item.id}`} className="workflow-card grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2.5 px-4 py-3 lg:grid-cols-[minmax(0,1fr)_12rem_14rem_8rem] lg:gap-4">
+                    <div key={`${item.kind}-${item.id}`} className="workflow-card tap-card grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2.5 px-4 py-3 lg:grid-cols-[minmax(0,1fr)_12rem_14rem_8rem] lg:gap-4">
                       <div className="col-span-2 flex min-w-0 items-center gap-3 lg:col-span-1">
                         <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${item.kind === "PROJECT" ? "bg-secondary text-primary" : "bg-feature-control-soft text-feature-control"}`}>
                           {item.kind === "PROJECT" ? <FolderKanban className="size-4" /> : <ClipboardCheck className="size-4" />}
                         </span>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate font-semibold">{item.title}</p>
+                          <Link href={item.href} className="stretched-link block truncate font-semibold hover:text-primary" tabIndex={-1}>{item.title}</Link>
                           <p className="mt-1 truncate text-xs text-muted-foreground">{item.projectName ? `Projekt: ${item.projectName} · ` : ""}Senast ändrad {updatedLabel(item.updatedAt)}</p>
                         </div>
                       </div>
@@ -273,7 +274,7 @@ export function WorkOverview({ localData }: { localData?: WorkflowOverviewData }
                         <div className="flex items-baseline justify-between gap-3"><p className={`text-sm font-semibold ${item.progress === 100 ? indicatorText("success") : "text-foreground"}`}>{item.progress}%</p><p className="truncate text-xs text-muted-foreground">{item.remaining}</p></div>
                         <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted"><div className={`h-full rounded-full ${indicatorBar(progressTone({ percent: item.progress, attention: item.needsAction || item.overdue }))}`} style={{ width: `${item.progress}%` }} /></div>
                       </div>
-                      <div className="flex justify-end">
+                      <div className="tap-above flex justify-end">
                         <Button asChild size="sm" variant="outline">
                           <Link href={item.href}>
                             {item.action}

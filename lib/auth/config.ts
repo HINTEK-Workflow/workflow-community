@@ -12,7 +12,7 @@ import {
   syncGoogleAccountSignIn,
 } from "@/lib/auth/oauth";
 import { verifyPassword } from "@/lib/auth/password";
-import { canAccessTest, isAllowedPrivateEmail, isTestEmail, localRoleQaSessionCookie } from "@/lib/auth/access";
+import { canAccessTest, isAllowedPrivateEmail, localRoleQaSessionCookie, mayAuthenticate, sessionOutdated } from "@/lib/auth/access";
 import {
   findUserById,
   normalizeEmail,
@@ -70,7 +70,7 @@ export const authOptions: NextAuthOptions = {
         const email = normalizeEmail(credentials?.email ?? "");
         const password = credentials?.password ?? "";
 
-        if (!isTestEmail(email) || !password) {
+        if (!mayAuthenticate(email) || !password) {
           return null;
         }
 
@@ -148,7 +148,7 @@ export const authOptions: NextAuthOptions = {
       const email = account?.provider === "google"
         ? (profile as GoogleOAuthProfile | undefined)?.email
         : user.email;
-      if (!isTestEmail(email)) return "/login?error=test_access";
+      if (!mayAuthenticate(email)) return "/login?error=test_access";
       if (account?.provider !== "google") {
         return true;
       }
@@ -169,6 +169,7 @@ export const authOptions: NextAuthOptions = {
         );
 
         if (canAccessTest(linkedUser) && linkedUser) {
+          token.authAt = Math.floor(Date.now() / 1000);
           return setTokenFromUser(token, linkedUser);
         }
         return {};
@@ -178,6 +179,7 @@ export const authOptions: NextAuthOptions = {
         const dbUser = await findUserById(user.id);
 
         if (canAccessTest(dbUser) && dbUser) {
+          token.authAt = Math.floor(Date.now() / 1000);
           return setTokenFromUser(token, dbUser);
         }
         return {};
@@ -186,7 +188,7 @@ export const authOptions: NextAuthOptions = {
       if (token.sub) {
         const dbUser = await findUserById(token.sub);
 
-        if (canAccessTest(dbUser) && dbUser) {
+        if (canAccessTest(dbUser) && dbUser && !sessionOutdated(token.authAt ?? (token.iat as number | undefined), dbUser.passwordChangedAt)) {
           return setTokenFromUser(token, dbUser);
         }
       }

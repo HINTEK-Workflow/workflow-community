@@ -16,5 +16,6 @@ export const clientExtensions: ClientExtensions = {
   ProviderAdministration: null,
   AiUsageAdministration: null,
   IntegrationKeys: null,
+  MyAppConnections: null,
   ImportPage: null,
 };

@@ -23,7 +23,7 @@ export type EeRouteKey =
   | "superadmin/accounting-export" | "superadmin/bank-payments" | "superadmin/invoice-replacements"
   | "ai/evals" | "ai/chat" | "ai/conversations" | "ai/digest" | "ai/memory" | "ai/policy" | "ai/proposals" | "ai/review" | "ai/quote" | "ai/status"
   | "superadmin/ai-usage" | "superadmin/ai-credit-settings" | "integration-keys" | "mcp" | "v1" | "v1/tool" | "import"
-  | "oauth/protected-resource" | "oauth/authorization-server" | "oauth/register" | "oauth/token" | "oauth/revoke" | "oauth/decide";
+  | "oauth/protected-resource" | "oauth/authorization-server" | "oauth/register" | "oauth/token" | "oauth/revoke" | "oauth/decide" | "oauth/connections";
 
 export type CloudWriteAccess = {
   allowed: boolean;
@@ -90,6 +90,8 @@ export type ClientExtensions = {
   AiUsageAdministration: ComponentType | null;
   /** API och MCP: keys, connections and the server's keys. */
   IntegrationKeys: ComponentType<{ notify: NotifyFn }> | null;
+  /** The person's own apps connected to the MCP server through OAuth (Mina inställningar), with disconnect. */
+  MyAppConnections: ComponentType<{ notify: NotifyFn }> | null;
   /** The Import page (2026-10-01): files become customers, projects, work orders, planning, control points or attachments; rule- and AI-driven. */
   ImportPage: ComponentType<{ canBuildForms?: boolean }> | null;
 };

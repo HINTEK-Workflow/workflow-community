@@ -64,7 +64,7 @@ export async function POST(request: Request) {
       const passwordHash = await hashPassword(data.password);
       const result = await prisma.user.updateMany({
         where: { id: user.id, passwordHash: account.passwordHash },
-        data: { passwordHash },
+        data: { passwordHash, passwordChangedAt: new Date() },
       });
       if (!result.count)
         throw new ApiError(409, "Lösenordet har ändrats. Försök igen.");

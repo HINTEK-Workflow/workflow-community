@@ -199,6 +199,8 @@ model User {
   role                    UserRole                @default(STAFF)
   emailVerifiedAt         DateTime?
   lastLoginAt             DateTime?
+  // A password change or reset ends every session started before it (2026-10-02).
+  passwordChangedAt       DateTime?
   isActive                Boolean                 @default(true)
   activeOrganizationId    String?
   createdAt               DateTime                @default(now())
