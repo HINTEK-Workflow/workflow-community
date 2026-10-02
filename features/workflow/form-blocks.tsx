@@ -80,7 +80,7 @@ export function SummaryBlock({ block, document, values, evaluation, completion, 
 }
 
 /** "Redo att färdigställa": requirements met, the percentage, a bar and the details on request – the control's completion card. */
-function CompletionCard({ completion }: { completion: FormCompletionSummary }) {
+export function CompletionCard({ completion }: { completion: FormCompletionSummary }) {
   const [expanded, setExpanded] = useState(false);
   const done = completion.requirements.length - completion.issues.length;
   const warnings = completion.warnings ?? [];

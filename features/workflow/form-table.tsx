@@ -244,7 +244,7 @@ function ObjectCard({ context, row, index, canAdd, onCopy }: { context: CellCont
           {/* A check box carries its own label beside it; the empty line keeps it level with the inputs (2026-09-29). */}
           {item.column.input === "check" ? <span aria-hidden="true">&nbsp;</span> : <span>{item.column.cardLabel || cellLabel(item.column)}{mark(item.column)}</span>}
           {item.column.input === "formula" ? <div className="flex h-10 items-center rounded-[9px] border bg-muted/30 px-3 text-sm">{cellControl(context, row, index, item.column, false)}</div> : cellControl(context, row, index, item.column, false)}
-          {item.column.help && !readOnly ? <span className="text-[11px] font-normal text-muted-foreground">{item.column.help}</span> : null}
+          {item.column.help && !readOnly ? <span data-detail-min="2" className="text-[11px] font-normal text-muted-foreground">{item.column.help}</span> : null}
           {(() => { const judged = cellLimit(context, row, item.column); return judged?.limit ? <LimitHint limit={judged.limit} level={judged.level} /> : null; })()}
         </div>)}
     </div></div>

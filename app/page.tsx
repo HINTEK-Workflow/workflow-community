@@ -19,7 +19,7 @@ export const dynamic = "force-dynamic";
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string; id?: string; customerId?: string; projectId?: string; taskId?: string; taskType?: string; timeTaskId?: string; checkout?: string; landing?: string }>;
+  searchParams: Promise<{ view?: string; id?: string; customerId?: string; projectId?: string; taskId?: string; taskType?: string; timeTaskId?: string; checkout?: string; landing?: string; importControl?: string }>;
 }) {
   const params = await searchParams;
   // The public demo renders the workspace against an in-browser backend; it needs no session and reads no data here.
@@ -64,6 +64,9 @@ export default async function HomePage({
     "history_retention",
     "mail_settings",
     "customer_companies",
+    "pricing_admin",
+    "ai_admin",
+    "company_settings",
     "landing_editor",
     "forms",
     "import",
@@ -103,13 +106,14 @@ export default async function HomePage({
   if (view === "ai_settings" && !features.ai) redirect("/?view=stats");
   if ((view === "landing_editor" && !features.landingEditor) || (view === "credits" && !features.billing && !features.credits) || ((view === "integrations" || view === "import") && !features.integrations))
     redirect("/?view=stats");
-  if ((view === "customer_companies" || view === "landing_editor" || view === "mail_settings") && user?.role !== "SUPERADMIN")
+  if ((view === "customer_companies" || view === "pricing_admin" || view === "ai_admin" || view === "landing_editor" || view === "mail_settings") && user?.role !== "SUPERADMIN")
     redirect("/?view=stats");
   // The switch-over (2026-09-27, decision B; 2026-09-28: no drafts, all originals): a new control or risk
   // assessment is made with HINTEK's original of the form – or the company's own version of it – when it is published.
   // Existing controls and risk assessments open as before. Without a published original there is no card and no old
   // editor: the original waits as a draft under Skapa formulär, so "Ny kontroll" leads to Ny uppgift.
-  const original = user && view === "new" && !params.id ? KFID_FORM_ID : user && view === "workflow_task" && params.taskType === "RISK_ASSESSMENT" && !params.taskId ? RISK_FORM_ID : null;
+  // A control's JSON file handed over from the Import page (2026-10-02) opens in the control's own editor, which reads that format.
+  const original = user && view === "new" && !params.id && params.importControl !== "1" ? KFID_FORM_ID : user && view === "workflow_task" && params.taskType === "RISK_ASSESSMENT" && !params.taskId ? RISK_FORM_ID : null;
   if (original && user) {
     const context = `${params.projectId ? `&projectId=${encodeURIComponent(params.projectId)}` : ""}${params.customerId ? `&customerId=${encodeURIComponent(params.customerId)}` : ""}`;
     const candidates = await prisma.formTemplate.findMany({ where: { status: "PUBLISHED", publishedVersion: { not: null }, OR: [{ id: original, organizationId: null }, { baseTemplateId: original, organizationId: user.activeOrganizationId }] }, select: { id: true, baseTemplateId: true } });
@@ -133,6 +137,8 @@ export default async function HomePage({
     // The menu buttons the person has hidden under Inställningar (2026-09-30).
     hiddenMenu: preferences?.data && typeof preferences.data === "object" && !Array.isArray(preferences.data) && Array.isArray((preferences.data as { hiddenMenuItems?: unknown }).hiddenMenuItems)
       ? ((preferences.data as { hiddenMenuItems: unknown[] }).hiddenMenuItems.filter((item): item is string => typeof item === "string")) : [],
+    // How much is shown on a phone and on a tablet (2026-10-02); the shell applies it to the device at hand.
+    detailLevel: preferences?.data && typeof preferences.data === "object" && !Array.isArray(preferences.data) ? (preferences.data as { detailLevel?: { phone?: number; tablet?: number } }).detailLevel ?? null : null,
     canBuildForms: user.role === "SUPERADMIN" || ((activeMemberRole === "OWNER" || activeMemberRole === "ADMIN") && user.activeOrganization?.storageMode === "HINTEK_CLOUD"),
   } : null;
   return (

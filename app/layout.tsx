@@ -12,6 +12,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  themeColor: "#113351",
 };
 
 // Fas 1 (2026-09-30): the name and address come from the instance settings; HINTEK's installation keeps its texts.

@@ -31,7 +31,10 @@ export function Panel({
   persistentContent?: React.ReactNode;
   headerClassName?: string;
 }) {
-  const [collapsed, setCollapsed] = useState(defaultCollapsed);
+  const [folded, setCollapsed] = useState(defaultCollapsed);
+  // Only a collapsible panel can be folded: a panel that takes the place of a folded one in the same spot (a work
+  // order opened from a control, 2026-10-02) must never inherit the fold and lose its content.
+  const collapsed = collapsible && folded;
   // The progress line's current step, when it is done in this panel (2026-10-01).
   const flowHint = useFlowHint(title);
   const contentId = useId();

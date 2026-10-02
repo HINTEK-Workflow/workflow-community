@@ -282,7 +282,7 @@ export function FormLeaf({ block, values, evaluation, onChange, readOnly = false
       const limit = document && block.limitKey ? formLimitFor(document, values, block.limitKey) : null;
       const numeric = typeof value === "number" ? value : value === "" || value === null || value === undefined || Array.isArray(value) ? null : Number(String(value).replace(",", "."));
       const level = limit ? formLimitLevel(limit, numeric !== null && Number.isFinite(numeric) ? numeric : null) : null;
-      return <div className="field-stack">{block.input === "yesno" || (block.input === "choice" && block.multiple) ? <span>{label}</span> : <label htmlFor={`form-${block.id}`}>{label}</label>}{control}{block.help ? <span className="text-xs font-normal text-muted-foreground">{block.help}</span> : null}
+      return <div className="field-stack">{block.input === "yesno" || (block.input === "choice" && block.multiple) ? <span>{label}</span> : <label htmlFor={`form-${block.id}`}>{label}</label>}{control}{block.help ? <span data-detail-min="2" className="text-xs font-normal text-muted-foreground">{block.help}</span> : null}
         {limit ? <LimitHint limit={limit} level={level} /> : null}
         {deviation && !limit ? <span className={cn("text-xs font-medium", indicatorText("danger"))}>Avvikelse</span> : null}
         {block.remarks ? <FieldRemark label={block.label} value={values.remarks[block.key]} readOnly={readOnly} onChange={(remark) => set({ remarks: { ...values.remarks, [block.key]: remark } })} /> : null}</div>;

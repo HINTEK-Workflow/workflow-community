@@ -254,7 +254,7 @@ export function FlowGuide({ flow, advisor, page, handlers, label, pageLabel, mis
   };
   return <div className="flow-guide space-y-3">
     <FlowProgress flow={flow} label={label} />
-    {shown && settings.level !== "off" ? <aside aria-label="Tips" role="status" data-testid="flow-advice" data-advice={shown.id}
+    {shown && settings.level !== "off" ? <aside aria-label="Tips" role="status" data-testid="flow-advice" data-detail-min="2" data-advice={shown.id}
       className={cn("flex flex-wrap items-start gap-3 rounded-xl border px-3.5 py-3 text-sm shadow-xs", shown.priority === 3 ? "border-red-200 bg-red-50/70 dark:border-red-900 dark:bg-red-950/30" : "border-primary/20 bg-secondary/60")}>
       <span className={cn("mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-card", shown.priority === 3 ? "text-red-700 dark:text-red-300" : "text-primary")}><Lightbulb className="size-4" /></span>
       <div className="min-w-0 flex-1">

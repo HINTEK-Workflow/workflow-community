@@ -4,7 +4,7 @@ import { facilityLabel } from "@/lib/workflow/customer-facility";
 import { useEffect, useRef, useState } from "react";
 import { formatSwedish, swedishDayKey } from "@/lib/swedish-time";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CalendarClock, CheckCircle2, Copy, FileText, FolderKanban, History, Package, Paperclip, Plus, RotateCcw, Save, ShieldAlert, ShieldCheck, Trash2, Undo2, Upload, UserRound, Users, Wrench, Zap } from "lucide-react";
+import { CalendarClock, CheckCircle2, Copy, FileText, FolderKanban, History, Package, Paperclip, Plus, RotateCcw, Save, Send, ShieldAlert, ShieldCheck, Trash2, Undo2, Upload, UserRound, Users, Wrench, Zap } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -23,10 +23,13 @@ import { indicatorBadge } from "./indicator-tone";
 import { announceTimerChange } from "./running-timer";
 import { projectFieldRows, taskDueDateError } from "@/lib/workflow/project-frame";
 import type { StoppedTimer } from "@/lib/workflow/running-timer";
-import { copyFormValues, formApprovalTotals, formLeafBlocks, formOptionalSections, formSectionActive, initialFormValues, type FormDocument, type FormTableBlock, type FormValues } from "@/lib/workflow/form-document";
+import { copyFormValues, formApprovalTotals, formCompletion, formLeafBlocks, formOptionalSections, formSectionActive, initialFormValues, type FormDocument, type FormTableBlock, type FormValues } from "@/lib/workflow/form-document";
 import { applyFormPrefill, type FormPrefill, type FormPrefillSource } from "@/lib/workflow/form-prefill";
 import { FormRenderer, sectionHasSummary, type FormActions, type FormMedia, type FormRowOptions, type FormTaskInline } from "./form-renderer";
 import { FormLimitsPanel, FormTrendPanel, type LocalLimits } from "./form-task-extras";
+import { CompletionCard } from "./form-blocks";
+import { RISK_FORM_ID } from "@/lib/workflow/builtin-originals";
+import { announce } from "@/lib/workflow/toast";
 import { selectFormHistory, type FormHistoryItem } from "@/lib/workflow/form-history";
 import { CompleteTaskDialog, type CompletionTime } from "./complete-task-dialog";
 import { NextSteps, type LinkedTask } from "./next-steps";
@@ -160,6 +163,10 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
   const [historyOpen, setHistoryOpen] = useState(false);
   // The guided flow (2026-09-30): completing asks for time in the same step; linked work orders show their state.
   const [completeOpen, setCompleteOpen] = useState(false);
+  // Skicka med e-post, at the foot of every control (2026-10-02): the recipient and an optional message.
+  const [sendOpen, setSendOpen] = useState(false);
+  const [recipient, setRecipient] = useState("");
+  const [sendNote, setSendNote] = useState("");
   const [linkedOrders, setLinkedOrders] = useState<Record<string, LinkedTask>>({});
   const [savedAt, setSavedAt] = useState("");
   const attachmentInput = useRef<HTMLInputElement | null>(null);
@@ -233,6 +240,11 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
   // own first section instead of Workflow's task panel; the title then follows a field and the customer is picked like
   // the control does it, beside the contact person.
   const inlineTask = task.data.kind === "FORM" && task.data.details.document.task.layout === "inline";
+  // One foot for every control (2026-10-02: "gör alla sådana kontroller lika i botten"): the one Kontroll före
+  // idrifttagning has – Bilder och dokument, the completion card with Historik and Färdigställ, then Rapport och
+  // hantering with Exportera and Skicka med e-post. The risk assessment keeps the foot of its original.
+  // (A Local task carries no area of its own, so HINTEK's risk assessment is also known by its id.)
+  const controlFoot = task.data.kind === "FORM" && (inlineTask || ((task.formArea ?? form?.area ?? "forms") !== "risk-assessment" && task.data.details.templateId !== RISK_FORM_ID));
   // Like the control, time starts once the field the title follows is filled in, so the protocol gets its name when it is saved.
   const titleField = inlineTask && task.data.kind === "FORM" && task.data.details.document.task.titleKey ? formLeafBlocks(task.data.details.document).find((block) => block.type === "field" && block.key === (task.data.kind === "FORM" ? task.data.details.document.task.titleKey : "")) : undefined;
   const titleFieldEmpty = Boolean(titleField && task.data.kind === "FORM" && !String(task.data.details.values.fields[titleField.type === "field" ? titleField.key : ""] ?? "").trim());
@@ -516,16 +528,48 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
       router.push(`/?view=workflow_task&taskId=${encodeURIComponent(result.id)}&taskType=WORK_ORDER`);
     } catch (issue) { setError((issue as Error).message); } finally { setBusy(false); }
   }
+  // Historik and Färdigställ: at the foot of the form's own Sammanfattning when it has one, otherwise in the foot panel.
+  const completeRow = <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t pt-4">
+    <Button type="button" variant="outline" disabled={!task.id || busy} onClick={() => setHistoryOpen(true)}><History />Historik</Button>
+    <Button id="task-complete" type="button" disabled={busy || task.status === "COMPLETED"} className={completion.ready ? undefined : "opacity-60"} title={completion.ready ? "Färdigställ och lås protokollet" : `Klicka för att se vad som saknas: ${completion.issues[0]?.message ?? ""}`} onClick={() => void complete()}><CheckCircle2 />Färdigställ</Button>
+  </div>;
+  const summaryFoot = Boolean(inlineSlots) && formHasSummary;
   if (inlineSlots) {
     inlineSlots.beforeSummary = formHasSummary ? attachmentsPanel : undefined;
-    inlineSlots.summaryFooter = <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t pt-4">
-      <Button type="button" variant="outline" disabled={!task.id || busy} onClick={() => setHistoryOpen(true)}><History />Historik</Button>
-      <Button id="task-complete" type="button" disabled={busy || task.status === "COMPLETED"} className={completion.ready ? undefined : "opacity-60"} title={completion.ready ? "Färdigställ och lås protokollet" : `Klicka för att se vad som saknas: ${completion.issues[0]?.message ?? ""}`} onClick={() => void complete()}><CheckCircle2 />Färdigställ</Button>
-    </div>;
+    inlineSlots.summaryFooter = completeRow;
   }
-  const reportPanel = inlineTask ? <Panel title="Rapport och hantering" description="Rapport, export och tomma mallar för protokollet." className="report-panel" collapsible defaultCollapsed
-    persistentContent={<div className="flex flex-wrap items-center gap-2"><ReportOptionsButton kind="FORM" disabled={busy} onExport={exportReport} /></div>}>
-    <p className="text-xs leading-5 text-muted-foreground">{local ? "Rapporter skapas på den här datorn. Ett osparat protokoll sparas i arbetsytan när rapporten skapas; tomma mallar kan tas ut när som helst." : "Ett osparat protokoll sparas när rapporten skapas. Tomma mallar kan tas ut när som helst. Rapporten ritas med företagets färger och logotyp."}</p>
+  // A control without its own Sammanfattning gets the same completion card and buttons in a panel of their own.
+  const completePanel = controlFoot && !summaryFoot && task.data.kind === "FORM" ? <Panel title="Färdigställ" description="Se vad som återstår och färdigställ protokollet när det är klart.">
+    {task.status === "COMPLETED" ? <p className="text-sm text-muted-foreground">Protokollet är färdigställt och låst. Fortsätt i en kopia med Spara som.</p> : <CompletionCard completion={formCompletion(task.data.details.document, task.data.details.values)} />}
+    {completeRow}
+  </Panel> : null;
+  // The saved protocol's report as a PDF to one recipient; an unsaved or changed protocol is saved first.
+  const openSend = () => {
+    if (!recipient && task.data.kind === "FORM") {
+      const field = formLeafBlocks(task.data.details.document).find((block) => block.type === "field" && block.prefill === "email");
+      const fromForm = field && field.type === "field" ? String(task.data.details.values.fields[field.key] ?? "").trim() : "";
+      setRecipient(fromForm || customers.find((customer) => customer.id === (selectedProject?.customerId ?? task.customerId))?.email || "");
+    }
+    setSendOpen(true);
+  };
+  const send = async () => {
+    if (preview) { setSendOpen(false); setMessage(PREVIEW_MESSAGE); return; }
+    // A completed protocol is locked and already saved.
+    const id = task.status === "COMPLETED" ? task.id : await save();
+    if (!id) { setSendOpen(false); return; }
+    setBusy(true);
+    try {
+      await api(`/api/workflow-tasks/${encodeURIComponent(id)}/send`, { method: "POST", body: JSON.stringify({ email: recipient.trim(), ...(sendNote.trim() ? { message: sendNote.trim() } : {}) }) });
+      setSendOpen(false); setSendNote("");
+      announce(`Rapporten är skickad till ${recipient.trim()}.`);
+    } catch (issue) { announce((issue as Error).message, true); } finally { setBusy(false); }
+  };
+  const reportPanel = controlFoot ? <Panel key="report" title="Rapport och hantering" description="Rapport, export, tomma mallar och utskick av protokollet." className="report-panel" collapsible defaultCollapsed
+    persistentContent={<div className="flex flex-wrap items-center gap-2">
+      <ReportOptionsButton kind="FORM" disabled={busy} onExport={exportReport} />
+      <Button type="button" variant="outline" data-testid="task-send-mail" disabled={busy || Boolean(local) || !task.title.trim() || titleFieldEmpty} title={local ? "Kan inte skicka i lokalt läge. Exportera rapporten och skicka den själv." : undefined} onClick={openSend}><Send />Skicka med e-post</Button>
+    </div>}>
+    <p className="text-xs leading-5 text-muted-foreground">{local ? "Rapporter skapas på den här datorn. Ett osparat protokoll sparas i arbetsytan när rapporten skapas; tomma mallar kan tas ut när som helst. E-post skickas inte i lokalt läge – exportera rapporten och skicka den själv." : "Tomma mallar kan tas ut när som helst. Skicka med e-post sparar protokollet och skickar rapporten som PDF till mottagaren. Rapporten ritas med företagets färger och logotyp."}</p>
   </Panel> : null;
   const formDocument = task.data.kind === "FORM" ? task.data.details.document : null;
   // A deviation row becomes a work order in the same project and customer (2026-09-28); the row keeps its id.
@@ -600,8 +644,8 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
     {(error || message) && <p role={error ? "alert" : "status"} className={error ? "notice text-destructive" : "notice"}>{error || message}</p>}
     {task.status === "COMPLETED" && task.id && !preview ? <NextSteps task={task} projectName={selectedProject?.name} source={task.data.kind === "WORK_ORDER" ? task.data.details.source ?? null : null}
       localTasks={local?.tasks} onCreateWorkOrder={task.kind !== "WORK_ORDER" ? () => void createFollowUp() : undefined} /> : null}
-    <CompleteTaskDialog open={completeOpen} onOpenChange={setCompleteOpen} title={inlineTask ? "Färdigställ protokollet" : "Slutför uppgiften"}
-      lockText={`${inlineTask ? "Protokollet låses för ändringar; du kan senare skapa en kopia med Spara som." : "Uppgiften låses som slutförd och sparas i historiken. En slutförd uppgift kan inte tidrapporteras."}${rowsWithoutOrder ? ` ${rowsWithoutOrder === 1 ? "En rad" : `${rowsWithoutOrder} rader`} som kan följas upp saknar arbetsorder; skapa den på raden först om den behövs.` : ""}`}
+    <CompleteTaskDialog open={completeOpen} onOpenChange={setCompleteOpen} title={controlFoot ? "Färdigställ protokollet" : "Slutför uppgiften"}
+      lockText={`${controlFoot ? "Protokollet låses för ändringar; du kan senare skapa en kopia med Spara som." : "Uppgiften låses som slutförd och sparas i historiken. En slutförd uppgift kan inte tidrapporteras."}${rowsWithoutOrder ? ` ${rowsWithoutOrder === 1 ? "En rad" : `${rowsWithoutOrder} rader`} som kan följas upp saknar arbetsorder; skapa den på raden först om den behövs.` : ""}`}
       totalDurationSec={task.totalDurationSec} timerRunning={task.timerRunning} canReportTime={!preview} onComplete={completeWith} />
     {/* The content sits in an ordinary block inside the fieldset: Chromium sometimes left the form renderer (a container
         query container) without layout when it was a direct child of the fieldset's anonymous content box – an empty
@@ -624,20 +668,30 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
       </div>
       <label className="mt-4 block space-y-2 text-xs font-medium text-muted-foreground">Beskrivning<textarea aria-label="Beskrivning" className="form-textarea" value={task.description} maxLength={5000} onChange={(e) => setTask({ ...task, description: e.target.value })} /></label>
     </Panel>}
-    {task.data.kind === "FORM" ? <FormHistory taskId={task.id} templateId={task.data.details.templateId} customerId={(selectedProject?.customerId ?? task.customerId) || null} facilityId={task.facilityId ?? null} local={preview ? [] : local?.tasks} /> : null}
+    {/* Earlier protocols and trends inform; visningsnivå 1 leaves them out on a phone or tablet. */}
+    {task.data.kind === "FORM" ? <div data-detail-min="2" className="empty:hidden"><FormHistory taskId={task.id} templateId={task.data.details.templateId} customerId={(selectedProject?.customerId ?? task.customerId) || null} facilityId={task.facilityId ?? null} local={preview ? [] : local?.tasks} /></div> : null}
     {task.data.kind === "FORM" ? <FormLimitsPanel document={task.data.details.document} values={task.data.details.values} templateId={task.data.details.templateId} facilityId={task.facilityId ?? null}
       facilityName={facilityOptions.find((facility) => facility.id === task.facilityId)?.name ?? ""} readOnly={task.status === "COMPLETED" || Boolean(preview)} local={local?.limits}
       onValues={(values) => setTask((current) => current.data.kind === "FORM" ? { ...current, data: { ...current.data, details: { ...current.data.details, values } } } : current)} /> : null}
-    {task.data.kind === "FORM" && !preview ? <FormTrendPanel document={task.data.details.document} values={task.data.details.values} templateId={task.data.details.templateId} templateVersion={task.data.details.templateVersion} taskId={task.id}
-      facilityId={task.facilityId ?? null} customerId={(selectedProject?.customerId ?? task.customerId) || null} local={local?.tasks} /> : null}
+    {task.data.kind === "FORM" && !preview ? <div data-detail-min="2" className="empty:hidden"><FormTrendPanel document={task.data.details.document} values={task.data.details.values} templateId={task.data.details.templateId} templateVersion={task.data.details.templateVersion} taskId={task.id}
+      facilityId={task.facilityId ?? null} customerId={(selectedProject?.customerId ?? task.customerId) || null} local={local?.tasks} /></div> : null}
     {task.data.kind === "FORM" ? <FormRenderer panels actions={formActions} inline={inlineSlots} title={task.data.details.templateName} document={task.data.details.document} values={task.data.details.values} attachments={task.attachments} media={formMedia} rowOptions={rowOptions} readOnly={task.status === "COMPLETED"} onChange={(values) => { preview?.onValuesChange?.(values); setTask((current) => current.data.kind === "FORM" ? titled({ ...current, data: { ...current.data, details: { ...current.data.details, values } } }) : current); }} />
       : task.data.kind === "WORK_ORDER" ? <WorkOrderFields data={task.data} onChange={(data) => setTask({ ...task, data })} /> : <RiskFields data={task.data} onChange={(data) => setTask({ ...task, data })} title={task.title} taskId={task.id || undefined} assist={!local && !preview && task.status !== "COMPLETED"} />}
     </div>
     </fieldset>
-    {inlineTask && formHasSummary ? null : attachmentsPanel}
-    {task.id && !inlineTask ? <TaskHistory key={task.id} taskId={task.id} revisions={task.revisions ?? []} total={task.revisionCount ?? task.revisions?.length ?? 0} local={Boolean(local)} /> : null}
-    {inlineTask ? reportPanel : <Panel title="Slutför uppgiften" description="Kontrollera dokumentationen innan uppgiften markeras som slutförd.">{task.status !== "COMPLETED" && <div className="mb-4 rounded-lg border bg-muted/20 p-4"><p className="text-sm font-medium">{completion.ready ? "Dokumentationen är klar för slutförande." : "Kvar att fylla i före slutförande"}</p>{completion.issues.length > 0 && <ul className="mt-2 space-y-2">{completion.issues.map((issue) => <li key={`${issue.field}:${issue.message}`}><button type="button" className="text-left text-sm text-primary underline underline-offset-4" onClick={() => focusRequirement(issue.field)}>{issue.message}</button></li>)}</ul>}<p className="mt-3 text-xs text-muted-foreground">Du kan spara ofullständigt arbete. Projekt, kund, tid, material och bilagor är valfria. 100 procent visas när uppgiften är slutförd.</p></div>}<div className="flex flex-wrap items-center justify-between gap-4"><p className="text-sm text-muted-foreground">Slutförandet sparas i uppgiftens historik. En slutförd uppgift kan inte tidrapporteras.</p><div className="flex flex-wrap gap-2">{task.id && (!local || local.report) && <ReportOptionsButton kind={task.kind} onExport={exportReport} />}<Button id="task-complete" disabled={busy || task.status === "COMPLETED"} className={completion.ready ? undefined : "opacity-60"} title={completion.ready ? undefined : `Klicka för att se vad som saknas: ${completion.issues[0]?.message ?? ""}`} onClick={() => void complete()}><CheckCircle2 />Slutför uppgift</Button></div></div></Panel>}
-    {inlineTask ? <Modal open={historyOpen} onOpenChange={setHistoryOpen} title="Versionshistorik" className="max-w-3xl">{task.id ? <TaskHistory key={task.id} bare taskId={task.id} revisions={task.revisions ?? []} total={task.revisionCount ?? task.revisions?.length ?? 0} local={Boolean(local)} /> : null}</Modal> : null}
+    {summaryFoot ? null : attachmentsPanel}
+    {completePanel}
+    {task.id && !controlFoot ? <TaskHistory key={task.id} taskId={task.id} revisions={task.revisions ?? []} total={task.revisionCount ?? task.revisions?.length ?? 0} local={Boolean(local)} /> : null}
+    {controlFoot ? reportPanel : <Panel key="complete" title="Slutför uppgiften" description="Kontrollera dokumentationen innan uppgiften markeras som slutförd.">{task.status !== "COMPLETED" && <div className="mb-4 rounded-lg border bg-muted/20 p-4"><p className="text-sm font-medium">{completion.ready ? "Dokumentationen är klar för slutförande." : "Kvar att fylla i före slutförande"}</p>{completion.issues.length > 0 && <ul className="mt-2 space-y-2">{completion.issues.map((issue) => <li key={`${issue.field}:${issue.message}`}><button type="button" className="text-left text-sm text-primary underline underline-offset-4" onClick={() => focusRequirement(issue.field)}>{issue.message}</button></li>)}</ul>}<p className="mt-3 text-xs text-muted-foreground">Du kan spara ofullständigt arbete. Projekt, kund, tid, material och bilagor är valfria. 100 procent visas när uppgiften är slutförd.</p></div>}<div className="flex flex-wrap items-center justify-between gap-4"><p className="text-sm text-muted-foreground">Slutförandet sparas i uppgiftens historik. En slutförd uppgift kan inte tidrapporteras.</p><div className="flex flex-wrap gap-2">{task.id && (!local || local.report) && <ReportOptionsButton kind={task.kind} onExport={exportReport} />}<Button id="task-complete" disabled={busy || task.status === "COMPLETED"} className={completion.ready ? undefined : "opacity-60"} title={completion.ready ? undefined : `Klicka för att se vad som saknas: ${completion.issues[0]?.message ?? ""}`} onClick={() => void complete()}><CheckCircle2 />Slutför uppgift</Button></div></div></Panel>}
+    {controlFoot ? <Modal open={historyOpen} onOpenChange={setHistoryOpen} title="Versionshistorik" className="max-w-3xl">{task.id ? <TaskHistory key={task.id} bare taskId={task.id} revisions={task.revisions ?? []} total={task.revisionCount ?? task.revisions?.length ?? 0} local={Boolean(local)} /> : null}</Modal> : null}
+    {controlFoot ? <Modal open={sendOpen} onOpenChange={setSendOpen} title="Skicka med e-post">
+      <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); void send(); }}>
+        <label className="block space-y-2 text-xs font-medium text-muted-foreground">Mottagarens e-post<Input id="task-send-email" type="email" required maxLength={254} value={recipient} onChange={(event) => setRecipient(event.target.value)} /></label>
+        <label className="block space-y-2 text-xs font-medium text-muted-foreground">Meddelande (valfritt)<textarea aria-label="Meddelande" className="form-textarea" maxLength={2000} value={sendNote} onChange={(event) => setSendNote(event.target.value)} /></label>
+        <p className="page-description">Protokollet sparas och rapporten skickas som PDF. {task.status === "COMPLETED" ? "" : "Protokollet är inte färdigställt; rapporten märks som ej slutförd."}</p>
+        <div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={() => setSendOpen(false)}>Avbryt</Button><Button type="submit" disabled={busy || !recipient.trim()}><Send />Skicka</Button></div>
+      </form>
+    </Modal> : null}
   </div>;
 }
 

@@ -67,6 +67,7 @@ import { clientExtensions } from "@ee/client";
 import { LEGAL_LINKS } from "@ee/present";
 import { LongTimerWarning, RunningTimerIndicator } from "@/features/workflow/running-timer";
 import { MENU_VISIBILITY_EVENT } from "@/lib/workflow/menu-items";
+import { DETAIL_LEVEL_EVENT, detailLevelFor, type DetailLevels } from "@/lib/workflow/detail-level";
 import { ASSISTANT_ASK_EVENT } from "@/lib/workflow/flow-advisor";
 import type { AssistantAsk } from "@/lib/extensions/types";
 import { hasWorkflowPermission, type WorkflowPermissionProfile } from "@/lib/workflow/permissions";
@@ -86,6 +87,8 @@ export type ShellUser = {
   localStorageMode?: boolean;
   /** Menu buttons the person has hidden under Inställningar (2026-09-30). */
   hiddenMenu?: string[];
+  /** Visningsnivå per device (2026-10-02): 1–3 for phone and tablet; a computer always shows everything. */
+  detailLevel?: { phone?: number; tablet?: number } | null;
 } | null;
 
 type ExpandableGroup = "tasks" | "workOrders" | "projects" | "product";
@@ -276,6 +279,25 @@ export const views = {
     tone: "text-feature-customer",
     surface: "bg-feature-customer-soft",
   },
+  // Tabs under Produktadministration and Mitt företag (2026-10-02); never menu buttons of their own.
+  pricing_admin: {
+    label: "Priser",
+    icon: CreditCard,
+    tone: "text-feature-credit",
+    surface: "bg-feature-credit-soft",
+  },
+  ai_admin: {
+    label: "AI",
+    icon: Sparkles,
+    tone: "text-primary",
+    surface: "bg-secondary",
+  },
+  company_settings: {
+    label: "Rapporter och logotyp",
+    icon: Building2,
+    tone: "text-feature-customer",
+    surface: "bg-feature-customer-soft",
+  },
   settings: {
     label: "Inställningar",
     icon: Settings2,
@@ -327,8 +349,6 @@ export function AppShell({
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const instance = useInstance();
-  // Fas 1: an installation without billing and credits has no Krediter page; without the landing page no editor.
-  const commercial = instance.features.billing || instance.features.credits;
   const asideRef = useRef<HTMLElement | null>(null);
   const drawerRef = useRef<HTMLDivElement | null>(null);
   const [confirmCard, confirmElement] = useConfirm();
@@ -452,6 +472,20 @@ export function AppShell({
     return () => window.removeEventListener(MENU_VISIBILITY_EVENT, onChange);
   }, []);
   const shown = (key: string, open = false) => open || !hiddenMenu.includes(key);
+  // Visningsnivå (2026-10-02): the person's level for this device is set on <html>, where the style sheet
+  // hides what the level leaves out. It follows the window's width and a change under Inställningar at once.
+  // What the person saves on this page wins over what the page was loaded with, also when the shell is drawn again.
+  const savedPhone = user?.detailLevel?.phone;
+  const savedTablet = user?.detailLevel?.tablet;
+  const changedDetail = useRef<Partial<DetailLevels> | null>(null);
+  useEffect(() => {
+    const apply = () => { document.documentElement.dataset.detail = String(detailLevelFor(changedDetail.current ?? ({ phone: savedPhone, tablet: savedTablet } as Partial<DetailLevels>), window.innerWidth, window.matchMedia("(pointer: coarse)").matches)); };
+    const onChange = (event: Event) => { changedDetail.current = (event as CustomEvent<DetailLevels>).detail ?? null; apply(); };
+    apply();
+    window.addEventListener("resize", apply);
+    window.addEventListener(DETAIL_LEVEL_EVENT, onChange);
+    return () => { window.removeEventListener("resize", apply); window.removeEventListener(DETAIL_LEVEL_EVENT, onChange); delete document.documentElement.dataset.detail; };
+  }, [savedPhone, savedTablet]);
   const toggleExpanded = (key: ExpandableGroup) => setExpanded((current) => ({ ...current, [key]: !current[key] }));
   function navItem(key: View, active = view === key) {
     const item = views[key];
@@ -591,7 +625,8 @@ export function AppShell({
       ...(taskSubjects.some((subject) => canWorkflow(subject, "read")) && shown("rounds", view === "rounds") ? ["rounds" as View] : []),
       ...((["work-order", "risk-assessment"] as const).some((subject) => canWorkflow(subject, "read")) && shown("time", view === "time") ? ["time" as View] : []),
     ],
-    [...(shown("customers", view === "customers") ? ["customers" as View] : []), ...(shown("facilities", view === "facilities") ? ["facilities" as View] : [])],
+    // Platser and Krediter are tabs under Mitt företag (2026-10-02: they belong to the company).
+    [...(shown("customers", view === "customers") ? ["customers" as View] : [])],
   ].filter((group) => group.length > 0);
   /** A "new" item that is always visible, with a round plus to its right that shows or hides its list ("Mina …"). */
   function expandableItem({ id, testId, childLabel, canCreate, canRead, childActive, primary, child }: {
@@ -612,8 +647,8 @@ export function AppShell({
       <div id={`${testId}-items`} hidden={!open}>{child}</div>
     </div>;
   }
-  const productActive = view === "customer_companies" || view === "landing_editor" || view === "mail_settings";
-  const companyActive = view === "administration" || view === "integrations" || view === "history_retention" || view === "ai_settings";
+  const productActive = view === "customer_companies" || view === "pricing_admin" || view === "ai_admin" || view === "landing_editor" || view === "mail_settings";
+  const companyActive = view === "administration" || view === "integrations" || view === "history_retention" || view === "ai_settings" || view === "facilities" || view === "company_settings" || view === "credits";
   const notificationLabel = notificationCount ? `Notiser, ${notificationCount} aktuella` : "Notiser";
   const sidebar = (
     <div className="workspace-sidebar flex min-h-full flex-col bg-card">
@@ -676,10 +711,9 @@ export function AppShell({
           </div>
         ) : null}
         <div className="my-5 border-t" />
-        {commercial && shown("credits", view === "credits") ? navItem("credits") : null}
         {/* Menystädning (2026-10-01): HINTEK AI, API och MCP and Historik och lagring are tabs under Mitt
             företag; Landningssidan and E-post tabs under Produktadministration. One button each, the tabs on the page. */}
-        {user && ["OWNER", "ADMIN"].includes(user.memberRole ?? "") && navItem("administration", companyActive)}
+        {user && (["OWNER", "ADMIN"].includes(user.memberRole ?? "") ? navItem("administration", companyActive) : companyActive ? navItem("facilities", true) : null)}
         {user?.role === "SUPERADMIN" && <div className="mt-1" data-testid="product-menu">
           {navItem("customer_companies", productActive)}
         </div>}

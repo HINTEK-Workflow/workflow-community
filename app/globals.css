@@ -509,6 +509,14 @@ html[data-theme="blue"] :is(.workspace-aside, .workspace-drawer):hover { --menu-
   .workspace-header, .workspace-bottom-nav, .editor-workflow-header { transition: none !important; }
 }
 .ai-shimmer-text { color: var(--muted-foreground); }
+/*
+ * Visningsnivå (2026-10-02): a calmer view on phone and tablet, chosen per person and device under
+ * Inställningar. Level 2 leaves out the explaining texts under page and panel headings and the footer; level 1 also
+ * the help texts, the header's facts, key figures, statistics, earlier protocols, trends and tips. Only what informs
+ * is hidden – never a field, a requirement or a button.
+ */
+html:is([data-detail="1"], [data-detail="2"]) :is(.workspace-main h1.page-title + .page-description, .workspace-main .panel-heading h2 + p, .workspace-footer, [data-detail-min="3"]),
+html[data-detail="1"] :is([data-detail-min="2"], .workspace-main .editor-facts) { display: none !important; }
 @media (prefers-reduced-motion: no-preference) {
   .workspace-drawer[data-state="open"] { animation: workspace-menu-enter .18s ease-out; }
   @keyframes workspace-menu-enter { from { transform: translateX(-100%); } to { transform: translateX(0); } }

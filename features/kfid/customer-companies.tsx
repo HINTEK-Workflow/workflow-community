@@ -10,7 +10,7 @@ import { api } from "./api";
 import { clientExtensions } from "@ee/client";
 import { useConfirm } from "./confirm";
 // HINTEK's commercial views live in ee/ (Fas 2); without it they are null.
-const { BillingRead, PricingAdministration, ProviderAdministration, AiUsageAdministration } = clientExtensions;
+const { BillingRead } = clientExtensions;
 
 type CustomerCompany = {
   id: string;
@@ -97,9 +97,6 @@ export function CustomerCompanies() {
         <ShieldCheck className="mt-0.5 size-5 shrink-0" />
         <p>Den här vyn är endast tillgänglig för produktadministratör. Du kan förbereda ett företag och dess första företagsadmin utan att bli medlem i kundföretaget. Inbjudningsmejl är avstängda.</p>
       </div>
-      {PricingAdministration ? <PricingAdministration notify={(message, isError) => { setNotice(isError ? `Fel: ${message}` : message); }} /> : null}
-      {ProviderAdministration ? <ProviderAdministration /> : null}
-      {AiUsageAdministration ? <AiUsageAdministration /> : null}
       {notice ? <p role="status" className="rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-900">{notice}</p> : null}
       <Panel title="Företagsöversikt" description="Administrativa uppgifter och antal, inte verksamhetsinnehåll.">
         <label htmlFor="customer-company-search" className="mb-2 flex items-center gap-2 text-xs font-medium text-muted-foreground"><Search className="size-4" /> Sök kundföretag</label>

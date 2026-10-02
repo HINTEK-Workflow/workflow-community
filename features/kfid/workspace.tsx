@@ -34,6 +34,8 @@ import { Profile } from "./profile";
 import { SuggestionsEditor } from "./suggestions";
 import { quickActionLabels, type QuickAction } from "@/lib/kfid/preferences";
 import { MENU_ITEM_GROUPS, MENU_VISIBILITY_EVENT } from "@/lib/workflow/menu-items";
+import { InstallApp } from "@/features/workflow/install-app";
+import { DETAIL_LEVELS, DETAIL_LEVEL_EVENT, DETAIL_LEVEL_LABEL, type DetailLevel } from "@/lib/workflow/detail-level";
 import { CreditHistory } from "./credit-history";
 import { RecordArchive } from "./record-archive";
 import { Analytics } from "./analytics";
@@ -70,7 +72,7 @@ import {
 } from "@/lib/branding";
 import { useInstance } from "@/components/instance-provider";
 // HINTEK's commercial views live in ee/ (Fas 2); without it they are null.
-const { BillingRead, ImportPage, IntegrationKeys, LandingEditor, SharingPolicyPanel } = clientExtensions;
+const { AiUsageAdministration, BillingRead, ImportPage, IntegrationKeys, LandingEditor, PricingAdministration, ProviderAdministration, SharingPolicyPanel } = clientExtensions;
 
 const blankCustomer = {
   name: "",
@@ -319,413 +321,18 @@ export function Workspace({
     content = user?.role === "SUPERADMIN" ? <MailSettings notify={notify} /> : null;
   else if (view === "customer_companies")
     content = <CustomerCompanies />;
-  else if (view === "landing_editor")
-    // The landing editor lives in ee/ (Fas 2); without it page.tsx never opens this view.
-    content = user?.role === "SUPERADMIN" && LandingEditor ? <LandingEditor /> : <Panel title="Endast för HINTEK"><p className="text-sm text-muted-foreground">Landningssidan redigeras av HINTEK:s superadmin.</p></Panel>;
-  else if (view === "forms")
-    // HINTEK's superadmin builds HINTEK's forms; a company admin in Cloud builds the company's own (2026-09-27).
-    content = user?.role === "SUPERADMIN" || (overview?.admin && overview.organization.storageMode !== "LOCAL") ? <FormBuilder userName={user?.name || undefined} tourSeen={overview ? Boolean(preferences.tours?.formBuilder) : undefined}
-      onTourSeen={async () => { await action({ action: "tour", tour: "formBuilder" }); setPreferences((current) => ({ ...current, tours: { ...current.tours, formBuilder: new Date().toISOString() } })); }} /> : <Panel title="Endast för administratörer"><p className="text-sm text-muted-foreground">Formulär skapas och publiceras av HINTEK och av företagets administratör.</p></Panel>;
-  else if (view === "import")
-    // Import (2026-10-01) writes through the same tools as the API; a Local workspace keeps its data in the file.
-    content = ImportPage && overview?.organization.storageMode !== "LOCAL" ? <ImportPage canBuildForms={user?.role === "SUPERADMIN" || Boolean(overview?.admin)} />
-      : <Panel title="Import"><p className="text-sm text-muted-foreground">Import finns i HINTEK Cloud. I Local ligger dina data i den egna filen; använd Lagring för att öppna eller läsa in en fil.</p></Panel>;
-  else if (view === "facilities")
-    content = <><div className="mb-6"><h1 className="page-title">Platser</h1><p className="page-description mt-2">Företagets egna platser och avdelningar som kan kopplas till arbetet. Kundens anläggningar finns på kundkortet.</p></div><OrganizationStructure notify={notify} editable={Boolean(overview?.admin)} /></>;
-  else if (view === "new_task")
-    content = <TaskTypePicker projectId={projectId} customerId={customerId} permissions={user?.workflowPermissions} admin={Boolean(overview?.admin)} superadmin={user?.role === "SUPERADMIN"}
-      canBuildForms={user?.role === "SUPERADMIN" || Boolean(overview?.admin && overview.organization.storageMode !== "LOCAL")}
-      layout={preferences.taskCardLayout}
-      onLayoutChange={user ? async (taskCardLayout) => {
-        // Saved with the person's other preferences, so the order follows them to every device.
-        const next = { ...preferences, taskCardLayout };
-        await action({ action: "preferences", data: next });
-        setPreferences(next);
-      } : undefined} />;
-  // A new work order or risk assessment without the right to create it gets the same clear message as Ny uppgift, not
-  // an editor that cannot be saved (totalkontrollen F8, 2026-09-29). The server refuses the save either way.
-  else if (view === "workflow_task" && overview?.organization.storageMode !== "LOCAL" && overview && !taskId && taskType !== "FORM"
-    && !overview.admin && !hasWorkflowPermission(normalizeWorkflowPermissionProfile(user?.workflowPermissions), taskType === "RISK_ASSESSMENT" ? "risk-assessment" : "work-order", "create"))
-    content = <div className="space-y-4">
-      <h1 className="page-title">{taskType === "RISK_ASSESSMENT" ? "Ny riskbedömning" : "Ny arbetsorder"}</h1>
-      <p className="notice" role="status">Du saknar behörighet att skapa {taskType === "RISK_ASSESSMENT" ? "riskbedömningar" : "arbetsorder"}. En företagsadministratör kan ändra dina modulrättigheter.</p>
-    </div>;
-  else if (view === "workflow_task" && overview?.organization.storageMode !== "LOCAL" && overview)
-    content = <WorkflowTaskEditor
-      kind={(taskType === "RISK_ASSESSMENT" || taskType === "FORM" ? taskType : "WORK_ORDER") as WorkflowTaskKind}
-      taskId={taskId}
-      projectId={projectId}
-      customerId={customerId}
-      customers={customerOptions}
-      projects={overview.projects}
-      rowOptions={{ rowsOnTop: preferences.rowsOnTop, showExamples: preferences.showExamples }}
-      userName={user?.name || undefined}
-    />;
-  else if (
-    overview?.organization.storageMode === "LOCAL" &&
-    ["stats", "notifications", "new", "controls", "customers", "new_project", "projects", "planning", "rounds", "project", "tasks", "work_orders", "time", "workflow_task", "facilities"].includes(view)
-  )
-    content = null; // The local workspace remains mounted across menu navigation below.
-  else if (view === "new")
-    content = (
-      <Editor
-        user={user}
-        controlId={controlId}
-        initialCustomerId={customerId}
-        initialProjectId={projectId}
-        overview={overview}
-        preferences={preferences}
-        refresh={refresh}
-        notify={notify}
-      />
-    );
-  else if (["new_project", "projects", "planning", "project", "tasks"].includes(view) && overview)
-    content = <WorkflowProjects
-      view={view as "new_project" | "projects" | "planning" | "project" | "tasks"}
-      projectId={projectId}
-      customers={customerOptions}
-      permissions={user?.workflowPermissions}
-      admin={Boolean(overview.admin)}
-    />;
-  else if (view === "time" && overview)
-    content = <TimeReport focusTaskId={timeTaskId} />;
-  // Mina arbetsordrar (2026-09-26): its own menu group; the server checks the module permission.
-  else if (view === "work_orders" && overview)
-    content = <WorkOrderList canCreate={Boolean(overview.admin) || hasWorkflowPermission(normalizeWorkflowPermissionProfile(user?.workflowPermissions), "work-order", "create")} />;
-  // Driftronder (2026-09-28): recurring rounds; the server filters by the forms the member may read.
-  else if (view === "rounds" && overview)
-    content = <FormRounds />;
-  else if (view === "notifications" && overview)
-    content = <TaskNotifications key={overview.organization.id} feed={notificationFeed} />;
-  // The customer card (decision 12B): the register with a customerId opens that customer's card.
-  else if (view === "customers" && customerId && overview && user)
-    content = <CustomerCard key={`${customerId}-${refreshCount}`} customerId={customerId} onEdit={customerModal} />;
-  else if ((view === "controls" || view === "customers") && overview && user)
-    content = (
-      <RecordArchive
-        key={view}
-        kind={view}
-        scope={`${user.email}:${overview.organization.id}`}
-        admin={
-          view === "controls" ? overview.canDeleteControls : overview.admin
-        }
-        customerId={customerId}
-        onEdit={customerModal}
-        notify={notify}
-        refresh={refresh}
-        reloadToken={refreshCount}
-      />
-    );
-  else if (view === "credits")
+  // Produktadministration in tabs (2026-10-02: innehåll som låg på fel ställe): prices and AI have their own.
+  else if (view === "pricing_admin")
+    content = user?.role === "SUPERADMIN" && PricingAdministration ? <PricingAdministration notify={notify} /> : null;
+  else if (view === "ai_admin")
+    content = user?.role === "SUPERADMIN" ? <>{heading("AI", "Leverantör, kostnad per AI-svar och användning – utan innehåll.")}<div className="space-y-6">{ProviderAdministration ? <ProviderAdministration /> : null}{AiUsageAdministration ? <AiUsageAdministration /> : null}</div></> : null;
+  // The company's report settings are a tab under Mitt företag, not part of the personal settings (2026-10-02).
+  else if (view === "company_settings")
     content = (
       <>
-        {heading(
-          "Krediter",
-          overview?.admin
-            ? "Ett saldo för arbetsytan. Priser och riktiga köp bestäms i sista steget."
-            : "Här ser du arbetsytans saldo och dina tillgängliga rapporter.",
-        )}
-        <div className="grid gap-5 lg:grid-cols-3">
-          <section className={`rounded-xl bg-primary p-6 text-white shadow-sm ${overview?.admin ? "" : "lg:col-span-3"}`}>
-            <div className="mb-6 flex items-center justify-between">
-              <CreditCard className="size-6" />
-              <span className="rounded-full bg-white/15 px-3 py-1 text-xs">
-                {overview?.wallet.testMode ? "Testsaldo" : "Saldo"}
-              </span>
-            </div>
-            <p className="text-4xl font-semibold tracking-tight">
-              {overview?.wallet.balance ?? 0}
-            </p>
-            <p className="mt-2 text-sm text-white/80">tillgängliga krediter</p>
-            <p className="mt-6 text-xs leading-5 text-white/80">
-              Krediter används endast för aktiverade AI-funktioner.
-              Grundfunktioner, rapporter, PDF, utskrifter och export kräver
-              inga krediter.
-            </p>
-            {overview?.testAdmin && overview.wallet.testMode && (
-                <Button
-                  variant="secondary"
-                  className="mt-5 w-full"
-                  disabled={busy}
-                  onClick={() =>
-                    void perform(
-                      { action: "superadmin_test_credit", requestId: crypto.randomUUID() },
-                      "100 kostnadsfria AI-testkrediter har lagts till. Inget köp har gjorts.",
-                    )
-                  }
-                >
-                  <Plus />
-                  Lägg till 100 gratis AI-krediter
-                </Button>
-            )}
-          </section>
-          {overview?.admin && <div className="lg:col-span-2">
-            <Panel
-              title="Köp krediter"
-              description="Betalningsanslutning och paketpriser kommer i sista steget."
-            >
-              <Empty
-                title="Inga riktiga köp ännu"
-                description="Du kan prova funktionerna med testkrediter. Inga betalningar eller kortuppgifter hanteras i den här versionen."
-              />
-            </Panel>
-          </div>}
-        </div>
-        <div className="mt-6">
-          <div className="mb-6">
-            <Panel
-              title="Skapade rapporter"
-              description="Öppna eller ladda ned en tidigare rapport utan ny debitering, även när saldot är slut."
-            >
-              {overview?.reports?.length ? (
-                <div className="divide-y">
-                  {overview.reports.map((r) => (
-                    <div
-                      key={r.id}
-                      className="flex flex-wrap items-center justify-between gap-3 py-3"
-                    >
-                      <div>
-                        <p className="text-sm font-medium">{`Kontroll före idrifttagning · ${r.kind.toUpperCase()} · ${r.controlId.slice(0, 8)}`}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatSwedish(r.createdAt, { dateStyle: "short", timeStyle: "short" })}
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        {r.kind.startsWith("pdf") && (
-                          <Button asChild variant="outline" size="sm">
-                            <a
-                              href={`/api/reports/${r.id}?inline=true`}
-                              target="_blank"
-                              rel="noreferrer"
-                            >
-                              Visa / skriv ut
-                            </a>
-                          </Button>
-                        )}
-                        <Button asChild variant="ghost" size="sm">
-                          <a href={`/api/reports/${r.id}`} download>
-                            Ladda ned
-                          </a>
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  Inga rapporter skapade ännu.
-                </p>
-              )}
-            </Panel>
-          </div>
-          {overview?.admin && <CreditHistory key={overview.entries[0]?.id ?? "empty"} entries={overview.entries} total={overview.entryCount ?? overview.entries.length} />}
-        </div>
-        {overview?.admin ? (BillingRead ? <BillingRead /> : null) : <Panel title="Fakturering och köp" description="Företagets betalningar hanteras av en företagsadministratör.">
-          <div className="space-y-3">
-            {overview?.paymentSandbox ? <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm font-medium text-amber-950 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-100" role="status">
-              Stripe sandbox – inga riktiga pengar
-            </p> : null}
-            <p className="text-sm text-muted-foreground">Du kan använda tilldelade krediter och se ditt tillgängliga saldo, men bara företagets admin kan starta Cloud-, kredit- eller portalflöden.</p>
-          </div>
-        </Panel>}
-      </>
-    );
-  else if (view === "stats")
-    content = <Analytics admin={Boolean(overview?.admin)} projectCount={overview?.projects.length ?? 0} />;
-  else if (view === "settings")
-    content = (
-      <>
-        {heading(
-          "Inställningar",
-          "Anpassa arbetsytan och företagets rapportuppgifter.",
-        )}
-        <div className="grid gap-6 lg:grid-cols-2">
-          <Panel title="Din arbetsyta" description={user?.email}>
-            <form
-              className="space-y-5"
-              onSubmit={async (e) => {
-                e.preventDefault();
-                const saved = await perform(
-                  { action: "preferences", data: preferences },
-                  "Inställningarna är sparade.",
-                );
-                // The menu follows at once, without reloading the page.
-                if (saved) window.dispatchEvent(new CustomEvent(MENU_VISIBILITY_EVENT, { detail: preferences.hiddenMenuItems }));
-              }}
-            >
-              {[
-                { key: "autoSave", label: "Autospara utkast" },
-                { key: "rowsOnTop", label: "Lägg nya mätningar överst" },
-                { key: "compact", label: "Kompakt tabellvisning" },
-                { key: "autoSuggestEnabled", label: "Visa autoförslag" },
-                {
-                  key: "showExamples",
-                  label: "Visa knappar för test- och exempelrader",
-                },
-              ].map((f) => (
-                <label key={f.key} className="flex items-center gap-3 text-sm">
-                  <Checkbox
-                    checked={preferences[f.key as keyof Preferences] === true}
-                    onCheckedChange={(v) =>
-                      setPreferences((p) => ({ ...p, [f.key]: v === true }))
-                    }
-                  />
-                  {f.label}
-                </label>
-              ))}
-              <div>
-                <label
-                  htmlFor="quick-action"
-                  className="mb-2 block text-xs font-medium text-muted-foreground"
-                >
-                  Startsida efter inloggning
-                </label>
-                <select
-                  id="quick-action"
-                  className="form-select"
-                  value={preferences.quickAction}
-                  onChange={(e) =>
-                    setPreferences((p) => ({
-                      ...p,
-                      quickAction: e.target.value as Preferences["quickAction"],
-                    }))
-                  }
-                >
-                  <option value="new">Ny uppgift</option>
-                  <option value="stats">Översikt</option>
-                  <option value="controls">Mina uppgifter</option>
-                  <option value="customers">Kundregister</option>
-                </select>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {[0, 1].map((slot) => (
-                  <label
-                    key={slot}
-                    className="space-y-1 text-xs text-muted-foreground"
-                  >
-                    Snabbåtgärd {slot + 1}
-                    <select
-                      className="form-select"
-                      aria-label={`Snabbåtgärd ${slot + 1}`}
-                      value={preferences.quickActions[slot]}
-                      onChange={(e) =>
-                        setPreferences((p) => {
-                          const quickActions = [
-                            ...p.quickActions,
-                          ] as Preferences["quickActions"];
-                          quickActions[slot] = e.target.value as QuickAction;
-                          return { ...p, quickActions };
-                        })
-                      }
-                    >
-                      {Object.entries(quickActionLabels).map(([key, label]) => (
-                        <option key={key} value={key}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                ))}
-              </div>
-              <label className="block space-y-1 text-xs text-muted-foreground">
-                Textstorlek
-                <select
-                  aria-label="Textstorlek"
-                  className="form-select"
-                  value={preferences.textScale}
-                  onChange={(e) =>
-                    setPreferences((p) => ({
-                      ...p,
-                      textScale: e.target.value as Preferences["textScale"],
-                    }))
-                  }
-                >
-                  <option value="100">Standard (100 %)</option>
-                  <option value="110">Större (110 %)</option>
-                  <option value="125">Störst (125 %)</option>
-                </select>
-              </label>
-              <Field
-                label="Tema"
-                id="theme"
-                options={["light", "dark", "blue", "customer"]}
-                optionLabels={{
-                  light: "Light",
-                  dark: "Dark",
-                  blue: "Blue – HINTEK",
-                  customer: "Customer – från logotyp",
-                }}
-                value={preferences.theme}
-                onChange={(v) =>
-                  setPreferences((p) => ({
-                    ...p,
-                    theme: v as Preferences["theme"],
-                  }))
-                }
-              />
-              {preferences.theme === "customer" && (
-                <p className="-mt-2 text-xs leading-5 text-muted-foreground">
-                  {overview?.settings?.themePrimary
-                    ? "Profilfärgen hämtas automatiskt från företagets logotyp."
-                    : "Ladda upp en företagslogotyp för en egen profilfärg. HINTEK Blue används tills dess."}
-                </p>
-              )}
-              <div>
-                <label
-                  className="mb-2 block text-xs font-medium text-muted-foreground"
-                  htmlFor="suggestions-personal"
-                >
-                  Personliga autoförslag (ett per rad)
-                </label>
-                <textarea
-                  id="suggestions-personal"
-                  className="form-textarea"
-                  value={preferences.suggestions}
-                  onChange={(e) =>
-                    setPreferences((p) => ({
-                      ...p,
-                      suggestions: e.target.value,
-                    }))
-                  }
-                />
-              </div>
-              {/* Which menu buttons are shown (2026-09-30): each person chooses; display only, never access. */}
-              <fieldset className="space-y-3 rounded-lg border p-4" data-testid="menu-visibility">
-                <legend className="px-1 text-xs font-semibold">Visa i menyn</legend>
-                <p className="text-xs text-muted-foreground">Välj vilka knappar du vill se. Det du döljer finns kvar och kan väljas igen; Översikt, Hjälp och Inställningar visas alltid.</p>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  {/* Only the buttons this installation has (HINTEK AI and Krediter live in ee/). */}
-                  {MENU_ITEM_GROUPS.map((group) => ({ ...group, items: group.items.filter((item) => (item.key !== "ai" || Boolean(clientExtensions.AssistantPanel)) && (item.key !== "import" || Boolean(clientExtensions.ImportPage)) && (item.key !== "credits" || instance.features.billing || instance.features.credits)) })).filter((group) => group.items.length).map((group) => <div key={group.title} className="space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground">{group.title}</p>
-                    {group.items.map((item) => <label key={item.key} className="flex items-center gap-3 text-sm">
-                      <Checkbox checked={!preferences.hiddenMenuItems.includes(item.key)} onCheckedChange={(v) => setPreferences((p) => ({ ...p, hiddenMenuItems: v === true ? p.hiddenMenuItems.filter((key) => key !== item.key) : [...p.hiddenMenuItems, item.key] }))} />
-                      {item.label}
-                    </label>)}
-                  </div>)}
-                </div>
-              </fieldset>
-              {/* Beslutsstöd (2026-10-01): how often tips appear under the progress line; saved at once. */}
-              <fieldset className="space-y-3 rounded-lg border p-4" data-testid="advisor-settings">
-                <legend className="px-1 text-xs font-semibold">Tips i arbetsflödet</legend>
-                <p className="text-xs text-muted-foreground">Under progressionslinjen visas ibland ett tips om nästa steg. Tipsen bygger på regler i Workflow och kostar inga krediter; bara knappen Fråga HINTEK AI använder AI.</p>
-                <AdvisorLevelPicker level={preferences.advisor.level} name="advisor-level-settings" onChange={(level) => void saveAdvisor({ ...preferences.advisor, level })} />
-                {preferences.advisor.muted.length ? <Button type="button" size="sm" variant="outline" onClick={() => void saveAdvisor({ ...preferences.advisor, muted: [] })}>Visa avstängda tips igen ({preferences.advisor.muted.length})</Button> : null}
-              </fieldset>
-              {/* HINTEK AI's proposals (2026-10-02: "normalt bara förslag, men användaren ska kunna välja"); saved at once. */}
-              {clientExtensions.SummaryAssist ? <fieldset className="space-y-3 rounded-lg border p-4" data-testid="ai-autofill-settings">
-                <legend className="px-1 text-xs font-semibold">Förslag från HINTEK AI</legend>
-                <label className="flex cursor-pointer items-start gap-2.5 text-sm">
-                  <Checkbox className="mt-0.5" checked={preferences.advisor.autofill} onCheckedChange={(value) => void saveAdvisor({ ...preferences.advisor, autofill: value === true })} />
-                  <span><span className="block font-medium">Fyll i tomma fält direkt</span><span className="block text-xs text-muted-foreground">Av: HINTEK AI visar ett förslag som du väljer att använda. På: ett förslag du har bett om skrivs direkt i fältet när det är tomt, och du kan ångra. Att skapa eller ändra uppgifter och planering kräver alltid att du bekräftar.</span></span>
-                </label>
-              </fieldset> : null}
-              <Button type="submit" className="mobile-form-action" disabled={busy}>
-                <Save />
-                Spara inställningar
-              </Button>
-            </form>
-          </Panel>
-          {overview?.admin ? <Panel title="Företag och rapporter">
+        {heading("Rapporter och logotyp", "Så ser företagets rapporter ut: namn, färger och logotyp.")}
+        <div className="max-w-3xl">
+          {overview?.admin ? <Panel title="Företag och rapporter" description="Företagets namn, färger och logotyp i rapporterna.">
             <form
               className="space-y-4"
               onSubmit={async (e) => {
@@ -961,10 +568,432 @@ export function Workspace({
                 PNG, JPEG eller WebP. Logotypen visas i rapporter, inte i appens meny. Customer-temat hämtar automatiskt en läsbar profilfärg från bilden.
               </p>
             </div>
-          </Panel> : null}
+          </Panel> : <Panel title="Endast för administratörer"><p className="text-sm text-muted-foreground">Företagets rapportuppgifter ändras av företagets administratör.</p></Panel>}
+        </div>
+      </>
+    );
+  else if (view === "landing_editor")
+    // The landing editor lives in ee/ (Fas 2); without it page.tsx never opens this view.
+    content = user?.role === "SUPERADMIN" && LandingEditor ? <LandingEditor /> : <Panel title="Endast för HINTEK"><p className="text-sm text-muted-foreground">Landningssidan redigeras av HINTEK:s superadmin.</p></Panel>;
+  else if (view === "forms")
+    // HINTEK's superadmin builds HINTEK's forms; a company admin in Cloud builds the company's own (2026-09-27).
+    content = user?.role === "SUPERADMIN" || (overview?.admin && overview.organization.storageMode !== "LOCAL") ? <FormBuilder userName={user?.name || undefined} tourSeen={overview ? Boolean(preferences.tours?.formBuilder) : undefined}
+      onTourSeen={async () => { await action({ action: "tour", tour: "formBuilder" }); setPreferences((current) => ({ ...current, tours: { ...current.tours, formBuilder: new Date().toISOString() } })); }} /> : <Panel title="Endast för administratörer"><p className="text-sm text-muted-foreground">Formulär skapas och publiceras av HINTEK och av företagets administratör.</p></Panel>;
+  else if (view === "import")
+    // Import (2026-10-01) writes through the same tools as the API; a Local workspace keeps its data in the file.
+    content = ImportPage && overview?.organization.storageMode !== "LOCAL" ? <ImportPage canBuildForms={user?.role === "SUPERADMIN" || Boolean(overview?.admin)} />
+      : <Panel title="Import"><p className="text-sm text-muted-foreground">Import finns i HINTEK Cloud. I Local ligger dina data i den egna filen; använd Lagring för att öppna eller läsa in en fil.</p></Panel>;
+  else if (view === "facilities")
+    content = <><div className="mb-6"><h1 className="page-title">Platser</h1><p className="page-description mt-2">Företagets egna platser och avdelningar som kan kopplas till arbetet. Kundens anläggningar finns på kundkortet.</p></div><OrganizationStructure notify={notify} editable={Boolean(overview?.admin)} /></>;
+  else if (view === "new_task")
+    content = <TaskTypePicker projectId={projectId} customerId={customerId} permissions={user?.workflowPermissions} admin={Boolean(overview?.admin)} superadmin={user?.role === "SUPERADMIN"}
+      canBuildForms={user?.role === "SUPERADMIN" || Boolean(overview?.admin && overview.organization.storageMode !== "LOCAL")}
+      layout={preferences.taskCardLayout}
+      onLayoutChange={user ? async (taskCardLayout) => {
+        // Saved with the person's other preferences, so the order follows them to every device.
+        const next = { ...preferences, taskCardLayout };
+        await action({ action: "preferences", data: next });
+        setPreferences(next);
+      } : undefined} />;
+  // A new work order or risk assessment without the right to create it gets the same clear message as Ny uppgift, not
+  // an editor that cannot be saved (totalkontrollen F8, 2026-09-29). The server refuses the save either way.
+  else if (view === "workflow_task" && overview?.organization.storageMode !== "LOCAL" && overview && !taskId && taskType !== "FORM"
+    && !overview.admin && !hasWorkflowPermission(normalizeWorkflowPermissionProfile(user?.workflowPermissions), taskType === "RISK_ASSESSMENT" ? "risk-assessment" : "work-order", "create"))
+    content = <div className="space-y-4">
+      <h1 className="page-title">{taskType === "RISK_ASSESSMENT" ? "Ny riskbedömning" : "Ny arbetsorder"}</h1>
+      <p className="notice" role="status">Du saknar behörighet att skapa {taskType === "RISK_ASSESSMENT" ? "riskbedömningar" : "arbetsorder"}. En företagsadministratör kan ändra dina modulrättigheter.</p>
+    </div>;
+  else if (view === "workflow_task" && overview?.organization.storageMode !== "LOCAL" && overview)
+    content = <WorkflowTaskEditor
+      kind={(taskType === "RISK_ASSESSMENT" || taskType === "FORM" ? taskType : "WORK_ORDER") as WorkflowTaskKind}
+      taskId={taskId}
+      projectId={projectId}
+      customerId={customerId}
+      customers={customerOptions}
+      projects={overview.projects}
+      rowOptions={{ rowsOnTop: preferences.rowsOnTop, showExamples: preferences.showExamples }}
+      userName={user?.name || undefined}
+    />;
+  else if (
+    overview?.organization.storageMode === "LOCAL" &&
+    ["stats", "notifications", "new", "controls", "customers", "new_project", "projects", "planning", "rounds", "project", "tasks", "work_orders", "time", "workflow_task", "facilities"].includes(view)
+  )
+    content = null; // The local workspace remains mounted across menu navigation below.
+  else if (view === "new")
+    content = (
+      <Editor
+        user={user}
+        controlId={controlId}
+        initialCustomerId={customerId}
+        initialProjectId={projectId}
+        overview={overview}
+        preferences={preferences}
+        refresh={refresh}
+        notify={notify}
+      />
+    );
+  else if (["new_project", "projects", "planning", "project", "tasks"].includes(view) && overview)
+    content = <WorkflowProjects
+      view={view as "new_project" | "projects" | "planning" | "project" | "tasks"}
+      projectId={projectId}
+      customers={customerOptions}
+      permissions={user?.workflowPermissions}
+      admin={Boolean(overview.admin)}
+    />;
+  else if (view === "time" && overview)
+    content = <TimeReport focusTaskId={timeTaskId} />;
+  // Mina arbetsordrar (2026-09-26): its own menu group; the server checks the module permission.
+  else if (view === "work_orders" && overview)
+    content = <WorkOrderList canCreate={Boolean(overview.admin) || hasWorkflowPermission(normalizeWorkflowPermissionProfile(user?.workflowPermissions), "work-order", "create")} />;
+  // Driftronder (2026-09-28): recurring rounds; the server filters by the forms the member may read.
+  else if (view === "rounds" && overview)
+    content = <FormRounds />;
+  else if (view === "notifications" && overview)
+    content = <TaskNotifications key={overview.organization.id} feed={notificationFeed} />;
+  // The customer card (decision 12B): the register with a customerId opens that customer's card.
+  else if (view === "customers" && customerId && overview && user)
+    content = <CustomerCard key={`${customerId}-${refreshCount}`} customerId={customerId} onEdit={customerModal} />;
+  else if ((view === "controls" || view === "customers") && overview && user)
+    content = (
+      <RecordArchive
+        key={view}
+        kind={view}
+        scope={`${user.email}:${overview.organization.id}`}
+        admin={
+          view === "controls" ? overview.canDeleteControls : overview.admin
+        }
+        customerId={customerId}
+        onEdit={customerModal}
+        notify={notify}
+        refresh={refresh}
+        reloadToken={refreshCount}
+      />
+    );
+  else if (view === "credits")
+    content = (
+      <>
+        {heading(
+          "Krediter",
+          overview?.admin
+            ? "Ett saldo för arbetsytan. Priser och riktiga köp bestäms i sista steget."
+            : "Här ser du arbetsytans saldo och dina tillgängliga rapporter.",
+        )}
+        <div className="grid gap-5 lg:grid-cols-3">
+          <section className={`rounded-xl bg-primary p-6 text-white shadow-sm ${overview?.admin ? "" : "lg:col-span-3"}`}>
+            <div className="mb-6 flex items-center justify-between">
+              <CreditCard className="size-6" />
+              <span className="rounded-full bg-white/15 px-3 py-1 text-xs">
+                {overview?.wallet.testMode ? "Testsaldo" : "Saldo"}
+              </span>
+            </div>
+            <p className="text-4xl font-semibold tracking-tight">
+              {overview?.wallet.balance ?? 0}
+            </p>
+            <p className="mt-2 text-sm text-white/80">tillgängliga krediter</p>
+            <p className="mt-6 text-xs leading-5 text-white/80">
+              Krediter används endast för aktiverade AI-funktioner.
+              Grundfunktioner, rapporter, PDF, utskrifter och export kräver
+              inga krediter.
+            </p>
+            {overview?.testAdmin && overview.wallet.testMode && (
+                <Button
+                  variant="secondary"
+                  className="mt-5 w-full"
+                  disabled={busy}
+                  onClick={() =>
+                    void perform(
+                      { action: "superadmin_test_credit", requestId: crypto.randomUUID() },
+                      "100 kostnadsfria AI-testkrediter har lagts till. Inget köp har gjorts.",
+                    )
+                  }
+                >
+                  <Plus />
+                  Lägg till 100 gratis AI-krediter
+                </Button>
+            )}
+          </section>
+          {overview?.admin && <div className="lg:col-span-2">
+            <Panel
+              title="Köp krediter"
+              description="Betalningsanslutning och paketpriser kommer i sista steget."
+            >
+              <Empty
+                title="Inga riktiga köp ännu"
+                description="Du kan prova funktionerna med testkrediter. Inga betalningar eller kortuppgifter hanteras i den här versionen."
+              />
+            </Panel>
+          </div>}
         </div>
         <div className="mt-6">
-          <Profile notify={notify} />
+          <div className="mb-6">
+            <Panel
+              title="Skapade rapporter"
+              description="Öppna eller ladda ned en tidigare rapport utan ny debitering, även när saldot är slut."
+            >
+              {overview?.reports?.length ? (
+                <div className="divide-y">
+                  {overview.reports.map((r) => (
+                    <div
+                      key={r.id}
+                      className="flex flex-wrap items-center justify-between gap-3 py-3"
+                    >
+                      <div>
+                        <p className="text-sm font-medium">{`Kontroll före idrifttagning · ${r.kind.toUpperCase()} · ${r.controlId.slice(0, 8)}`}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatSwedish(r.createdAt, { dateStyle: "short", timeStyle: "short" })}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        {r.kind.startsWith("pdf") && (
+                          <Button asChild variant="outline" size="sm">
+                            <a
+                              href={`/api/reports/${r.id}?inline=true`}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              Visa / skriv ut
+                            </a>
+                          </Button>
+                        )}
+                        <Button asChild variant="ghost" size="sm">
+                          <a href={`/api/reports/${r.id}`} download>
+                            Ladda ned
+                          </a>
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Inga rapporter skapade ännu.
+                </p>
+              )}
+            </Panel>
+          </div>
+          {overview?.admin && <CreditHistory key={overview.entries[0]?.id ?? "empty"} entries={overview.entries} total={overview.entryCount ?? overview.entries.length} />}
+        </div>
+        {overview?.admin ? (BillingRead ? <BillingRead /> : null) : <Panel title="Fakturering och köp" description="Företagets betalningar hanteras av en företagsadministratör.">
+          <div className="space-y-3">
+            {overview?.paymentSandbox ? <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm font-medium text-amber-950 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-100" role="status">
+              Stripe sandbox – inga riktiga pengar
+            </p> : null}
+            <p className="text-sm text-muted-foreground">Du kan använda tilldelade krediter och se ditt tillgängliga saldo, men bara företagets admin kan starta Cloud-, kredit- eller portalflöden.</p>
+          </div>
+        </Panel>}
+      </>
+    );
+  else if (view === "stats")
+    content = <Analytics admin={Boolean(overview?.admin)} projectCount={overview?.projects.length ?? 0} />;
+  else if (view === "settings")
+    content = (
+      <>
+        {heading(
+          "Inställningar",
+          "Anpassa din egen arbetsyta. Företagets uppgifter finns under Mitt företag.",
+        )}
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Panel title="Din arbetsyta" description={user?.email}>
+            <form
+              className="space-y-5"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const saved = await perform(
+                  { action: "preferences", data: preferences },
+                  "Inställningarna är sparade.",
+                );
+                // The menu follows at once, without reloading the page.
+                if (saved) window.dispatchEvent(new CustomEvent(MENU_VISIBILITY_EVENT, { detail: preferences.hiddenMenuItems }));
+                if (saved) window.dispatchEvent(new CustomEvent(DETAIL_LEVEL_EVENT, { detail: preferences.detailLevel }));
+              }}
+            >
+              {[
+                { key: "autoSave", label: "Autospara utkast" },
+                { key: "rowsOnTop", label: "Lägg nya mätningar överst" },
+                { key: "compact", label: "Kompakt tabellvisning" },
+                { key: "autoSuggestEnabled", label: "Visa autoförslag" },
+                {
+                  key: "showExamples",
+                  label: "Visa knappar för test- och exempelrader",
+                },
+              ].map((f) => (
+                <label key={f.key} className="flex items-center gap-3 text-sm">
+                  <Checkbox
+                    checked={preferences[f.key as keyof Preferences] === true}
+                    onCheckedChange={(v) =>
+                      setPreferences((p) => ({ ...p, [f.key]: v === true }))
+                    }
+                  />
+                  {f.label}
+                </label>
+              ))}
+              <div>
+                <label
+                  htmlFor="quick-action"
+                  className="mb-2 block text-xs font-medium text-muted-foreground"
+                >
+                  Startsida efter inloggning
+                </label>
+                <select
+                  id="quick-action"
+                  className="form-select"
+                  value={preferences.quickAction}
+                  onChange={(e) =>
+                    setPreferences((p) => ({
+                      ...p,
+                      quickAction: e.target.value as Preferences["quickAction"],
+                    }))
+                  }
+                >
+                  <option value="new">Ny uppgift</option>
+                  <option value="stats">Översikt</option>
+                  <option value="controls">Mina uppgifter</option>
+                  <option value="customers">Kundregister</option>
+                </select>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {[0, 1].map((slot) => (
+                  <label
+                    key={slot}
+                    className="space-y-1 text-xs text-muted-foreground"
+                  >
+                    Snabbåtgärd {slot + 1}
+                    <select
+                      className="form-select"
+                      aria-label={`Snabbåtgärd ${slot + 1}`}
+                      value={preferences.quickActions[slot]}
+                      onChange={(e) =>
+                        setPreferences((p) => {
+                          const quickActions = [
+                            ...p.quickActions,
+                          ] as Preferences["quickActions"];
+                          quickActions[slot] = e.target.value as QuickAction;
+                          return { ...p, quickActions };
+                        })
+                      }
+                    >
+                      {Object.entries(quickActionLabels).map(([key, label]) => (
+                        <option key={key} value={key}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ))}
+              </div>
+              {/* Visningsnivå (2026-10-02): how much is shown, chosen for the phone and for the tablet. */}
+              <fieldset className="space-y-3 rounded-lg border p-4" data-testid="detail-level-settings">
+                <legend className="px-1 text-xs font-semibold">Visning på mobil och surfplatta</legend>
+                <p className="text-xs leading-5 text-muted-foreground">Välj hur mycket som visas på en liten skärm. En enklare nivå döljer bara förklaringar, nyckeltal och tips – aldrig fält eller knappar. På en dator visas alltid allt.</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {([["phone", "Mobil"], ["tablet", "Surfplatta"]] as const).map(([device, label]) => <label key={device} className="block space-y-1 text-xs text-muted-foreground">
+                    {label}
+                    <select aria-label={`Visning på ${label.toLowerCase()}`} className="form-select" value={preferences.detailLevel[device]}
+                      onChange={(e) => setPreferences((p) => ({ ...p, detailLevel: { ...p.detailLevel, [device]: Number(e.target.value) as DetailLevel } }))}>
+                      {DETAIL_LEVELS.map((level) => <option key={level} value={level}>{level} · {DETAIL_LEVEL_LABEL[level]}</option>)}
+                    </select>
+                  </label>)}
+                </div>
+              </fieldset>
+              <label className="block space-y-1 text-xs text-muted-foreground">
+                Textstorlek
+                <select
+                  aria-label="Textstorlek"
+                  className="form-select"
+                  value={preferences.textScale}
+                  onChange={(e) =>
+                    setPreferences((p) => ({
+                      ...p,
+                      textScale: e.target.value as Preferences["textScale"],
+                    }))
+                  }
+                >
+                  <option value="100">Standard (100 %)</option>
+                  <option value="110">Större (110 %)</option>
+                  <option value="125">Störst (125 %)</option>
+                </select>
+              </label>
+              <Field
+                label="Tema"
+                id="theme"
+                options={["light", "dark", "blue", "customer"]}
+                optionLabels={{
+                  light: "Light",
+                  dark: "Dark",
+                  blue: "Blue – HINTEK",
+                  customer: "Customer – från logotyp",
+                }}
+                value={preferences.theme}
+                onChange={(v) =>
+                  setPreferences((p) => ({
+                    ...p,
+                    theme: v as Preferences["theme"],
+                  }))
+                }
+              />
+              {preferences.theme === "customer" && (
+                <p className="-mt-2 text-xs leading-5 text-muted-foreground">
+                  {overview?.settings?.themePrimary
+                    ? "Profilfärgen hämtas automatiskt från företagets logotyp."
+                    : "Ladda upp en företagslogotyp för en egen profilfärg. HINTEK Blue används tills dess."}
+                </p>
+              )}
+              <div>
+                <label
+                  className="mb-2 block text-xs font-medium text-muted-foreground"
+                  htmlFor="suggestions-personal"
+                >
+                  Personliga autoförslag (ett per rad)
+                </label>
+                <textarea
+                  id="suggestions-personal"
+                  className="form-textarea"
+                  value={preferences.suggestions}
+                  onChange={(e) =>
+                    setPreferences((p) => ({
+                      ...p,
+                      suggestions: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+              {/* Which menu buttons are shown (2026-09-30): each person chooses; display only, never access. */}
+              <fieldset className="space-y-3 rounded-lg border p-4" data-testid="menu-visibility">
+                <legend className="px-1 text-xs font-semibold">Visa i menyn</legend>
+                <p className="text-xs text-muted-foreground">Välj vilka knappar du vill se. Det du döljer finns kvar och kan väljas igen; Översikt, Hjälp och Inställningar visas alltid.</p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {/* Only the buttons this installation has (HINTEK AI and Krediter live in ee/). */}
+                  {MENU_ITEM_GROUPS.map((group) => ({ ...group, items: group.items.filter((item) => (item.key !== "ai" || Boolean(clientExtensions.AssistantPanel)) && (item.key !== "import" || Boolean(clientExtensions.ImportPage))) })).filter((group) => group.items.length).map((group) => <div key={group.title} className="space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground">{group.title}</p>
+                    {group.items.map((item) => <label key={item.key} className="flex items-center gap-3 text-sm">
+                      <Checkbox checked={!preferences.hiddenMenuItems.includes(item.key)} onCheckedChange={(v) => setPreferences((p) => ({ ...p, hiddenMenuItems: v === true ? p.hiddenMenuItems.filter((key) => key !== item.key) : [...p.hiddenMenuItems, item.key] }))} />
+                      {item.label}
+                    </label>)}
+                  </div>)}
+                </div>
+              </fieldset>
+              {/* Beslutsstöd (2026-10-01): how often tips appear under the progress line; saved at once. */}
+              <fieldset className="space-y-3 rounded-lg border p-4" data-testid="advisor-settings">
+                <legend className="px-1 text-xs font-semibold">Tips i arbetsflödet</legend>
+                <p className="text-xs text-muted-foreground">Under progressionslinjen visas ibland ett tips om nästa steg. Tipsen bygger på regler i Workflow och kostar inga krediter; bara knappen Fråga HINTEK AI använder AI.</p>
+                <AdvisorLevelPicker level={preferences.advisor.level} name="advisor-level-settings" onChange={(level) => void saveAdvisor({ ...preferences.advisor, level })} />
+                {preferences.advisor.muted.length ? <Button type="button" size="sm" variant="outline" onClick={() => void saveAdvisor({ ...preferences.advisor, muted: [] })}>Visa avstängda tips igen ({preferences.advisor.muted.length})</Button> : null}
+              </fieldset>
+              {/* HINTEK AI's proposals (2026-10-02: "normalt bara förslag, men användaren ska kunna välja"); saved at once. */}
+              {clientExtensions.SummaryAssist ? <fieldset className="space-y-3 rounded-lg border p-4" data-testid="ai-autofill-settings">
+                <legend className="px-1 text-xs font-semibold">Förslag från HINTEK AI</legend>
+                <label className="flex cursor-pointer items-start gap-2.5 text-sm">
+                  <Checkbox className="mt-0.5" checked={preferences.advisor.autofill} onCheckedChange={(value) => void saveAdvisor({ ...preferences.advisor, autofill: value === true })} />
+                  <span><span className="block font-medium">Fyll i tomma fält direkt</span><span className="block text-xs text-muted-foreground">Av: HINTEK AI visar ett förslag som du väljer att använda. På: ett förslag du har bett om skrivs direkt i fältet när det är tomt, och du kan ångra. Att skapa eller ändra uppgifter och planering kräver alltid att du bekräftar.</span></span>
+                </label>
+              </fieldset> : null}
+              <Button type="submit" className="mobile-form-action" disabled={busy}>
+                <Save />
+                Spara inställningar
+              </Button>
+            </form>
+          </Panel>
+          <div className="space-y-6"><Profile notify={notify} /><InstallApp /></div>
         </div>
         <div className="mt-6">
           <SuggestionsEditor notify={notify} refresh={refresh} />
@@ -992,9 +1021,9 @@ export function Workspace({
     );
   // Mitt företag and Produktadministration are one menu button each with tabs (2026-10-01, menystädning).
   const sectionTabs = (COMPANY_VIEWS as readonly string[]).includes(view) && !overview?.legalRequired
-    ? <SectionTabs label="Mitt företag" current={view} tabs={companyTabs({ admin: Boolean(overview?.admin), cloud: overview?.organization.storageMode !== "LOCAL", ai: Boolean(SharingPolicyPanel) && instance.features.ai, integrations: Boolean(IntegrationKeys) && instance.features.integrations })} />
+    ? <SectionTabs label="Mitt företag" current={view} tabs={companyTabs({ admin: Boolean(overview?.admin), credits: instance.features.billing || instance.features.credits, cloud: overview?.organization.storageMode !== "LOCAL", ai: Boolean(SharingPolicyPanel) && instance.features.ai, integrations: Boolean(IntegrationKeys) && instance.features.integrations })} />
     : (PRODUCT_VIEWS as readonly string[]).includes(view) && user?.role === "SUPERADMIN"
-      ? <SectionTabs label="Produktadministration" current={view} tabs={productTabs({ landingEditor: Boolean(LandingEditor) && instance.features.landingEditor })} />
+      ? <SectionTabs label="Produktadministration" current={view} tabs={productTabs({ landingEditor: Boolean(LandingEditor) && instance.features.landingEditor, pricing: Boolean(PricingAdministration), ai: Boolean(ProviderAdministration) || Boolean(AiUsageAdministration) })} />
       : null;
   return (
     <AdvisorSettingsProvider value={overview ? preferences.advisor : undefined} onSave={overview ? (next) => saveAdvisor({ ...next, autofill: Boolean(next.autofill) }) : undefined}>

@@ -10,7 +10,6 @@ import {
   Plus,
   Save,
   Copy,
-  Download,
   Upload,
   FileText,
   Trash2,
@@ -46,6 +45,7 @@ import {
 } from "@/lib/kfid/model";
 import {
   createPortableControlExport,
+  PENDING_CONTROL_IMPORT_KEY,
   MAX_PORTABLE_JSON_BYTES,
   parsePortableControlJson,
   type PortableControlPreview,
@@ -260,6 +260,18 @@ export function Editor({
       .then((result) => setSites(result.sites))
       .catch(() => setSites([]));
   }, [localMode, userEmail]);
+  // A control's JSON file handed over from the Import page (2026-10-02): its preview opens once, nothing is saved.
+  useEffect(() => {
+    if (localMode || !userEmail || controlId) return;
+    let raw: string | null = null;
+    try { raw = window.sessionStorage.getItem(PENDING_CONTROL_IMPORT_KEY); if (raw) window.sessionStorage.removeItem(PENDING_CONTROL_IMPORT_KEY); } catch { raw = null; }
+    if (!raw) return;
+    const text = raw;
+    queueMicrotask(() => {
+      try { setImportPreview(parsePortableControlJson(text)); }
+      catch (e) { notify(`Importen misslyckades: ${(e as Error).message}`, true); }
+    });
+  }, [localMode, userEmail, controlId, notify]);
   const readOnly = !user || status === "COMPLETED" || (!localMode && locked);
   const canSave = Boolean(user && overview);
   const draftKey = `kfid.v3.draft.${user?.email}.${overview?.organization.id}`;
@@ -1219,8 +1231,7 @@ export function Editor({
       { id: "preview", label: "Förhandsgranska", group: "report", disabled: !version || dirty || busy || !canPrint },
       { id: "pdf", label: "PDF", group: "report", disabled: !version || dirty || busy || !canPrint },
       { id: "xlsx", label: "Excel", group: "report", disabled: !version || dirty || busy || !canSave },
-      { id: "json", label: "JSON", group: "report", disabled: !version || dirty || busy || !canSave },
-      { id: "import", label: "Importera JSON", group: "report", disabled: !user || busy },
+      ...(localMode ? [{ id: "import" as const, label: "Importera JSON", group: "report" as const, disabled: !user || busy }] : []),
       { id: "pdf_template", label: "PDF-mall", group: "report", disabled: !version || dirty || busy || !canPrint },
       { id: "xlsx_template", label: "Excel-mall", group: "report", disabled: !version || dirty || busy || !canSave },
       { id: "history", label: "Historik", group: "status", disabled: !version || !canSave || busy },
@@ -1234,7 +1245,7 @@ export function Editor({
       { id: "controls", label: "Mina kontroller", group: "navigate", disabled: !user || busy },
       { id: "customers", label: "Kundregister", group: "navigate", disabled: !user || busy },
     ],
-    [busy, canPrint, canSave, completion.complete, completionError, dirty, readOnly, user, version],
+    [busy, canPrint, canSave, completion.complete, completionError, dirty, localMode, readOnly, user, version],
   );
   useRegisterEditorActions({
     save: () => void save(),
@@ -1977,12 +1988,12 @@ export function Editor({
                   { id: "preview", label: "Förhandsgranska", icon: Eye, disabled: !version || dirty || !canPrint, run: () => report("pdf", true) },
                   { id: "pdf", label: "PDF", icon: FileDown, primary: true, disabled: !version || dirty || !canPrint, run: () => report("pdf") },
                   { id: "xlsx", label: "Excel", icon: FileSpreadsheet, disabled: !version || dirty || !canSave, run: () => report("xlsx") },
-                  { id: "json", label: "JSON", icon: Download, disabled: !version || dirty || !canSave, run: () => report("json") },
                   { id: "pdf_template", label: "PDF-mall", icon: FileText, ignoresSelection: true, disabled: !version || dirty || !canPrint, run: () => report("pdf_template") },
                   { id: "xlsx_template", label: "Excel-mall", icon: FileSpreadsheet, ignoresSelection: true, disabled: !version || dirty || !canSave, run: () => report("xlsx_template") },
                 ]}
               />
-              <Button type="button" variant="outline" disabled={!user || busy} onClick={() => importInput.current?.click()}><Upload />Importera JSON</Button>
+              {/* Importera JSON lives on the Import page (2026-10-02); Local has no Import page and keeps it here. */}
+              {localMode ? <Button type="button" variant="outline" disabled={!user || busy} onClick={() => importInput.current?.click()}><Upload />Importera JSON</Button> : null}
             </div>
             <Field
               id="installer-email"

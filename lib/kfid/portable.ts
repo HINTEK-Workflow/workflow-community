@@ -9,6 +9,8 @@ import {
 export const PORTABLE_FORMAT = "KFID_CONTROL";
 export const PORTABLE_SCHEMA_VERSION = 1;
 export const MAX_PORTABLE_JSON_BYTES = 2_000_000;
+/** A control's JSON file handed over from the Import page to the control editor (2026-10-02), in sessionStorage. */
+export const PENDING_CONTROL_IMPORT_KEY = "hintek.import.control-json";
 
 export type PortableControlExport = {
   format: typeof PORTABLE_FORMAT;
@@ -183,5 +185,12 @@ export function parsePortableControlJson(text: string) {
   } catch {
     throw new Error("Filen innehåller inte giltig JSON.");
   }
-  return parsePortableControl(parsed);
+  try {
+    return parsePortableControl(parsed);
+  } catch (error) {
+    // A schema error is a list of technical issues; the person gets one readable sentence (2026-10-02).
+    if (error && typeof error === "object" && "issues" in error)
+      throw new Error("Filen är inte en giltig kontrollfil: uppgifter saknas eller har fel form.");
+    throw error;
+  }
 }

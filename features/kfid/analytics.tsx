@@ -326,10 +326,11 @@ export function Analytics({ admin, projectCount = 0 }: { admin: boolean; project
         </div>
       </div>
       {/* Dagsammanställningen (2026-10-02): the night's short digest, where the company has chosen it. */}
-      {DailyDigestCard ? <DailyDigestCard /> : null}
-      <OverviewKpiDashboard key={kpis ? "ready" : "loading"} team={kpis?.team ?? null} mine={kpis?.mine ?? null} loading={!kpis} error={kpiError} />
+      {/* Visningsnivå 1 on a phone or tablet shows the work itself; the digest, key figures and statistics are left out. */}
+      {DailyDigestCard ? <div data-detail-min="2"><DailyDigestCard /></div> : null}
+      <div data-detail-min="2"><OverviewKpiDashboard key={kpis ? "ready" : "loading"} team={kpis?.team ?? null} mine={kpis?.mine ?? null} loading={!kpis} error={kpiError} /></div>
       <WorkOverview />
-      {admin ? <TaskStatistics /> : null}
+      {admin ? <div data-detail-min="2"><TaskStatistics /></div> : null}
     </div>
   );
 }

@@ -16,15 +16,11 @@ export const MENU_ITEM_GROUPS = [
   ] },
   { title: "Register", items: [
     { key: "customers", label: "Kundregister" },
-    { key: "facilities", label: "Platser" },
   ] },
   { title: "Verktyg", items: [
     { key: "ai", label: "HINTEK AI" },
     { key: "import", label: "Import" },
     { key: "forms", label: "Skapa formulär" },
-  ] },
-  { title: "Företag", items: [
-    { key: "credits", label: "Krediter" },
   ] },
 ] as const;
 export const MENU_HIDEABLE = MENU_ITEM_GROUPS.flatMap((group) => group.items.map((item) => item.key)) as [MenuHideable, ...MenuHideable[]];

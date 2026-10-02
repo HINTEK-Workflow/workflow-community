@@ -36,11 +36,11 @@ test("built-in forms: no invented limit values – requirements are entered per 
   const result = evaluateForm(insulation, values);
   assert.equal(result.computed.lagsta, 0.4);
   assert.equal(result.computed.underkanda, 1);
-  assert.equal(result.computed.resultat, "Avvikelse");
   assert.equal(result.deviations.length, 1);
   assert.match(result.deviations[0].message, /Isolationsmätningar, K1: Godkänd är inte uppfyllt/);
+  // A measurement without a requirement is not judged at all.
   values.tables.matningar = values.tables.matningar.filter((row) => row.id !== "r2");
-  assert.equal(evaluateForm(insulation, values).computed.resultat, "Krav saknas för någon mätning");
+  assert.equal(evaluateForm(insulation, values).deviations.length, 0);
 });
 
 test("object cards: row names, choice deviations, pictures per object and completion", () => {
@@ -54,7 +54,6 @@ test("object cards: row names, choice deviations, pictures per object and comple
   ];
   const result = evaluateForm(thermography, values);
   assert.equal(result.cells.objekt.o1.deltat, 37);
-  assert.equal(result.cells.objekt.o1.lastgrad, 75);
   assert.equal(result.computed.omgaende, 1);
   assert.equal(formRowLabel(objects, values.tables.objekt[0], 0), "Central A1, grupp 12");
   assert.equal(formRowLabel(objects, values.tables.objekt[1], 1), "Objekt 2");

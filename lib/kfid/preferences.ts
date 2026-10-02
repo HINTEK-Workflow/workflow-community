@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { themeNames } from "@/lib/theme";
 import { emptyTaskCardLayout, taskCardLayoutSchema } from "@/lib/workflow/task-card-layout";
-import { MENU_HIDEABLE } from "@/lib/workflow/menu-items";
+import { MENU_HIDEABLE, type MenuHideable } from "@/lib/workflow/menu-items";
 export const quickActionLabels = {
   new: "Ny kontroll",
   controls: "Öppna arkivet",
@@ -41,7 +41,13 @@ export const preferencesSchema = z.object({
   // Order and visibility of the cards under Ny uppgift (2026-09-27).
   taskCardLayout: taskCardLayoutSchema.default(emptyTaskCardLayout),
   // Menu buttons the person has chosen to hide (2026-09-30); display only, never access.
-  hiddenMenuItems: z.array(z.enum(MENU_HIDEABLE)).max(20).catch([]).default([]),
+  // A button that is no longer in the menu (Platser and Krediter became tabs 2026-10-02) is dropped, the rest kept.
+  hiddenMenuItems: z.array(z.string().max(40)).max(40).catch([]).default([]).transform((items) => items.filter((item): item is MenuHideable => (MENU_HIDEABLE as readonly string[]).includes(item))),
+  // Visningsnivå per device (2026-10-02): how much is shown on a phone and on a tablet; display only.
+  detailLevel: z.object({
+    phone: z.union([z.literal(1), z.literal(2), z.literal(3)]).catch(3).default(3),
+    tablet: z.union([z.literal(1), z.literal(2), z.literal(3)]).catch(3).default(3),
+  }).catch({ phone: 3, tablet: 3 }).default({ phone: 3, tablet: 3 }),
   // Guided tours the person has seen or dismissed (2026-09-28), by tour: when.
   tours: z.record(z.string().max(40), z.string().max(40)).default({}),
   // Beslutsstöd (2026-10-01): how often tips are shown, and the tips the person never wants again.

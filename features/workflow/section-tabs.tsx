@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
-import { Building2, History, KeyRound, Mail, PanelsTopLeft, Sparkles, Users } from "lucide-react";
+import { Building2, CreditCard, Factory, FileText, History, KeyRound, Mail, PanelsTopLeft, Sparkles, Tags, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Tab = { view: string; label: string; icon: LucideIcon };
@@ -12,21 +12,28 @@ type Tab = { view: string; label: string; icon: LucideIcon };
  * tabs under Mitt företag, and the product owner's pages tabs under Produktadministration, instead of one menu button
  * each. The pages and their addresses are the same; only the way there changed.
  */
-export const COMPANY_VIEWS = ["administration", "ai_settings", "integrations", "history_retention"] as const;
-export const PRODUCT_VIEWS = ["customer_companies", "landing_editor", "mail_settings"] as const;
+// Since 2026-10-02 also what belongs to the company but lay elsewhere: its places, its report settings and its credits;
+// and the product owner's prices and AI, which shared one long page with the customer companies.
+export const COMPANY_VIEWS = ["administration", "facilities", "company_settings", "credits", "ai_settings", "integrations", "history_retention"] as const;
+export const PRODUCT_VIEWS = ["customer_companies", "pricing_admin", "ai_admin", "landing_editor", "mail_settings"] as const;
 
-export function companyTabs(options: { admin: boolean; cloud: boolean; ai: boolean; integrations: boolean }): Tab[] {
+export function companyTabs(options: { admin: boolean; cloud: boolean; ai: boolean; integrations: boolean; credits: boolean }): Tab[] {
   return [
     ...(options.admin ? [{ view: "administration", label: "Företag och användare", icon: Users }] : []),
+    { view: "facilities", label: "Platser", icon: Factory },
+    ...(options.admin ? [{ view: "company_settings", label: "Rapporter och logotyp", icon: FileText }] : []),
+    ...(options.credits ? [{ view: "credits", label: "Krediter", icon: CreditCard }] : []),
     ...(options.ai && options.cloud ? [{ view: "ai_settings", label: "HINTEK AI", icon: Sparkles }] : []),
     ...(options.admin && options.cloud && options.integrations ? [{ view: "integrations", label: "API och MCP", icon: KeyRound }] : []),
     ...(options.admin && options.cloud ? [{ view: "history_retention", label: "Historik och lagring", icon: History }] : []),
   ];
 }
 
-export function productTabs(options: { landingEditor: boolean }): Tab[] {
+export function productTabs(options: { landingEditor: boolean; pricing: boolean; ai: boolean }): Tab[] {
   return [
     { view: "customer_companies", label: "Kundföretag", icon: Building2 },
+    ...(options.pricing ? [{ view: "pricing_admin", label: "Priser", icon: Tags }] : []),
+    ...(options.ai ? [{ view: "ai_admin", label: "AI", icon: Sparkles }] : []),
     ...(options.landingEditor ? [{ view: "landing_editor", label: "Landningssidan", icon: PanelsTopLeft }] : []),
     { view: "mail_settings", label: "E-post", icon: Mail },
   ];
