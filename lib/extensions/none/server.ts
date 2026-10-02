@@ -14,4 +14,5 @@ export const serverExtensions: ServerExtensions = {
   checkStripeSecretKey: async () => null,
   legalDocument: async () => null,
   landing: async () => ({ kind: "hidden" }),
+  oauthAuthorize: async () => ({ kind: "hidden" }),
 };

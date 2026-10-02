@@ -17,5 +17,5 @@ export function eeRoute(key: EeRouteKey): Required<RouteHandlers> {
     const handler = load ? (await load())[method] : undefined;
     return handler ? handler(request, context) : notFound();
   };
-  return { GET: pick("GET"), POST: pick("POST"), PUT: pick("PUT"), PATCH: pick("PATCH"), DELETE: pick("DELETE") };
+  return { GET: pick("GET"), POST: pick("POST"), PUT: pick("PUT"), PATCH: pick("PATCH"), DELETE: pick("DELETE"), OPTIONS: pick("OPTIONS") };
 }

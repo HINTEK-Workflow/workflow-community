@@ -190,6 +190,8 @@ enum AiProposalStatus {
 model User {
   id                      String                  @id @default(cuid())
   importedFiles           ImportedFile[]
+  oauthCodes              OAuthAuthorizationCode[]
+  oauthGrants             OAuthGrant[]
   name                    String?
   image                   String?
   email                   String                  @unique
@@ -255,6 +257,8 @@ model Organization {
   plannedActivityEvents   PlannedActivityEvent[]
   workflowTaskAttachments WorkflowTaskAttachment[]
   importedFiles           ImportedFile[]
+  oauthCodes              OAuthAuthorizationCode[]
+  oauthGrants             OAuthGrant[]
   sites                  Site[]
   departments             Department[]
   wallet                  CreditWallet?
@@ -1220,6 +1224,78 @@ model IntegrationKey {
   organization    Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId, kind, revokedAt])
+}
+
+// OAuth 2.1 for the MCP server (2026-10-02): an external app (ChatGPT and other MCP clients) registers itself,
+// a company admin approves it in Workflow, and the app gets short-lived tokens that act as that admin in that company.
+model OAuthClient {
+  id           String                   @id @default(cuid())
+  name         String
+  redirectUris String[]
+  // "none" (public client with PKCE), "client_secret_post" or "client_secret_basic".
+  authMethod   String
+  secretHash   String?
+  createdAt    DateTime                 @default(now())
+  lastUsedAt   DateTime?
+  codes        OAuthAuthorizationCode[]
+  grants       OAuthGrant[]
+}
+
+model OAuthAuthorizationCode {
+  id             String       @id @default(cuid())
+  codeHash       String       @unique
+  clientId       String
+  organizationId String
+  userId         String
+  redirectUri    String
+  codeChallenge  String
+  scopes         String[]
+  resource       String
+  expiresAt      DateTime
+  usedAt         DateTime?
+  grantId        String?
+  createdAt      DateTime     @default(now())
+  client         OAuthClient  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+}
+
+// One approved connection: an app acting as a person in a company, until the person or an admin disconnects it.
+model OAuthGrant {
+  id             String       @id @default(cuid())
+  clientId       String
+  organizationId String
+  userId         String
+  scopes         String[]
+  resource       String
+  createdAt      DateTime     @default(now())
+  lastUsedAt     DateTime?
+  revokedAt      DateTime?
+  revokedById    String?
+  client         OAuthClient  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokens         OAuthToken[]
+
+  @@index([organizationId, revokedAt])
+}
+
+model OAuthToken {
+  id         String     @id @default(cuid())
+  grantId    String
+  // ACCESS (short-lived) or REFRESH (rotated on every use).
+  kind       String
+  secretHash String
+  expiresAt  DateTime
+  usedAt     DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime   @default(now())
+  grant      OAuthGrant @relation(fields: [grantId], references: [id], onDelete: Cascade)
+
+  @@index([grantId, kind])
+  @@index([expiresAt])
 }
 
 enum PriceVersionStatus {

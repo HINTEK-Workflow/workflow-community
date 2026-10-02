@@ -12,6 +12,7 @@ export type RouteHandlers = {
   PUT?(request: Request, context: RouteContext): Response | Promise<Response>;
   PATCH?(request: Request, context: RouteContext): Response | Promise<Response>;
   DELETE?(request: Request, context: RouteContext): Response | Promise<Response>;
+  OPTIONS?(request: Request, context: RouteContext): Response | Promise<Response>;
 };
 
 /** The app routes that only exist with ee/; their files in app/ answer 404 without it. */
@@ -21,7 +22,8 @@ export type EeRouteKey =
   | "pricing" | "administration/pricing" | "administration/price-versions"
   | "superadmin/accounting-export" | "superadmin/bank-payments" | "superadmin/invoice-replacements"
   | "ai/evals" | "ai/chat" | "ai/conversations" | "ai/digest" | "ai/memory" | "ai/policy" | "ai/proposals" | "ai/review" | "ai/quote" | "ai/status"
-  | "superadmin/ai-usage" | "superadmin/ai-credit-settings" | "integration-keys" | "mcp" | "v1" | "v1/tool" | "import";
+  | "superadmin/ai-usage" | "superadmin/ai-credit-settings" | "integration-keys" | "mcp" | "v1" | "v1/tool" | "import"
+  | "oauth/protected-resource" | "oauth/authorization-server" | "oauth/register" | "oauth/token" | "oauth/revoke" | "oauth/decide";
 
 export type CloudWriteAccess = {
   allowed: boolean;
@@ -52,6 +54,8 @@ export type ServerExtensions = {
   legalDocument(key: string): Promise<{ title: string; version: string; content: string } | null>;
   /** The public landing page for a signed-out visitor, or a superadmin's preview. */
   landing(input: { superadmin: boolean; preview: boolean }): Promise<LandingDecision>;
+  /** The page where a company admin approves an app that wants to use the MCP server (OAuth 2.1); hidden without ee/. */
+  oauthAuthorize(params: Record<string, string | undefined>): Promise<LandingDecision>;
 };
 
 export type NotifyFn = (message: string, isError?: boolean) => void;
