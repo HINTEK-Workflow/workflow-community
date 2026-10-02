@@ -6,6 +6,7 @@ import { formatSwedish, swedishDayKey } from "@/lib/swedish-time";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useConfirm } from "./confirm";
+import { useUnsavedGuard } from "@/lib/workflow/use-unsaved-guard";
 import {
   Plus,
   Save,
@@ -538,35 +539,7 @@ export function Editor({
     localMode,
     setAttachments,
   ]); // stable authorization state
-  useEffect(() => {
-    if (!loggedIn || !dirty) return;
-    const handler = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-    };
-    // In-app links: stop the navigation, ask with the in-app card, then continue (the browser's own box is only
-    // the last guard when the tab itself is closed or reloaded).
-    const navigate = (e: MouseEvent) => {
-      const anchor = (e.target as Element).closest("a");
-      if (
-        anchor &&
-        anchor.origin === location.origin &&
-        anchor.href !== location.href &&
-        !anchor.hasAttribute("download") &&
-        anchor.target !== "_blank"
-      ) {
-        e.preventDefault();
-        e.stopPropagation();
-        const href = anchor.href;
-        void confirmCard({ title: "Lämna kontrollen?", message: "Ändringar som inte har sparats går förlorade.", confirmLabel: "Lämna utan att spara", tone: "danger" }).then((ok) => { if (ok) router.push(href.slice(location.origin.length)); });
-      }
-    };
-    window.addEventListener("beforeunload", handler);
-    document.addEventListener("click", navigate, true);
-    return () => {
-      window.removeEventListener("beforeunload", handler);
-      document.removeEventListener("click", navigate, true);
-    };
-  }, [dirty, loggedIn, confirmCard, router]);
+  useUnsavedGuard(Boolean(loggedIn && dirty), confirmCard, "kontrollen");
   useEffect(() => {
     if (!localMode && user && dirty && preferences.autoSave) {
       try {
@@ -1547,24 +1520,6 @@ export function Editor({
               />
             </div>
           )})}
-          <div className="flex items-center gap-2 rounded-lg border px-3 py-2.5">
-            <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2">
-              <Checkbox
-                checked={data.meta.autoOn}
-                disabled={readOnly}
-                onCheckedChange={(v) =>
-                  change((d) =>
-                    normalizeControl({
-                      ...d,
-                      meta: { ...d.meta, autoOn: v === true },
-                    }),
-                  )
-                }
-              />
-              <span className="text-xs font-medium">Autobedömning</span>
-            </label>
-            <ContextHelp label="Autobedömning" text={controlHelp.auto} />
-          </div>
         </div>
       </Panel>
       {sectionKeys

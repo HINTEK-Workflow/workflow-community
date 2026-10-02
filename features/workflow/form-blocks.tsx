@@ -80,7 +80,11 @@ export function SummaryBlock({ block, document, values, evaluation, completion, 
 }
 
 /** "Redo att färdigställa": requirements met, the percentage, a bar and the details on request – the control's completion card. */
-export function CompletionCard({ completion }: { completion: FormCompletionSummary }) {
+// Only the fields the card reads (requirements/issues/ready/percent, optional warnings): a plain adapter for a work
+// order's or risk assessment's generic task completion fits here too, without building a full FormEvaluation for it
+// (2026-10-02, decision 2.3: "alla typer av dokument skall ha samma approach").
+export type CompletionCardSummary = Pick<FormCompletionSummary, "requirements" | "issues" | "ready" | "percent"> & { warnings?: string[] };
+export function CompletionCard({ completion, onFocusIssue }: { completion: CompletionCardSummary; /** Jump to the field behind one issue (2026-10-02): the same mechanism Färdigställ itself uses for the first one, now reachable for every issue in the list, on every document type. */ onFocusIssue?: (blockId: string) => void }) {
   const [expanded, setExpanded] = useState(false);
   const done = completion.requirements.length - completion.issues.length;
   const warnings = completion.warnings ?? [];
@@ -96,7 +100,7 @@ export function CompletionCard({ completion }: { completion: FormCompletionSumma
     {completion.issues.length || warnings.length ? <Button type="button" variant="ghost" size="sm" className="mt-2 -ml-2" aria-expanded={expanded} onClick={() => setExpanded((value) => !value)}><ChevronDown className={expanded ? "rotate-180" : ""} />{expanded ? "Dölj detaljer" : "Visa detaljer"}</Button> : null}
     {expanded && completion.issues.length ? <div className="mt-4 text-sm text-destructive">
       <p className="flex items-center gap-2 font-medium"><AlertTriangle className="size-4" />Måste kompletteras</p>
-      <ul className="mt-2 list-disc space-y-1 pl-5 text-xs">{completion.issues.slice(0, 6).map((issue) => <li key={`${issue.blockId}:${issue.message}`}>{issue.message}</li>)}</ul>
+      <ul className="mt-2 list-disc space-y-1 pl-5 text-xs">{completion.issues.slice(0, 6).map((issue) => <li key={`${issue.blockId}:${issue.message}`}>{onFocusIssue ? <button type="button" className="text-left underline underline-offset-4" onClick={() => onFocusIssue(issue.blockId)}>{issue.message}</button> : issue.message}</li>)}</ul>
       {completion.issues.length > 6 ? <p className="mt-2 text-xs">Ytterligare {completion.issues.length - 6} uppgifter saknas.</p> : null}
     </div> : null}
     {expanded && warnings.length ? <div className="mt-4 text-sm text-amber-800 dark:text-amber-300"><p className="font-medium">Bra att kontrollera</p><ul className="mt-2 list-disc space-y-1 pl-5 text-xs">{warnings.slice(0, 4).map((warning) => <li key={warning}>{warning}</li>)}</ul></div> : null}

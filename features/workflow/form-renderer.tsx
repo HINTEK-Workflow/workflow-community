@@ -65,7 +65,7 @@ type LeafProps = {
 };
 
 /** A work order made from a deviation (2026-09-28): returns the new work order's id, or null when nothing was made. */
-export type FormActions = { createWorkOrder?: (input: { title: string; description: string }) => Promise<string | null>; openWorkOrder?: (id: string) => void;
+export type FormActions = { /** False until the protocol has been saved once: an order made before would have no link back (2026-10-02). */ canCreateWorkOrder?: boolean; createWorkOrder?: (input: { title: string; description: string; assignedToName?: string; dueDate?: string }) => Promise<string | null>; openWorkOrder?: (id: string) => void;
   /** The state of a row's work order (2026-09-30), shown on the row: "Arbetsorder: Slutförd". */
   workOrderStatus?: (id: string) => { status: string; label: string } | undefined };
 
@@ -152,9 +152,10 @@ export function FormRenderer({ document, values, onChange, readOnly = false, att
   // A form with its own Sammanfattning shows the deviations there; otherwise they are listed at the end.
   const ownSummary = formLeafBlocks(document).some((block) => block.type === "summary" && formBlockVisible(block, "task"));
   const alertsOnly = !evaluation.deviations.length && evaluation.alerts.length && !ownSummary ? <section aria-label="Varningar" className={cn("space-y-1 rounded-xl border p-4 text-sm", indicatorBadge("warning"))} data-testid="form-alerts"><p className="font-semibold">{evaluation.alerts.length === 1 ? "1 varning" : `${evaluation.alerts.length} varningar`}</p><ul className="list-disc space-y-1 pl-5">{evaluation.alerts.map((item) => <li key={`${item.blockId}-${item.rowId ?? ""}-${item.column ?? ""}`}>{item.message}</li>)}</ul></section> : null;
-  const deviations = evaluation.deviations.length && !ownSummary ? <section aria-label="Avvikelser" className={cn("space-y-2 rounded-xl border p-4", indicatorBadge("danger"))} data-testid="form-deviations">
-    <p className="flex items-center gap-2 text-sm font-semibold"><AlertTriangle className="size-4" />{evaluation.deviations.length === 1 ? "1 avvikelse" : `${evaluation.deviations.length} avvikelser`}</p>
-    <ul className="list-disc space-y-1 pl-5 text-sm">{evaluation.deviations.map((item) => <li key={`${item.blockId}-${item.rowId ?? ""}-${item.message}`}>{item.message}</li>)}</ul>
+  const shownDeviations = evaluation.deviations.filter((item) => item.kind !== "assessment");
+  const deviations = shownDeviations.length && !ownSummary ? <section aria-label="Avvikelser" className={cn("space-y-2 rounded-xl border p-4", indicatorBadge("danger"))} data-testid="form-deviations">
+    <p className="flex items-center gap-2 text-sm font-semibold"><AlertTriangle className="size-4" />{shownDeviations.length === 1 ? "1 avvikelse" : `${shownDeviations.length} avvikelser`}</p>
+    <ul className="list-disc space-y-1 pl-5 text-sm">{shownDeviations.map((item) => <li key={`${item.blockId}-${item.rowId ?? ""}-${item.message}`}>{item.message}</li>)}</ul>
     {evaluation.alerts.length ? <ul className={cn("list-disc space-y-1 pl-5 text-sm", indicatorText("warning"))}>{evaluation.alerts.map((item) => <li key={`${item.blockId}-${item.rowId ?? ""}-${item.column ?? ""}`}>Varning: {item.message}</li>)}</ul> : null}
     <label className="block space-y-1.5 text-xs font-medium">Kommentar till avvikelserna (krävs för att slutföra)<textarea id="form-deviations" className="form-textarea bg-card" value={values.deviationComment} disabled={readOnly} onChange={(event) => onChange({ ...values, deviationComment: event.target.value })} /></label>
   </section> : null;

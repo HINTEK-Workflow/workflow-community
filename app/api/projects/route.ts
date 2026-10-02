@@ -339,7 +339,7 @@ export async function POST(request: Request) {
       z.object({ action: z.literal("link"), projectId: id, taskId: id, taskKind: z.enum(["COMMISSIONING_CONTROL", "WORK_ORDER", "RISK_ASSESSMENT", "FORM"]),
         apply: z.object({ customer: z.boolean().default(true), responsible: z.boolean().default(false), dueDate: z.union([z.literal(""), z.iso.date()]).default("") }).default({ customer: true, responsible: false, dueDate: "" }) }),
       z.object({ action: z.literal("delete"), id }),
-      z.object({ action: z.literal("archive"), id }),
+      z.object({ action: z.literal("archive"), id, confirmOpen: z.boolean().optional() }),
       z.object({ action: z.literal("restore"), id }),
       z.object({ action: z.literal("decision"), projectId: id, decision: projectDecisionInputSchema }),
       z.object({ action: z.literal("close"), id }),
@@ -470,6 +470,11 @@ export async function POST(request: Request) {
       const project = await prisma.project.findFirst({ where: { id: input.id, organizationId: ctx.organizationId }, select: { id: true, archivedAt: true } });
       if (!project) throw new ApiError(404, "Projektet hittades inte.");
       const archive = input.action === "archive";
+      // Archiving freezes the work (2026-10-02, the simulation): with unfinished tasks it needs the person's confirmation.
+      if (archive && !project.archivedAt && !(input as { confirmOpen?: boolean }).confirmOpen) {
+        const open = await prisma.workflowTask.count({ where: { organizationId: ctx.organizationId, projectId: project.id, status: { not: "COMPLETED" } } });
+        if (open) throw new ApiError(409, `Projektet har ${open} ${open === 1 ? "oavslutad uppgift" : "oavslutade uppgifter"}. Slutför dem eller bekräfta att projektet ändå ska arkiveras.`);
+      }
       if (Boolean(project.archivedAt) !== archive) await prisma.$transaction([
         prisma.project.update({ where: { id: project.id }, data: { archivedAt: archive ? new Date() : null, updatedBy: ctx.user.id } }),
         prisma.projectEvent.create({ data: { organizationId: ctx.organizationId, projectId: project.id, kind: archive ? "ARCHIVED" : "RESTORED", summary: archive ? "Projektet arkiverades" : "Projektet återställdes", actorName: ctx.user.name || ctx.user.email, createdBy: ctx.user.id } }),

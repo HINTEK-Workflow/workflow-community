@@ -10,6 +10,22 @@ export const QA_ROLE_EMAILS = {
   superadmin: "qa-superadmin@role-test.invalid",
 } as const;
 export type QaRole = keyof typeof QA_ROLE_EMAILS;
+/**
+ * The full-day simulation (approved by 2026-10-02: "Fler testidentiteter, kör detta lokalt – JA"): a synthetic
+ * company with a boss and five employees, used by scripts/qa/day-simulation. Exactly the same limits as the other
+ * synthetic identities: loopback only, kfid_v3_test only, isolated test storage, no mail.
+ */
+export const QA_SIMULATION_EMAILS = {
+  "sim-chef": "sim-chef@role-test.invalid",
+  "sim-1": "sim-anstalld-1@role-test.invalid",
+  "sim-2": "sim-anstalld-2@role-test.invalid",
+  "sim-3": "sim-anstalld-3@role-test.invalid",
+  "sim-4": "sim-anstalld-4@role-test.invalid",
+  "sim-5": "sim-anstalld-5@role-test.invalid",
+} as const;
+export type QaSimulationIdentity = keyof typeof QA_SIMULATION_EMAILS;
+export const isQaSimulationIdentity = (value: unknown): value is QaSimulationIdentity => typeof value === "string" && value in QA_SIMULATION_EMAILS;
+const QA_EMAILS = new Set<string>([...Object.values(QA_ROLE_EMAILS), ...Object.values(QA_SIMULATION_EMAILS)]);
 export const isQaRole = (role: string | undefined): role is QaRole => role === "owner" || role === "worker" || role === "superadmin";
 
 // Never allow synthetic logins outside a loopback app using the dedicated QA DB.
@@ -59,7 +75,7 @@ export function pilotAccessEmails(): Set<string> {
 export function isAllowedPrivateEmail(email: string | null | undefined): boolean {
   const normalized = email?.trim().toLowerCase();
   return isTestEmail(normalized) || (Boolean(normalized) && pilotAccessEmails().has(normalized!)) ||
-    (localRoleQaEnabled() && Object.values(QA_ROLE_EMAILS).includes(normalized as typeof QA_ROLE_EMAILS[keyof typeof QA_ROLE_EMAILS]));
+    (localRoleQaEnabled() && QA_EMAILS.has(normalized ?? ""));
 }
 
 export function canAccessTest(user: { email: string; isActive: boolean } | null | undefined): boolean {

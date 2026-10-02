@@ -72,7 +72,7 @@ export function TaskNotifications({ feed }: { feed: TaskNotificationFeed }) {
     </div>
     <p className="text-sm text-muted-foreground">Snart förfallande visas från 7 kalenderdagar före sista datum, inklusive idag, enligt svensk tid. Behöver åtgärdas följer uppgiftens status eller kontrollens obligatoriska punkter. När en arbetsorder från en avvikelse slutförs påminns den som äger protokollet i 7 dagar, eller tills protokollet sparats igen. Slutförda uppgifter och arkiverade projekt undantas.{!local && scope === "mine" ? " Egna uppgifter är de där du är ansvarig, eller som du skapat när ingen ansvarig är vald." : ""}</p>
     {error ? <p role="alert" className="notice text-destructive">{error}</p> : !items ? <p role="status">Hämtar notiser…</p> : <>
-      <p role="status" className="text-sm text-muted-foreground">{items.length ? `${items.length} uppgifter med aktuella notiser` : "Inga aktuella notiser."}</p>
+      <p role="status" className="text-sm text-muted-foreground">{items.length ? `${items.length} ${items.length === 1 ? "uppgift" : "uppgifter"} med aktuella notiser` : "Inga aktuella notiser."}</p>
       <ul className="space-y-3" aria-label="Aktuella notiser">
         {items.slice(0, visibleCount).map((item) => <li key={item.id} data-testid="task-notification" className="rounded-xl border bg-card p-4">
           <div className="flex flex-wrap items-center gap-2 text-xs">

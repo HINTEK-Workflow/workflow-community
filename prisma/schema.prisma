@@ -189,6 +189,7 @@ enum AiProposalStatus {
 
 model User {
   id                      String                  @id @default(cuid())
+  importedFiles           ImportedFile[]
   name                    String?
   image                   String?
   email                   String                  @unique
@@ -253,7 +254,8 @@ model Organization {
   plannedActivities       PlannedActivity[]
   plannedActivityEvents   PlannedActivityEvent[]
   workflowTaskAttachments WorkflowTaskAttachment[]
-  sites                   Site[]
+  importedFiles           ImportedFile[]
+  sites                  Site[]
   departments             Department[]
   wallet                  CreditWallet?
   invitations             OrganizationInvitation[]
@@ -792,6 +794,23 @@ model WorkflowTaskAttachment {
   task           WorkflowTask @relation(fields: [taskId, organizationId], references: [id, organizationId], onDelete: Cascade)
 
   @@index([organizationId, taskId])
+}
+
+// A file saved from the Import page that is not on a task yet: private to the person who uploaded it until it is
+// attached to a task or removed (2026-10-02: the file is saved first, the person chooses where later).
+model ImportedFile {
+  id             String       @id @default(cuid())
+  organizationId String
+  userId         String
+  filename       String
+  storagePath    String       @unique
+  mimeType       String
+  size           Int
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, userId, createdAt])
 }
 
 model Control {

@@ -428,13 +428,13 @@ export async function createReportKit(input: { identity: KitIdentity; fontBytes:
      * out under the border (2026-09-30: Skyddsrond's summary overflowed).
      */
     textBox(lines: string[]) {
-      const measured = lines.reduce((sum, line) => sum + Math.min(5, wrap(font, line, 7.4, CONTENT_WIDTH - 16).length) * 9.4 + 2, 18);
+      const measured = lines.reduce((sum, line) => sum + wrap(font, line, 7.4, CONTENT_WIDTH - 16).length * 9.4 + 2, 18);
       if (measured <= 145) {
         const height = Math.max(62, measured);
         kit.ensure(height + 10);
         kit.page.drawRectangle({ x: MARGIN, y: kit.y - height, width: CONTENT_WIDTH, height, borderColor: colors.border, borderWidth: 0.7, color: colors.white });
         let lineY = kit.y - 7;
-        for (const line of lines) lineY -= kit.text(line, MARGIN + 8, lineY, { size: 7.4, maxWidth: CONTENT_WIDTH - 16, maxLines: 5 }) + 2;
+        for (const line of lines) lineY -= kit.text(line, MARGIN + 8, lineY, { size: 7.4, maxWidth: CONTENT_WIDTH - 16 }) + 2;
         kit.y -= height + 14;
         return;
       }

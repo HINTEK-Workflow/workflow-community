@@ -58,6 +58,21 @@ test("permission presets are valid and cover common member access levels", () =>
   assert.equal(hasWorkflowPermission(report, "risk-assessment", "edit"), false);
 });
 
+// 2026-10-02 (decision 2.2, the simulation): the customer register follows a real permission, governed by the
+// admin like any other module, instead of being open to every member whatever their preset.
+test("the customer register follows its own permission, on for Full and Utföra arbete, read-only for Läsa och rapportera", () => {
+  const field = workflowPermissionPresets.find((preset) => preset.id === "field")!.profile;
+  assert.equal(hasWorkflowPermission(field, "customers", "edit"), true);
+  assert.equal(hasWorkflowPermission(field, "customers", "archive"), false);
+  const report = workflowPermissionPresets.find((preset) => preset.id === "report")!.profile;
+  assert.equal(hasWorkflowPermission(report, "customers", "read"), true);
+  assert.equal(hasWorkflowPermission(report, "customers", "edit"), false);
+  assert.equal(hasWorkflowPermission(report, "customers", "create"), false);
+  const none = workflowPermissionPresets.find((preset) => preset.id === "none")!.profile;
+  assert.equal(hasWorkflowPermission({ version: 1, grants: [...none.grants] }, "customers", "read"), false);
+  assert.equal(defaultWorkflowPermissionProfile().grants.includes("customers:edit"), true, "Full åtkomst still includes it");
+});
+
 test("permission toggles add prerequisites and remove dependent actions", () => {
   let profile: WorkflowPermissionProfile = { version: 1, grants: [] };
   profile = applyWorkflowPermissionToggle(profile, "work-order", "complete", true);

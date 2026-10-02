@@ -29,6 +29,9 @@ export type WorkspaceControlAction = {
 };
 
 type EditorActions = {
+  // A task editor (work order, protocol, risk assessment) registers its Save and unsaved state; only the old control
+  // editor owns "Ny kontroll" and the control actions in the menus.
+  scope?: "control" | "task";
   save: () => void;
   newControl: () => void;
   canSave: boolean;
@@ -143,7 +146,7 @@ export function useRegisterEditorActions(actions: EditorActions) {
   const runControlAction = useCallback((id: WorkspaceControlActionId) => {
     latest.current.runControlAction(id);
   }, []);
-  const { canSave, canCreate, busy, dirty, controlActions } = actions;
+  const { canSave, canCreate, busy, dirty, controlActions, scope } = actions;
   useEffect(() => {
     register?.({
       save,
@@ -154,9 +157,10 @@ export function useRegisterEditorActions(actions: EditorActions) {
       dirty,
       controlActions,
       runControlAction,
+      scope,
     });
     return () => register?.(null);
-  }, [register, save, newControl, canSave, canCreate, busy, dirty, controlActions, runControlAction]);
+  }, [register, save, newControl, canSave, canCreate, busy, dirty, controlActions, runControlAction, scope]);
 }
 
 export function useRegisterLocalStorageActions(

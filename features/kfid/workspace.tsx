@@ -22,7 +22,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { api, action } from "./api";
 import { AdvisorLevelPicker, AdvisorSettingsProvider } from "@/features/workflow/flow-guide";
 import { WORKSPACE_TOAST_EVENT, type WorkspaceToast, type WorkspaceToastAction } from "@/lib/workflow/toast";
-import { COMPANY_VIEWS, PRODUCT_VIEWS, SectionTabs, companyTabs, productTabs } from "@/features/workflow/section-tabs";
+import { PRODUCT_VIEWS, SETTINGS_VIEWS, SectionTabs, productTabs, settingsTabs } from "@/features/workflow/section-tabs";
 import { WorkflowGuide } from "@/features/workflow/workflow-guide";
 import { Panel, Field, Empty, Modal } from "./ui";
 import { Administration, LegalPanel } from "./administration";
@@ -652,7 +652,7 @@ export function Workspace({
     content = <TaskNotifications key={overview.organization.id} feed={notificationFeed} />;
   // The customer card (decision 12B): the register with a customerId opens that customer's card.
   else if (view === "customers" && customerId && overview && user)
-    content = <CustomerCard key={`${customerId}-${refreshCount}`} customerId={customerId} onEdit={customerModal} />;
+    content = <CustomerCard key={`${customerId}-${refreshCount}`} customerId={customerId} onEdit={customerModal} canEdit={Boolean(overview.admin) || hasWorkflowPermission(normalizeWorkflowPermissionProfile(user?.workflowPermissions), "customers", "edit")} />;
   else if ((view === "controls" || view === "customers") && overview && user)
     content = (
       <RecordArchive
@@ -667,6 +667,7 @@ export function Workspace({
         notify={notify}
         refresh={refresh}
         reloadToken={refreshCount}
+        canEditCustomers={Boolean(overview.admin) || hasWorkflowPermission(normalizeWorkflowPermissionProfile(user?.workflowPermissions), "customers", "edit")}
       />
     );
   else if (view === "credits")
@@ -790,7 +791,7 @@ export function Workspace({
       <>
         {heading(
           "Inställningar",
-          "Anpassa din egen arbetsyta. Företagets uppgifter finns under Mitt företag.",
+          "Anpassa din egen arbetsyta. Företagets sidor och Hjälp finns i flikarna ovan.",
         )}
         <div className="grid gap-6 lg:grid-cols-2">
           <Panel title="Din arbetsyta" description={user?.email}>
@@ -881,15 +882,23 @@ export function Workspace({
                   </label>
                 ))}
               </div>
-              {/* Visningsnivå (2026-10-02): how much is shown, chosen for the phone and for the tablet. */}
+              {/* Visningsnivå (2026-10-02): how much is shown, chosen for the phone and for the tablet. On the
+                  phone (2026-10-02, evening): "fungerar inte i mobilen" – it only changed the local field, and
+                  saving it meant scrolling past the whole form to Spara inställningar at the bottom. It now saves and
+                  takes effect the moment it is chosen, like a switch, not a field waiting for the form's own save. */}
               <fieldset className="space-y-3 rounded-lg border p-4" data-testid="detail-level-settings">
                 <legend className="px-1 text-xs font-semibold">Visning på mobil och surfplatta</legend>
-                <p className="text-xs leading-5 text-muted-foreground">Välj hur mycket som visas på en liten skärm. En enklare nivå döljer bara förklaringar, nyckeltal och tips – aldrig fält eller knappar. På en dator visas alltid allt.</p>
+                <p className="text-xs leading-5 text-muted-foreground">Välj hur mycket som visas på en liten skärm. En enklare nivå döljer bara förklaringar, nyckeltal och tips – aldrig fält eller knappar. På en dator visas alltid allt. Sparas direkt.</p>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {([["phone", "Mobil"], ["tablet", "Surfplatta"]] as const).map(([device, label]) => <label key={device} className="block space-y-1 text-xs text-muted-foreground">
                     {label}
                     <select aria-label={`Visning på ${label.toLowerCase()}`} className="form-select" value={preferences.detailLevel[device]}
-                      onChange={(e) => setPreferences((p) => ({ ...p, detailLevel: { ...p.detailLevel, [device]: Number(e.target.value) as DetailLevel } }))}>
+                      onChange={async (e) => {
+                        const level = Number(e.target.value) as DetailLevel;
+                        const next = { ...preferences, detailLevel: { ...preferences.detailLevel, [device]: level } };
+                        setPreferences(next);
+                        if (await perform({ action: "preferences", data: next }, `Visning på ${label.toLowerCase()} är sparad.`)) window.dispatchEvent(new CustomEvent(DETAIL_LEVEL_EVENT, { detail: next.detailLevel }));
+                      }}>
                       {DETAIL_LEVELS.map((level) => <option key={level} value={level}>{level} · {DETAIL_LEVEL_LABEL[level]}</option>)}
                     </select>
                   </label>)}
@@ -1020,8 +1029,8 @@ export function Workspace({
       </>
     );
   // Mitt företag and Produktadministration are one menu button each with tabs (2026-10-01, menystädning).
-  const sectionTabs = (COMPANY_VIEWS as readonly string[]).includes(view) && !overview?.legalRequired
-    ? <SectionTabs label="Mitt företag" current={view} tabs={companyTabs({ admin: Boolean(overview?.admin), credits: instance.features.billing || instance.features.credits, cloud: overview?.organization.storageMode !== "LOCAL", ai: Boolean(SharingPolicyPanel) && instance.features.ai, integrations: Boolean(IntegrationKeys) && instance.features.integrations })} />
+  const sectionTabs = (SETTINGS_VIEWS as readonly string[]).includes(view) && !overview?.legalRequired && user
+    ? <SectionTabs label="Inställningar" current={view} tabs={settingsTabs({ admin: Boolean(overview?.admin), credits: instance.features.billing || instance.features.credits, cloud: overview?.organization.storageMode !== "LOCAL", ai: Boolean(SharingPolicyPanel) && instance.features.ai, integrations: Boolean(IntegrationKeys) && instance.features.integrations })} />
     : (PRODUCT_VIEWS as readonly string[]).includes(view) && user?.role === "SUPERADMIN"
       ? <SectionTabs label="Produktadministration" current={view} tabs={productTabs({ landingEditor: Boolean(LandingEditor) && instance.features.landingEditor, pricing: Boolean(PricingAdministration), ai: Boolean(ProviderAdministration) || Boolean(AiUsageAdministration) })} />
       : null;

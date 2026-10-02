@@ -52,7 +52,9 @@ function cloudAdapter(customerId: string): CustomerCardAdapter {
  * The customer card (2026-09-26, decision 12B/D10 B): the customer is the hub for its projects, all its tasks,
  * its facilities (decision 11) and its contact details. Tasks are loaded one bounded page at a time.
  */
-export function CustomerCard({ customerId, local, onEdit }: { customerId: string; local?: CustomerCardAdapter; onEdit?: (customer: CustomerItem) => void }) {
+export function CustomerCard({ customerId, local, onEdit, canEdit = true }: { customerId: string; local?: CustomerCardAdapter; onEdit?: (customer: CustomerItem) => void;
+  /** The customers permission (2026-10-02): without it, the card is read-only even where onEdit is given. */
+  canEdit?: boolean }) {
   const [adapter] = useState(() => local ?? cloudAdapter(customerId));
   const [data, setData] = useState<CustomerCardData | null>(null);
   const [tasks, setTasks] = useState<CustomerCardTask[]>([]);
@@ -109,7 +111,7 @@ export function CustomerCard({ customerId, local, onEdit }: { customerId: string
     <div className="flex flex-wrap items-start justify-between gap-4">
       <div className="min-w-0"><Link className="text-sm text-primary hover:underline" href="/?view=customers">← Kundregister</Link><h1 className="page-title mt-2">{customer.name}</h1><p className="page-description mt-1">{[customer.company, address].filter(Boolean).join(" · ") || "Kundkort med projekt, uppgifter och anläggningar."}</p></div>
       <div className="flex flex-wrap justify-end gap-2">
-        {onEdit && !customer.deletedAt && <Button variant="outline" onClick={() => onEdit({ ...customer, facilities: data.facilities })}><Pencil />Redigera kund</Button>}
+        {onEdit && canEdit && !customer.deletedAt && <Button variant="outline" onClick={() => onEdit({ ...customer, facilities: data.facilities })}><Pencil />Redigera kund</Button>}
         {!customer.deletedAt && <Button asChild><Link href={`/?view=new_task&customerId=${encodeURIComponent(customer.id)}`}><Plus />Ny uppgift</Link></Button>}
       </div>
     </div>
@@ -139,20 +141,20 @@ export function CustomerCard({ customerId, local, onEdit }: { customerId: string
     </Panel>}
 
     {tab === "facilities" && <Panel title="Anläggningar" description="Kundens anläggningar, till exempel fastigheter eller ställverk. Projekt, uppgifter och kontroller kan kopplas till dem."
-      actions={!customer.deletedAt ? <Button size="sm" variant="outline" onClick={() => { setFormError(""); setEditing({ facility: { ...emptyFacility } }); }}><Plus />Ny anläggning</Button> : undefined}>
+      actions={canEdit && !customer.deletedAt ? <Button size="sm" variant="outline" onClick={() => { setFormError(""); setEditing({ facility: { ...emptyFacility } }); }}><Plus />Ny anläggning</Button> : undefined}>
       {data.facilities.length ? <ul data-testid="customer-facilities" className="grid gap-3 md:grid-cols-2">{data.facilities.map((facility) => <li key={facility.id} className={cn("rounded-xl border p-4", !facility.isActive && "opacity-70")}>
         <div className="flex items-start justify-between gap-2"><div className="min-w-0"><h3 className="text-sm font-semibold">{facility.name}{!facility.isActive && <span className="font-normal text-muted-foreground"> (pausad)</span>}</h3><p className="mt-0.5 text-xs text-muted-foreground">{facilityLabel({ ...facility, name: "" }).replace(/^, /, "") || "Ingen adress"}</p></div><span className="shrink-0 text-xs text-muted-foreground">{facility.links} {facility.links === 1 ? "koppling" : "kopplingar"}</span></div>
         {facility.description && <p className="mt-2 whitespace-pre-wrap text-sm">{facility.description}</p>}
         <div className="mt-3 flex flex-wrap justify-end gap-2">
           {/* A task for the facility starts with the customer and the facility filled in (the guided flow, 2026-09-30). */}
           {!customer.deletedAt && facility.isActive && <Button asChild size="sm" variant="outline"><Link href={`/?view=new_task&customerId=${encodeURIComponent(customerId)}&facilityId=${encodeURIComponent(facility.id)}`} data-testid="facility-new-task"><Plus />Ny uppgift</Link></Button>}
-          {!customer.deletedAt && <Button size="sm" variant="ghost" onClick={() => { setFormError(""); setEditing({ id: facility.id, version: facility.version, facility: { name: facility.name, address: facility.address, postalCode: facility.postalCode, city: facility.city, description: facility.description } }); }}><Pencil />Redigera</Button>}
+          {canEdit && !customer.deletedAt && <Button size="sm" variant="ghost" onClick={() => { setFormError(""); setEditing({ id: facility.id, version: facility.version, facility: { name: facility.name, address: facility.address, postalCode: facility.postalCode, city: facility.city, description: facility.description } }); }}><Pencil />Redigera</Button>}
           {data.canManageFacilities && <Button size="sm" variant="outline" disabled={busy} onClick={() => void toggleFacility(facility)}>{facility.isActive ? <><Pause />Pausa</> : <><Play />Aktivera</>}</Button>}
         </div>
       </li>)}</ul> : <Empty title="Inga anläggningar" description="Lägg till kundens anläggningar för att koppla projekt och uppgifter till rätt objekt." />}
     </Panel>}
 
-    {tab === "contact" && <Panel title="Kontaktuppgifter" actions={onEdit && !customer.deletedAt ? <Button size="sm" variant="outline" onClick={() => onEdit({ ...customer, facilities: data.facilities })}><Pencil />Redigera</Button> : undefined}>
+    {tab === "contact" && <Panel title="Kontaktuppgifter" actions={onEdit && canEdit && !customer.deletedAt ? <Button size="sm" variant="outline" onClick={() => onEdit({ ...customer, facilities: data.facilities })}><Pencil />Redigera</Button> : undefined}>
       <dl data-testid="customer-contact" className="grid gap-3 text-sm sm:grid-cols-2">
         {([["Företag", customer.company], ["Adress", address], ["E-post", customer.email], ["Telefon", customer.phone], ["Mobil", customer.mobile], ["Anteckningar", customer.notes]] as const).map(([label, value]) => <div key={label} className={label === "Anteckningar" ? "sm:col-span-2" : undefined}><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-0.5 whitespace-pre-wrap break-words">{value || "–"}</dd></div>)}
       </dl>

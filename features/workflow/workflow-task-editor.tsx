@@ -11,6 +11,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Modal, Panel, ShowMore } from "@/features/kfid/ui";
 import { useConfirm } from "@/features/kfid/confirm";
+import { TaskPageFold, useDetailLevel } from "./use-detail-level";
+import { useUnsavedGuard } from "@/lib/workflow/use-unsaved-guard";
+import { useRegisterEditorActions } from "@/components/workspace-actions";
 import { CustomerPicker } from "@/features/kfid/customer-picker";
 import { openFormPreviewPdf } from "./form-preview-pdf";
 import { api } from "@/features/kfid/api";
@@ -23,12 +26,11 @@ import { indicatorBadge } from "./indicator-tone";
 import { announceTimerChange } from "./running-timer";
 import { projectFieldRows, taskDueDateError } from "@/lib/workflow/project-frame";
 import type { StoppedTimer } from "@/lib/workflow/running-timer";
-import { copyFormValues, formApprovalTotals, formCompletion, formLeafBlocks, formOptionalSections, formSectionActive, initialFormValues, type FormDocument, type FormTableBlock, type FormValues } from "@/lib/workflow/form-document";
+import { clearMeasurements, copyFormValues, formApprovalTotals, formCompletion, formHasContent, formLeafBlocks, formRowsWithoutOrder, formOptionalSections, formSectionActive, initialFormValues, type FormDocument, type FormTableBlock, type FormValues } from "@/lib/workflow/form-document";
 import { applyFormPrefill, type FormPrefill, type FormPrefillSource } from "@/lib/workflow/form-prefill";
 import { FormRenderer, sectionHasSummary, type FormActions, type FormMedia, type FormRowOptions, type FormTaskInline } from "./form-renderer";
 import { FormLimitsPanel, FormTrendPanel, type LocalLimits } from "./form-task-extras";
-import { CompletionCard } from "./form-blocks";
-import { RISK_FORM_ID } from "@/lib/workflow/builtin-originals";
+import { CompletionCard, type CompletionCardSummary } from "./form-blocks";
 import { announce } from "@/lib/workflow/toast";
 import { selectFormHistory, type FormHistoryItem } from "@/lib/workflow/form-history";
 import { CompleteTaskDialog, type CompletionTime } from "./complete-task-dialog";
@@ -58,6 +60,7 @@ const emptyData = (kind: WorkflowTaskKind, form?: FormTemplateChoice | null): Ta
     : { kind: "RISK_ASSESSMENT", details: { risks: [], generalMeasures: "", approval: { name: "", confirmed: false, approvedAt: null } } };
 
 /** What the person edits; everything else (version, time, attachments, history) always comes from the server. */
+const taskKey = (record: WorkflowTaskRecord) => JSON.stringify(PERSON_FIELDS.map((key) => record[key]));
 const PERSON_FIELDS = ["title", "description", "status", "projectId", "customerId", "facilityId", "siteId", "departmentId", "assignedToUserId", "assignedToName", "dueDate", "data"] as const;
 
 const { WorkOrderProposal, RiskMeasuresAssist, ProtocolReview } = clientExtensions;
@@ -72,7 +75,7 @@ export type FormPreviewInput = { document: FormDocument; name: string; values: F
 const PREVIEW_SITES: Site[] = [{ id: "preview-site", name: "Huvudkontoret", isActive: true, departments: [{ id: "preview-department", name: "Service", isActive: true }] }];
 const PREVIEW_MESSAGE = "Förhandsgranskning: inget sparas.";
 
-export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, customers, projects, form: initialForm = null, local, rowOptions, userName, preview }: {
+function WorkflowTaskEditorBody({ kind, taskId, projectId, customerId, customers, projects, form: initialForm = null, local, rowOptions, userName, preview }: {
   /** The person's "nya rader överst" and example-row settings, used by a form's measurement rows like the control. */
   rowOptions?: FormRowOptions;
   /** The signed-in person's name, for fields that start from the user (the control's Utfört av). */
@@ -82,6 +85,8 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
   kind: WorkflowTaskKind; taskId?: string; projectId?: string; customerId?: string; customers: CustomerItem[]; projects: ProjectItem[]; form?: FormTemplateChoice | null; local?: { limits?: LocalLimits; tasks: WorkflowTaskRecord[]; members?: Member[]; save: (task: WorkflowTaskRecord, extra?: { time?: CompletionTime }) => Promise<{ id: string; version: number; stopped?: StoppedTimer[] }>; timer: (id: string, command: "START" | "PAUSE", task: WorkflowTaskRecord) => Promise<StoppedTimer[] | void>; reopen?: (id: string) => Promise<void>; upload?: (id: string, file: File) => Promise<string | void>; removeAttachment?: (id: string, attachmentId: string) => Promise<void>; openAttachment?: (attachmentId: string) => Promise<void>; report?: (task: WorkflowTaskRecord, options: WorkflowReportOptions, variant?: ReportVariant) => Promise<void> } }) {
   const router = useRouter();
   const [confirm, confirmCard] = useConfirm();
+  // On a phone or tablet a lower display level starts the project's facts folded: the top of a task shows the work, not the address book (2026-10-02).
+  const detailLevel = useDetailLevel();
   // A new protocol is created from the form's published version (`formId` from Ny uppgift); an existing one carries its own.
   const searchParams = useSearchParams();
   const formId = preview ? null : searchParams.get("formId");
@@ -169,19 +174,21 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
   const [sendNote, setSendNote] = useState("");
   const [linkedOrders, setLinkedOrders] = useState<Record<string, LinkedTask>>({});
   const [savedAt, setSavedAt] = useState("");
+  // What the server last confirmed (or the blank start): the page is unsaved when the person's fields differ from it.
+  const [savedKey, setSavedKey] = useState<string | null>(null);
   const attachmentInput = useRef<HTMLInputElement | null>(null);
   // The task as the server last confirmed it (or as it was just sent). A reply from the server replaces only what the
   // person has not changed since, so text typed while a save or reload is under way is kept (2026-09-30: "Utfört
   // arbete" typed right after the first save was lost when the new task was read back).
   const baseline = useRef<WorkflowTaskRecord | null>(null);
-  const applyServer = (server: WorkflowTaskRecord) => setTask((current) => {
+  const applyServer = (server: WorkflowTaskRecord) => { setSavedKey(taskKey(server)); setTask((current) => {
     const base = baseline.current;
     baseline.current = server;
     if (!base || !current.id || current.id !== server.id) return server;
     const merged: WorkflowTaskRecord = { ...server };
     for (const key of PERSON_FIELDS) if (JSON.stringify(current[key]) !== JSON.stringify(base[key])) (merged as Record<string, unknown>)[key] = current[key];
     return merged;
-  });
+  }); };
 
   async function load() {
     if (preview) { setMembers(userName ? [{ id: "preview-user", name: userName }] : []); setSites(PREVIEW_SITES); return; }
@@ -198,7 +205,7 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
   }
   useEffect(() => { void load(); }, [taskId]); // eslint-disable-line react-hooks/exhaustive-deps
   // "Ny" from an open editor navigates to the same type without a taskId; start from a blank task of that type.
-  useEffect(() => { if (!taskId) { baseline.current = null; setTask(prefilled(blankTask())); setMessage(""); setError(""); } }, [taskId, kind, form?.templateId, form?.version]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (!taskId) { baseline.current = null; const fresh = prefilled(blankTask()); setSavedKey(taskKey(fresh)); setTask(fresh); setMessage(""); setError(""); } }, [taskId, kind, form?.templateId, form?.version]); // eslint-disable-line react-hooks/exhaustive-deps
   // Spara som: the new protocol gets the source's answers, place and customer, without signatures or pictures.
   useEffect(() => {
     if (!copyOf || taskId || kind !== "FORM" || !form) return;
@@ -206,9 +213,9 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
     const source = local ? Promise.resolve(local.tasks.find((item) => item.id === copyOf)) : api<{ tasks: WorkflowTaskRecord[] }>(`/api/workflow-tasks?id=${encodeURIComponent(copyOf)}`).then((result) => result.tasks[0]);
     source.then((item) => {
       if (!active || !item || item.data.kind !== "FORM") return;
-      const values = copyFormValues(item.data.details.values);
+      const values = clearMeasurements(item.data.details.document, copyFormValues(item.data.details.values));
       setTask((current) => current.data.kind !== "FORM" ? current : titled({ ...current, title: `${item.title} (kopia)`.slice(0, 200), description: item.description, projectId: item.projectId, customerId: item.customerId, facilityId: item.facilityId ?? null, siteId: item.siteId, departmentId: item.departmentId, data: { ...current.data, details: { ...current.data.details, values } } }));
-      setMessage("Kopian är inte sparad än. Kontrollera uppgifterna och spara.");
+      setMessage("Kopian är inte sparad än. Mätvärden, bedömningar och sammanfattning är tömda; kontrollera övriga uppgifter och spara.");
     }).catch((issue) => { if (active) setError((issue as Error).message); });
     return () => { active = false; };
   }, [copyOf, taskId, kind, form?.templateId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -229,6 +236,8 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
   }, [local?.tasks, taskId]); // eslint-disable-line react-hooks/exhaustive-deps
   const selectedSite = sites.find((site) => site.id === task.siteId);
   const selectedProject = projects.find((project) => project.id === task.projectId);
+  // An archived or closed project freezes its work (simulation 2026-10-02: the page looked editable and only the save failed).
+  const frozen = Boolean(selectedProject && (selectedProject.archivedAt || selectedProject.closedAt));
   const customerLocked = Boolean(selectedProject?.customerId);
   // Facilities of the task's customer (decision 11); a paused facility stays selectable only when already linked.
   const facilityCustomerId = (customerLocked ? selectedProject?.customerId : task.customerId) ?? "";
@@ -240,11 +249,17 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
   // own first section instead of Workflow's task panel; the title then follows a field and the customer is picked like
   // the control does it, beside the contact person.
   const inlineTask = task.data.kind === "FORM" && task.data.details.document.task.layout === "inline";
-  // One foot for every control (2026-10-02: "gör alla sådana kontroller lika i botten"): the one Kontroll före
-  // idrifttagning has – Bilder och dokument, the completion card with Historik and Färdigställ, then Rapport och
-  // hantering with Exportera and Skicka med e-post. The risk assessment keeps the foot of its original.
-  // (A Local task carries no area of its own, so HINTEK's risk assessment is also known by its id.)
-  const controlFoot = task.data.kind === "FORM" && (inlineTask || ((task.formArea ?? form?.area ?? "forms") !== "risk-assessment" && task.data.details.templateId !== RISK_FORM_ID));
+  // One foot for every document type (2026-10-02, decision 2.3: "alla typer av dokument skall ha samma
+  // approach ... inga avarter", this applies to arbetsorder and uppgifter too): Bilder och dokument, the completion
+  // card with Historik and Färdigställ, then Rapport och hantering with Exportera and Skicka med e-post.
+  const controlFoot = true;
+  // Word choice only (the structure above is identical for every kind): a work order and a risk assessment are
+  // "slutförda", a protocol "färdigställt".
+  const isForm = task.data.kind === "FORM";
+  const docWord = isForm ? "Protokollet" : task.kind === "WORK_ORDER" ? "Arbetsordern" : "Riskbedömningen";
+  // A completed KFID protocol cannot be reopened (Spara som continues it instead); every other kind can (Återöppna
+  // in the header below, same condition).
+  const reopenable = task.formArea !== "kfid";
   // Like the control, time starts once the field the title follows is filled in, so the protocol gets its name when it is saved.
   const titleField = inlineTask && task.data.kind === "FORM" && task.data.details.document.task.titleKey ? formLeafBlocks(task.data.details.document).find((block) => block.type === "field" && block.key === (task.data.kind === "FORM" ? task.data.details.document.task.titleKey : "")) : undefined;
   const titleFieldEmpty = Boolean(titleField && task.data.kind === "FORM" && !String(task.data.details.values.fields[titleField.type === "field" ? titleField.key : ""] ?? "").trim());
@@ -266,6 +281,13 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
   // With a message it is also shown as a toast, so it is seen where the person is (2026-10-01).
   const focusRequirement = (field: string, message?: string) => { focusTarget(field, message); };
 
+  const dirty = !preview && savedKey !== null && taskKey(task) !== savedKey;
+  useUnsavedGuard(dirty, confirm, kind === "FORM" ? "protokollet" : kind === "WORK_ORDER" ? "arbetsordern" : "riskbedömningen");
+  // The bottom menu's Save and the "unsaved" guard follow this page, not only the old control (2026-10-02).
+  useRegisterEditorActions({
+    scope: "task", save: () => { void save(); }, newControl: () => undefined, canSave: !preview && task.status !== "COMPLETED" && !frozen, canCreate: false,
+    busy, dirty, controlActions: [], runControlAction: () => undefined,
+  });
   async function save(status = task.status, time: CompletionTime | null = null): Promise<string | false> {
     // Where a new protocol may be used follows its form (decision 2); the server checks the same.
     const usageProblem = !task.id && kind === "FORM" && form ? (task.projectId && form.allowInProject === false ? `${form.name} kan inte kopplas till ett projekt.` : !task.projectId && form.allowStandalone === false ? `${form.name} måste kopplas till ett projekt. Välj projekt.` : "") : "";
@@ -288,6 +310,7 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
       if (status === "COMPLETED") announceTimerChange(result.stopped ?? []);
       // What was sent is the baseline for the reply; edits made meanwhile stay (the data is not reset to what was sent).
       baseline.current = { ...payload, id: result.id, version: result.version, status };
+      setSavedKey(taskKey(baseline.current));
       // The saved status is the person's own now (Local too), so the reply that follows never reads it as an edit.
       setTask((current) => local ? { ...current, status } : { ...current, id: result.id, version: result.version, status });
       setSavedAt(formatSwedish(new Date(), { timeStyle: "short" }));
@@ -491,8 +514,7 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
     return (await save("COMPLETED", time)) ? true : lastError.current || "Uppgiften kunde inte slutföras.";
   };
   // Rows of a protocol that are meant to be followed up as work orders but have none yet, named in the dialog.
-  const rowsWithoutOrder = task.data.kind === "FORM" ? formLeafBlocks(task.data.details.document).filter((block): block is FormTableBlock => block.type === "table" && block.workOrders)
-    .reduce((sum, block) => sum + (task.data.kind === "FORM" ? (task.data.details.values.tables[block.key] ?? []).filter((row) => !row.example && !row.workOrderId && Object.values(row.cells).some((value) => value !== null && value !== "" && value !== false && !(Array.isArray(value) && !value.length))).length : 0), 0) : 0;
+  const rowsWithoutOrder = task.data.kind === "FORM" ? formRowsWithoutOrder(task.data.details.document, task.data.details.values) : 0;
   // HINTEK AI's proposed measures for a risk assessment form (2026-10-02): the table with a hazard and a measure column.
   // Only rows with a hazard and no measure are offered; a proposal is put in – and undone – on the newest values.
   const riskTable = task.data.kind === "FORM" ? formLeafBlocks(task.data.details.document).find((block): block is FormTableBlock => block.type === "table" && ["fara", "atgard"].every((key) => block.columns.some((column) => column.key === key))) ?? null : null;
@@ -531,7 +553,7 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
   // Historik and Färdigställ: at the foot of the form's own Sammanfattning when it has one, otherwise in the foot panel.
   const completeRow = <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t pt-4">
     <Button type="button" variant="outline" disabled={!task.id || busy} onClick={() => setHistoryOpen(true)}><History />Historik</Button>
-    <Button id="task-complete" type="button" disabled={busy || task.status === "COMPLETED"} className={completion.ready ? undefined : "opacity-60"} title={completion.ready ? "Färdigställ och lås protokollet" : `Klicka för att se vad som saknas: ${completion.issues[0]?.message ?? ""}`} onClick={() => void complete()}><CheckCircle2 />Färdigställ</Button>
+    <Button id="task-complete" type="button" disabled={busy || task.status === "COMPLETED" || frozen} className={completion.ready ? undefined : "opacity-60"} title={completion.ready ? "Färdigställ och lås protokollet" : `Klicka för att se vad som saknas: ${completion.issues[0]?.message ?? ""}`} onClick={() => void complete()}><CheckCircle2 />Färdigställ</Button>
   </div>;
   const summaryFoot = Boolean(inlineSlots) && formHasSummary;
   if (inlineSlots) {
@@ -539,8 +561,11 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
     inlineSlots.summaryFooter = completeRow;
   }
   // A control without its own Sammanfattning gets the same completion card and buttons in a panel of their own.
-  const completePanel = controlFoot && !summaryFoot && task.data.kind === "FORM" ? <Panel title="Färdigställ" description="Se vad som återstår och färdigställ protokollet när det är klart.">
-    {task.status === "COMPLETED" ? <p className="text-sm text-muted-foreground">Protokollet är färdigställt och låst. Fortsätt i en kopia med Spara som.</p> : <CompletionCard completion={formCompletion(task.data.details.document, task.data.details.values)} />}
+  // A work order's or risk assessment's own completion (workflowTaskCompletion) is adapted to the card's shape; a
+  // protocol keeps using the form's own, richer one (its totals and switched-off sections read the same as always).
+  const genericCompletion: CompletionCardSummary = { requirements: completion.requirements.map((item) => ({ blockId: item.field, message: item.message, met: item.met })), issues: completion.issues.map((item) => ({ blockId: item.field, message: item.message, met: false })), ready: completion.ready, percent: completion.progress };
+  const completePanel = controlFoot && !summaryFoot ? <Panel title="Färdigställ" description={`Se vad som återstår och färdigställ ${docWord.toLowerCase()} när ${isForm ? "det" : "den"} är klar${isForm ? "t" : ""}.`}>
+    {task.status === "COMPLETED" ? <p className="text-sm text-muted-foreground">{docWord} är {isForm ? "färdigställt" : "slutförd"} och låst.{reopenable ? ` Öppna ${isForm ? "det" : "den"} igen med Återöppna om ${isForm ? "det" : "den"} behöver ändras.` : " Fortsätt i en kopia med Spara som."}</p> : <CompletionCard completion={task.data.kind === "FORM" ? formCompletion(task.data.details.document, task.data.details.values) : genericCompletion} onFocusIssue={(blockId) => focusRequirement(isForm ? `form-${blockId}` : blockId)} />}
     {completeRow}
   </Panel> : null;
   // The saved protocol's report as a PDF to one recipient; an unsaved or changed protocol is saved first.
@@ -564,9 +589,9 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
       announce(`Rapporten är skickad till ${recipient.trim()}.`);
     } catch (issue) { announce((issue as Error).message, true); } finally { setBusy(false); }
   };
-  const reportPanel = controlFoot ? <Panel key="report" title="Rapport och hantering" description="Rapport, export, tomma mallar och utskick av protokollet." className="report-panel" collapsible defaultCollapsed
+  const reportPanel = controlFoot ? <Panel key="report" title="Rapport och hantering" description={`Rapport, export${isForm ? ", tomma mallar" : ""} och utskick av ${docWord.toLowerCase()}.`} className="report-panel" collapsible defaultCollapsed
     persistentContent={<div className="flex flex-wrap items-center gap-2">
-      <ReportOptionsButton kind="FORM" disabled={busy} onExport={exportReport} />
+      <ReportOptionsButton kind={task.kind} disabled={busy} onExport={exportReport} />
       <Button type="button" variant="outline" data-testid="task-send-mail" disabled={busy || Boolean(local) || !task.title.trim() || titleFieldEmpty} title={local ? "Kan inte skicka i lokalt läge. Exportera rapporten och skicka den själv." : undefined} onClick={openSend}><Send />Skicka med e-post</Button>
     </div>}>
     <p className="text-xs leading-5 text-muted-foreground">{local ? "Rapporter skapas på den här datorn. Ett osparat protokoll sparas i arbetsytan när rapporten skapas; tomma mallar kan tas ut när som helst. E-post skickas inte i lokalt läge – exportera rapporten och skicka den själv." : "Tomma mallar kan tas ut när som helst. Skicka med e-post sparar protokollet och skickar rapporten som PDF till mottagaren. Rapporten ritas med företagets färger och logotyp."}</p>
@@ -576,15 +601,20 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
   const formActions: FormActions | undefined = preview ? undefined : {
     openWorkOrder: (id) => router.push(`/?view=workflow_task&taskId=${encodeURIComponent(id)}&taskType=WORK_ORDER`),
     workOrderStatus: (id) => linkedOrders[id] ? { status: linkedOrders[id].status, label: statusLabels[linkedOrders[id].status as WorkflowTaskStatus] ?? linkedOrders[id].status } : undefined,
-    createWorkOrder: async ({ title, description }) => {
-      // The work order links back to a saved protocol, so its Nästa steg leads back here (2026-09-30).
+    canCreateWorkOrder: Boolean(task.id),
+    createWorkOrder: async ({ title, description, assignedToName = "", dueDate = "" }) => {
+      // The work order links back to a saved protocol (2026-10-02: the button waits for the first save, so no order is
+      // left without its link and a second press cannot make a duplicate), and its Nästa steg leads back here.
+      const protocolId = task.id;
+      if (!protocolId) return null;
       const base = emptyData("WORK_ORDER", null);
+      const member = members.find((item) => item.name.trim().toLowerCase() === assignedToName.trim().toLowerCase());
       const order = { id: undefined, version: 0, kind: "WORK_ORDER", title, description: `${description}${description ? "\n\n" : ""}Från ${task.title || "protokollet"}.`.slice(0, 5000), status: "PLANNED", progress: 0,
         projectId: task.projectId, customerId: selectedProject?.customerId ?? task.customerId, facilityId: task.facilityId ?? null, siteId: task.siteId, departmentId: task.departmentId,
-        assignedToUserId: null, assignedToName: "", dueDate: "", data: task.id ? { kind: "WORK_ORDER", details: { ...(base.details as object), source: { taskId: task.id, title: task.title.slice(0, 200), kind: "FORM" } } } : base, totalDurationSec: 0, timerRunning: false } as unknown as WorkflowTaskRecord;
+        assignedToUserId: member?.id ?? null, assignedToName: member?.name ?? assignedToName, dueDate, data: { kind: "WORK_ORDER", details: { ...(base.details as object), source: { taskId: protocolId, title: task.title.slice(0, 200), kind: "FORM" } } }, totalDurationSec: 0, timerRunning: false } as unknown as WorkflowTaskRecord;
       try {
         const result = local ? await local.save(order) : await api<{ id: string }>("/api/workflow-tasks", { method: "POST", body: JSON.stringify({ action: "save", task: order }) });
-        setMessage("Arbetsordern är skapad och kopplad till raden. Spara protokollet.");
+        setMessage("Arbetsordern är skapad och kopplad till raden. Spara protokollet så sparas kopplingen.");
         return result.id;
       } catch (issue) { setError((issue as Error).message); return null; }
     },
@@ -622,7 +652,7 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
         running: task.timerRunning,
         totalDurationSec: task.totalDurationSec,
         onToggle: () => void timer(task.timerRunning ? "PAUSE" : "START"),
-        disabled: busy || task.status === "COMPLETED" || !task.title.trim() || titleFieldEmpty || (Boolean(local) && !task.id),
+        disabled: busy || task.status === "COMPLETED" || frozen || !task.title.trim() || titleFieldEmpty || (Boolean(local) && !task.id),
         hint: task.status === "COMPLETED" ? "En slutförd uppgift kan inte tidrapporteras." : titleFieldEmpty && titleField && "label" in titleField ? `Ange ${titleField.label.toLowerCase()} först, så sparas protokollet när tiden startar.` : !task.title.trim() ? "Ange en rubrik först, så sparas uppgiften när tiden startar." : "Spara uppgiften innan tidrapporteringen startas.",
       }}
       actions={<>
@@ -633,26 +663,31 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
         {/* HINTEK AI words a work order from the saved task's deviations; nothing is created until the person confirms. */}
         {task.id && !preview && !local && WorkOrderProposal ? <WorkOrderProposal taskId={task.id} task={task as unknown as Record<string, unknown>} disabled={busy} /> : null}
         {/* Granska med AI: a second pair of eyes on a saved protocol with results; it changes nothing. */}
-        {task.id && task.data.kind === "FORM" && !preview && !local && ProtocolReview && formApprovalTotals(task.data.details.document, task.data.details.values).some((total) => total.total > 0) ? <ProtocolReview taskId={task.id} disabled={busy} /> : null}
+        {task.id && task.data.kind === "FORM" && !preview && !local && ProtocolReview && formHasContent(task.data.details.values) ? <ProtocolReview taskId={task.id} disabled={busy} /> : null}
         {/* … and a measure for each risk of a risk assessment form that has none yet. */}
         {riskTable && !preview && !local && task.status !== "COMPLETED" && RiskMeasuresAssist ? <RiskMeasuresAssist title={task.title} taskId={task.id || undefined} risks={risksWithoutMeasure} onApply={applyRiskMeasures} disabled={busy} /> : null}
         {task.data.kind === "FORM" && (task.id || inlineTask) ? <Button variant="outline" disabled={busy} onClick={() => { if (task.id) router.push(`/?view=workflow_task&taskType=FORM&formId=${encodeURIComponent(task.data.kind === "FORM" ? task.data.details.templateId : "")}&copyOf=${encodeURIComponent(task.id)}`); else void save(); }}><Copy />Spara som</Button> : null}
       </>}
-      primaryAction={<Button disabled={busy || task.status === "COMPLETED" || !task.title.trim()} onClick={() => void save()}><Save />{busy ? "Arbetar…" : "Spara"}</Button>}
+      primaryAction={<Button disabled={busy || task.status === "COMPLETED" || frozen || !task.title.trim()} onClick={() => void save()}><Save />{busy ? "Arbetar…" : "Spara"}</Button>}
       flow={flowGuide}
     />
     {(error || message) && <p role={error ? "alert" : "status"} className={error ? "notice text-destructive" : "notice"}>{error || message}</p>}
+    {error && /har ändrats/i.test(error) && task.id && !local ? <div className="notice space-y-2" data-testid="task-conflict">
+      <p className="text-sm">Din version är kvar här tills du läser in den senaste. Kopiera det du skrivit först om du vill behålla det.</p>
+      <div className="flex flex-wrap gap-2"><Button type="button" size="sm" variant="outline" onClick={() => void navigator.clipboard?.writeText(JSON.stringify(task.data.details, null, 2)).then(() => setMessage("Din version är kopierad."))}>Kopiera min version</Button><Button type="button" size="sm" onClick={() => { baseline.current = null; setError(""); void load(); }}>Läs in senaste</Button></div>
+    </div> : null}
     {task.status === "COMPLETED" && task.id && !preview ? <NextSteps task={task} projectName={selectedProject?.name} source={task.data.kind === "WORK_ORDER" ? task.data.details.source ?? null : null}
       localTasks={local?.tasks} onCreateWorkOrder={task.kind !== "WORK_ORDER" ? () => void createFollowUp() : undefined} /> : null}
-    <CompleteTaskDialog open={completeOpen} onOpenChange={setCompleteOpen} title={controlFoot ? "Färdigställ protokollet" : "Slutför uppgiften"}
-      lockText={`${controlFoot ? "Protokollet låses för ändringar; du kan senare skapa en kopia med Spara som." : "Uppgiften låses som slutförd och sparas i historiken. En slutförd uppgift kan inte tidrapporteras."}${rowsWithoutOrder ? ` ${rowsWithoutOrder === 1 ? "En rad" : `${rowsWithoutOrder} rader`} som kan följas upp saknar arbetsorder; skapa den på raden först om den behövs.` : ""}`}
+    <CompleteTaskDialog open={completeOpen} onOpenChange={setCompleteOpen} title={`Färdigställ ${docWord.toLowerCase()}`}
+      lockText={`${isForm ? "Protokollet låses för ändringar; du kan senare skapa en kopia med Spara som." : `${docWord} låses för ändringar och sparas i historiken.${reopenable ? " Återöppna den vid behov." : ""}`}${rowsWithoutOrder ? ` ${rowsWithoutOrder === 1 ? "En rad" : `${rowsWithoutOrder} rader`} som kan följas upp saknar arbetsorder; skapa den på raden först om den behövs.` : ""}`}
       totalDurationSec={task.totalDurationSec} timerRunning={task.timerRunning} canReportTime={!preview} onComplete={completeWith} />
     {/* The content sits in an ordinary block inside the fieldset: Chromium sometimes left the form renderer (a container
         query container) without layout when it was a direct child of the fieldset's anonymous content box – an empty
         form after starting a round (2026-09-29, tmp repro 3 of 30). */}
-    <fieldset disabled={busy || task.status === "COMPLETED"} className="min-w-0">
+    {frozen ? <div className="notice" data-testid="task-project-frozen">Projektet {selectedProject?.archivedAt ? "är arkiverat" : "är avslutat"}, så uppgiften är skrivskyddad. Återställ eller återöppna projektet för att arbeta vidare.</div> : null}
+    <fieldset disabled={busy || task.status === "COMPLETED" || frozen} className="min-w-0">
     <div className="min-w-0 space-y-6">
-    {selectedProject && projectFieldRows(selectedProject).length ? <Panel title="Projektets uppgifter" description={`Från projektet ${selectedProject.name}. Ändras i projektet och skrivs ut i rapporten.`} actions={preview ? undefined : <Button asChild variant="outline"><Link href={`/?view=project&projectId=${encodeURIComponent(selectedProject.id)}`} data-testid="task-open-project"><FolderKanban />Öppna projektet</Link></Button>}><dl data-testid="task-project-fields" className="grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-4">{projectFieldRows(selectedProject).map(([label, value]) => <div key={label} className={label === "Arbetsbeskrivning" ? "sm:col-span-2 xl:col-span-4" : undefined}><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-0.5 whitespace-pre-wrap">{value}</dd></div>)}</dl></Panel> : null}
+    {selectedProject && projectFieldRows(selectedProject).length ? <Panel key={`project-facts-${detailLevel}`} collapsible defaultCollapsed={detailLevel < 3} title="Projektets uppgifter" description={`Från projektet ${selectedProject.name}. Ändras i projektet och skrivs ut i rapporten.`} actions={preview ? undefined : <Button asChild variant="outline"><Link href={`/?view=project&projectId=${encodeURIComponent(selectedProject.id)}`} data-testid="task-open-project"><FolderKanban />Öppna projektet</Link></Button>}><dl data-testid="task-project-fields" className="grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-4">{projectFieldRows(selectedProject).map(([label, value]) => <div key={label} className={label === "Arbetsbeskrivning" ? "sm:col-span-2 xl:col-span-4" : undefined}><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-0.5 whitespace-pre-wrap">{value}</dd></div>)}</dl></Panel> : null}
     {inlineTask ? null : <Panel title="Grunduppgifter" description="Projekt, kund, plats, ansvarig och planering återanvänds i arbetsflödet.">
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <label className="space-y-2 text-xs font-medium text-muted-foreground">Rubrik<Input id="task-title" value={task.title} maxLength={200} onChange={(e) => setTask({ ...task, title: e.target.value })} /></label>
@@ -671,18 +706,17 @@ export function WorkflowTaskEditor({ kind, taskId, projectId, customerId, custom
     {/* Earlier protocols and trends inform; visningsnivå 1 leaves them out on a phone or tablet. */}
     {task.data.kind === "FORM" ? <div data-detail-min="2" className="empty:hidden"><FormHistory taskId={task.id} templateId={task.data.details.templateId} customerId={(selectedProject?.customerId ?? task.customerId) || null} facilityId={task.facilityId ?? null} local={preview ? [] : local?.tasks} /></div> : null}
     {task.data.kind === "FORM" ? <FormLimitsPanel document={task.data.details.document} values={task.data.details.values} templateId={task.data.details.templateId} facilityId={task.facilityId ?? null}
-      facilityName={facilityOptions.find((facility) => facility.id === task.facilityId)?.name ?? ""} readOnly={task.status === "COMPLETED" || Boolean(preview)} local={local?.limits}
+      facilityName={facilityOptions.find((facility) => facility.id === task.facilityId)?.name ?? ""} readOnly={task.status === "COMPLETED" || frozen || Boolean(preview)} local={local?.limits}
       onValues={(values) => setTask((current) => current.data.kind === "FORM" ? { ...current, data: { ...current.data, details: { ...current.data.details, values } } } : current)} /> : null}
     {task.data.kind === "FORM" && !preview ? <div data-detail-min="2" className="empty:hidden"><FormTrendPanel document={task.data.details.document} values={task.data.details.values} templateId={task.data.details.templateId} templateVersion={task.data.details.templateVersion} taskId={task.id}
       facilityId={task.facilityId ?? null} customerId={(selectedProject?.customerId ?? task.customerId) || null} local={local?.tasks} /></div> : null}
-    {task.data.kind === "FORM" ? <FormRenderer panels actions={formActions} inline={inlineSlots} title={task.data.details.templateName} document={task.data.details.document} values={task.data.details.values} attachments={task.attachments} media={formMedia} rowOptions={rowOptions} readOnly={task.status === "COMPLETED"} onChange={(values) => { preview?.onValuesChange?.(values); setTask((current) => current.data.kind === "FORM" ? titled({ ...current, data: { ...current.data, details: { ...current.data.details, values } } }) : current); }} />
+    {task.data.kind === "FORM" ? <FormRenderer panels actions={formActions} inline={inlineSlots} title={task.data.details.templateName} document={task.data.details.document} values={task.data.details.values} attachments={task.attachments} media={formMedia} rowOptions={rowOptions} readOnly={task.status === "COMPLETED" || frozen} onChange={(values) => { preview?.onValuesChange?.(values); setTask((current) => current.data.kind === "FORM" ? titled({ ...current, data: { ...current.data, details: { ...current.data.details, values } } }) : current); }} />
       : task.data.kind === "WORK_ORDER" ? <WorkOrderFields data={task.data} onChange={(data) => setTask({ ...task, data })} /> : <RiskFields data={task.data} onChange={(data) => setTask({ ...task, data })} title={task.title} taskId={task.id || undefined} assist={!local && !preview && task.status !== "COMPLETED"} />}
     </div>
     </fieldset>
     {summaryFoot ? null : attachmentsPanel}
     {completePanel}
-    {task.id && !controlFoot ? <TaskHistory key={task.id} taskId={task.id} revisions={task.revisions ?? []} total={task.revisionCount ?? task.revisions?.length ?? 0} local={Boolean(local)} /> : null}
-    {controlFoot ? reportPanel : <Panel key="complete" title="Slutför uppgiften" description="Kontrollera dokumentationen innan uppgiften markeras som slutförd.">{task.status !== "COMPLETED" && <div className="mb-4 rounded-lg border bg-muted/20 p-4"><p className="text-sm font-medium">{completion.ready ? "Dokumentationen är klar för slutförande." : "Kvar att fylla i före slutförande"}</p>{completion.issues.length > 0 && <ul className="mt-2 space-y-2">{completion.issues.map((issue) => <li key={`${issue.field}:${issue.message}`}><button type="button" className="text-left text-sm text-primary underline underline-offset-4" onClick={() => focusRequirement(issue.field)}>{issue.message}</button></li>)}</ul>}<p className="mt-3 text-xs text-muted-foreground">Du kan spara ofullständigt arbete. Projekt, kund, tid, material och bilagor är valfria. 100 procent visas när uppgiften är slutförd.</p></div>}<div className="flex flex-wrap items-center justify-between gap-4"><p className="text-sm text-muted-foreground">Slutförandet sparas i uppgiftens historik. En slutförd uppgift kan inte tidrapporteras.</p><div className="flex flex-wrap gap-2">{task.id && (!local || local.report) && <ReportOptionsButton kind={task.kind} onExport={exportReport} />}<Button id="task-complete" disabled={busy || task.status === "COMPLETED"} className={completion.ready ? undefined : "opacity-60"} title={completion.ready ? undefined : `Klicka för att se vad som saknas: ${completion.issues[0]?.message ?? ""}`} onClick={() => void complete()}><CheckCircle2 />Slutför uppgift</Button></div></div></Panel>}
+    {reportPanel}
     {controlFoot ? <Modal open={historyOpen} onOpenChange={setHistoryOpen} title="Versionshistorik" className="max-w-3xl">{task.id ? <TaskHistory key={task.id} bare taskId={task.id} revisions={task.revisions ?? []} total={task.revisionCount ?? task.revisions?.length ?? 0} local={Boolean(local)} /> : null}</Modal> : null}
     {controlFoot ? <Modal open={sendOpen} onOpenChange={setSendOpen} title="Skicka med e-post">
       <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); void send(); }}>
@@ -738,7 +772,7 @@ function TaskHistory({ taskId, revisions, total, local, bare = false }: { taskId
       setOlder((current) => [...current, ...page.revisions]);
     } finally { setBusy(false); }
   };
-  const description = count ? `${count} sparade versioner, senaste först. Äldre versioner är skrivskyddade.` : "Tidigare sparade versioner är skrivskyddade och visar dokumentationen som gällde vid varje sparning.";
+  const description = count ? `${count} ${count === 1 ? "sparad version" : "sparade versioner"}, senaste först. Äldre versioner är skrivskyddade.` : "Tidigare sparade versioner är skrivskyddade och visar dokumentationen som gällde vid varje sparning.";
   const body = <>
     {ordered.length ? <div className="space-y-2">{ordered.map((revision) => {
       const snapshot = revision.snapshot;
@@ -874,4 +908,9 @@ function formMoments(document: FormDocument, values: FormValues) {
   if (!document.moments.requireOne || !optional.length) return undefined;
   const label = /^moment$/i.test(document.moments.label.trim()) ? "Moment" : document.moments.label.trim() || "Moment";
   return { label: label === "Moment" ? "Kontrollmoment" : label, met: optional.some((section) => formSectionActive(section, values)), target: `form-${optional[0].id}` };
+}
+
+/** A task page: on display level 1 its panels start folded except the current step's (see TaskPageFold). */
+export function WorkflowTaskEditor(props: React.ComponentProps<typeof WorkflowTaskEditorBody>) {
+  return <TaskPageFold.Provider value><WorkflowTaskEditorBody {...props} /></TaskPageFold.Provider>;
 }

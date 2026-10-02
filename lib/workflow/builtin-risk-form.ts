@@ -71,7 +71,7 @@ export const riskFormDocument: FormDocument = formDocumentSchema.parse({
       { id: "risk-f-ala", type: "field", key: "anlaggningsansvarig", label: "Elanläggningsansvarig", input: "text", width: "third", showIf: { key: "elarbete", op: "eq", value: "YES" } },
       { id: "risk-f-instr", type: "field", key: "instruktioner", label: "Instruktioner och dokumentation från anläggningens innehavare mottagna", input: "yesno", width: "two_thirds", showIf: { key: "elarbete", op: "eq", value: "YES" } },
       { id: "risk-h-regler", type: "heading", text: "De fem säkerhetsreglerna vid arbete utan spänning", level: 3, showIf: { key: "arbetsmetod", op: "eq", value: "Arbete utan spänning" } },
-      ...SAFETY_RULES.map(([key, label]) => ({ id: `risk-f-${key}`, type: "field", key, label, input: "yesno", width: "third", showIf: { key: "arbetsmetod", op: "eq", value: "Arbete utan spänning" } })),
+      ...SAFETY_RULES.map(([key, label]) => ({ id: `risk-f-${key}`, type: "field", key, label, input: "yesno", required: true, width: "third", showIf: { key: "arbetsmetod", op: "eq", value: "Arbete utan spänning" } })),
     ] },
     { id: "risk-godkannande", type: "section", title: "Gemensamma åtgärder och godkännande", description: "Sammanfatta övergripande skydd och låt ansvarig granska bedömningen innan arbetet startar.", blocks: [
       { id: "risk-f-atgarder", type: "field", key: "atgarder", label: "Gemensamma skyddsåtgärder", input: "textarea", width: "full", placeholder: "Exempel: arbetsberedning, avspärrning, personlig skyddsutrustning och kontroll före start" },

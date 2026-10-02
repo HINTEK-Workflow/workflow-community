@@ -20,34 +20,33 @@ test("sections that can be switched off start off, count nothing while off and a
   assert.ok(on.issues.some((item) => item.message === "Isolation: fyll i minst en rad."));
 });
 
-test("Godkänd follows the condition while Autobedömning is on and the tick while it is off", () => {
+test("Godkänd always follows the condition: a value below its limit stays not approved (Autobedömning is no longer a choice, 2026-10-02)", () => {
   const values = initialFormValues(kfidFormDocument);
   values.sections["kfid-iso"] = true;
   const iso = table("iso");
   values.tables.iso = [{ ...newFormRow(iso, "r1"), cells: { ...newFormRow(iso, "r1").cells, objekt: "Grupp 1", mohm: "0,4", ok: true } }];
-  values.fields.auto = "NO";
-  assert.equal(evaluateForm(kfidFormDocument, values).cells.iso.r1.ok, true, "by hand");
-  values.fields.auto = "YES";
   const auto = evaluateForm(kfidFormDocument, values);
   assert.equal(auto.cells.iso.r1.ok, false, "0,4 MΩ is below the 1 MΩ limit");
   assert.deepEqual(auto.deviations.map((item) => [item.message, item.kind]), [["Isolation, Grupp 1: inte godkänd.", "assessment"]]);
   assert.deepEqual(formApprovalTotals(kfidFormDocument, values, auto), [{ blockId: iso.id, title: "Isolation", ok: 0, total: 1 }]);
 });
 
-test("the RCD time limit per profile comes from VÄXLA, and times are only required with Autobedömning", () => {
+test("the RCD time limit per standard follows the Metrel tester (U0 230 V), old short names still judge, and the times are always required", () => {
   const values = initialFormValues(kfidFormDocument);
   values.sections["kfid-rcd"] = true;
-  values.fields.auto = "YES";
   const rcd = table("rcd");
   const row = newFormRow(rcd, "p1");
-  values.tables.rcd = [{ ...row, cells: { ...row.cells, place: "JFB 1", std: "TT", t1p: 240, t1n: 190, t5p: 30, t5n: 30, btnok: true } }];
+  values.tables.rcd = [{ ...row, cells: { ...row.cells, place: "JFB 1", std: "IEC 60364-4-41 TT", t1p: 240, t1n: 190, t5p: 30, t5n: 30, btnok: true } }];
   assert.equal(evaluateForm(kfidFormDocument, values).cells.rcd.p1.ok, false, "TT allows at most 200 ms");
-  values.tables.rcd[0].cells.std = "TNIT";
-  assert.equal(evaluateForm(kfidFormDocument, values).cells.rcd.p1.ok, true, "TNIT allows 400 ms");
+  values.tables.rcd[0].cells.std = "IEC 60364-4-41 TN/IT";
+  assert.equal(evaluateForm(kfidFormDocument, values).cells.rcd.p1.ok, true, "TN/IT allows 400 ms");
+  values.tables.rcd[0].cells.std = "EN 61008 / EN 61009";
+  assert.equal(evaluateForm(kfidFormDocument, values).cells.rcd.p1.ok, true, "EN allows 300 ms");
+  values.tables.rcd[0].cells.std = "TT";
+  assert.equal(evaluateForm(kfidFormDocument, values).cells.rcd.p1.ok, false, "an older protocol's short name TT still allows 200 ms");
+  values.tables.rcd[0].cells.std = "IEC 60364-4-41 TN/IT";
   values.tables.rcd[0].cells.t1p = "";
-  assert.ok(formCompletion(kfidFormDocument, values).issues.some((item) => item.message === "Jordfelsbrytarprov, Prov 1: fyll i t 1× +."));
-  values.fields.auto = "NO";
-  assert.ok(!formCompletion(kfidFormDocument, values).issues.some((item) => item.message.includes("t 1× +")), "no times needed when judged by hand");
+  assert.ok(formCompletion(kfidFormDocument, values).issues.some((item) => item.message === "Jordfelsbrytarprov, Prov 1: fyll i t 1× (+)."));
 });
 
 test("Ej mätt counts as not filled in, and an untouched row with only default values does not count", () => {
@@ -175,9 +174,9 @@ test("the task view exactly like the originals (2026-09-27): the new building bl
   const values = initialFormValues(kfidFormDocument);
   values.sections["kfid-rcd"] = true;
   values.tables.rcd = [newFormRow(rcd, "r1")];
-  values.tables.rcd[0].cells.std = "TNIT";
+  values.tables.rcd[0].cells.std = "IEC 60364-4-41 TN/IT";
   const note = evaluateForm(kfidFormDocument, values).cells.rcd.r1.note;
-  assert.equal(note, "Profil TNIT: 1× ≤ 400 ms, 5× ≤ 40 ms. Autobedömningen använder tider och testknapp; granska övriga provvärden separat.");
+  assert.equal(note, "Krav enligt IEC 60364-4-41 TN/IT (U0 230 V): 0,5× IΔn ingen utlösning, 1× IΔn ≤ 400 ms, 5× IΔn ≤ 40 ms, testknappen ska lösa ut.");
   assert.equal(rcd.columns.find((column) => column.key === "note")?.pdf, "hide");
 
   // The risk assessment: Före → Efter in the card's title row, the two rating groups, the approval statement.

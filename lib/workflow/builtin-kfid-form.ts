@@ -19,13 +19,19 @@ export const KFID_RULE_CODE = "KFID-V1-2026.1";
 
 const field = (key: string, label: string, input: string, extra: Record<string, unknown> = {}) => ({ id: `kfid-f-${key}`, type: "field", key, label, input, width: "third", ...extra });
 const column = (key: string, label: string, input: string, extra: Record<string, unknown> = {}) => ({ id: `kfid-c-${key}`, key, label, input, ...extra });
-const godkand = (formula: string, pdfWidth: number) => column("ok", "Godkänd", "assessment", { mode: "switch", switchKey: "auto", formula, pdfWidth, help: "Autobedömning på: bedöms av regeln. Av: bocka i själv." });
+const godkand = (formula: string, pdfWidth: number) => column("ok", "Godkänd", "assessment", { mode: "auto", formula, pdfWidth, help: "Bedöms av regeln mot gränsvärdet. Ett värde som inte når upp förblir underkänt, men kontrollen är ändå utförd och kan färdigställas med en kommentar." });
 const bild = column("bild", "Bild", "images", { pdf: "hide", help: "Bild på kontrollraden. Den kommer som bilaga efter protokollet." });
 const sectionImages = (key: string) => ({ id: `kfid-i-${key}`, type: "images", key: `${key}_bilder`, label: "Bilder", accept: "files", pdfInline: false, help: "Sektionsbild eller dokument. Kommer som bilaga efter protokollet." });
 const moment = (key: string, title: string, description: string, help: string, blocks: unknown[]) => ({ id: `kfid-${key}`, type: "section", title, description, help, optional: true, defaultOn: false, blocks });
 const measurement = (key: string, label: string, columns: unknown[], extra: Record<string, unknown> = {}) => ({ id: `kfid-t-${key}`, type: "table", key, label, rowMode: "free", layout: "rows", required: true, allowExample: true, copyRows: false, startEmpty: true, emptyTitle: "Inga mätningar ännu. Lägg till din första rad.", columns, ...extra });
 // The RCD test's note under each row: the profile's time limits, computed from the chosen profile.
-const RCD_NOTE = "SAMMANFOGA(\"Profil \"; [std]; \": 1× ≤ \"; VÄXLA([std]; \"EN\"; 300; \"TNIT\"; 400; \"TT\"; 200); \" ms, 5× ≤ 40 ms. Autobedömningen använder tider och testknapp; granska övriga provvärden separat.\")";
+// The standards as a Metrel installation tester names them, and their trip-out limits at U0 = 230 V (Metrel MI 3152
+// manual, tables 4.1 and 4.2; 2026-10-02: "enligt Metrel-instrumentet och rådande standard", named as in V1).
+const RCD_EN = "EN 61008 / EN 61009";
+const RCD_TNIT = "IEC 60364-4-41 TN/IT";
+const RCD_TT = "IEC 60364-4-41 TT";
+const RCD_T1 = `VÄXLA([std]; "${RCD_EN}"; 300; "${RCD_TNIT}"; 400; "${RCD_TT}"; 200; "EN"; 300; "TNIT"; 400; "TT"; 200)`;
+const RCD_NOTE = `SAMMANFOGA("Krav enligt "; [std]; " (U0 230 V): 0,5× IΔn ingen utlösning, 1× IΔn ≤ "; ${RCD_T1}; " ms, 5× IΔn ≤ 40 ms, testknappen ska lösa ut.")`;
 
 export const kfidFormDocument: FormDocument = formDocumentSchema.parse({
   schema: 2,
@@ -44,8 +50,6 @@ export const kfidFormDocument: FormDocument = formDocumentSchema.parse({
       field("instr", "Instrument (typ)", "text"),
       field("sn", "Instrument S/N", "text"),
       field("cal", "Kalibrering", "date", { pdfLabel: "Kalibrering (datum)" }),
-      field("auto", "Autobedömning", "yesno", { momentSwitch: true, defaultValue: "NO", allowNotApplicable: false, visibility: { task: true, pdf: false },
-        help: "Sätter Godkänd automatiskt i varje kontrollrad utifrån gränsvärdena." }),
     ] },
     moment("iso", "Isolation", "Isolationsresistans mellan ledare.", "Mätning av isolationsresistans mellan fasledare och skyddsledare (PE) för att påvisa intakt isolering och frånvaro av skador, fukt eller föroreningar.", [
       measurement("iso", "Isolation", [
@@ -85,23 +89,23 @@ export const kfidFormDocument: FormDocument = formDocumentSchema.parse({
       // Cards in the PDF (like today's report); on screen the control's two lines: profile, type and currents above,
       // placement, times, Uc and the tick boxes below, with the profile's limits as a note.
       measurement("rcd", "Jordfelsbrytarprov", [
-        column("place", "Placering / ID", "text", { required: true, exampleValue: "JFB1", line: 2, screenWidth: "minmax(10rem,20%)" }),
-        column("std", "Bedömningsprofil", "choice", { required: true, options: ["EN", "TNIT", "TT"], defaultValue: "EN", exampleValue: "TNIT", screenWidth: "minmax(10rem,20%)" }),
+        column("place", "Placering/ID", "text", { required: true, exampleValue: "JFB1", line: 2, screenWidth: "minmax(10rem,20%)" }),
+        column("std", "Standard", "choice", { required: true, options: [RCD_EN, RCD_TNIT, RCD_TT], defaultValue: RCD_EN, exampleValue: RCD_TNIT, help: "Samma val som i Metrel-instrumentet. Kraven: EN 61008/61009 1× ≤ 300 ms; IEC 60364-4-41 TN/IT 1× ≤ 400 ms; TT 1× ≤ 200 ms; alla 5× ≤ 40 ms (U0 230 V).", screenWidth: "minmax(10rem,20%)" }),
         column("type", "Typ", "choice", { required: true, options: ["A", "AC", "B", "F"], defaultValue: "A", exampleValue: "A" }),
-        column("uclim", "Uc gräns", "choice", { unit: "V", options: ["25", "50"], defaultValue: "50", pdf: "hide", exampleValue: "50" }),
-        column("idn", "Märkström", "number", { required: true, unit: "mA", defaultValue: 30, exampleValue: 30 }),
-        column("idp", "Utlösn. ström +", "number", { unit: "mA", pdfLabel: "Utlösn.ström +", exampleValue: 27 }),
-        column("idn_measured", "Utlösn. ström −", "number", { unit: "mA", pdfLabel: "Utlösn.ström −", exampleValue: 28 }),
-        column("t1p", "t 1× +", "number", { unit: "ms", requiredIf: "auto", required: true, pdfLabel: "t 1× + / −", exampleValue: 195, line: 2 }),
-        column("t1n", "t 1× −", "number", { unit: "ms", requiredIf: "auto", required: true, pdf: "join", exampleValue: 205, line: 2 }),
-        column("t5p", "t 5× +", "number", { unit: "ms", requiredIf: "auto", required: true, pdfLabel: "t 5× + / −", exampleValue: 28, line: 2 }),
-        column("t5n", "t 5× −", "number", { unit: "ms", requiredIf: "auto", required: true, pdf: "join", exampleValue: 30, line: 2 }),
-        column("uc", "Uc uppmätt", "number", { unit: "V", pdfLabel: "Uc uppmätt", exampleValue: 21, line: 2 }),
+        column("uclim", "Uc-gräns", "choice", { unit: "Vac", options: ["≤ 25", "≤ 50"], defaultValue: "≤ 50", pdf: "hide", exampleValue: "≤ 50" }),
+        column("idn", "Märkutlösn. ström IΔn", "choice", { required: true, unit: "mA", options: ["10", "30", "100", "300", "500"], defaultValue: "30", exampleValue: "30" }),
+        column("idp", "Utlösn. ström Id (+)", "number", { unit: "mA", placeholder: "mätt", pdfLabel: "Id (+)", exampleValue: 27 }),
+        column("idn_measured", "Utlösn. ström Id (−)", "number", { unit: "mA", placeholder: "mätt", pdfLabel: "Id (−)", exampleValue: 28 }),
+        column("t1p", "t 1× (+)", "number", { unit: "ms", required: true, placeholder: "mätt", pdfLabel: "t 1× (+) / (−)", exampleValue: 195, line: 2 }),
+        column("t1n", "t 1× (−)", "number", { unit: "ms", required: true, placeholder: "mätt", pdf: "join", exampleValue: 205, line: 2 }),
+        column("t5p", "t 5× (+)", "number", { unit: "ms", required: true, placeholder: "mätt", pdfLabel: "t 5× (+) / (−)", exampleValue: 28, line: 2 }),
+        column("t5n", "t 5× (−)", "number", { unit: "ms", required: true, placeholder: "mätt", pdf: "join", exampleValue: 30, line: 2 }),
+        column("uc", "Uc uppmätt", "number", { unit: "Vac", placeholder: "mätt", pdfLabel: "Uc uppmätt", exampleValue: 21, line: 2 }),
         column("ntrip05", "0,5× IΔn ej utlöst", "check", { pdfLabel: "0,5× IΔn", exampleValue: true, line: 2, screenWidth: "4.5rem" }),
         column("btnok", "Testknapp OK", "check", { pdfLabel: "Testknapp", exampleValue: true, line: 2, screenWidth: "4.5rem" }),
         column("comment", "Kommentar", "textarea", { screenWidth: "minmax(8rem,2.4fr)" }),
-        column("note", "Profilens gränser", "formula", { formula: RCD_NOTE, placement: "note", pdf: "hide" }),
-        godkand("OCH([btnok]; [t1p] <= VÄXLA([std]; \"EN\"; 300; \"TNIT\"; 400; \"TT\"; 200); [t1n] <= VÄXLA([std]; \"EN\"; 300; \"TNIT\"; 400; \"TT\"; 200); [t5p] <= 40; [t5n] <= 40)", 45),
+        column("note", "Krav", "formula", { formula: RCD_NOTE, placement: "note", pdf: "hide" }),
+        godkand(`OCH([btnok]; [t1p] <= ${RCD_T1}; [t1n] <= ${RCD_T1}; [t5p] <= 40; [t5n] <= 40)`, 45),
         bild,
       ], { layout: "cards", taskLayout: "rows", itemLabel: "Prov", cardTitle: "{place} · {std} · typ {type} · {idn} mA", emptyTitle: "Inga mätningar ännu. Lägg till din första rad." }),
       sectionImages("rcd"),

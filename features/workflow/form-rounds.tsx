@@ -72,7 +72,8 @@ export function FormRounds({ backend = cloudRoundsBackend, revision }: { backend
   const active = schedules.filter((item) => item.active);
   const dueToday = active.filter((item) => item.overview.today && item.overview.today.state !== "done").length;
   const missed = active.reduce((sum, item) => sum + item.overview.missed, 0);
-  const shown = filter === "attention" ? schedules.filter((item) => item.active && (item.overview.missed || (item.overview.today && item.overview.today.state !== "done"))) : schedules;
+  const openFaults = schedules.reduce((sum, item) => sum + (item.overview.openDeviations ?? 0), 0);
+  const shown = filter === "attention" ? schedules.filter((item) => item.active && (item.overview.missed || item.overview.openDeviations || (item.overview.today && item.overview.today.state !== "done"))) : schedules;
   const remove = async (schedule: ScheduleView) => {
     if (!(await confirm({ title: "Ta bort ronden?", message: `${schedule.title} tas bort. Protokoll som redan gjorts finns kvar.`, confirmLabel: "Ta bort", tone: "danger" }))) return;
     try { await source.current.remove(schedule.id); await reload(); } catch (issue) { setError((issue as Error).message); }
@@ -85,15 +86,16 @@ export function FormRounds({ backend = cloudRoundsBackend, revision }: { backend
       {data?.canPlan ? <Button onClick={() => setEditing("new")} data-testid="round-new"><CalendarPlus />Ny rond</Button> : null}
     </div>
     {error ? <p role="alert" className="notice text-destructive">{error}</p> : null}
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       <div className="stat-card rounded-xl border bg-card p-4"><p className="text-xs text-muted-foreground">Att göra idag</p><p className="mt-1 text-2xl font-semibold tabular-nums">{dueToday}</p></div>
       <div className="stat-card rounded-xl border bg-card p-4"><p className="text-xs text-muted-foreground">Missade senaste 30 dagarna</p><p className={cn("mt-1 text-2xl font-semibold tabular-nums", missed && "text-destructive")}>{missed}</p></div>
+      <div className="stat-card rounded-xl border bg-card p-4"><p className="text-xs text-muted-foreground">Brister utan arbetsorder</p><p className={cn("mt-1 text-2xl font-semibold tabular-nums", openFaults && "text-destructive")} data-testid="round-open-faults">{openFaults}</p></div>
       <div className="stat-card rounded-xl border bg-card p-4"><p className="text-xs text-muted-foreground">Aktiva ronder</p><p className="mt-1 text-2xl font-semibold tabular-nums">{active.length}</p></div>
     </div>
     <Panel title="Ronder" description={data ? `Idag ${day(data.today)}.` : "Hämtar ronder…"} leadingActions={<span className="panel-icon" aria-hidden="true"><Repeat className="size-4" /></span>}
       actions={<div className="flex h-9 rounded-[var(--radius-control)] border p-0.5" role="group" aria-label="Urval">{([["all", "Alla"], ["attention", "Behöver åtgärd"]] as const).map(([value, label]) => <Button key={value} type="button" size="sm" className="h-full min-h-0!" variant={filter === value ? "secondary" : "ghost"} aria-pressed={filter === value} onClick={() => setFilter(value)}>{label}</Button>)}</div>}>
       {!data ? <p role="status" className="text-sm text-muted-foreground">Hämtar ronder…</p> : !shown.length
-        ? <Empty title={schedules.length ? "Inget behöver åtgärdas" : "Inga ronder ännu"} description={schedules.length ? "Alla dagens ronder är gjorda och inga är missade." : data.canPlan ? "Planera en återkommande rond: välj formulär, anläggning och hur ofta den görs." : "Företagets administratör planerar ronderna."}>
+        ? <Empty title={schedules.length ? "Inget behöver åtgärdas" : "Inga ronder ännu"} description={schedules.length ? "Alla dagens ronder är gjorda, inga är missade och alla brister har en arbetsorder." : data.canPlan ? "Planera en återkommande rond: välj formulär, anläggning och hur ofta den görs." : "Företagets administratör planerar ronderna."}>
           {!schedules.length && data.canPlan ? <Button onClick={() => setEditing("new")}><CalendarPlus />Ny rond</Button> : null}
         </Empty>
         : <ul className="grid gap-3" data-testid="round-list">{shown.map((schedule) => <RoundCard key={schedule.id} schedule={schedule} canPlan={data.canPlan} onEdit={() => setEditing(schedule)} onRemove={() => void remove(schedule)} />)}</ul>}
@@ -105,7 +107,7 @@ export function FormRounds({ backend = cloudRoundsBackend, revision }: { backend
 function RoundCard({ schedule, canPlan, onEdit, onRemove }: { schedule: ScheduleView; canPlan: boolean; onEdit: () => void; onRemove: () => void }) {
   const current = schedule.overview.current;
   const today = schedule.overview.today;
-  const status = !schedule.active ? { label: "Pausad", tone: "neutral" as const } : today?.state === "done" ? { label: "Utförd idag", tone: "success" as const } : current?.state === "missed" ? { label: `Missad ${day(current.date)}`, tone: "danger" as const } : today ? { label: today.state === "started" ? "Påbörjad idag" : "Idag", tone: "warning" as const } : { label: schedule.overview.next ? `Nästa ${day(schedule.overview.next)}` : "Avslutad", tone: "neutral" as const };
+  const status = !schedule.active ? { label: "Pausad", tone: "neutral" as const } : today?.state === "done" ? (schedule.overview.openDeviations ? { label: "Utförd idag – brist utan arbetsorder", tone: "warning" as const } : { label: "Utförd idag", tone: "success" as const }) : current?.state === "missed" ? { label: `Missad ${day(current.date)}`, tone: "danger" as const } : today ? { label: today.state === "started" ? "Påbörjad idag" : "Idag", tone: "warning" as const } : { label: schedule.overview.next ? `Nästa ${day(schedule.overview.next)}` : "Avslutad", tone: "neutral" as const };
   const where = [schedule.facilityName, schedule.customerName, schedule.projectName].filter(Boolean).join(" · ");
   return <li className="rounded-xl border bg-card p-4" data-testid="round-card">
     <div className="flex flex-wrap items-start justify-between gap-3">

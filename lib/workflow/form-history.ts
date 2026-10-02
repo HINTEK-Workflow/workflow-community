@@ -1,4 +1,4 @@
-import { evaluateForm, formDocumentSchema, formValuesSchema } from "./form-document";
+import { deviationCount, evaluateForm, formDocumentSchema, formValuesSchema } from "./form-document";
 
 /**
  * Earlier protocols of the same form for the same facility (or customer) – "följ upp tidigare kontroller" (
@@ -19,7 +19,7 @@ export function formHistoryItem(task: Source): FormHistoryItem {
   let nextDate: string | null = null;
   if (document.success && values.success) {
     const evaluation = evaluateForm(document.data, values.data);
-    deviations = evaluation.deviations.length;
+    deviations = deviationCount(evaluation);
     // A computed date such as "Nästa kontroll senast" (EDATUM) is shown as the next date.
     nextDate = Object.values(evaluation.computed).find((value): value is string => typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) ?? null;
   }

@@ -140,8 +140,8 @@ export async function GET(request: Request) {
     const projectNext = url.searchParams.get("projectNext");
     if (links || projectNext) {
       const canRead = (subject: WorkflowPermissionSubject) => ctx.admin || hasWorkflowPermission(ctx.workflowPermissions, subject, "read");
-      const select = { id: true, title: true, status: true, kind: true, dueDate: true } as const;
-      const view = (row: { id: string; title: string; status: string; kind: string; dueDate: string }) => ({ id: row.id, title: row.title, status: row.status, kind: row.kind, dueDate: row.dueDate });
+      const select = { id: true, title: true, status: true, kind: true, dueDate: true, assignedToUserId: true } as const;
+      const view = (row: { id: string; title: string; status: string; kind: string; dueDate: string; assignedToUserId?: string | null }) => ({ id: row.id, title: row.title, status: row.status, kind: row.kind, dueDate: row.dueDate });
       if (links) {
         const ids = [...new Set(links.split(",").filter(Boolean))].slice(0, 50).map((value) => identifier.parse(value));
         const rows = await prisma.workflowTask.findMany({ where: { organizationId: ctx.organizationId, id: { in: ids }, AND: [readableTaskWhere(canRead)] }, select });
@@ -153,7 +153,8 @@ export async function GET(request: Request) {
         orderBy: [{ updatedAt: "desc" }], take: 50, select,
       });
       // The one due first; tasks without a date come after the dated ones.
-      const next = [...rows].sort((a, b) => (a.dueDate || "9999").localeCompare(b.dueDate || "9999"))[0];
+      // Only the person's own or unassigned tasks are suggested (simulation 2026-10-02: a colleague's paused order was).
+      const next = rows.filter((row) => !row.assignedToUserId || row.assignedToUserId === ctx.user.id).sort((a, b) => (a.dueDate || "9999").localeCompare(b.dueDate || "9999"))[0];
       return NextResponse.json({ next: next ? view(next) : null, open: rows.length });
     }
     // Bounded reads (2026-09-26): the editor asks for one task (`id`) or only the members (`members=only`)

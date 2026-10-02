@@ -160,10 +160,10 @@ export function MeasurementRow({
             {remove}
           </div>
           <p className="rcd-guidance text-xs leading-5 text-muted-foreground">
-            Profil {String(row.std)}: 1× ≤{" "}
-            {row.std === "TNIT" ? 400 : row.std === "TT" ? 200 : 300} ms, 5× ≤
-            40 ms. Autobedömningen använder tider och testknapp; granska övriga
-            provvärden separat.
+            {/* As the Metrel tester states it at U0 230 V (MI 3152 manual, tables 4.1–4.2; 2026-10-02). */}
+            Krav enligt {row.std === "TNIT" ? "IEC 60364-4-41 TN/IT" : row.std === "TT" ? "IEC 60364-4-41 TT" : "EN 61008 / EN 61009"} (U0 230 V):
+            0,5× IΔn ingen utlösning, 1× IΔn ≤ {row.std === "TNIT" ? 400 : row.std === "TT" ? 200 : 300} ms,
+            5× IΔn ≤ 40 ms, testknappen ska lösa ut.
           </p>
         </>
       ) : (

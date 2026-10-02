@@ -31,6 +31,8 @@ export type WorkflowReportTask = {
   kind: WorkflowTaskKind;
   /** A protocol's permission area (2026-09-27): forms, kfid or risk-assessment. */
   formArea?: string | null;
+  /** The task's own save version, as the page shows it (the report used the template's, which the page never shows). */
+  version?: number;
   title: string;
   description: string;
   status: WorkflowTaskStatus;

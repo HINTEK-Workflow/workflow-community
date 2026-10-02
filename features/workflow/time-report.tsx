@@ -1,5 +1,6 @@
 "use client";
 
+import { announce } from "@/lib/workflow/toast";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight, Clock3, FileSpreadsheet, Pencil, Trash2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -43,7 +44,7 @@ function downloadCsv(filename: string, rows: string[][]) {
   const csv = rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(";")).join("\r\n");
   const url = URL.createObjectURL(new Blob(["﻿", csv], { type: "text/csv;charset=utf-8" })); const link = document.createElement("a"); link.href = url; link.download = filename; link.click(); setTimeout(() => URL.revokeObjectURL(url), 30_000);
 }
-const csvRow = (entry: ReportRow, person?: string) => { return [...(person === undefined ? [] : [person]), dateKey(entry.startedAt), formatSwedishTime(entry.startedAt), entry.endedAt ? formatSwedishTime(entry.endedAt) : "Pågår", String(Math.round(entry.durationSec / 60)), entry.projectName, entry.taskTitle, entry.note]; };
+const csvRow = (entry: ReportRow, person?: string) => { return [...(person === undefined ? [] : [person]), dateKey(entry.startedAt), formatSwedishTime(entry.startedAt), entry.endedAt ? formatSwedishTime(entry.endedAt) : "Pågår", String(Math.round(entry.durationSec / 60)), (Math.round(entry.durationSec / 36) / 100).toFixed(2).replace(".", ","), entry.projectName, entry.taskTitle, entry.note]; };
 
 function MemberInitials({ id, name }: { id: string; name: string }) {
   return <span aria-hidden="true" title={name} className={cn("flex size-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold text-white", personSolidTone(id))}>{personInitials(name)}</span>;
@@ -143,7 +144,7 @@ export function TimeReport({ local, focusTaskId }: { local?: LocalTimeAdapter; f
     setBusy(true); setError("");
     try {
       if (local) await local.save(input, reason);
-      else await api("/api/workflow-time", { method: "POST", body: JSON.stringify({ action: "save", entry: input, reason }) });
+      else { const saved = await api<{ warning?: string }>("/api/workflow-time", { method: "POST", body: JSON.stringify({ action: "save", entry: input, reason }) }); if (saved.warning) announce(saved.warning); }
       await load(); setOpen(false); setEditing(null);
       if (!input.id) setNewEntryKey((value) => value + 1);
     } catch (issue) { setError((issue as Error).message); }
@@ -178,7 +179,7 @@ export function TimeReport({ local, focusTaskId }: { local?: LocalTimeAdapter; f
 
   return <div className="space-y-6">
     <div className="flex flex-wrap items-start justify-between gap-4"><div><h1 className="page-title">Tidrapport</h1><p className="page-description mt-2">Registrera, flytta och följ din rapporterade tid per uppgift och projekt.</p></div><ExportMenu title="Exportera tidrapport" description={`Dina ${visibleEntries.length} visade poster ${dateKey(days[0])} – ${dateKey(days.at(-1)!)}. Filen öppnas i Excel.`} disabled={!visibleEntries.length}
-      formats={[{ id: "csv", label: "CSV", icon: FileSpreadsheet, primary: true, run: () => downloadCsv(`tidrapport-${dateKey(days[0])}-${dateKey(days.at(-1)!)}.csv`, [["Datum", "Start", "Slut", "Tid (min)", "Projekt", "Uppgift", "Anteckning"], ...visibleEntries.map((entry) => csvRow(entry))]) }]} /></div>
+      formats={[{ id: "csv", label: "CSV", icon: FileSpreadsheet, primary: true, run: () => downloadCsv(`tidrapport-${dateKey(days[0])}-${dateKey(days.at(-1)!)}.csv`, [["Datum", "Start", "Slut", "Tid (min)", "Timmar", "Projekt", "Uppgift", "Anteckning"], ...visibleEntries.map((entry) => csvRow(entry))]) }]} /></div>
     <div className="notice flex items-start gap-3"><Clock3 className="mt-0.5 size-4 shrink-0 text-primary" /><p>Tid registreras på en uppgift. När du flyttar posten till en annan uppgift följer tiden automatiskt den uppgiftens projekt. Ändringar sparas i tidpostens historik.</p></div>
     {focusedTask && reportTask === focusedTask.id ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 text-sm" role="status"><p><span className="font-medium">Tidrapport för:</span> {focusedTask.title}</p><Button type="button" size="sm" variant="outline" onClick={() => setReportTask("")}>Visa alla uppgifter</Button></div> : null}
 
@@ -272,7 +273,7 @@ function TeamTime({ team, tasks, taskById, busy, onEdit, onDelete, lockedReason,
   const totalSeconds = filtered.reduce((sum, entry) => sum + entry.durationSec, 0);
   const personName = (userId: string) => names.get(userId) ?? "Tidigare medlem";
   return <Panel title="Teamets rapporterade tid" description="Alla medarbetares tid i organisationen. Som administratör kan du korrigera poster; ändringar av andras tid kräver en kommentar och sparas i historiken." leadingActions={<Users className="size-4 text-primary" aria-hidden="true" />} actions={<ExportMenu title="Exportera teamets tid" description={`${filtered.length} poster med dagens filter. Filen öppnas i Excel.`} disabled={!filtered.length} testId="team-export-menu"
-    formats={[{ id: "csv", label: "CSV", icon: FileSpreadsheet, primary: true, run: () => downloadCsv("teamets-tidrapport.csv", [["Medarbetare", "Datum", "Start", "Slut", "Tid (min)", "Projekt", "Uppgift", "Anteckning"], ...filtered.map((entry) => csvRow(entry, personName(entry.userId)))]) }]} />}>
+    formats={[{ id: "csv", label: "CSV", icon: FileSpreadsheet, primary: true, run: () => downloadCsv("teamets-tidrapport.csv", [["Medarbetare", "Datum", "Start", "Slut", "Tid (min)", "Timmar", "Projekt", "Uppgift", "Anteckning"], ...filtered.map((entry) => csvRow(entry, personName(entry.userId)))]) }]} />}>
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
       {/* Distinct accessible names: the personal list on the same page has its own Projekt/Uppgift filters. */}
       <label className="text-xs font-medium text-muted-foreground">Medarbetare<select aria-label="Teamets medarbetare" className="form-select mt-1" value={person} onChange={(event) => setPerson(event.target.value)}><option value="">Alla medarbetare</option>{team.members.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}</select></label>
@@ -326,11 +327,16 @@ function TimeEntryHistory({ entryId, loadHistory }: { entryId: string; loadHisto
   </details>;
 }
 
+// The form starts on the task the person last wrote time on, not on the first task of the whole company (2026-10-02).
+function mostRecentOwn(tasks: TimeTask[]) {
+  const latest = (task: TimeTask) => task.timeEntries.reduce((max, entry) => Math.max(max, new Date(entry.startedAt).getTime()), 0);
+  return tasks.filter((task) => task.timeEntries.length).sort((left, right) => latest(right) - latest(left))[0] ?? tasks[0];
+}
 function TimeEntryForm({ tasks, entry, preferredTaskId, ownerName, members, currentUserId, isAdmin, ownsEntry, busy, error, onSave, loadHistory }: { tasks: TimeTask[]; entry: ReportRow | null; /** The task a link came from ("Se tiden"), chosen when time can be written on it. */ preferredTaskId?: string; ownerName?: string; members?: { id: string; name: string }[]; currentUserId: string; isAdmin: boolean; ownsEntry: (userId: string) => boolean; busy: boolean; error: string; onSave: (input: TimeEntryInput, reason: string) => Promise<void>; loadHistory?: (entryId: string) => Promise<TimeEntryEvent[]> | TimeEntryEvent[] }) {
   const now = new Date(); const before = new Date(now.getTime() - 60 * 60 * 1000);
   const selectable = (task: TimeTask) => !task.archived && (isAdmin || task.status !== "COMPLETED");
   const preferred = preferredTaskId ? tasks.find((task) => task.id === preferredTaskId && selectable(task)) : undefined;
-  const [taskId, setTaskId] = useState(entry?.taskId ?? preferred?.id ?? tasks.find(selectable)?.id ?? "");
+  const [taskId, setTaskId] = useState(entry?.taskId ?? preferred?.id ?? mostRecentOwn(tasks.filter(selectable))?.id ?? "");
   const [userId, setUserId] = useState(entry?.userId ?? currentUserId);
   const [startedAt, setStartedAt] = useState(localInput(entry ? new Date(entry.startedAt) : before));
   const [endedAt, setEndedAt] = useState(localInput(entry?.endedAt ? new Date(entry.endedAt) : now));
@@ -351,8 +357,10 @@ function TimeEntryForm({ tasks, entry, preferredTaskId, ownerName, members, curr
     // The inputs show Swedish time, so they are read back as Swedish time whatever the browser's zone.
     const start = fromSwedishDateTimeInput(startedAt); const end = fromSwedishDateTimeInput(endedAt);
     if (!start || !end) return;
+    if (entry && !entry.endedAt) announce("Tidtagningen är stoppad av ändringen.");
     void onSave({ id: entry?.id, taskId, ...(members && userId !== currentUserId ? { userId } : {}), startedAt: start.toISOString(), endedAt: end.toISOString(), note }, reason);
   }}>
+    {entry && !entry.endedAt ? <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950" data-testid="time-running-notice">Tidtagningen pågår. Sparar du med en sluttid stoppas klockan; vill du bara byta uppgift eller anteckning, stäng rutan och använd Pausa eller Starta på uppgiften.</p> : null}
     {ownerName ? <p className="rounded-lg border border-primary/25 bg-primary/5 px-3 py-2 text-sm">Du korrigerar tid som tillhör <span className="font-semibold">{ownerName}</span>.</p> : null}
     {members && members.length > 1 ? <label className="field-label block space-y-2 text-xs font-medium">Medarbetare
       <select className="form-select" value={userId} onChange={(event) => setUserId(event.target.value)}>{members.map((member) => <option key={member.id} value={member.id}>{member.name}{member.id === currentUserId ? " (du)" : ""}</option>)}</select>

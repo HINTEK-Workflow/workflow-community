@@ -147,7 +147,7 @@ function TaskState({ task }: { task: WorkflowTask }) {
   const state = taskState(task);
   const attention = state !== "done" && task.status === "NEEDS_ACTION";
   return <Badge variant="outline" className={indicatorBadge(attention ? "danger" : statusTone(state))}>
-    {state === "done" ? "Slutförd" : attention ? "Behöver åtgärdas" : state === "active" ? "Pågår" : "Planerad"}
+    {state === "done" ? "Slutförd" : attention ? "Behöver åtgärdas" : task.status === "PAUSED" ? "Pausad" : state === "active" ? "Pågår" : "Planerad"}
   </Badge>;
 }
 
@@ -174,6 +174,7 @@ export function WorkflowProjects({
   permissions?: WorkflowPermissionProfile;
   admin?: boolean;
 }) {
+  const [confirmCard, confirmElement] = useConfirm();
   const [currentUserId, setCurrentUserId] = useState("");
   const [cloudProjects, setCloudProjects] = useState<WorkflowProject[]>([]);
   const [cloudControls, setCloudControls] = useState<WorkflowTask[]>([]);
@@ -352,11 +353,13 @@ export function WorkflowProjects({
     }
   }
 
-  async function setArchived(projectId: string, archived: boolean) {
+  async function setArchived(projectId: string, archived: boolean, openTasks = 0) {
+    // Archiving freezes the project's work: unfinished tasks are named first (simulation 2026-10-02).
+    if (archived && openTasks > 0 && !(await confirmCard({ title: "Arkivera projektet?", message: `${openTasks} ${openTasks === 1 ? "uppgift är" : "uppgifter är"} inte slutförda. Arkiverat blir projektet skrivskyddat och arbetet i det stoppas tills du återställer det.`, confirmLabel: "Arkivera ändå", tone: "danger" }))) return;
     setBusy(true); setError("");
     try {
       if (local) await local.archive(projectId, archived);
-      else { await api("/api/projects", { method: "POST", body: JSON.stringify({ action: archived ? "archive" : "restore", id: projectId }) }); await load(); }
+      else { await api("/api/projects", { method: "POST", body: JSON.stringify({ action: archived ? "archive" : "restore", id: projectId, ...(archived ? { confirmOpen: true } : {}) }) }); await load(); }
     } catch (issue) { setError((issue as Error).message); } finally { setBusy(false); }
   }
 
@@ -463,9 +466,10 @@ export function WorkflowProjects({
     const taskPlannedMinutes = plannedMinutesByTask(plannedActivities);
     const reportChoices: ProjectReportChoice[] = currentTasks.map((task) => ({ id: task.id, kind: task.kind ?? "COMMISSIONING_CONTROL", title: task.title, status: task.status }));
     return <div className="space-y-6">
+      {confirmElement}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0"><Link className="text-sm text-primary hover:underline" href="/?view=projects">← Mina projekt</Link><h1 className="page-title mt-2">{current.name}</h1><p className="page-description mt-1">{current.description || "Gemensam arbetsyta för projektets uppgifter."}</p></div>
-        <div className="flex flex-wrap justify-end gap-2">{can("projects", "report") && currentTasks.length > 0 && (!local || local.report) && <ReportOptionsButton choices={reportChoices} onExport={(options, selected) => exportProjectReport(current, options, selected)} />}{archived ? can("projects", "archive") && <Button variant="outline" disabled={busy} onClick={() => void setArchived(current.id, false)}><RotateCcw />Återställ projekt</Button> : <>{can("projects", "edit") && <Button variant="outline" onClick={() => setEditing(true)}><Pencil />Redigera</Button>}{!closed && can("projects", "edit") && <Button variant="outline" onClick={() => setLinking(true)}><Link2 />Koppla befintlig uppgift</Button>}{can("projects", "archive") && <Button variant="outline" disabled={busy} onClick={() => void setArchived(current.id, true)}><Archive />Arkivera</Button>}{closed ? canManage && <Button disabled={busy} onClick={() => void setClosed(current.id, false)}><RotateCcw />Återöppna projekt</Button> : canCreateTask && <Button asChild><Link href={`/?view=new_task&projectId=${encodeURIComponent(current.id)}`}><Plus />Skapa ny uppgift</Link></Button>}</>}</div>
+        <div className="flex flex-wrap justify-end gap-2">{can("projects", "report") && currentTasks.length > 0 && (!local || local.report) && <ReportOptionsButton choices={reportChoices} onExport={(options, selected) => exportProjectReport(current, options, selected)} />}{archived ? can("projects", "archive") && <Button variant="outline" disabled={busy} onClick={() => void setArchived(current.id, false)}><RotateCcw />Återställ projekt</Button> : <>{can("projects", "edit") && <Button variant="outline" onClick={() => setEditing(true)}><Pencil />Redigera</Button>}{!closed && can("projects", "edit") && <Button variant="outline" onClick={() => setLinking(true)}><Link2 />Koppla befintlig uppgift</Button>}{can("projects", "archive") && <Button variant="outline" disabled={busy} onClick={() => void setArchived(current.id, true, currentTasks.length - groups.done.length)}><Archive />Arkivera</Button>}{closed ? canManage && <Button disabled={busy} onClick={() => void setClosed(current.id, false)}><RotateCcw />Återöppna projekt</Button> : canCreateTask && <Button asChild><Link href={`/?view=new_task&projectId=${encodeURIComponent(current.id)}`}><Plus />Skapa ny uppgift</Link></Button>}</>}</div>
       </div>
       {/* The project's flow (2026-10-01): the same progress line as the tasks, between the heading and the panels. */}
       <FlowGuide flow={projectFlow({ closed, archived, taskCount: currentTasks.length, startedCount: groups.active.length, completedCount: groups.done.length })} page={`project-${current.id}`} label="Projektets flöde" pageLabel="Projekt"

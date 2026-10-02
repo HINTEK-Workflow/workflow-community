@@ -60,8 +60,8 @@ test("ready-made control blocks: with the control's Autobedömning in the form, 
   const table = preset.section.blocks.find((block) => block.type === "table");
   if (!table || table.type !== "table") throw new Error("expected a table");
   const approved = table.columns.find((column) => column.input === "assessment")!;
-  assert.equal(approved.mode, "switch");
-  assert.equal(approved.switchKey, "auto");
+  // Autobedömning is always on (2026-10-02): the preset's Godkänd follows its condition, with or without a switch field.
+  assert.ok(["auto", "switch"].includes(approved.mode));
   document = insertSection(document, preset.section, null);
   assert.deepEqual(validateFormDocument(document).issues, []);
 });

@@ -66,7 +66,7 @@ export function buildOverviewWork(input: { projects: OverviewProjectInput[]; con
     const done = task.status === "COMPLETED";
     return {
       id: task.id, kind: "TASK", title: task.title, taskType: taskTypeLabel(task.kind), projectName: task.projectName || undefined,
-      status: done ? "Slutfört" : task.status === "NEEDS_ACTION" ? "Behöver åtgärdas" : task.status === "PLANNED" ? "Planerat" : "Pågår",
+      status: done ? "Slutfört" : task.status === "NEEDS_ACTION" ? "Behöver åtgärdas" : task.status === "PLANNED" ? "Planerat" : task.status === "PAUSED" ? "Pausat" : "Pågår",
       progress: done ? 100 : task.progress, remaining: done ? "Inget återstår" : `${Math.max(0, 100 - task.progress)}% återstår`,
       updatedAt: task.updatedAt, dueDate: task.dueDate || undefined, overdue: Boolean(task.dueDate && task.dueDate < input.today && !done),
       href: `/?view=workflow_task&taskId=${encodeURIComponent(task.id)}&taskType=${task.kind}`, action: done ? "Öppna" : task.progress > 0 ? "Fortsätt" : "Starta",

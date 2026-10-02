@@ -29,7 +29,7 @@ test("RCD profiles and mandatory test button reproduce V1 thresholds", () => {
     assert.equal(evaluate("rcd", { ...row, t1n: "" }), false);
   }
 });
-test("V1 numeric voltages normalize; duplicate identifiers regenerate; manual assessments survive", () => {
+test("V1 numeric voltages normalize; duplicate identifiers regenerate; the assessment is always automatic", () => {
   const data = blankControl();
   data.active.iso = true;
   data.meta.autoOn = true;
@@ -41,9 +41,11 @@ test("V1 numeric voltages normalize; duplicate identifiers regenerate; manual as
   assert.equal(result.iso.rows[0].u, "500 V");
   assert.notEqual(result.iso.rows[0].uid, result.iso.rows[1].uid);
   assert.equal(totals(result)[0].ok, 1);
+  // An old file that was saved with Autobedömning off is read as automatic (2026-10-02).
   data.meta.autoOn = false;
   data.iso.rows[0].ok = false;
-  assert.equal(normalizeControl(data).iso.rows[0].ok, false);
+  assert.equal(normalizeControl(data).meta.autoOn, true);
+  assert.equal(normalizeControl(data).iso.rows[0].ok, true, "2 MΩ against 1 MΩ is approved by the rule, not by a tick");
   data.iso.rows[0].mohm = "-2";
   assert.throws(() => normalizeControl(data));
 });
@@ -120,25 +122,6 @@ test("completion blocks examples, missing active rows and undocumented deviation
   assert.equal(validateForCompletion(data).complete, true);
 });
 
-test("manual assessment permits documented RCD special cases without automatic time fields", () => {
-  const data = blankControl();
-  data.meta.proj = "Specialanläggning";
-  data.meta.perf = "Montör";
-  data.meta.autoOn = false;
-  data.active = { iso: false, cont: false, volt: false, rcd: true, vis: false };
-  data.rcd.rows = [
-    {
-      uid: "rcd-manual",
-      place: "JFB 1",
-      std: "EN",
-      type: "B",
-      idn: 30,
-      ok: false,
-    },
-  ];
-  data.vis.comment = "Manuell bedömning enligt anläggningens underlag.";
-  assert.equal(validateForCompletion(data).complete, true);
-});
 
 test("blank controls start at zero progress and example rows do not count as control points", () => {
   const data = blankControl();

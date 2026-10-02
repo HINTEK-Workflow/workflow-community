@@ -122,7 +122,10 @@ export const controlSchema = z.object({
     instr: short,
     sn: short,
     cal: short,
-    autoOn: z.boolean(),
+    // The assessment is always automatic (2026-10-02): a measured value is judged against its limit, and a value
+    // that fails stays failed, but the control is still carried out and can be completed with a comment. The field stays
+    // in the data so old files and exports still read, and every read says true.
+    autoOn: z.boolean().transform(() => true),
     name: short.optional(),
   }),
   active: z.object({
@@ -166,7 +169,7 @@ export function blankControl(): ControlData {
       instr: "",
       sn: "",
       cal: "",
-      autoOn: false,
+      autoOn: true,
     },
     active: { iso: false, cont: false, volt: false, rcd: false, vis: false },
     iso: { rows: [] },

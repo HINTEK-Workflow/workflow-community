@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const WORKFLOW_PERMISSION_SUBJECTS = ["projects", "kfid", "work-order", "risk-assessment", "forms"] as const;
+export const WORKFLOW_PERMISSION_SUBJECTS = ["projects", "kfid", "work-order", "risk-assessment", "forms", "customers"] as const;
 export const WORKFLOW_PERMISSION_ACTIONS = ["read", "create", "edit", "complete", "reopen", "report", "archive"] as const;
 export type WorkflowPermissionSubject = (typeof WORKFLOW_PERMISSION_SUBJECTS)[number];
 export type WorkflowPermissionAction = (typeof WORKFLOW_PERMISSION_ACTIONS)[number];
@@ -13,6 +13,9 @@ export const workflowPermissionMatrix: Record<WorkflowPermissionSubject, readonl
   "risk-assessment": ["read", "create", "edit", "complete", "reopen", "report"],
   // Protocols from published forms (2026-09-26): the same actions as work orders.
   forms: ["read", "create", "edit", "complete", "reopen", "report"],
+  // The customer register (2026-10-02, the simulation: "Läsa och rapportera" could still edit a customer):
+  // governed by its own permission, not implied by a report-only preset. An admin's grant turns it on as usual.
+  customers: ["read", "create", "edit", "archive"],
 };
 
 export const workflowPermissionDependencies: Record<WorkflowPermissionAction, readonly WorkflowPermissionAction[]> = {
@@ -57,8 +60,8 @@ function grantsFor(selection: Partial<Record<WorkflowPermissionSubject, readonly
 
 export const workflowPermissionPresets = [
   { id: "full", label: "Full åtkomst", description: "Alla arbetsmoment i projekt och aktiva uppgiftstyper.", profile: defaultWorkflowPermissionProfile() },
-  { id: "field", label: "Utföra arbete", description: "Skapa, redigera, slutföra, återöppna och rapportera; kan inte arkivera projekt.", profile: { version: 1 as const, grants: grantsFor({ projects: ["read", "create", "edit", "report"], kfid: ["read", "create", "edit", "complete", "report"], "work-order": ["read", "create", "edit", "complete", "reopen", "report"], "risk-assessment": ["read", "create", "edit", "complete", "reopen", "report"], forms: ["read", "create", "edit", "complete", "reopen", "report"] }) } },
-  { id: "report", label: "Läsa och rapportera", description: "Kan läsa och skapa rapporter men inte ändra verksamhetsdata.", profile: { version: 1 as const, grants: grantsFor({ projects: ["read", "report"], kfid: ["read", "report"], "work-order": ["read", "report"], "risk-assessment": ["read", "report"], forms: ["read", "report"] }) } },
+  { id: "field", label: "Utföra arbete", description: "Skapa, redigera, slutföra, återöppna och rapportera; kan inte arkivera projekt.", profile: { version: 1 as const, grants: grantsFor({ projects: ["read", "create", "edit", "report"], kfid: ["read", "create", "edit", "complete", "report"], "work-order": ["read", "create", "edit", "complete", "reopen", "report"], "risk-assessment": ["read", "create", "edit", "complete", "reopen", "report"], forms: ["read", "create", "edit", "complete", "reopen", "report"], customers: ["read", "create", "edit"] }) } },
+  { id: "report", label: "Läsa och rapportera", description: "Kan läsa och skapa rapporter men inte ändra verksamhetsdata.", profile: { version: 1 as const, grants: grantsFor({ projects: ["read", "report"], kfid: ["read", "report"], "work-order": ["read", "report"], "risk-assessment": ["read", "report"], forms: ["read", "report"], customers: ["read"] }) } },
   { id: "none", label: "Ingen åtkomst", description: "Inga projekt eller uppgifter visas förrän rättigheter läggs till.", profile: { version: 1 as const, grants: [] } },
 ] as const;
 

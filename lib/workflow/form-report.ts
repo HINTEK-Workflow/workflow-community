@@ -1,4 +1,5 @@
 import { rgb } from "pdf-lib";
+import { formatDurationSeconds } from "@/lib/workflow/duration";
 import { formatSwedish } from "@/lib/swedish-time";
 import { formRowStarted, evaluateForm, formApprovalTotals, formBand, formCanDeviate, formBlockSpan, formBlockVisible, formCompletion, formConditionMet, formLeafBlocks, formLimitFor, formLimitText, formRowLabel, formSectionActive, formSectionShown, type FormBlock, type FormColumn, type FormDocument, type FormEvaluation, type FormLeafBlock, type FormBand, type FormTableBlock, type FormValues } from "./form-document";
 import { formatFormulaValue, formatResultValue, type FormulaValue } from "./form-formula";
@@ -61,7 +62,7 @@ export async function createFormProtocolPdf(input: { identity: KitIdentity; font
   const blank = input.blank === true;
   const createdAt = input.createdAt ?? new Date();
   const title = document.report.title || "Protokoll";
-  const code = document.report.code || `Version ${details.templateVersion}`;
+  const code = task.version && !blank ? `${document.report.code ? `${document.report.code} · ` : ""}Version ${task.version}` : document.report.code || `Version ${details.templateVersion}`;
   const kit = await createReportKit({ identity: input.identity, fontBytes: input.fontBytes, overline: details.templateName.toUpperCase(), continuation: `${title} · fortsättning` });
   kit.pdf.setTitle(blank ? `${details.templateName} – tom mall` : `${details.templateName} – ${task.title}`);
   kit.pdf.setAuthor(input.identity.company || "HINTEK Workflow");
@@ -83,7 +84,6 @@ export async function createFormProtocolPdf(input: { identity: KitIdentity; font
   if (task.status !== "COMPLETED" && !blank) kit.text("· ÖGONBLICKSBILD – EJ SLUTFÖRT", MARGIN + kit.font.widthOfTextAtSize(`${code} `, 7), 763, { size: 7, color: draft });
 
   if (options.summary && document.report.taskFacts) {
-    const minutes = Math.floor(task.totalDurationSec / 60);
     const show = (value: string) => blank ? "" : value;
     kit.factBoxes([
       { label: "Uppgift", value: show(task.title), soft: true },
@@ -94,7 +94,7 @@ export async function createFormProtocolPdf(input: { identity: KitIdentity; font
       { label: "Ansvarig", value: show(task.assignedToName || "Inte tilldelad") },
       ...(task.dueDate ? [{ label: "Klart senast", value: show(task.dueDate) }] : []),
       { label: "Status", value: show(`${statusLabel(task.status)} · ${task.status === "COMPLETED" ? 100 : task.progress}% klart`) },
-      ...(options.time ? [{ label: "Rapporterad tid", value: show(`${Math.floor(minutes / 60)} h ${minutes % 60} min`) }] : []),
+      ...(options.time ? [{ label: "Rapporterad tid", value: show(formatDurationSeconds(task.totalDurationSec)) }] : []),
       ...(task.description ? [{ label: "Beskrivning", value: show(task.description), span: 12 }] : []),
     ]);
     if (task.projectFields?.length) {

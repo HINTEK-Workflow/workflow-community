@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
-import { Building2, CreditCard, Factory, FileText, History, KeyRound, Mail, PanelsTopLeft, Sparkles, Tags, Users } from "lucide-react";
+import { Building2, CreditCard, Factory, FileText, HelpCircle, History, KeyRound, Mail, PanelsTopLeft, Settings2, Sparkles, Tags, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Tab = { view: string; label: string; icon: LucideIcon };
@@ -29,6 +30,14 @@ export function companyTabs(options: { admin: boolean; cloud: boolean; ai: boole
   ];
 }
 
+// Everything that is settings is one menu button, Inställningar, with tabs (2026-10-02: "allt är under
+// inställningar"): the person's own settings, the company's pages and Hjälp. Produktadministration holds only what is
+// beyond those, and only for the superadmin.
+export const SETTINGS_VIEWS = ["settings", "help", ...COMPANY_VIEWS] as const;
+export function settingsTabs(options: Parameters<typeof companyTabs>[0]): Tab[] {
+  return [{ view: "settings", label: "Mina inställningar", icon: Settings2 }, ...companyTabs(options), { view: "help", label: "Hjälp", icon: HelpCircle }];
+}
+
 export function productTabs(options: { landingEditor: boolean; pricing: boolean; ai: boolean }): Tab[] {
   return [
     { view: "customer_companies", label: "Kundföretag", icon: Building2 },
@@ -40,14 +49,22 @@ export function productTabs(options: { landingEditor: boolean; pricing: boolean;
 }
 
 export function SectionTabs({ label, tabs, current }: { label: string; tabs: Tab[]; current: string }) {
+  const router = useRouter();
   if (tabs.length < 2) return null;
-  // The same width and place on every tab (2026-10-01: the row jumped sideways on Landningssidan, whose page
-  // is wider): at most the ordinary content width, centred like it. Only sideways scrolling on a narrow screen – the
-  // active tab's underline overlapping the border must never give the row a vertical scrollbar.
-  return <nav aria-label={label} className="section-tabs mx-auto mb-6 flex w-full max-w-[76rem] gap-1 overflow-x-auto overflow-y-hidden shadow-[inset_0_-1px_0_var(--border)]" data-testid="section-tabs">
-    {tabs.map((tab) => <Link key={tab.view} href={`/?view=${tab.view}`} aria-current={tab.view === current ? "page" : undefined}
-      className={cn("flex h-10 shrink-0 items-center gap-2 border-b-2 px-3 text-sm transition-colors", tab.view === current ? "border-primary font-medium text-foreground" : "border-transparent text-muted-foreground hover:border-border hover:text-foreground")}>
-      <tab.icon className={cn("size-4", tab.view === current ? "text-primary" : "")} aria-hidden="true" />{tab.label}
-    </Link>)}
-  </nav>;
+  // No sideways scrolling (2026-10-02: the scroll bar under Inställningar): on a phone one picker; on a wider
+  // screen the tabs wrap onto a second line as chips, all visible at once, at most the ordinary content width.
+  return <div className="mx-auto mb-6 w-full max-w-[76rem]">
+    <label className="block sm:hidden">
+      <span className="sr-only">{label}</span>
+      <select className="form-select" aria-label={label} value={current} onChange={(event) => router.push(`/?view=${event.target.value}`)} data-testid="section-tabs-picker">
+        {tabs.map((tab) => <option key={tab.view} value={tab.view}>{tab.label}</option>)}
+      </select>
+    </label>
+    <nav aria-label={label} className="section-tabs hidden flex-wrap gap-2 border-b pb-4 sm:flex" data-testid="section-tabs">
+      {tabs.map((tab) => <Link key={tab.view} href={`/?view=${tab.view}`} aria-current={tab.view === current ? "page" : undefined}
+        className={cn("flex h-9 shrink-0 items-center gap-2 rounded-full border px-3.5 text-sm transition-colors", tab.view === current ? "border-primary/30 bg-secondary font-medium text-secondary-foreground ring-1 ring-primary/15" : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground")}>
+        <tab.icon className={cn("size-4", tab.view === current ? "text-primary" : "")} aria-hidden="true" />{tab.label}
+      </Link>)}
+    </nav>
+  </div>;
 }

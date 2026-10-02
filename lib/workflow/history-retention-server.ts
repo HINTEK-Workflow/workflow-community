@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { remove } from "@/lib/kfid/storage";
 import { emptyCounts, purgeDetail, type HistoryCategory, type HistoryCounts } from "@/lib/workflow/history-retention";
 
 type Db = Prisma.TransactionClient | typeof prisma;
@@ -84,6 +85,11 @@ export async function applyRetention(now = new Date(), cutoffFor: (months: numbe
   const results: { organizationId: string; counts: HistoryCounts }[] = [];
   for (const company of companies) {
     const before = cutoffFor(company.historyRetentionMonths!, now);
+    // Files saved from the Import page that never got a task go with the rest of the old history.
+    for (const file of await prisma.importedFile.findMany({ where: { organizationId: company.id, createdAt: { lt: before } }, select: { id: true, storagePath: true } })) {
+      await prisma.importedFile.delete({ where: { id: file.id } });
+      await remove(file.storagePath);
+    }
     const pending = await countHistory(company.id, before, Object.keys(emptyCounts()) as HistoryCategory[]);
     if (!Object.values(pending).some(Boolean)) continue;
     results.push({ organizationId: company.id, counts: await purgeHistory({ organizationId: company.id, before, categories: Object.keys(emptyCounts()) as HistoryCategory[], actorId: "system:history-retention", kind: "retention" }) });

@@ -3,6 +3,7 @@
  * published as version 1; a changed form gets a new published version. Existing protocols keep their version.
  * Usage: npx tsx scripts/forms/builtin-release-migration.ts <label> [form id …] > prisma/migrations/<name>/migration.sql
  *
+ * HINTEK_OVERWRITE=1 releases a template even when the superadmin changed it last (2026-10-02, explicit permission).
  * Idempotent and careful: a form is only touched while HINTEK's template was last written by the system
  * (`updatedBy = 'system:hintek'`) – a form the superadmin has changed, unpublished or deleted is left alone – and a
  * version with the same content is never published twice. Companies' own versions are never touched.
@@ -46,7 +47,9 @@ for (const form of forms) {
   const versionOf = `(SELECT MAX("version") FROM "FormTemplateVersion" WHERE ${same})`;
   const published = (column: string) => `(SELECT v."${column}" FROM "FormTemplateVersion" v WHERE v."templateId" = t."id" AND v."version" = t."publishedVersion")`;
   const delivered = DELIVERED[form.id]?.length ? ` OR (t."draft" = ${published("document")} AND ${published("hash")} IN (${DELIVERED[form.id].map(literal).join(", ")}))` : "";
-  const untouched = `t."id" = ${template} AND t."organizationId" IS NULL AND (t."updatedBy" = ${literal(actor)}${delivered})`;
+  // HINTEK_OVERWRITE=1 (2026-10-02, explicit permission: the superadmin's edits of HINTEK's own templates are tests
+  // and may be overwritten): the template is released whoever changed it last. Companies' own versions are never touched.
+  const untouched = process.env.HINTEK_OVERWRITE === "1" ? `t."id" = ${template} AND t."organizationId" IS NULL` : `t."id" = ${template} AND t."organizationId" IS NULL AND (t."updatedBy" = ${literal(actor)}${delivered})`;
   lines.push("", `-- ${meta.name}`,
     `INSERT INTO "FormTemplate" ("id", "name", "displayName", "description", "internalNote", "color", "icon", "category", "allowStandalone", "allowInProject", "permissionArea", "origin", "authorName", "status", "draft", "draftRevision", "createdBy", "updatedBy", "createdAt", "updatedAt")`,
     `VALUES (${template}, ${literal(meta.name)}, ${literal(meta.displayName)}, ${literal(meta.description)}, ${literal("Levereras av HINTEK (inbyggd kontrolltyp).")}, ${literal(meta.color)}, ${literal(meta.icon)}, ${literal(meta.category)}, ${meta.allowStandalone}, ${meta.allowInProject}, ${literal(form.permissionArea ?? "forms")}, 'HINTEK', 'HINTEK', 'PUBLISHED', ${json(document)}, 1, ${literal(actor)}, ${literal(actor)}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,

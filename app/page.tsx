@@ -91,7 +91,7 @@ export default async function HomePage({
     : "new";
   // The saved start page "new" is labelled "Ny uppgift" and therefore opens the task type picker, not the control editor.
   const requested = params.view ?? (user && preferred === "new" ? "new_task" : preferred);
-  const view = (validViews.includes(requested) ? requested : "new") as View;
+  const view = (validViews.includes(requested) ? requested : user ? "stats" : "new") as View;
   const activeMembership = user?.organizationMemberships.find(
     (member) => member.organization.id === user.activeOrganizationId,
   );

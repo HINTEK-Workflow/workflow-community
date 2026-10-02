@@ -27,7 +27,7 @@ test("risk assessment progression requires documented risks and protective measu
 test("local workflow tasks retain identity and real time entries", () => {
   const workspace = createLocalWorkspace({ id: "org-local", name: "Lokala AB" });
   const saved = saveLocalWorkflowTaskRecord(workspace, workOrder());
-  assert.equal(saved.task.status, "IN_PROGRESS", "documented work must not remain planned");
+  assert.equal(saved.task.status, "PLANNED", "an order text alone is not documented work (2026-10-02)");
   assert.equal(saved.task.progress, 0);
   const started = updateLocalWorkflowTimer(saved.workspace, saved.task.id, "START", "local-user");
   assert.equal(started.task!.status, "IN_PROGRESS");

@@ -39,6 +39,28 @@ test("insulation: a row per measurement, judged against the requirement the pers
   assert.equal(evaluation.deviations.length, 1);
 });
 
+// 2026-10-02, decision 2.1 ("en ommätning ska kunna ersätta ett underkänt värde"): a later row that remeasures
+// a failing one takes over the summary and the deviation count; the old row is kept for the record, not deleted.
+test("insulation: a remeasurement supersedes the failing row it points at, in totals and deviations", () => {
+  const document = form("hintek-isolationsmatning-ebr");
+  const values = initialFormValues(document);
+  const failing = { ...newFormRow(table(document, "matningar"), "a"), cells: { objekt: "Huvudledning", matning: "L1–PE", uppmatt: 0.3, krav: 1 } };
+  values.tables.matningar = [failing];
+  const before = evaluateForm(document, values);
+  assert.equal(before.computed.lagsta, 0.3);
+  assert.equal(before.computed.underkanda, 1);
+  assert.equal(before.deviations.length, 1);
+
+  const remeasured = { ...newFormRow(table(document, "matningar"), "b"), cells: { objekt: "Huvudledning", matning: "L1–PE", uppmatt: 250, krav: 1 }, remeasures: "a" };
+  values.tables.matningar = [failing, remeasured];
+  const after = evaluateForm(document, values);
+  assert.equal(after.computed.lagsta, 250, "the superseded 0,3 MΩ no longer sets the lowest value");
+  assert.equal(after.computed.underkanda, 0, "the superseded row is not counted as under the requirement");
+  assert.equal(after.deviations.length, 0, "the superseded row's deviation is gone once remeasured");
+  // The old row's own cells are untouched (kept for the record); only its weight in totals and deviations changes.
+  assert.equal(values.tables.matningar[0].cells.uppmatt, 0.3);
+});
+
 test("follow wire (Ymer): the quotient I y / I mät judges the screen connection and the outer earth connections", () => {
   const document = form("hintek-foljelinematning-ebr");
   const values = initialFormValues(document);

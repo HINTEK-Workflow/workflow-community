@@ -992,7 +992,7 @@ export function Administration({
             })}</div>
             <p className="mt-3 text-[11px] leading-4 text-muted-foreground">Beroenden hanteras automatiskt: skapa, redigera och rapportera kräver läsrättighet; slutföra och återöppna kräver även redigering.</p>
             <div className="mt-4 space-y-3">{(Object.entries(workflowPermissionMatrix) as [WorkflowPermissionSubject, readonly ("read" | "create" | "edit" | "complete" | "reopen" | "report" | "archive")[]][]).map(([subject, actions]) => {
-              const subjectLabel = subject === "projects" ? "Projekt" : subject === "kfid" ? "Kontroll före idrifttagning" : subject === "work-order" ? "Arbetsorder" : subject === "forms" ? "Formulär" : "Riskbedömning";
+              const subjectLabel = subject === "projects" ? "Projekt" : subject === "kfid" ? "Kontroll före idrifttagning" : subject === "work-order" ? "Arbetsorder" : subject === "forms" ? "Formulär" : subject === "risk-assessment" ? "Riskbedömning" : "Kundregister";
               return <fieldset key={subject} className="rounded-lg border bg-card p-3"><legend className="px-1 text-xs font-semibold">{subjectLabel}</legend><div className="mt-1 flex flex-wrap gap-x-4 gap-y-2">{actions.map((action) => {
                 const grant = `${subject}:${action}` as WorkflowPermissionGrant;
                 const checked = member.workflowPermissions.grants.includes(grant);

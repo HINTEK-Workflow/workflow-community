@@ -189,6 +189,8 @@ export type AdvisorPageContext = {
   missing?: string[];
   /** "tip" when asked from a tip's "Fråga HINTEK AI", "page" when the person types in the chat on the page. */
   source?: "tip" | "page";
+  /** The open task's id (2026-10-02): lets the assistant read this very task, within the person's own rights, instead of guessing. */
+  taskId?: string;
 };
 
 
@@ -212,7 +214,7 @@ export function FlowGuide({ flow, advisor, page, handlers, label, pageLabel, mis
   const settings = useAdvisorSettings();
   // HINTEK AI always knows the page the person is on (2026-10-01: "den förstår inte att jag är på
   // kontrollsidan"): kinds, steps and what is missing, never names.
-  const pageContext: AdvisorPageContext | null = advisor ? { kind: advisor.kind, label: pageLabel, step: flow.current?.label ?? null, hint: flow.current?.hint ?? null, steps: flow.steps.map((step) => ({ label: step.label, state: step.state })), tip: null, missing: (missing ?? []).slice(0, 10).map((item) => item.slice(0, 200)) } : null;
+  const pageContext: AdvisorPageContext | null = advisor ? { kind: advisor.kind, ...(advisor.currentTaskId ? { taskId: advisor.currentTaskId } : {}), label: pageLabel, step: flow.current?.label ?? null, hint: flow.current?.hint ?? null, steps: flow.steps.map((step) => ({ label: step.label, state: step.state })), tip: null, missing: (missing ?? []).slice(0, 10).map((item) => item.slice(0, 200)) } : null;
   const pageKey = JSON.stringify(pageContext);
   useEffect(() => { publishPageContext(pageKey === "null" ? null : JSON.parse(pageKey)); }, [pageKey]);
   useEffect(() => () => publishPageContext(null), []);

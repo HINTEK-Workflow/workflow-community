@@ -136,7 +136,7 @@ export function LimitHint({ limit, level }: { limit: FormLimitValue & { unit: st
   const origin = limit.origin === "object" ? "objektets gränsvärden" : limit.origin === "facility" ? "anläggningens gränsvärden" : "formulärets gränsvärden";
   return <span className="text-xs font-normal text-muted-foreground" data-testid="form-limit">
     {level === "alarm" ? <strong className={cn("mr-1.5", indicatorText("danger"))}>Larm</strong> : level === "warning" ? <strong className={cn("mr-1.5", indicatorText("warning"))}>Varning</strong> : null}
-    {set ? `Larm ${formLimitText(limit.low, limit.high, limit.unit)} · varning ${formLimitText(limit.warnLow, limit.warnHigh, limit.unit)} (${origin})` : `Gränsvärde ej angivet${limit.source ? ` – hämtas från ${limit.source.charAt(0).toLowerCase()}${limit.source.slice(1)}` : ""}.`}
+    {set ? `Larm ${formLimitText(limit.low, limit.high, limit.unit)} · varning ${formLimitText(limit.warnLow, limit.warnHigh, limit.unit)} (${origin})` : `Gränsvärde ej angivet${limit.source ? ` – ${limit.source.charAt(0).toLowerCase()}${limit.source.slice(1)}` : ""}.`}
     {set && limit.source ? ` · ${limit.source}` : ""}
   </span>;
 }

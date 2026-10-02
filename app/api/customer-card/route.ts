@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { ApiError, body, checkOrigin, context, failure, requireAdmin, requireCloudStorage, requireCloudWriteAccess } from "@/lib/kfid/server";
+import { ApiError, body, checkOrigin, context, failure, requireAdmin, requireCloudStorage, requireCloudWriteAccess, requireWorkflowPermission } from "@/lib/kfid/server";
 import { normalizeControl, validateForCompletion } from "@/lib/kfid/model";
 import { hasWorkflowPermission, readableTaskScope } from "@/lib/workflow/permissions";
 import { readableTaskWhere } from "@/lib/workflow/task-access";
@@ -26,14 +26,14 @@ const facilitySelect = { id: true, customerId: true, name: true, address: true, 
 /**
  * The customer card (2026-09-26, decision 12B/D10 B): the customer, its facilities, its projects and one bounded
  * page of all its tasks (work orders, risk assessments and controls), filtered by the member's read permission per
- * module. The customer register itself stays open to every member, as before.
+ * module. Reading a customer stays open to every member; editing it needs the customers permission (2026-10-02).
  */
 export async function GET(request: Request) {
   try {
     const ctx = await context();
     requireCloudStorage(ctx);
     const query = querySchema.parse(Object.fromEntries(new URL(request.url).searchParams));
-    const can = (subject: "projects" | "kfid" | "work-order" | "risk-assessment" | "forms") => ctx.admin || hasWorkflowPermission(ctx.workflowPermissions, subject, "read");
+    const can = (subject: "projects" | "kfid" | "work-order" | "risk-assessment" | "forms" | "customers") => ctx.admin || hasWorkflowPermission(ctx.workflowPermissions, subject, "read");
     const customer = await prisma.customer.findFirst({
       where: { id: query.id, organizationId: ctx.organizationId },
       select: { id: true, name: true, company: true, address: true, postalCode: true, city: true, email: true, phone: true, mobile: true, notes: true, version: true, deletedAt: true, lat: true, lng: true },
@@ -128,6 +128,8 @@ export async function POST(request: Request) {
       if (!changed.count) throw new ApiError(404, "Anläggningen hittades inte.");
       return NextResponse.json({ ok: true });
     }
+    // A customer's facility is also governed by the customers permission (2026-10-02, decision 2.2).
+    requireWorkflowPermission(ctx, "customers", input.id ? "edit" : "create");
     const customer = await prisma.customer.findFirst({ where: { id: input.customerId, organizationId: ctx.organizationId, deletedAt: null }, select: { id: true } });
     if (!customer) throw new ApiError(404, "Kunden hittades inte.");
     if (input.id) {

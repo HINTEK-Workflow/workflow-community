@@ -55,6 +55,7 @@ export async function cloudWorkflowReportTask(organizationId: string, id: string
     id: task.id,
     kind: z.enum(workflowTaskKinds).parse(task.kind),
     formArea: task.formArea,
+    version: task.version,
     title: task.title,
     description: task.description,
     status: z.enum(["PLANNED", "IN_PROGRESS", "PAUSED", "NEEDS_ACTION", "COMPLETED"]).parse(task.status),

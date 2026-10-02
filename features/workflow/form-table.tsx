@@ -1,13 +1,13 @@
 "use client";
 
 import type { CSSProperties, ReactNode } from "react";
-import { ClipboardList, Copy, ExternalLink, LoaderCircle, Plus, Trash2, Wrench } from "lucide-react";
+import { ClipboardList, Copy, ExternalLink, LoaderCircle, Plus, RotateCw, Trash2, Wrench } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { formBand, formLimitFor, formLimitLevel, formRowLabel, newFormRow, type FormColumn, type FormDocument, type FormEvaluation, type FormTableBlock, type FormValues } from "@/lib/workflow/form-document";
+import { formBand, formLimitFor, formLimitLevel, formRowLabel, newFormRow, supersededRowIds, type FormColumn, type FormDocument, type FormEvaluation, type FormTableBlock, type FormValues } from "@/lib/workflow/form-document";
 import { formatFormulaValue, formatResultValue } from "@/lib/workflow/form-formula";
 import { bandClass, CameraButton, ImagePicker, LimitHint, ScaleSelect, SuggestionChips, YesNo, type FormAttachment, type FormMedia } from "./form-inputs";
 import type { FormActions } from "./form-renderer";
@@ -33,10 +33,13 @@ export const tableHasExample = (block: FormTableBlock, values: FormValues) => (v
  * A new row with the columns' default values – or, for "Kopiera", another row's values except its pictures and free
  * texts (an observation belongs to one object) – placed first with "nya rader överst", like the control.
  */
-export function addTableRow(block: FormTableBlock, values: FormValues, rowOptions?: FormRowOptions, copyFrom?: TableRow): FormValues {
+export function addTableRow(block: FormTableBlock, values: FormValues, rowOptions?: FormRowOptions, copyFrom?: TableRow, remeasure = false): FormValues {
   const rows = values.tables[block.key] ?? [];
   const fresh = newFormRow(block, newRowId(rows.length + 1)) as TableRow;
-  if (copyFrom) for (const [key, value] of Object.entries(copyFrom.cells)) if (!["images", "textarea"].includes(block.columns.find((column) => column.key === key)?.input ?? "")) fresh.cells[key] = value as string;
+  // Ommätning (2026-10-02, decision 2.1): the identifying columns (object, place, test voltage…) come along;
+  // the measured result starts empty so the new value is the person's own, not a copy of the old one.
+  if (copyFrom) for (const [key, value] of Object.entries(copyFrom.cells)) { const input = block.columns.find((column) => column.key === key)?.input ?? ""; if (["images", "textarea"].includes(input)) continue; if (remeasure && ["number", "assessment", "formula"].includes(input)) continue; fresh.cells[key] = value as string; }
+  if (remeasure && copyFrom) fresh.remeasures = copyFrom.id;
   return { ...values, tables: { ...values.tables, [block.key]: rowOptions?.rowsOnTop ? [fresh, ...rows] : [...rows, fresh] } };
 }
 export function addExampleRow(block: FormTableBlock, values: FormValues, rowOptions?: FormRowOptions): FormValues {
@@ -70,6 +73,9 @@ export function FormTable(props: TableProps) {
   const setRows = (next: TableRow[]) => onChange({ ...values, tables: { ...values.tables, [block.key]: next } });
   const setCell = (rowId: string, key: string, value: FormValues["fields"][string]) => setRows(rows.map((item) => item.id === rowId ? { ...item, cells: { ...item.cells, [key]: value } } : item));
   const addRow = (copyFrom?: TableRow) => onChange(addTableRow(block, values, rowOptions, copyFrom));
+  // Ommätning: a new row that replaces a failing one's result, kept for the record but excluded from totals and
+  // deviations once it is pointed at (decision 2.1, lib/workflow/form-document.ts supersededRowIds).
+  const addRemeasure = (copyFrom: TableRow) => onChange(addTableRow(block, values, rowOptions, copyFrom, true));
   const addExample = () => onChange(addExampleRow(block, values, rowOptions));
   const context: CellContext = { ...props, rows, setRows, setCell, marks };
   const layout = tableScreenLayout(block);
@@ -93,7 +99,7 @@ export function FormTable(props: TableProps) {
       {canAdd ? <div className="flex gap-1.5">{exampleButton}<Button type="button" size="sm" variant="outline" onClick={() => addRow()} aria-label={`Lägg till rad i ${block.label}`}><Plus />Lägg till rad<span className="ml-0.5 rounded-full bg-secondary px-1.5 text-[11px]">{rows.length}</span></Button></div> : null}
     </div>}
     {exampleNotice}{suggestionLists}
-    {rows.length ? <MeasurementRows context={context} onCopy={addRow} /> : <p className="py-6 text-center text-sm text-muted-foreground">{block.emptyTitle || "Inga rader ännu. Lägg till din första rad."}</p>}
+    {rows.length ? <MeasurementRows context={context} onCopy={addRow} onRemeasure={canAdd ? addRemeasure : undefined} /> : <p className="py-6 text-center text-sm text-muted-foreground">{block.emptyTitle || "Inga rader ännu. Lägg till din första rad."}</p>}
     {totalsLine}
   </div>;
 
@@ -258,8 +264,10 @@ function ObjectCard({ context, row, index, canAdd, onCopy }: { context: CellCont
  * last – and on a phone every value with its label. A table whose columns sit on two lines (the RCD test) draws the
  * control's two-line rows with the labels above each value and the note under them.
  */
-function MeasurementRows({ context, onCopy }: { context: CellContext; onCopy: (row: TableRow) => void }) {
+function MeasurementRows({ context, onCopy, onRemeasure }: { context: CellContext; onCopy: (row: TableRow) => void; /** Undefined where new rows cannot be added (fixed rowMode or read-only): decision 2.1 needs a new row. */ onRemeasure?: (row: TableRow) => void }) {
   const { block, rows, setRows, readOnly, marks } = context;
+  // Ommätning (decision 2.1): which rows a later row already replaced, and which row (if any) is itself a remeasurement.
+  const superseded = supersededRowIds(rows);
   const inputs = block.columns.filter((column) => column.input !== "images" && column.input !== "assessment" && column.placement !== "note");
   const camera = block.columns.find((column) => column.input === "images");
   const assessment = block.columns.find((column) => column.input === "assessment");
@@ -305,17 +313,21 @@ function MeasurementRows({ context, onCopy }: { context: CellContext; onCopy: (r
     </div> : null}
     {rows.map((row, index) => {
       const rowDeviation = context.deviationKeys.has(`${block.key}:${row.id}`);
+      const isSuperseded = superseded.has(row.id);
+      const remeasureOf = row.remeasures ? rows.findIndex((item) => item.id === row.remeasures) : -1;
       const toolsCell = <div className="measurement-tools">
         <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground" aria-label={`Rad ${index + 1}`}>{index + 1}</span>
         {camera ? <RowCamera context={context} row={row} column={camera} index={index} /> : null}
       </div>;
-      return <fieldset key={row.id} disabled={readOnly} data-example={row.example || undefined} data-testid="form-row" aria-label={`${block.label}, rad ${index + 1}${row.example ? ", exempeldata" : ""}`}
-        className={cn("measurement-row", twoLine && "measurement-rcd", rowDeviation && !assessment && indicatorBadge("danger"))}>
+      return <fieldset key={row.id} disabled={readOnly || isSuperseded} data-example={row.example || undefined} data-testid="form-row" aria-label={`${block.label}, rad ${index + 1}${row.example ? ", exempeldata" : ""}${isSuperseded ? ", ersatt av en ommätning" : ""}`}
+        className={cn("measurement-row", twoLine && "measurement-rcd", rowDeviation && !assessment && !isSuperseded && indicatorBadge("danger"), isSuperseded && "opacity-60")}>
         {twoLine ? <>
           <div className="rcd-top" style={top}>{toolsCell}{first.map((column) => cell(row, index, column))}</div>
           <div className="rcd-bottom" style={bottom}><span className="rcd-indent" />{second.map((column) => cell(row, index, column))}{approval(row, index)}{remove(row, index)}</div>
         </> : <div className="measurement-grid" style={single}>{toolsCell}{first.map((column) => cell(row, index, column))}{approval(row, index)}{remove(row, index)}</div>}
         {notes.map((column) => { const { text } = formulaResult(context, row, column); return text ? <p key={column.id} className="rcd-guidance text-xs leading-5 text-muted-foreground">{text}</p> : null; })}
+        {isSuperseded ? <p className="text-xs font-medium text-muted-foreground" data-testid="form-row-superseded">Ersatt av en ommätning (rad {rows.findIndex((item) => item.remeasures === row.id) + 1}).</p> : remeasureOf >= 0 ? <p className="text-xs text-muted-foreground">Ommätning av rad {remeasureOf + 1}.</p> : null}
+        {!isSuperseded && rowDeviation && onRemeasure && !row.example ? <Button type="button" size="sm" variant="outline" className="measurement-remeasure" onClick={() => onRemeasure(row)}><RotateCw />Ommätning</Button> : null}
       </fieldset>;
     })}
   </div>;
@@ -352,10 +364,14 @@ function WorkOrderFooter({ context, row, index }: { context: CellContext; row: T
     }).filter(Boolean);
     setBusy(true);
     try {
-      const id = await actions.createWorkOrder!({ title: `${block.itemLabel || block.label}: ${formRowLabel(block, row, index)}`.slice(0, 200), description: texts.join("\n").slice(0, 4000) });
+      // The row's own responsible person and date follow into the work order (simulation 2026-10-02).
+      const named = (key: string) => { const value = row.cells[key]; return typeof value === "string" ? value.trim() : ""; };
+      const due = named("klart");
+      const id = await actions.createWorkOrder!({ title: `Åtgärda: ${formRowLabel(block, row, index)}`.slice(0, 200), description: texts.join("\n").slice(0, 4000), assignedToName: named("ansvarig").slice(0, 120), dueDate: /^\d{4}-\d{2}-\d{2}$/.test(due) ? due : "" });
       if (id) context.setRows(context.rows.map((item) => item.id === row.id ? { ...item, workOrderId: id } : item));
     } finally { setBusy(false); }
   };
+  if (actions.canCreateWorkOrder === false) return footer("Spara protokollet först, så kan arbetsordern kopplas till raden.", <Button type="button" size="sm" variant="outline" disabled title="Spara protokollet först"><Wrench />Skapa arbetsorder</Button>);
   return footer("Åtgärden kan utföras som en arbetsorder i samma projekt.", <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void create()}>{busy ? <LoaderCircle className="animate-spin" /> : <Wrench />}Skapa arbetsorder</Button>);
 }
 

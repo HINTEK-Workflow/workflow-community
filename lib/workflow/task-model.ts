@@ -113,8 +113,9 @@ export function workflowTaskCompletion(input: CompletionTask) {
   if (input.data.kind === "FORM") {
     // Forms use their own requirements from the template: filled required blocks, signatures and a deviation comment.
     const form = formCompletion(input.data.details.document, input.data.details.values);
-    const issues = [...requirements.filter((item) => !item.met), ...form.issues.map((issue) => ({ field: `form-${issue.blockId}`, message: issue.message, met: false, weight: 0 }))];
-    return { issues, ready: issues.length === 0, progress: Math.min(95, form.percent) };
+    const all = [...requirements, ...form.requirements.map((item) => ({ field: `form-${item.blockId}`, message: item.message, met: item.met, weight: 0 }))];
+    const issues = all.filter((item) => !item.met);
+    return { requirements: all, issues, ready: issues.length === 0, progress: Math.min(95, form.percent) };
   }
   if (input.data.kind === "WORK_ORDER") {
     const { executionNotes, signature } = input.data.details;
@@ -135,7 +136,7 @@ export function workflowTaskCompletion(input: CompletionTask) {
     add("task-approval-confirmed", "Bekräfta godkännandet av riskbedömningen.", approval.confirmed, 15);
   }
   const issues = requirements.filter((item) => !item.met);
-  return { issues, ready: issues.length === 0, progress: Math.min(95, Math.round(requirements.reduce((sum, item) => sum + (item.met ? item.weight : 0), 0))) };
+  return { requirements, issues, ready: issues.length === 0, progress: Math.min(95, Math.round(requirements.reduce((sum, item) => sum + (item.met ? item.weight : 0), 0))) };
 }
 
 export function workflowTaskProgress(input: CompletionTask) {
@@ -143,10 +144,12 @@ export function workflowTaskProgress(input: CompletionTask) {
   return input.status === "COMPLETED" ? 100 : workflowTaskCompletion(input).progress;
 }
 
-export function workflowTaskHasDocumentation(input: Pick<z.infer<typeof workflowTaskInputSchema>, "description" | "data">) {
-  if (input.data.kind === "FORM") return Boolean(input.description.trim() || formHasContent(input.data.details.values));
+// The description is the order text, written when the task is made: it is not documentation of work done, so a new
+// work order stays Planerad (2026-10-02, the simulation: "Planerade (0)" on the morning of a full plan).
+export function workflowTaskHasDocumentation(input: Pick<z.infer<typeof workflowTaskInputSchema>, "data">) {
+  if (input.data.kind === "FORM") return formHasContent(input.data.details.values);
   const details = input.data.details;
-  return Boolean(input.description.trim() || ("executionNotes" in details
+  return Boolean(("executionNotes" in details
     ? details.executionNotes.trim() || details.signature.confirmed || details.signature.name.trim()
     : details.risks.length || details.approval.confirmed || details.approval.name.trim()));
 }

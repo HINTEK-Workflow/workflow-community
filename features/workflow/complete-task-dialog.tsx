@@ -44,7 +44,8 @@ export function CompleteTaskDialog({ open, onOpenChange, title, lockText, totalD
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     if (!open) return;
-    setWriteTime(canReportTime && totalDurationSec === 0 && !timerRunning);
+    // Never preselected (2026-10-02, the simulation): the suggested hour often overlapped time already written on another task and doubled it.
+    setWriteTime(false);
     setFields(defaults()); setNote(""); setProblem("");
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   const startedAt = fromSwedishDateTimeInput(`${fields.date}T${fields.from}`);
@@ -70,13 +71,14 @@ export function CompleteTaskDialog({ open, onOpenChange, title, lockText, totalD
       <p className="text-sm leading-6 text-muted-foreground">{lockText}</p>
       <div className="flex items-center gap-3 rounded-lg border bg-muted/20 px-3 py-2.5 text-sm">
         <Clock3 className="size-4 shrink-0 text-primary" />
-        <span>Rapporterad tid hittills: <strong data-testid="complete-reported-time">{formatTimerDuration(totalDurationSec)}</strong>{timerRunning ? " · tidtagningen pågår och stoppas när du slutför" : ""}</span>
+        <span>Rapporterad tid hittills (alla som arbetat på uppgiften): <strong data-testid="complete-reported-time">{formatTimerDuration(totalDurationSec)}</strong>{timerRunning ? " · tidtagningen pågår och stoppas när du slutför" : ""}</span>
       </div>
       {canReportTime ? <fieldset className="space-y-3">
         <legend className="text-sm font-semibold">Vill du skriva tid?</legend>
+        {totalDurationSec === 0 && !timerRunning ? <p className="text-xs text-muted-foreground">Ingen tid är rapporterad på uppgiften ännu. Har du jobbat på den utan att starta klockan, välj Ja.</p> : null}
         <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Vill du skriva tid?">
-          <Button type="button" role="radio" aria-checked={writeTime} variant={writeTime ? "default" : "outline"} onClick={() => setWriteTime(true)}>Ja, skriv tid</Button>
-          <Button type="button" role="radio" aria-checked={!writeTime} variant={!writeTime ? "default" : "outline"} onClick={() => setWriteTime(false)}>Nej, slutför utan ny tid</Button>
+          <Button type="button" role="radio" aria-checked={writeTime} variant={writeTime ? "secondary" : "outline"} onClick={() => setWriteTime(true)}>Ja, skriv tid</Button>
+          <Button type="button" role="radio" aria-checked={!writeTime} variant={!writeTime ? "secondary" : "outline"} onClick={() => setWriteTime(false)}>Nej, slutför utan ny tid</Button>
         </div>
         {writeTime ? <div className="grid gap-3 sm:grid-cols-3">
           <label className="field-stack text-xs font-medium text-muted-foreground">Datum<Input type="date" value={fields.date} onChange={(event) => setFields({ ...fields, date: event.target.value })} /></label>

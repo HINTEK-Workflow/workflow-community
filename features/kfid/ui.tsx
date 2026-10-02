@@ -1,5 +1,5 @@
 "use client";
-import { useId, useState } from "react";
+import { useContext, useId, useState } from "react";
 import { Dialog } from "radix-ui";
 import { X, Inbox, ChevronDown, Minimize2, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { indicatorBadge } from "@/features/workflow/indicator-tone";
 import { useFlowHint } from "@/features/workflow/flow-hint-store";
+import { TaskPageFold, useDetailLevel } from "@/features/workflow/use-detail-level";
 export function Panel({
   title,
   description,
@@ -32,11 +33,16 @@ export function Panel({
   headerClassName?: string;
 }) {
   const [folded, setCollapsed] = useState(defaultCollapsed);
+  const [openedByPerson, setOpenedByPerson] = useState(false);
+  // On a task page at display level 1 only the panel of the current step starts open (2026-10-02).
+  const inTaskPage = useContext(TaskPageFold);
+  const foldLow = useDetailLevel() === 1 && inTaskPage;
   // Only a collapsible panel can be folded: a panel that takes the place of a folded one in the same spot (a work
   // order opened from a control, 2026-10-02) must never inherit the fold and lose its content.
-  const collapsed = collapsible && folded;
   // The progress line's current step, when it is done in this panel (2026-10-01).
   const flowHint = useFlowHint(title);
+  // Level 1: every panel but the current step's is folded until the person opens it.
+  const collapsed = foldLow ? !flowHint && !openedByPerson : collapsible && folded;
   const contentId = useId();
   const headingId = useId();
   return (
@@ -66,7 +72,7 @@ export function Panel({
         </div> : null}
         <div className="panel-actions flex shrink-0 flex-wrap items-center gap-2">
           {actions}
-          {collapsible && (
+          {(collapsible || foldLow) && (
             <Button
               variant="ghost"
               size="icon"
@@ -74,7 +80,7 @@ export function Panel({
               className={leadingActions ? "measurement-collapse" : undefined}
               aria-expanded={!collapsed}
               aria-controls={contentId}
-              onClick={() => setCollapsed((v) => !v)}
+              onClick={() => foldLow ? setOpenedByPerson(collapsed) : setCollapsed((v) => !v)}
             >
               {leadingActions ? (
                 collapsed ? (

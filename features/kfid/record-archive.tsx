@@ -71,6 +71,7 @@ export function RecordArchive({
   notify,
   refresh,
   reloadToken = 0,
+  canEditCustomers = true,
 }: {
   kind: "controls" | "customers";
   scope: string;
@@ -81,11 +82,14 @@ export function RecordArchive({
   refresh: () => Promise<void>;
   /** Changes whenever the workspace reloads (e.g. after a new customer was saved), so the list is read again. */
   reloadToken?: number;
+  /** The customers permission (2026-10-02, kind "customers" only): without it Ny kund/Redigera are hidden here too. */
+  canEditCustomers?: boolean;
 }) {
   const [confirmAction, confirmElement] = useConfirm();
   const params = useSearchParams();
   const query = params.get("q");
   const controls = kind === "controls";
+  const canEdit = controls || canEditCustomers;
   const key = `kfid.records.${scope}.${kind}`;
   const [ready, setReady] = useState(false),
     [data, setData] = useState<Result | null>(null),
@@ -255,12 +259,12 @@ export function RecordArchive({
               Ny kontroll
             </Link>
           </Button>
-        ) : (
+        ) : canEdit ? (
           <Button onClick={() => onEdit()}>
             <Plus />
             Ny kund
           </Button>
-        )}
+        ) : null}
       </div>
       <Panel
         title={controls ? "Kontrollarkiv" : "Kunder"}
@@ -557,9 +561,9 @@ export function RecordArchive({
                       </>
                     ) : (
                       <>
-                        <button className="block max-w-full break-words text-left font-medium hover:text-primary" onClick={() => onEdit(item)}>
+                        {canEdit ? <button className="block max-w-full break-words text-left font-medium hover:text-primary" onClick={() => onEdit(item)}>
                           {item.name}
-                        </button>
+                        </button> : <span className="block max-w-full break-words text-left font-medium">{item.name}</span>}
                         {item.company && <p className="mt-1 break-words text-xs text-muted-foreground">{item.company}</p>}
                       </>
                     )}
@@ -610,7 +614,7 @@ export function RecordArchive({
                     </>
                   ) : (
                     <>
-                      <Button variant="outline" onClick={() => onEdit(item)}>Redigera</Button><CustomerCardLink customer={item} />
+                      {canEdit && <Button variant="outline" onClick={() => onEdit(item)}>Redigera</Button>}<CustomerCardLink customer={item} />
                       <Button asChild variant="outline"><Link aria-label={`Ny uppgift för ${item.name}`} href={`/?view=new_task&customerId=${item.id}`}><Plus />Ny uppgift</Link></Button>
                       {admin && <Button variant="outline" disabled={busy || loading} onClick={() => void bulk("delete", [item.id])}><Trash2 />Ta bort</Button>}
                     </>
@@ -647,7 +651,7 @@ export function RecordArchive({
                       <Button variant="outline" disabled={busy || loading} onClick={() => void bulk("restore", [item.id])}><RotateCcw />Återställ</Button>
                       <Button variant="destructive" disabled={busy || loading} onClick={() => void bulk("purge", [item.id])}><Trash2 />Radera permanent</Button>
                     </> : <>
-                      <Button variant="outline" onClick={() => onEdit(customer)}>Redigera</Button><CustomerCardLink customer={customer} />
+                      {canEdit && <Button variant="outline" onClick={() => onEdit(customer)}>Redigera</Button>}<CustomerCardLink customer={customer} />
                       <Button asChild variant="outline"><Link aria-label={`Ny uppgift för ${customer.name}`} href={`/?view=new_task&customerId=${item.id}`}><Plus />Ny uppgift</Link></Button>
                       {admin && <Button variant="outline" disabled={busy || loading} onClick={() => void bulk("delete", [item.id])}><Trash2 />Ta bort</Button>}
                     </>}
@@ -722,12 +726,12 @@ export function RecordArchive({
                         </>
                       ) : (
                         <>
-                          <button
+                          {canEdit ? <button
                             className="text-left font-medium hover:text-primary"
                             onClick={() => onEdit(item)}
                           >
                             {item.name}
-                          </button>
+                          </button> : <span className="text-left font-medium">{item.name}</span>}
                           <p className="mt-1 text-xs text-muted-foreground">
                             {item.company}
                           </p>
@@ -818,13 +822,13 @@ export function RecordArchive({
                               </Button>
                             ) : (
                               <>
-                                <Button
+                                {canEdit && <Button
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => onEdit(item)}
                                 >
                                   Redigera
-                                </Button>
+                                </Button>}
                                 <Button asChild variant="ghost" size="icon">
                                   <Link aria-label={`Kundkort för ${item.name}`} href={`/?view=customers&customerId=${item.id}`}>
                                     <ArrowUpRight />

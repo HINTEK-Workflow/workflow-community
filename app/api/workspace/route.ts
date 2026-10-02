@@ -758,6 +758,9 @@ export async function POST(request: Request) {
     if (action === "customer_save") {
       const data = customerSchema.parse(input.data);
       const id = input.id ? idSchema.parse(input.id) : undefined;
+      // Governed by its own permission, not open to every member regardless of role (2026-10-02, decision 2.2:
+      // "om den inte har rättigheter så får den inte det men om den har rättighet att ändra får den göra det").
+      requireWorkflowPermission(ctx, "customers", id ? "edit" : "create");
       if (id) {
         const updated = await prisma.customer.updateMany({
           where: {

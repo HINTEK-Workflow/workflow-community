@@ -370,6 +370,7 @@ export function AppShell({
   const [chromeHidden, setChromeHidden] = useState(false);
   const lastScrollY = useRef(0);
   const actions = useWorkspaceActions();
+  const controlEditor = actions && actions.scope !== "task" ? actions : null;
   const localStorageActions = useLocalStorageActions();
   const notificationCount = useNotificationCount();
   const searchParams = useSearchParams();
@@ -514,10 +515,10 @@ export function AppShell({
             />
           )}
       </>;
-    return key === "new" && actions ? (
+    return key === "new" && controlEditor ? (
       <button key={key} type="button" className={className}
-        disabled={!actions.canCreate || actions.busy}
-        onClick={() => { actions.newControl(); setMobileOpen(false); }}>
+        disabled={!controlEditor.canCreate || controlEditor.busy}
+        onClick={() => { controlEditor.newControl(); setMobileOpen(false); }}>
         {content}
       </button>
     ) : (
@@ -553,7 +554,7 @@ export function AppShell({
       </span>
     </button>
   ) : null;
-  const mobileControlActions = actions?.controlActions.length ? (
+  const mobileControlActions = controlEditor?.controlActions.length ? (
     <div className="border-t pt-3 lg:hidden">
       <p className="mb-2 px-3 text-xs font-medium text-muted-foreground">
         Öppen kontroll
@@ -565,7 +566,7 @@ export function AppShell({
           ["status", "Historik och status"],
         ] as const
       ).map(([group, label]) => {
-        const items = actions.controlActions.filter(
+        const items = controlEditor.controlActions.filter(
           (item) =>
             item.group === group &&
             !["save", "new", "notify"].includes(item.id),
@@ -584,7 +585,7 @@ export function AppShell({
                   disabled={item.disabled}
                   title={item.title}
                   onClick={() => {
-                    actions.runControlAction(item.id);
+                    controlEditor.runControlAction(item.id);
                     setMobileOpen(false);
                   }}
                   className="workspace-menu-item flex min-h-11 w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
@@ -649,6 +650,8 @@ export function AppShell({
   }
   const productActive = view === "customer_companies" || view === "pricing_admin" || view === "ai_admin" || view === "landing_editor" || view === "mail_settings";
   const companyActive = view === "administration" || view === "integrations" || view === "history_retention" || view === "ai_settings" || view === "facilities" || view === "company_settings" || view === "credits";
+  // Inställningar holds the person's own settings, the company's pages and Hjälp (2026-10-02).
+  const settingsActive = view === "settings" || view === "help" || companyActive;
   const notificationLabel = notificationCount ? `Notiser, ${notificationCount} aktuella` : "Notiser";
   const sidebar = (
     <div className="workspace-sidebar flex min-h-full flex-col bg-card">
@@ -713,13 +716,11 @@ export function AppShell({
         <div className="my-5 border-t" />
         {/* Menystädning (2026-10-01): HINTEK AI, API och MCP and Historik och lagring are tabs under Mitt
             företag; Landningssidan and E-post tabs under Produktadministration. One button each, the tabs on the page. */}
-        {user && (["OWNER", "ADMIN"].includes(user.memberRole ?? "") ? navItem("administration", companyActive) : companyActive ? navItem("facilities", true) : null)}
         {user?.role === "SUPERADMIN" && <div className="mt-1" data-testid="product-menu">
           {navItem("customer_companies", productActive)}
         </div>}
         <div className="mt-auto space-y-1 pt-6">
-          {navItem("help")}
-          {navItem("settings")}
+          {navItem("settings", settingsActive)}
         </div>
         {!user && <div className="mt-4 border-t pt-4 lg:hidden">
           <Link href="/login" onClick={() => setMobileOpen(false)} className="workspace-menu-item flex items-center gap-3 rounded-md px-3 text-sm hover:bg-muted">
@@ -890,7 +891,7 @@ export function AppShell({
         <Link href={route("tasks")} aria-label="Visa uppgifter" aria-current={view === "tasks" ? "page" : undefined}>
           <span className="nav-icon"><Search /></span><span>Sök</span>
         </Link>
-        {actions ? <button type="button" className="nav-create" aria-label="Ny kontroll" disabled={!actions.canCreate || actions.busy} onClick={actions.newControl}>
+        {controlEditor ? <button type="button" className="nav-create" aria-label="Ny kontroll" disabled={!controlEditor.canCreate || controlEditor.busy} onClick={controlEditor.newControl}>
           <span className="nav-icon"><Plus /></span><span>Ny</span>
         </button> : openTaskType && canWorkflow(openTaskType === "RISK_ASSESSMENT" ? "risk-assessment" : "work-order", "create") ? <Link href={`/?view=workflow_task&taskType=${openTaskType}`} className="nav-create" aria-label={openTaskType === "RISK_ASSESSMENT" ? "Ny riskbedömning" : "Ny arbetsorder"}>
           <span className="nav-icon"><Plus /></span><span>Ny</span>
@@ -898,8 +899,8 @@ export function AppShell({
           <span className="nav-icon"><Plus /></span><span>Ny</span>
         </Link>}
         <button type="button" disabled={!actions?.canSave || actions.busy} onClick={actions?.save}
-          aria-label={actions?.busy ? "Arbetar med kontrollen" : actions?.dirty ? "Spara ändringar" : "Spara kontroll"}
-          title={actions?.canSave ? "Spara den öppna kontrollen" : "Öppna en redigerbar kontroll för att spara"}>
+          aria-label={actions?.busy ? "Arbetar" : actions?.dirty ? "Spara ändringar" : "Spara"}
+          title={actions?.canSave ? "Spara det som är öppet" : "Öppna något som går att spara"}>
           <span className="nav-icon">
             {actions?.busy ? <LoaderCircle className="animate-spin" /> : <Save />}
             {actions?.dirty && <span className="nav-dirty" />}

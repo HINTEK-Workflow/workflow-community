@@ -330,7 +330,7 @@ export function formLimitText(low: number | null, high: number | null, unit: str
 /** The sections that can be switched on and off (the control's Kontrollmoment). */
 export const formOptionalSections = (document: { blocks: FormBlock[] }) => document.blocks.filter((block): block is FormSection => block.type === "section" && block.optional);
 
-type FormRow = { id: string; label: string; cells: Record<string, unknown>; example?: boolean };
+type FormRow = { id: string; label: string; cells: Record<string, unknown>; example?: boolean; remeasures?: string };
 /** A new row with the columns' default values, or – for the example row – their example values. */
 export function newFormRow(table: FormTableBlock, id: string, options: { example?: boolean; label?: string } = {}) {
   const cells: Record<string, string | number | boolean> = {};
@@ -348,6 +348,11 @@ export function formCellFilled(column: FormColumn, value: unknown) {
   if (Array.isArray(value)) return value.length > 0;
   if (value === undefined || value === null || String(value).trim() === "") return false;
   return !(typeof value === "string" && column.notFilledOptions.includes(value));
+}
+
+/** The rows a later row's `remeasures` points back at (decision 2.1): read-only history, left out of totals and deviations. */
+export function supersededRowIds(rows: readonly FormRow[]) {
+  return new Set(rows.map((row) => row.remeasures).filter((id): id is string => Boolean(id)));
 }
 
 /** A row counts once something beyond the columns' default values has been entered (an added, untouched row does not). */
@@ -429,8 +434,11 @@ export const formValuesSchema = z.object({
   checklists: z.record(z.string(), z.record(z.string(), z.object({ state: z.enum(["OK", "NOT_OK", "NA"]).nullable().default(null), comment: optionalText(1000), images: z.array(z.string().min(1).max(100)).max(20).optional() }))).default({}),
   // `example`: a test row that shows how to fill in the table; it never counts and must be removed before completion.
   // `source`: the checklist point a deviation row was registered from; `workOrderId`: the work order made from the row.
+  // `remeasures`: a later row that replaces an earlier one's result (2026-10-02, decision 2.1: "en
+  // ommätning ska kunna ersätta ett underkänt värde"); the old row is kept, read-only, for the record, but excluded
+  // from totals and deviations once a newer row points back at it.
   tables: z.record(z.string(), z.array(z.object({ id, label: optionalText(120), cells: z.record(z.string(), cell).default({}), example: z.boolean().optional(),
-    source: z.object({ checklist: z.string().max(40), item: z.string().max(60) }).optional(), workOrderId: z.string().min(1).max(100).optional() })).max(FORM_LIMITS.rows)).default({}),
+    source: z.object({ checklist: z.string().max(40), item: z.string().max(60) }).optional(), workOrderId: z.string().min(1).max(100).optional(), remeasures: id.optional() })).max(FORM_LIMITS.rows)).default({}),
   images: z.record(z.string(), z.array(z.string().min(1).max(100)).max(50)).default({}),
   signatures: z.record(z.string(), z.object({ name: optionalText(160), confirmed: z.boolean().default(false), signedAt: z.iso.datetime().nullable().default(null) })).default({}),
   /** Required when the protocol has deviations, like the control's summary. */
@@ -653,8 +661,9 @@ export function evaluateForm(document: FormDocument, values: FormValues): FormEv
   const hidden = new Set(blocks.filter(conditioned).map((block) => block.id));
   const tables = blocks.filter((block): block is FormTableBlock => block.type === "table");
   const rowsOf = (table: FormTableBlock) => hidden.has(table.id) ? [] : values.tables[table.key] ?? [];
-  // An example row shows how to fill in the table; it never counts in lists, totals or deviations.
-  const realRows = (table: FormTableBlock) => rowsOf(table).filter((row) => !row.example);
+  // An example row shows how to fill in the table; it never counts in lists, totals or deviations. Nor does a row
+  // that a later row has remeasured (decision 2.1): its own result is read-only history, not counted again.
+  const realRows = (table: FormTableBlock) => { const rows = rowsOf(table); const superseded = supersededRowIds(rows); return rows.filter((row) => !row.example && !superseded.has(row.id)); };
   const computedColumn = (column: FormColumn) => column.input === "formula" || column.input === "assessment";
   const cellValue = (table: FormTableBlock, row: FormValues["tables"][string][number], column: FormColumn): FormulaValue =>
     computedColumn(column) ? result.cells[table.key]?.[row.id]?.[column.key] ?? null : inputValue(row.cells[column.key], column.input);
@@ -767,7 +776,9 @@ export function formApprovalTotals(document: FormDocument, values: FormValues, e
     if (block.type === "table") {
       const column = block.columns.find((item) => item.input === "assessment");
       if (!column) continue;
-      const rows = (values.tables[block.key] ?? []).filter((row) => !row.example);
+      const allRows = values.tables[block.key] ?? [];
+      const superseded = supersededRowIds(allRows);
+      const rows = allRows.filter((row) => !row.example && !superseded.has(row.id));
       totals.push({ blockId: block.id, title: block.label, ok: rows.filter((row) => evaluation.cells[block.key]?.[row.id]?.[column.key] === true).length, total: rows.length });
     }
     if (block.type === "checklist" && block.mode === "check")
@@ -817,13 +828,37 @@ export function formRuleSummary(document: FormDocument, values: FormValues, eval
   for (const item of evaluation.deviations.filter((deviation) => deviation.kind === "limit")) lines.push(`Larm: ${item.message}`);
   for (const alert of evaluation.alerts) lines.push(`Varning: ${alert.message}`);
   // A conclusion (2026-10-01: the summary said only "Kontrollprotokoll."): what was found, in one line.
-  const deviations = evaluation.deviations.length;
+  const deviations = deviationCount(evaluation);
   const unconfirmed = active.reduce((sum, block) => sum + (block.type === "checklist" && block.mode === "check" ? block.items.filter((item) => values.checklists[block.key]?.[item.id]?.state !== "OK").length : 0), 0);
   lines.push(lines.length === 1 ? "Inga kontrollpunkter är registrerade ännu."
     : deviations ? `Bedömning: ${deviations} ${deviations === 1 ? "avvikelse" : "avvikelser"} – åtgärdas och följs upp före slutligt godkännande.`
     : unconfirmed ? `Bedömning: inga avvikelser hittills, men ${unconfirmed} ${unconfirmed === 1 ? "punkt är" : "punkter är"} inte bekräftade.`
     : "Bedömning: inga avvikelser – de kontrollerade punkterna är godkända.");
   return lines.join("\n");
+}
+
+/**
+ * Rows of a protocol meant to be followed up as work orders that have none yet. A row of a table with a severity column
+ * counts only when the severity is one of the table's deviation options; a table without one counts every filled row
+ * (simulation 2026-10-02: "Ingen anmärkning" and "Bevaka" were counted as deviations).
+ */
+export function formRowsWithoutOrder(document: FormDocument, values: FormValues) {
+  let count = 0;
+  for (const block of formLeafBlocks(document)) {
+    if (block.type !== "table" || !block.workOrders) continue;
+    const severity = block.columns.filter((column) => column.input === "choice" && column.deviationOptions.length);
+    for (const row of values.tables[block.key] ?? []) {
+      if (row.example || row.workOrderId) continue;
+      if (severity.length && !severity.some((column) => typeof row.cells[column.key] === "string" && column.deviationOptions.includes(row.cells[column.key] as string))) continue;
+      if (Object.values(row.cells).some((value) => value !== null && value !== "" && value !== false && !(Array.isArray(value) && !value.length))) count++;
+    }
+  }
+  return count;
+}
+
+/** The deviations a person is told about: points that are not assessed yet are completion issues, not deviations (the box, the summary and the PDF count the same, 2026-10-02). */
+export function deviationCount(evaluation: FormEvaluation) {
+  return evaluation.deviations.filter((item) => item.kind !== "assessment").length;
 }
 
 function intervalText(min: number | null, max: number | null, unit: string) {
@@ -946,6 +981,24 @@ const withoutKey = <T extends object>(item: T, key: keyof T) => { const rest = {
  * changed): everything that was filled in, except the signatures (a new protocol is signed anew), the pictures (they
  * belong to the old protocol's attachments) and example rows.
  */
+/**
+ * A copy for next time keeps the objects, rows, places and texts but not last time's results (simulation 2026-10-02: a
+ * copy stood at 94 % with last year's values and could be completed with them by mistake): measured numbers, assessments,
+ * check list answers and the summary comment are emptied.
+ */
+export function clearMeasurements(document: FormDocument, values: FormValues): FormValues {
+  const copy = structuredClone(values);
+  copy.deviationComment = "";
+  copy.checklists = Object.fromEntries(Object.entries(copy.checklists).map(([key, items]) => [key, Object.fromEntries(Object.entries(items).map(([itemId, item]) => [itemId, { ...item, state: null, comment: "" }]))]));
+  for (const block of formLeafBlocks(document)) {
+    if (block.type === "field" && block.input === "number") delete copy.fields[block.key];
+    if (block.type !== "table") continue;
+    const cleared = new Set(block.columns.filter((column) => ["number", "assessment", "formula", "check"].includes(column.input)).map((column) => column.key));
+    copy.tables[block.key] = (copy.tables[block.key] ?? []).map((row) => ({ ...row, cells: Object.fromEntries(Object.entries(row.cells).filter(([key]) => !cleared.has(key))) }));
+  }
+  return copy;
+}
+
 export function copyFormValues(values: FormValues): FormValues {
   const copy = structuredClone(values);
   copy.images = {};
@@ -955,7 +1008,7 @@ export function copyFormValues(values: FormValues): FormValues {
   copy.checklists = Object.fromEntries(Object.entries(copy.checklists).map(([key, items]) => [key, Object.fromEntries(Object.entries(items).map(([itemId, item]) => [itemId, withoutKey(item, "images")]))]));
   copy.signatures = Object.fromEntries(Object.entries(copy.signatures).map(([key, signature]) => [key, { ...signature, confirmed: false, signedAt: null }]));
   copy.tables = Object.fromEntries(Object.entries(copy.tables).map(([key, rows]) => [key, rows.filter((row) => !row.example).map((row) => ({
-    ...withoutKey(row, "workOrderId"), cells: Object.fromEntries(Object.entries(row.cells).filter(([, cell]) => !Array.isArray(cell))),
+    ...withoutKey(withoutKey(row, "workOrderId"), "remeasures"), cells: Object.fromEntries(Object.entries(row.cells).filter(([, cell]) => !Array.isArray(cell))),
   }))]));
   return copy;
 }

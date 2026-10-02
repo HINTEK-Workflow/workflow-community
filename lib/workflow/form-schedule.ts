@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { formDocumentSchema, formRowsWithoutOrder, formValuesSchema } from "./form-document";
 
 /**
  * Återkommande kontroller – driftronder (2026-09-28). A schedule says which form is filled in, where and how often:
@@ -102,8 +103,8 @@ export function nextOccurrence(rule: FormScheduleRule, from: string) {
   return scheduleOccurrences(rule, from, addDays(from, 800), 1)[0] ?? null;
 }
 
-export type ScheduleRound = { taskId: string; status: string; occurrence: string };
-export type ScheduleOccurrenceState = { date: string; state: "done" | "started" | "missed" | "due" | "upcoming"; taskId?: string };
+export type ScheduleRound = { taskId: string; status: string; occurrence: string; /** Deviation rows still without a work order (2026-10-02: a round with a fault looked fine). */ openDeviations?: number };
+export type ScheduleOccurrenceState = { date: string; state: "done" | "started" | "missed" | "due" | "upcoming"; taskId?: string; openDeviations?: number };
 
 /**
  * An overview of one schedule: the recent past (done, started or missed), today and the next occurrences. "Missed"
@@ -114,7 +115,7 @@ export function scheduleOverview(rule: FormScheduleRule, rounds: ScheduleRound[]
   const past = scheduleOccurrences(rule, addDays(today, -(options.pastDays ?? 30)), addDays(today, -1));
   const state = (day: string, fallback: ScheduleOccurrenceState["state"]): ScheduleOccurrenceState => {
     const round = byDay.get(day);
-    return round ? { date: day, state: round.status === "COMPLETED" ? "done" : "started", taskId: round.taskId } : { date: day, state: fallback };
+    return round ? { date: day, state: round.status === "COMPLETED" ? "done" : "started", taskId: round.taskId, openDeviations: round.openDeviations ?? 0 } : { date: day, state: fallback };
   };
   const todayState = scheduleOccurrences(rule, today, today).length ? state(today, "due") : null;
   const upcoming = scheduleOccurrences(rule, addDays(today, 1), addDays(today, 400), options.upcoming ?? 5).map((day) => state(day, "upcoming"));
@@ -124,6 +125,7 @@ export function scheduleOverview(rule: FormScheduleRule, rounds: ScheduleRound[]
     upcoming,
     history,
     missed: history.filter((item) => item.state === "missed").length,
+    openDeviations: [...history, ...(todayState ? [todayState] : [])].reduce((sum, item) => sum + (item.openDeviations ?? 0), 0),
     // The occurrence to start now: today's when it is not done, else the latest missed one within the window.
     current: todayState && todayState.state !== "done" ? todayState : history.find((item) => item.state === "missed" || item.state === "started") ?? null,
     next: upcoming[0]?.date ?? null,
@@ -142,7 +144,11 @@ export function scheduleRuleText(rule: FormScheduleRule) {
 /** The round a protocol was started from, read from its answers (`values.round`). */
 export function taskRound(task: { id: string; status: string; data: unknown }): (ScheduleRound & { scheduleId: string }) | null {
   const round = (task.data as { details?: { values?: { round?: { scheduleId?: unknown; occurrence?: unknown } | null } } } | null)?.details?.values?.round;
-  return round && typeof round.scheduleId === "string" && typeof round.occurrence === "string" ? { scheduleId: round.scheduleId, occurrence: round.occurrence, taskId: task.id, status: task.status } : null;
+  if (!round || typeof round.scheduleId !== "string" || typeof round.occurrence !== "string") return null;
+  const details = (task.data as { details?: { document?: unknown; values?: unknown } } | null)?.details;
+  const document = formDocumentSchema.safeParse(details?.document);
+  const values = formValuesSchema.safeParse(details?.values);
+  return { scheduleId: round.scheduleId, occurrence: round.occurrence, taskId: task.id, status: task.status, openDeviations: document.success && values.success ? formRowsWithoutOrder(document.data, values.data) : 0 };
 }
 
 export type ScheduleView = FormSchedule & { overview: ReturnType<typeof scheduleOverview>; ruleText: string };

@@ -1,4 +1,5 @@
 import { rgb } from "pdf-lib";
+import { formatDurationSeconds } from "@/lib/workflow/duration";
 import { formatSwedish } from "@/lib/swedish-time";
 import { workflowTaskProgress } from "./task-model";
 import { CONTENT_WIDTH, createReportKit, isJpeg, isPng, MARGIN, REPORT_TONES, type KitAttachment, type KitIdentity, type ReportKit } from "./report-kit";
@@ -18,7 +19,7 @@ const statusLabel = (status: WorkflowReportTask["status"]) => ({ PLANNED: "Plane
 const riskLabel = (score: number) => score >= 17 ? "Mycket hög" : score >= 10 ? "Hög" : score >= 5 ? "Måttlig" : "Låg";
 const riskFill = (score: number) => score >= 17 ? RISK_FILL.veryHigh : score >= 10 ? RISK_FILL.high : score >= 5 ? RISK_FILL.moderate : RISK_FILL.low;
 const kindLabel = (task: WorkflowReportTask) => task.data.kind === "FORM" ? task.data.details.templateName : task.kind === "WORK_ORDER" ? "Arbetsorder" : "Riskbedömning";
-const duration = (seconds: number) => { const minutes = Math.floor(seconds / 60); return `${Math.floor(minutes / 60)} h ${minutes % 60} min`; };
+const duration = formatDurationSeconds;
 
 /**
  * A name without a confirmation (a reopened task keeps the earlier signer's name for the next completion) is marked so
@@ -48,7 +49,7 @@ export async function createTaskReportPdf(input: Input) {
   kit.pdf.setCreator("HINTEK Workflow");
   kit.pdf.setProducer("HINTEK Workflow");
   kit.pdf.setCreationDate(createdAt);
-  const code = `Skapad ${reportTime(createdAt)}`;
+  const code = `Skapad ${reportTime(createdAt)}${single?.version ? ` · Version ${single.version}` : ""}`;
   kit.firstPage(heading, code);
   // An unfinished task is marked on the first page like a protocol (reports mark drafts clearly), without moving anything.
   if (single && single.status !== "COMPLETED") kit.text("· ÖGONBLICKSBILD – EJ SLUTFÖRT", MARGIN + kit.font.widthOfTextAtSize(`${code} `, 7), 763, { size: 7, color: draft });
@@ -65,9 +66,12 @@ export async function createTaskReportPdf(input: Input) {
     const listed = input.tasks;
     if (listed.length) {
       kit.blockTitle("Rapportens innehåll", "Pågående uppgifter är ögonblicksbilder. Protokoll och kontroller följer som egna delar efter arbetsordrarna.", 55);
-      kit.table("Rapportens innehåll", widths([["title", "Uppgift", 4], ["kind", "Typ", 2], ["status", "Status", 1.6], ["time", "Rapporterad tid", 1.3]]),
-        listed.map((task) => [task.title, kindLabel(task), `${statusLabel(task.status)} · ${progress(task)}%`, duration(task.totalDurationSec)]),
-        [], listed.map((task) => [undefined, undefined, task.status === "COMPLETED" ? REPORT_TONES.pass : draft, undefined]));
+      // "Tid" deselected removes the time column too (simulation 2026-10-02); selected, the project's sum follows.
+      const withTime = input.options.time;
+      kit.table("Rapportens innehåll", widths([["title", "Uppgift", 4], ["kind", "Typ", 2], ["status", "Status", 1.6], ...(withTime ? [["time", "Rapporterad tid", 1.3] as [string, string, number]] : [])]),
+        listed.map((task) => [task.title, kindLabel(task), `${statusLabel(task.status)} · ${progress(task)}%`, ...(withTime ? [duration(task.totalDurationSec)] : [])]),
+        [], listed.map((task) => [undefined, undefined, task.status === "COMPLETED" ? REPORT_TONES.pass : draft, ...(withTime ? [undefined] : [])]));
+      if (withTime) kit.factBoxes([{ label: "Rapporterad tid, summa", value: duration(listed.reduce((sum, task) => sum + task.totalDurationSec, 0)), soft: true }]);
     }
   }
   for (const task of input.tasks) if (task.data.kind !== "FORM") await drawTask(kit, task, input.options, project);

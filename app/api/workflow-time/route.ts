@@ -244,6 +244,13 @@ export async function POST(request: Request) {
     if (endedAt <= startedAt) throw new ApiError(422, "Sluttiden måste vara efter starttiden.");
     const durationSec = Math.floor((endedAt.getTime() - startedAt.getTime()) / 1000);
     if (durationSec > 24 * 60 * 60) throw new ApiError(422, "En enskild tidpost får vara högst 24 timmar.");
+    // Time is what has been worked: a time later than now is refused (a few minutes of clock difference are allowed).
+    if (endedAt.getTime() > Date.now() + 5 * 60 * 1000) throw new ApiError(422, "Tiden ligger i framtiden. Skriv tid som redan är arbetad.");
+    // Overlapping time is saved but pointed out afterwards, so a double entry is seen and not silently summed (2026-10-02).
+    const overlapWarning = async (userId: string, exceptId?: string) => {
+      const other = await prisma.workflowTimeEntry.findFirst({ where: { userId, ...(exceptId ? { id: { not: exceptId } } : {}), startedAt: { lt: endedAt }, OR: [{ endedAt: { gt: startedAt } }, { endedAt: null }] }, select: { task: { select: { title: true } } } });
+      return other ? `Tiden överlappar annan tid som är skriven samma period${other.task?.title ? ` (${other.task.title})` : ""}. Kontrollera att den inte räknas två gånger.` : undefined;
+    };
     const [taskRow, controlRow] = await Promise.all([
       prisma.workflowTask.findFirst({ where: { id: data.taskId, organizationId: ctx.organizationId }, select: taskSelect }),
       prisma.control.findFirst({ where: { id: data.taskId, organizationId: ctx.organizationId, deletedAt: null }, select: controlSelect }),
@@ -263,7 +270,7 @@ export async function POST(request: Request) {
         prisma.workflowTimeEntry.update({ where: { id: current.id }, data: { ...owner, ...next } }),
         prisma.workflowTimeEntryEvent.create({ data: { organizationId: ctx.organizationId, entryId: current.id, userId: current.userId, action: "UPDATED", previous: json(snapshot(current, current.source)), next: json(snapshot(next, task)), reason, actorUserId: ctx.user.id, actorName } }),
       ]);
-      return NextResponse.json({ id: current.id });
+      return NextResponse.json({ id: current.id, warning: await overlapWarning(current.userId, current.id) });
     }
 
     const ownerId = data.userId ?? ctx.user.id;
@@ -278,7 +285,7 @@ export async function POST(request: Request) {
       await tx.workflowTimeEntryEvent.create({ data: { organizationId: ctx.organizationId, entryId: entry.id, userId: ownerId, action: "CREATED", next: json(snapshot({ startedAt, endedAt, durationSec, note: data.note }, task)), reason, actorUserId: ctx.user.id, actorName } });
       return entry;
     });
-    return NextResponse.json(created);
+    return NextResponse.json({ ...created, warning: await overlapWarning(ownerId, created.id) });
   } catch (error) {
     return failure(error);
   }
