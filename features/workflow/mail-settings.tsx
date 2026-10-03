@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Mail, Save, Send } from "lucide-react";
+import { Mail, RotateCcw, Save, Send, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -90,15 +90,26 @@ export function MailSettings({ notify }: { notify: (text: string, error?: boolea
           </select></label>
         </div>
         <label className={field}>Användarnamn<Input value={form.user} autoComplete="off" onChange={(event) => set("user", event.target.value)} /></label>
-        <label className={field}>Lösenord<Input type="password" value={form.password} autoComplete="new-password"
-          placeholder={settings.hasPassword && !form.clearPassword ? "Sparat – lämna tomt för att behålla" : "Inget lösenord sparat"}
-          onChange={(event) => { set("password", event.target.value); set("clearPassword", false); }} /></label>
+        <div className={field}>
+          <label htmlFor="smtp-password">Lösenord</label>
+          <div className="flex gap-2">
+            <Input id="smtp-password" type="password" value={form.password} autoComplete="new-password"
+              placeholder={form.clearPassword ? "Tas bort när du sparar" : settings.hasPassword ? "Sparat – lämna tomt för att behålla" : "Inget lösenord sparat"}
+              onChange={(event) => { set("password", event.target.value); set("clearPassword", false); }} />
+            {settings.hasPassword && settings.source === "app" ? (form.clearPassword
+              ? <Button type="button" variant="outline" className="shrink-0" onClick={() => set("clearPassword", false)}><RotateCcw />Ångra</Button>
+              : <Button type="button" variant="outline" size="icon" className="size-10 shrink-0" aria-label="Ta bort det sparade lösenordet" title="Ta bort det sparade lösenordet"
+                  onClick={() => { set("password", ""); set("clearPassword", true); }}><Trash2 /></Button>) : null}
+          </div>
+        </div>
         <label className={field}>Avsändarens namn<Input value={form.fromName} onChange={(event) => set("fromName", event.target.value)} /></label>
         <label className={field}>Avsändarens e-postadress<Input type="email" value={form.fromAddress} onChange={(event) => set("fromAddress", event.target.value)} /></label>
       </div>
-      {settings.hasPassword && settings.source === "app" ? <label className="mt-4 flex items-center gap-2 text-sm">
-        <Checkbox checked={form.clearPassword} onCheckedChange={(value) => set("clearPassword", value === true)} />Ta bort det sparade lösenordet
-      </label> : null}
+      {settings.source === "app" ? <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
+        <Button type="button" variant="outline" onClick={() => setForm((current) => current && { ...current, host: "", user: "", password: "", clearPassword: true })}>
+          <RotateCcw />Använd serverns inställningar (.env)</Button>
+        <span className="text-muted-foreground">Tömmer server, användare och lösenord här. Tryck sedan Spara.</span>
+      </div> : null}
     </Panel>
 
     <Panel title="Utskick" description="Lösenordsåterställning och verifiering av e-post skickas alltid. Det här styr övriga utskick.">
@@ -114,7 +125,7 @@ export function MailSettings({ notify }: { notify: (text: string, error?: boolea
     </Panel>
 
     <div className="flex flex-wrap gap-3">
-      <Button onClick={() => void save()} disabled={Boolean(busy) || !form.host}><Save />{busy === "save" ? "Sparar…" : "Spara"}</Button>
+      <Button onClick={() => void save()} disabled={Boolean(busy)}><Save />{busy === "save" ? "Sparar…" : "Spara"}</Button>
       <Button variant="outline" onClick={() => void test()} disabled={Boolean(busy) || Boolean(settings.blockedReason)}>
         {busy === "test" ? <Mail /> : <Send />}{busy === "test" ? "Skickar…" : "Skicka testmejl till mig"}
       </Button>

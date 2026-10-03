@@ -76,6 +76,12 @@ export type MailConfig = {
 const LOOPBACK = new Set(["localhost", "127.0.0.1", "::1"]);
 const isLoopback = (url: string | undefined) => { try { return LOOPBACK.has(new URL(url ?? "").hostname); } catch { return false; } };
 
+// Saving the E-post page for a switch alone stores the .env server and user without a password (the page never shows
+// it); the .env password still applies to that same account, so mail keeps working (2026-10-03).
+function sameAccountAsEnv(stored: StoredMail, env: MailEnv) {
+  return stored.host === env.SMTP_HOST && (stored.user ?? "") === (env.SMTP_USER ?? "") ? env.SMTP_PASS ?? "" : "";
+}
+
 /** The settings that apply: the app's where saved, otherwise .env. */
 export function effectiveMailConfig(stored: StoredMail, env: MailEnv, options: { password: string; loopbackQa: boolean }): MailConfig {
   const fromApp = Boolean(stored.host);
@@ -89,7 +95,7 @@ export function effectiveMailConfig(stored: StoredMail, env: MailEnv, options: {
   return {
     source: fromApp ? "app" : "server",
     transport: fromApp
-      ? { host: stored.host!, port: stored.port ?? 587, secure: stored.secure ?? false, user: stored.user ?? "", password: options.password }
+      ? { host: stored.host!, port: stored.port ?? 587, secure: stored.secure ?? false, user: stored.user ?? "", password: options.password || sameAccountAsEnv(stored, env) }
       : { host: env.SMTP_HOST ?? "localhost", port: env.SMTP_PORT ?? 1025, secure: Boolean(env.SMTP_SECURE), user: env.SMTP_USER ?? "", password: env.SMTP_PASS ?? "" },
     from: { name: stored.fromName || env.MAIL_FROM_NAME || "Workflow", address: stored.fromAddress || env.MAIL_FROM_ADDRESS || "noreply@example.com" },
     delivery: blockedReason ? { invitations: false, roundReminders: false, alerts: false } : delivery,

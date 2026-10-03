@@ -24,6 +24,13 @@ test("saved in the app: the app's server, sender and switches win", () => {
   assert.deepEqual(config.delivery, { invitations: false, roundReminders: true, alerts: false });
 });
 
+test("saved without a password for the .env account: the .env password still applies, never for another account", () => {
+  assert.equal(effectiveMailConfig({ host: "smtp.env.test", user: "env-user", alerts: true }, env, options).transport.password, "env-pass");
+  assert.equal(effectiveMailConfig({ host: "smtp.env.test", user: "env-user" }, env, { ...options, password: "app-pass" }).transport.password, "app-pass");
+  assert.equal(effectiveMailConfig({ host: "smtp.other.test", user: "env-user" }, env, options).transport.password, "");
+  assert.equal(effectiveMailConfig({ host: "smtp.env.test", user: "someone-else" }, env, options).transport.password, "");
+});
+
 test("a loopback QA instance never sends the switched mail, whatever is saved", () => {
   const config = effectiveMailConfig({ host: "smtp.app.test", invitations: true, roundReminders: true, alerts: true }, { ...env, APP_URL: "http://localhost:3001" }, { password: "", loopbackQa: true });
   assert.deepEqual(config.delivery, { invitations: false, roundReminders: false, alerts: false });

@@ -32,13 +32,14 @@ export async function mailConfig(): Promise<MailConfig> {
 export async function saveMailSettings(raw: unknown) {
   const input = mailSettingsInput.parse(raw);
   const current = await readStored();
-  const passwordCipher = input.clearPassword ? undefined
+  // An empty server means "use .env": nothing of the app's SMTP account is kept (2026-10-03).
+  const passwordCipher = input.clearPassword || !input.host ? undefined
     : input.password ? sealPassword(input.password, secret()) : current.passwordCipher;
   const next: StoredMail = {
     host: input.host || undefined,
     port: input.port,
     secure: input.secure,
-    user: input.user,
+    user: input.host ? input.user : "",
     passwordCipher,
     fromName: input.fromName,
     fromAddress: input.fromAddress,
