@@ -30,6 +30,7 @@ import { Administration } from "./administration";
 import { CustomerCompanies } from "./customer-companies";
 import { HistoryRetention } from "@/features/workflow/history-retention";
 import { MailSettings } from "@/features/workflow/mail-settings";
+import { LoginSettings } from "@/features/workflow/login-settings";
 import { clientExtensions } from "@ee/client";
 import { Profile } from "./profile";
 import { SuggestionsEditor } from "./suggestions";
@@ -338,6 +339,8 @@ export function Workspace({
     content = <HistoryRetention notify={notify} />;
   else if (view === "mail_settings")
     content = user?.role === "SUPERADMIN" ? <MailSettings notify={notify} /> : null;
+  else if (view === "login_settings")
+    content = user?.role === "SUPERADMIN" ? <LoginSettings notify={notify} /> : null;
   else if (view === "customer_companies")
     content = <CustomerCompanies />;
   // Produktadministration in tabs (2026-10-02: innehåll som låg på fel ställe): prices and AI have their own.

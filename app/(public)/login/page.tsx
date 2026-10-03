@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { googleSignInAllowed } from "@/lib/auth/login-settings";
 import { AuthShell } from "@/features/auth/components/auth-shell";
 import { LoginForm } from "@/features/auth/components/login-form";
 import { env } from "@/lib/env";
@@ -23,7 +24,7 @@ function mapLoginError(value: string | undefined) {
   switch (value) {
     case "test_access":
     case "AccessDenied":
-      return "Inloggning är endast öppen för det inbjudna testkontot.";
+      return "Den här e-postadressen har inte tillgång till Workflow. Logga in med adressen du blev inbjuden med – med Google: välj Google-kontot som har just den adressen.";
     case "google_missing_email":
       return "Google-kontot måste dela en e-postadress för att kunna användas.";
     case "google_unverified_email":
@@ -32,7 +33,8 @@ function mapLoginError(value: string | undefined) {
       return "Kontot är inaktiverat. Kontakta en administratör för access.";
     case "google_invite_required":
       return "Google-login är endast öppet för redan upplagda konton. Be en admin lägga upp dig först.";
-    case "google_superadmin_required":
+    case "google_disabled":
+      return "Inloggning med Google är avstängd. Logga in med e-post och lösenord.";
     case "superadmin_required":
       return "Inloggning är just nu endast öppen för superadmin-kontot.";
     default:
@@ -66,7 +68,8 @@ export default async function LoginPage({
         : undefined;
   const initialError = mapLoginError(effectiveError);
   const { name, features } = publicInstance();
-  const googleEnabled = features.googleSignIn && Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
+  const googleAllowed = features.googleSignIn && await googleSignInAllowed();
+  const googleEnabled = googleAllowed && Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
 
   return (
     <AuthShell
@@ -78,7 +81,7 @@ export default async function LoginPage({
         notice={notice}
         initialError={initialError}
         googleEnabled={googleEnabled}
-        googleOffered={features.googleSignIn}
+        googleOffered={googleAllowed}
         termsOf={name}
         demo={features.demoOnLogin}
       />

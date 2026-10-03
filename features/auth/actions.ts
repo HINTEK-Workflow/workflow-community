@@ -147,6 +147,7 @@ export async function acceptInvitationAction(
   const result = await acceptInvitationWithToken(
     parsed.data.token,
     parsed.data.password,
+    { newsletter: formData.get("newsletter") === "on" },
   );
   return {
     status: result.ok ? "success" : "error",

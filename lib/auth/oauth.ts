@@ -1,11 +1,10 @@
-import { UserRole } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import {
   authUserSelect,
   normalizeEmail,
   resolveInitialOrganizationId,
 } from "@/lib/auth/service";
-import { isTestEmail } from "@/lib/auth/access";
+import { mayAuthenticate } from "@/lib/auth/access";
 
 export type GoogleOAuthProfile = {
   sub?: string;
@@ -44,8 +43,6 @@ export async function syncGoogleAccountSignIn(
   const providerAccountId = String(profile?.sub ?? "").trim();
   const email = normalizeEmail(String(profile?.email ?? ""));
   const emailVerified = profile?.email_verified === true;
-
-  if (!isTestEmail(email)) return { ok: false, error: "test_access" };
 
   if (!providerAccountId || !email) {
     return {
@@ -101,13 +98,7 @@ export async function syncGoogleAccountSignIn(
   });
 
   if (linkedAccount) {
-    if (!isTestEmail(linkedAccount.user.email)) return { ok: false, error: "test_access" };
-    if (linkedAccount.user.role !== UserRole.SUPERADMIN) {
-      return {
-        ok: false,
-        error: "google_superadmin_required",
-      };
-    }
+    if (!mayAuthenticate(linkedAccount.user.email)) return { ok: false, error: "test_access" };
 
     if (!linkedAccount.user.isActive) {
       return {
@@ -148,6 +139,8 @@ export async function syncGoogleAccountSignIn(
     };
   }
 
+  // Not linked yet: the Google address itself must be allowed and belong to an account.
+  if (!mayAuthenticate(email)) return { ok: false, error: "test_access" };
   const existingUser = await prisma.user.findUnique({
     where: {
       email,
@@ -180,13 +173,6 @@ export async function syncGoogleAccountSignIn(
     return {
       ok: false,
       error: "google_invite_required",
-    };
-  }
-
-  if (existingUser.role !== UserRole.SUPERADMIN) {
-    return {
-      ok: false,
-      error: "google_superadmin_required",
     };
   }
 

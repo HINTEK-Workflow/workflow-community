@@ -120,5 +120,19 @@ export function MailSettings({ notify }: { notify: (text: string, error?: boolea
       </Button>
     </div>
     <p className="text-xs text-muted-foreground">Testmejlet skickas med de sparade inställningarna. Spara först om du har ändrat något.</p>
+    <Newsletter />
   </div>;
+}
+
+/** Nyhetsutskick (2026-10-03): how many said yes when they created their account or in Mina inställningar, and the list. */
+function Newsletter() {
+  const [count, setCount] = useState<number | null>(null);
+  useEffect(() => { void api<{ count: number }>("/api/newsletter").then((result) => setCount(result.count)).catch(() => setCount(null)); }, []);
+  return <Panel title="Nyhetsutskick" description="De som sagt ja till mejl om ändringar och förbättringar i Workflow, när kontot skapades eller under Mina inställningar.">
+    <div className="flex flex-wrap items-center gap-3 text-sm" data-testid="newsletter-recipients">
+      <span>{count === null ? "Hämtar…" : count === 1 ? "1 mottagare" : `${count} mottagare`}</span>
+      <Button asChild variant="outline" size="sm"><a href="/api/newsletter?format=csv" download>Ladda ner listan (CSV)</a></Button>
+    </div>
+    <p className="mt-2 text-xs text-muted-foreground">Skicka bara till dem på listan, och ta med hur man avböjer (Mina inställningar → Nyheter i Workflow).</p>
+  </Panel>;
 }

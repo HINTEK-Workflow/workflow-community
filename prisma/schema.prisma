@@ -201,6 +201,8 @@ model User {
   lastLoginAt             DateTime?
   // A password change or reset ends every session started before it (2026-10-02).
   passwordChangedAt       DateTime?
+  // Nyhetsutskick (2026-10-03): when the person said yes to news about changes and improvements; null = no.
+  newsletterOptInAt       DateTime?
   isActive                Boolean                 @default(true)
   activeOrganizationId    String?
   createdAt               DateTime                @default(now())
@@ -1746,6 +1748,8 @@ model SystemSettings {
   ai          Json   @default("{}")
   /// HINTEK's own AI provider set in the app (ee/ai/provider-settings.ts): the sealed key and the switches; empty = .env.
   aiProvider  Json   @default("{}")
+  /// Inloggning: whether "Fortsätt med Google" is offered and accepted (lib/auth/login-settings.ts).
+  googleSignIn Boolean @default(true)
 }
 
 model ControlVisit {

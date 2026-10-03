@@ -252,6 +252,13 @@ export const views = {
     tone: "text-feature-customer",
     surface: "bg-feature-customer-soft",
   },
+  // Inloggning (2026-10-03): whether Google sign-in is offered; the superadmin.
+  login_settings: {
+    label: "Inloggning",
+    icon: KeyRound,
+    tone: "text-feature-customer",
+    surface: "bg-feature-customer-soft",
+  },
   // "Skapa formulär" (2026-09-26): HINTEK's superadmin and, since 2026-09-27, company admins in Cloud; next to HINTEK AI.
   forms: {
     label: "Skapa formulär",
@@ -656,7 +663,7 @@ export function AppShell({
       <div id={`${testId}-items`} hidden={!open}>{child}</div>
     </div>;
   }
-  const productActive = view === "customer_companies" || view === "pricing_admin" || view === "ai_admin" || view === "landing_editor" || view === "mail_settings";
+  const productActive = view === "customer_companies" || view === "pricing_admin" || view === "ai_admin" || view === "landing_editor" || view === "mail_settings" || view === "login_settings";
   const companyActive = view === "administration" || view === "integrations" || view === "history_retention" || view === "ai_settings" || view === "facilities" || view === "company_settings" || view === "credits";
   // Inställningar holds the person's own settings, the company's pages and Hjälp (2026-10-02).
   const settingsActive = view === "settings" || view === "help" || companyActive;

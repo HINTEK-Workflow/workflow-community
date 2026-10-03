@@ -12,6 +12,9 @@ import {
   syncGoogleAccountSignIn,
 } from "@/lib/auth/oauth";
 import { verifyPassword } from "@/lib/auth/password";
+import { googleSignInAllowed } from "@/lib/auth/login-settings";
+import { GOOGLE_LINK_COOKIE, linkGoogleAccount, readLinkIntent } from "@/lib/auth/google-link";
+import { cookies } from "next/headers";
 import { canAccessTest, isAllowedPrivateEmail, localRoleQaSessionCookie, mayAuthenticate, sessionOutdated } from "@/lib/auth/access";
 import {
   findUserById,
@@ -145,14 +148,19 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async signIn({ user, account, profile }) {
-      const email = account?.provider === "google"
-        ? (profile as GoogleOAuthProfile | undefined)?.email
-        : user.email;
-      if (!mayAuthenticate(email)) return "/login?error=test_access";
-      if (account?.provider !== "google") {
-        return true;
+      if (account?.provider !== "google") return mayAuthenticate(user.email) ? true : "/login?error=test_access";
+      if (!(await googleSignInAllowed())) return "/login?error=google_disabled";
+
+      // A signed-in person linking another Google account to their own (Koppla Google-konto, 2026-10-03).
+      const jar = await cookies();
+      const linkingUserId = readLinkIntent(jar.get(GOOGLE_LINK_COOKIE)?.value);
+      if (jar.get(GOOGLE_LINK_COOKIE)) jar.delete(GOOGLE_LINK_COOKIE);
+      if (linkingUserId) {
+        const linked = await linkGoogleAccount(linkingUserId, profile as GoogleOAuthProfile | undefined);
+        return linked.ok ? true : `/?view=settings&googleLink=${linked.error}`;
       }
 
+      // The Google address must be allowed – unless this Google account is already linked to an allowed account.
       const result = await syncGoogleAccountSignIn(profile as GoogleOAuthProfile | undefined);
 
       if (!result.ok) {

@@ -10,11 +10,13 @@ export async function POST(request: Request) {
       .object({
         token: z.string().min(32).max(256),
         password: z.string().min(12).max(200),
+        newsletter: z.boolean().optional(),
       })
       .parse(await body(request));
     const result = await acceptInvitationWithToken(
       input.token,
       input.password,
+      { newsletter: input.newsletter },
     );
     return NextResponse.json(result, { status: result.ok ? 200 : 400 });
   } catch (error) {

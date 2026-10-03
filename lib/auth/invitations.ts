@@ -109,6 +109,7 @@ export async function inspectInvitationToken(rawToken: string) {
 export async function acceptInvitationWithToken(
   rawToken: string,
   password: string,
+  options: { newsletter?: boolean } = {},
 ) {
   if (!(await invitationDeliveryEnabled()))
     return {
@@ -189,6 +190,7 @@ export async function acceptInvitationWithToken(
           data: {
             emailVerifiedAt: now,
             ...(existing.passwordHash ? {} : { passwordHash }),
+            ...(options.newsletter ? { newsletterOptInAt: now } : {}),
           },
         })
       : await tx.user.create({
@@ -199,6 +201,7 @@ export async function acceptInvitationWithToken(
             emailVerifiedAt: now,
             isActive: true,
             role: "STAFF",
+            newsletterOptInAt: options.newsletter ? now : null,
           },
         });
 
