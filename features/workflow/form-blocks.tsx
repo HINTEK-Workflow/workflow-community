@@ -58,11 +58,11 @@ export function CheckChecklist({ block, values, onChange, readOnly, label, quiet
 export type FormCompletionSummary = { requirements: FormRequirement[]; issues: FormRequirement[]; ready: boolean; percent: number; warnings?: string[] };
 
 /**
- * Sammanfattning exactly like the control's (2026-09-27): approved per moment as pills ("Isolation: 3/4"), the
- * completion card with the requirements left, then the comment – where the author placed it. The form then shows no
- * separate deviation box at the end.
+ * Sammanfattning exactly like the control's (2026-09-27): approved per moment as pills ("Isolation: 3/4"), then
+ * the comment – where the author placed it. The form then shows no separate deviation box at the end. The completion
+ * card lives only in the shared Färdigställ foot (2026-10-03: two progress bars were one too many).
  */
-export function SummaryBlock({ block, document, values, evaluation, completion, onChange, readOnly, label, quietLabel = false }: {
+export function SummaryBlock({ block, document, values, evaluation, onChange, readOnly, label, quietLabel = false }: {
   block: Extract<FormLeafBlock, { type: "summary" }>; document?: FormDocument; values: FormValues; evaluation: FormEvaluation; completion?: FormCompletionSummary; onChange: (values: FormValues) => void; readOnly: boolean; label: React.ReactNode; quietLabel?: boolean;
 }) {
   const totals = document ? formApprovalTotals(document, values, evaluation) : [];
@@ -71,7 +71,6 @@ export function SummaryBlock({ block, document, values, evaluation, completion, 
   return <section aria-label={block.label} className="space-y-4" data-testid="form-summary">
     <h3 className={cn("text-sm font-semibold", quietLabel && "sr-only")}>{label}</h3>
     {totals.length ? <div className="flex flex-wrap gap-2">{totals.map((item) => <span key={item.blockId} className={cn("rounded-full px-3 py-1 text-xs font-medium", item.total && item.total === item.ok ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800")}>{item.title}: {item.ok}/{item.total}</span>)}</div> : null}
-    {completion ? <CompletionCard completion={completion} /> : null}
     {others.length ? <div className={cn("space-y-1 rounded-lg border p-3 text-sm", indicatorBadge("danger"))}><p className="flex items-center gap-2 font-semibold"><AlertTriangle className="size-4" />{others.length === 1 ? "1 avvikelse" : `${others.length} avvikelser`}</p><ul className="list-disc pl-5">{others.map((item) => <li key={`${item.blockId}-${item.rowId ?? ""}-${item.message}`}>{item.message}</li>)}</ul></div> : null}
     <label htmlFor="form-deviations" className="sr-only">{block.label} / kommentarer</label>
     <textarea id="form-deviations" className="form-textarea min-h-40" value={values.deviationComment} disabled={readOnly} placeholder={deviating ? "Beskriv avvikelserna och vad som görs åt dem." : undefined} onChange={(event) => onChange({ ...values, deviationComment: event.target.value })} />

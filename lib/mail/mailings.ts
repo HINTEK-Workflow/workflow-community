@@ -4,6 +4,7 @@ import { env } from "@/lib/env";
 import { publicInstance } from "@/lib/instance";
 import { sendSystemEmail } from "@/lib/mail/mailer";
 import { mailConfig } from "@/lib/mail/settings-server";
+import { parseMailingBody, renderMailing } from "@/lib/mail/mailing-document";
 
 /**
  * Utskick (2026-10-03): the superadmin writes a newsletter to those who said yes, or important information to
@@ -40,25 +41,12 @@ export function validUnsubscribe(userId: string, token: string) {
   return expected.length === given.length && timingSafeEqual(expected, given);
 }
 
-const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[character]!);
-
-/** Plain text written by the superadmin: a blank line starts a new paragraph, and addresses become links. */
+/** The mail from its blocks (or an old plain-text body), with the way to say no for a newsletter. */
 export function buildMailingEmail(input: { subject: string; body: string; unsubscribe: string | null }) {
   const name = publicInstance().name;
-  const paragraphs = input.body.trim().split(/\n\s*\n/).map((part) => part.trim()).filter(Boolean);
-  const linked = (text: string) => escapeHtml(text).replace(/https?:\/\/[^\s<]+/g, (url) => `<a href="${url}" style="color:#135bec;">${url}</a>`).replace(/\n/g, "<br>");
-  const footer = input.unsubscribe
-    ? `Du får det här för att du har sagt ja till nyheter från ${escapeHtml(name)}. <a href="${escapeHtml(input.unsubscribe)}" style="color:#6b7280;">Avböj fler nyhetsbrev</a>.`
-    : `Du får det här som administratör i ${escapeHtml(name)}.`;
-  const html = `<div style="margin:0;background:#f3f7ff;padding:32px 16px;font-family:'Segoe UI',Arial,sans-serif;color:#172033;">
-  <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;margin:0 auto;background:#ffffff;border:1px solid #dbe4f0;border-radius:24px;overflow:hidden;">
-    <tr><td style="padding:28px 28px 8px;"><p style="margin:0 0 10px;font-size:12px;letter-spacing:0.2em;text-transform:uppercase;color:#7b8798;">${escapeHtml(name)}</p><h1 style="margin:0;font-size:26px;line-height:1.2;">${escapeHtml(input.subject)}</h1></td></tr>
-    <tr><td style="padding:8px 28px 16px;font-size:15px;line-height:1.7;color:#384458;">${paragraphs.map((part) => `<p style="margin:0 0 14px;">${linked(part)}</p>`).join("")}</td></tr>
-    <tr><td style="padding:16px 28px 28px;font-size:12px;line-height:1.6;color:#6b7280;border-top:1px solid #eef2f7;">${footer}</td></tr>
-  </table>
-</div>`;
-  const text = `${input.subject}\n\n${paragraphs.join("\n\n")}\n\n${input.unsubscribe ? `Avböj fler nyhetsbrev: ${input.unsubscribe}` : `Du får det här som administratör i ${name}.`}\n`;
-  return { html, text, headers: input.unsubscribe ? { "List-Unsubscribe": `<${input.unsubscribe}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" } : undefined };
+  const footer = input.unsubscribe ? `Du får det här för att du har sagt ja till nyheter från ${name}.` : `Du får det här som administratör i ${name}.`;
+  const { html, text } = renderMailing(parseMailingBody(input.body), { name, footer, unsubscribe: input.unsubscribe });
+  return { html, text: `${input.subject}\n\n${text}`, headers: input.unsubscribe ? { "List-Unsubscribe": `<${input.unsubscribe}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" } : undefined };
 }
 
 export async function queueMailing(input: { subject: string; body: string; audience: MailingAudience; actorId: string }) {

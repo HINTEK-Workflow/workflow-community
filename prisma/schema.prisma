@@ -247,7 +247,8 @@ model Organization {
   storageMode             DataStorageMode            @default(LOCAL)
   weeklyWorkMinutes       Int                        @default(2400)
   // History kept for a selectable time (2026-09-30); null keeps it until deleted by hand.
-  historyRetentionMonths  Int?
+  /// Lagringstid för historik i månader; null = tills vidare. 24 som standard (2026-10-03).
+  historyRetentionMonths  Int?    @default(24)
   createdAt               DateTime                   @default(now())
   updatedAt               DateTime                   @updatedAt
   activeUsers             User[]                     @relation("ActiveOrganization")

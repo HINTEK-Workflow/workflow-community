@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { formatSwedish } from "@/lib/swedish-time";
-import { Building2, ChevronDown, Coins, Plus, Search, ShieldCheck } from "lucide-react";
+import { Building2, ChevronDown, Coins, Plus, Search, ShieldCheck, UserX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Panel, Empty, Modal } from "./ui";
@@ -60,6 +60,8 @@ export function CustomerCompanies() {
   const [creditForm, setCreditForm] = useState({ expiryEnabled: true, expiryDate: "" });
   const [grantCompany, setGrantCompany] = useState<{ id: string; name: string } | null>(null);
   const [grantForm, setGrantForm] = useState({ credits: "100", reason: "" });
+  const [eraseTarget, setEraseTarget] = useState<{ id: string; name: string } | null>(null);
+  const [eraseName, setEraseName] = useState("");
   const [settingsForm, setSettingsForm] = useState({ name: "", isActive: true, storageMode: "LOCAL" as "LOCAL" | "HINTEK_CLOUD", contactEmail: "", billingEmail: "" });
   const [ownerCompany, setOwnerCompany] = useState<CustomerCompany | null>(null);
   const [ownerForm, setOwnerForm] = useState({ name: "", email: "" });
@@ -147,6 +149,7 @@ export function CustomerCompanies() {
                   setFormError("");
                 }}>Kreditregel</Button>
                 <Button type="button" variant="outline" className="ml-2 w-full sm:w-auto" onClick={() => { setGrantCompany({ id: item.id, name: item.name }); setGrantForm({ credits: "100", reason: "" }); setFormError(""); }}><Coins />Ge krediter</Button>
+                <Button type="button" variant="outline" className="ml-2 w-full text-destructive sm:w-auto" onClick={() => { setEraseTarget({ id: item.id, name: item.name }); setEraseName(""); setFormError(""); }}><UserX />Radera företaget</Button>
               </div>
               {!item.owner && item.ownerInvitationStatus !== "PENDING" ? <div className="mt-4 flex flex-col gap-2 border-t pt-4 sm:flex-row">
                 <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => {
@@ -275,6 +278,29 @@ export function CustomerCompanies() {
           <div><label htmlFor="grant-reason" className="mb-2 block text-xs font-medium">Orsak</label><Input id="grant-reason" required minLength={3} maxLength={300} placeholder="Till exempel Prov av Workflow AI" value={grantForm.reason} onChange={(event) => setGrantForm({ ...grantForm, reason: event.target.value })} /></div>
           {formError ? <p role="alert" className="text-sm text-destructive">{formError}</p> : null}
           <Button disabled={busy}><Coins />{busy ? "Ger krediter…" : "Ge krediter"}</Button>
+        </form>
+      </Modal>
+      <Modal open={Boolean(eraseTarget)} onOpenChange={(open) => { if (!open && !busy) setEraseTarget(null); }} title="Radera företaget?">
+        {/* Radera ett helt kundföretag (2026-10-03, GDPR): work data, files and personal data go; accounting stays. */}
+        <ul className="mb-4 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+          <li>Kunder, projekt, uppgifter, kontroller, filer, formulär, AI-konversationer, inställningar och historik raderas.</li>
+          <li>Medlemmar som inte finns i något annat företag anonymiseras; övriga förlorar bara medlemskapet.</li>
+          <li>Fakturor, betalningar, krediter och AI-användning sparas som bokföringsunderlag så länge lagen kräver.</li>
+          <li>Backuper på servern innehåller företaget tills de har roterats bort.</li>
+        </ul>
+        <form className="space-y-4" onSubmit={async (event) => {
+          event.preventDefault();
+          if (!eraseTarget) return;
+          setBusy(true); setFormError("");
+          try {
+            const result = await api<{ records: number; people: number; files: number }>("/api/erasure", { method: "POST", body: JSON.stringify({ action: "company", organizationId: eraseTarget.id, confirmName: eraseName }) });
+            setNotice(`${eraseTarget.name} är raderat: ${result.records} poster, ${result.files} filer och ${result.people} personer.`);
+            setEraseTarget(null); setExpandedId(null); setHistoryByCompany({}); setRevision((value) => value + 1);
+          } catch (cause) { setFormError((cause as Error).message); } finally { setBusy(false); }
+        }}>
+          <div><label htmlFor="erase-company-name" className="mb-2 block text-xs font-medium">Skriv företagets namn: {eraseTarget?.name}</label><Input id="erase-company-name" value={eraseName} onChange={(event) => setEraseName(event.target.value)} autoComplete="off" /></div>
+          {formError ? <p role="alert" className="text-sm text-destructive">{formError}</p> : null}
+          <Button variant="destructive" disabled={busy || eraseName !== eraseTarget?.name}><UserX />{busy ? "Raderar…" : "Radera företaget"}</Button>
         </form>
       </Modal>
       <Modal open={createOpen} onOpenChange={setCreateOpen} title="Förbered kundföretag">

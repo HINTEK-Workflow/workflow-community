@@ -52,7 +52,7 @@ export function productTabs(options: { landingEditor: boolean; pricing: boolean;
   ];
 }
 
-export function SectionTabs({ label, tabs, current, owner }: { label: string; tabs: Tab[]; current: string; owner?: boolean }) {
+export function SectionTabs({ label, tabs, current }: { label: string; tabs: Tab[]; current: string }) {
   const router = useRouter();
   if (tabs.length < 2) return null;
   // No sideways scrolling (2026-10-02: the scroll bar under Inställningar): on a phone one picker; on a wider
@@ -64,7 +64,7 @@ export function SectionTabs({ label, tabs, current, owner }: { label: string; ta
         {tabs.map((tab) => <option key={tab.view} value={tab.view}>{tab.label}</option>)}
       </select>
     </label>
-    <nav aria-label={label} className={cn("section-tabs hidden flex-wrap gap-2 border-b pb-4 sm:flex", owner && "section-tabs-owner")} data-testid="section-tabs">
+    <nav aria-label={label} className="section-tabs hidden flex-wrap gap-2 border-b pb-4 sm:flex" data-testid="section-tabs">
       {tabs.map((tab) => <Link key={tab.view} href={`/?view=${tab.view}`} aria-current={tab.view === current ? "page" : undefined}
         className={cn("flex h-9 shrink-0 items-center gap-2 rounded-full border px-3.5 text-sm transition-colors", tab.view === current ? "border-primary/30 bg-secondary font-medium text-secondary-foreground ring-1 ring-primary/15" : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground")}>
         <tab.icon className={cn("size-4", tab.view === current ? "text-primary" : "")} aria-hidden="true" />{tab.label}

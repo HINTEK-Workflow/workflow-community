@@ -117,7 +117,7 @@ export function HistoryRetention({ notify }: { notify: (text: string, error?: bo
     </Panel>
     <Panel title="Senaste ändringar" description="Lagringstid och radering loggas med antal, aldrig med innehåll.">
       {state.recent.length ? <ul className="divide-y rounded-lg border text-sm">{state.recent.map((event) => <li key={event.id} className="flex flex-wrap justify-between gap-2 p-3"><span className="flex gap-2"><History className="mt-0.5 size-4 shrink-0 text-muted-foreground" />{event.detail}</span><time className="text-xs text-muted-foreground" dateTime={event.createdAt}>{formatSwedish(event.createdAt, { dateStyle: "medium", timeStyle: "short" })}</time></li>)}</ul>
-        : <p className="text-sm text-muted-foreground">Inga ändringar ännu. Historiken sparas tills vidare.</p>}
+        : <p className="text-sm text-muted-foreground">Inga ändringar ännu.</p>}
     </Panel>
   </div>;
 }

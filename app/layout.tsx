@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 import "./globals.css";
 import { AppRegistration } from "@/features/kfid/app-registration";
 import { InstanceProvider } from "@/components/instance-provider";
@@ -54,7 +55,7 @@ export default function RootLayout({
         <InstanceProvider value={publicInstance()}>
           {children}
           <AppRegistration />
-          <CookieNotice />
+          <Suspense fallback={null}><CookieNotice /></Suspense>
         </InstanceProvider>
       </body>
     </html>

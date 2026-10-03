@@ -14,6 +14,7 @@ import {
   FileText,
   CheckCircle2,
   ChevronDown,
+  UserX,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -363,6 +364,16 @@ export function Administration({
   useEffect(() => {
     void load();
   }, [load]);
+  // Radera personuppgifter (2026-10-03): the person is anonymised; protocols and history stay without the name.
+  async function erasePerson(m: { user: { id: string; name: string | null; email: string } }) {
+    if (!members || !(await confirmCard({ title: "Radera personuppgifterna?", message: `${m.user.name || m.user.email}: namn och e-post ersätts med ”Borttagen användare”. Inloggning, kopplade Google-konton och appar och egna AI-konversationer raderas. Protokoll och historik behålls utan namnet. Har personen konto i ett annat företag tas hen bara bort härifrån. Det går inte att ångra.`, confirmLabel: "Radera personuppgifter", tone: "danger" }))) return;
+    setBusy(true);
+    try {
+      const result = await api<{ anonymised: boolean }>("/api/erasure", { method: "POST", body: JSON.stringify({ action: "member", userId: m.user.id, organizationId: members.id }) });
+      notify(result.anonymised ? "Personuppgifterna är raderade." : "Personen är borttagen ur företaget. Kontot finns kvar i ett annat företag.");
+      await load();
+    } catch (cause) { notify((cause as Error).message, true); } finally { setBusy(false); }
+  }
   async function perform(input: unknown, message: string) {
     setBusy(true);
     try {
@@ -730,6 +741,7 @@ export function Administration({
                   if (await confirmCard({ title: "Ta bort medlemskapet?", message: "Personen förlorar åtkomsten till företaget. Kontroller och kunder behålls i företaget.", confirmLabel: "Ta bort medlem", tone: "danger" }))
                     void perform({ action: "member_remove", organizationId: members!.id, email: m.user.email }, "Medlemskapet är borttaget.");
                 }}><Trash2 />Ta bort medlem</Button>
+                <Button variant="outline" disabled={busy} onClick={() => void erasePerson(m)}><UserX />Radera personuppgifter</Button>
               </div>
             </>
           )}
@@ -806,6 +818,9 @@ export function Administration({
                   }}
                 >
                   <Trash2 />
+                </Button>
+                <Button variant="ghost" size="icon" aria-label={`Radera personuppgifter för ${m.user.email}`} title="Radera personuppgifter" disabled={busy} onClick={() => void erasePerson(m)}>
+                  <UserX />
                 </Button>
               </div>
             </div>

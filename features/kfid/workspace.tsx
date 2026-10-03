@@ -68,6 +68,7 @@ import type { View, ShellUser } from "@/components/app-shell";
 import { ViewAsPanel } from "@/features/workflow/view-as-panel";
 import { UpgradeToCloud } from "@/features/workflow/upgrade-cloud";
 import { Mailings } from "@/features/workflow/mailings";
+import { EraseAccount } from "@/features/workflow/erase-account";
 import {
   DEFAULT_REPORT_BRANDING,
   type ReportBranding,
@@ -1056,6 +1057,8 @@ export function Workspace({
         <div className="mt-6">
           <SuggestionsEditor notify={notify} refresh={refresh} />
         </div>
+        {/* Radera mitt konto (2026-10-03, GDPR): last on the page, never for the superadmin of the installation. */}
+        {user?.superadmin ? null : <div className="mt-6"><EraseAccount /></div>}
       </>
     );
   else
@@ -1081,7 +1084,7 @@ export function Workspace({
   const sectionTabs = (SETTINGS_VIEWS as readonly string[]).includes(view) && !overview?.legalRequired && user
     ? <SectionTabs label="Inställningar" current={view} tabs={settingsTabs({ admin: shownAdmin, credits: instance.features.billing || instance.features.credits, cloud: !localMode, ai: Boolean(SharingPolicyPanel) && instance.features.ai, integrations: Boolean(IntegrationKeys) && instance.features.integrations })} />
     : (PRODUCT_VIEWS as readonly string[]).includes(view) && user?.role === "SUPERADMIN"
-      ? <SectionTabs label="Produktadministration" owner current={view} tabs={productTabs({ landingEditor: Boolean(LandingEditor) && instance.features.landingEditor, pricing: Boolean(PricingAdministration), ai: Boolean(ProviderAdministration) || Boolean(AiUsageAdministration), serverKeys: Boolean(ServerKeysAdministration) })} />
+      ? <SectionTabs label="Produktadministration" current={view} tabs={productTabs({ landingEditor: Boolean(LandingEditor) && instance.features.landingEditor, pricing: Boolean(PricingAdministration), ai: Boolean(ProviderAdministration) || Boolean(AiUsageAdministration), serverKeys: Boolean(ServerKeysAdministration) })} />
       : null;
   return (
     <AdvisorSettingsProvider value={overview ? preferences.advisor : undefined} onSave={overview ? (next) => saveAdvisor({ ...next, autofill: Boolean(next.autofill) }) : undefined}>

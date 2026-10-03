@@ -55,6 +55,7 @@ import { useConfirm } from "@/features/kfid/confirm";
 import { cn } from "@/lib/utils";
 import { WorkflowBrand } from "@/components/workflow-brand";
 import { useInstance } from "@/components/instance-provider";
+import { CookieButton } from "@/components/cookie-notice";
 import { VIEW_AS_LABELS, type ViewAs } from "@/lib/workflow/view-as";
 import {
   useWorkspaceActions,
@@ -255,29 +256,29 @@ export const views = {
   mail_settings: {
     label: "E-post",
     icon: Mail,
-    tone: "text-feature-owner",
-    surface: "bg-feature-owner-soft",
+    tone: "text-feature-customer",
+    surface: "bg-feature-customer-soft",
   },
   // Inloggning (2026-10-03): whether Google sign-in is offered; the superadmin.
   login_settings: {
     label: "Inloggning",
     icon: KeyRound,
-    tone: "text-feature-owner",
-    surface: "bg-feature-owner-soft",
+    tone: "text-feature-customer",
+    surface: "bg-feature-customer-soft",
   },
   // Utskick (2026-10-03): newsletters and important information, under Produktadministration; the superadmin.
   mailings: {
     label: "Utskick",
     icon: Send,
-    tone: "text-feature-owner",
-    surface: "bg-feature-owner-soft",
+    tone: "text-feature-customer",
+    surface: "bg-feature-customer-soft",
   },
   // Servernycklar (2026-10-03): the keys the server runs with, under Produktadministration; the superadmin.
   server_keys: {
     label: "Servernycklar",
     icon: Server,
-    tone: "text-feature-owner",
-    surface: "bg-feature-owner-soft",
+    tone: "text-feature-customer",
+    surface: "bg-feature-customer-soft",
   },
   // "Skapa formulär" (2026-09-26): HINTEK's superadmin and, since 2026-09-27, company admins in Cloud; next to Workflow AI.
   forms: {
@@ -298,27 +299,27 @@ export const views = {
   landing_editor: {
     label: "Landningssidan",
     icon: PanelsTopLeft,
-    tone: "text-feature-owner",
-    surface: "bg-feature-owner-soft",
+    tone: "text-feature-customer",
+    surface: "bg-feature-customer-soft",
   },
   customer_companies: {
     label: "Produktadministration",
     icon: Building2,
-    tone: "text-feature-owner",
-    surface: "bg-feature-owner-soft",
+    tone: "text-feature-customer",
+    surface: "bg-feature-customer-soft",
   },
   // Tabs under Produktadministration and Mitt företag (2026-10-02); never menu buttons of their own.
   pricing_admin: {
     label: "Priser",
     icon: CreditCard,
-    tone: "text-feature-owner",
-    surface: "bg-feature-owner-soft",
+    tone: "text-feature-customer",
+    surface: "bg-feature-customer-soft",
   },
   ai_admin: {
     label: "AI",
     icon: Sparkles,
-    tone: "text-feature-owner",
-    surface: "bg-feature-owner-soft",
+    tone: "text-feature-customer",
+    surface: "bg-feature-customer-soft",
   },
   company_settings: {
     label: "Rapporter och logotyp",
@@ -341,8 +342,6 @@ export const views = {
   },
 };
 export type View = keyof typeof views;
-/** The views only the superadmin sees; their menu button carries the plum produktägare mark (2026-10-03). */
-const OWNER_VIEWS = new Set<View>(["customer_companies", "pricing_admin", "ai_admin", "landing_editor", "mail_settings", "login_settings", "server_keys", "mailings"]);
 
 /**
  * The menu's thin line (2026-09-30): the menu scrolls without the browser's scrollbar, and while it is taller
@@ -529,7 +528,6 @@ export function AppShell({
     const item = views[key];
     const className = cn(
           "workspace-menu-item flex h-10 w-full items-center gap-3 rounded-md px-3 text-left text-sm transition-colors hover:bg-muted",
-          OWNER_VIEWS.has(key) && "owner-only",
           active
             ? "workspace-menu-item-active bg-secondary font-medium text-secondary-foreground ring-1 ring-primary/15"
             : "text-muted-foreground",
@@ -756,6 +754,12 @@ export function AppShell({
         </div>}
         <div className="mt-auto space-y-1 pt-6">
           {navItem("settings", settingsActive)}
+          {/* Logga ut is always within reach in the menu, also far down a long page (2026-10-03). */}
+          {user ? <button type="button" onClick={() => void logout()} data-testid="menu-logout"
+            className="workspace-menu-item flex h-10 w-full items-center gap-3 rounded-md px-3 text-left text-sm text-muted-foreground transition-colors hover:bg-muted">
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground"><LogOut className="size-4" /></span>
+            <span>{demo ? "Avsluta demon" : "Logga ut"}</span>
+          </button> : null}
         </div>
         {!user && <div className="mt-4 border-t pt-4 lg:hidden">
           <Link href="/login" onClick={() => setMobileOpen(false)} className="workspace-menu-item flex items-center gap-3 rounded-md px-3 text-sm hover:bg-muted">
@@ -767,7 +771,7 @@ export function AppShell({
       {demo ? <div className="workspace-sidebar-note mx-4 mb-4 rounded-lg border border-primary/15 bg-secondary p-3">
         <div className="flex items-center gap-2 text-xs font-medium"><span className="size-1.5 rounded-full bg-amber-500" />Demo</div>
         <p className="mt-1.5 text-xs leading-5 text-muted-foreground">Påhittat företag och påhittade användare. Inget sparas och allt nollställs när sidan laddas om.</p>
-      </div> : <p className="workspace-sidebar-version mx-4 mb-4 px-3 text-xs text-muted-foreground" data-testid="app-version">Version {process.env.NEXT_PUBLIC_APP_VERSION}</p>}
+      </div> : <div className="mx-4 mb-4 flex items-center justify-between gap-2 px-3"><p className="workspace-sidebar-version text-xs text-muted-foreground" data-testid="app-version">Version {process.env.NEXT_PUBLIC_APP_VERSION}</p><CookieButton className="size-8" /></div>}
     </div>
   );
   return (
@@ -971,8 +975,8 @@ export function AppShell({
 function ViewAsBanner({ viewAs }: { viewAs: ViewAs }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
-  return <div role="status" data-testid="view-as-banner" className="mb-6 flex flex-wrap items-center gap-3 rounded-xl border border-feature-owner/40 bg-feature-owner-soft p-3 text-sm text-foreground">
-    <Eye className="size-4 shrink-0 text-feature-owner" aria-hidden="true" />
+  return <div role="status" data-testid="view-as-banner" className="mb-6 flex flex-wrap items-center gap-3 rounded-xl border border-primary/20 bg-secondary p-3 text-sm text-foreground">
+    <Eye className="size-4 shrink-0 text-primary" aria-hidden="true" />
     <p className="min-w-0 flex-1"><span className="font-medium">Visar som {VIEW_AS_LABELS[viewAs].label}.</span> <span className="text-muted-foreground">Bara menyer och sidor ändras – dina egna rättigheter och data är desamma.</span></p>
     <Button type="button" size="sm" variant="outline" disabled={busy} onClick={async () => {
       setBusy(true);

@@ -66,7 +66,9 @@ export default async function LoginPage({
       ? "Din e-postadress är verifierad. Logga in för att fortsätta."
       : reset === "1"
         ? "Ditt lösenord är uppdaterat. Logga in med det nya lösenordet."
-        : undefined;
+        : firstValue(params.raderat) === "1"
+          ? "Ditt konto och dina personuppgifter är raderade."
+          : undefined;
   const initialError = mapLoginError(effectiveError);
   const { name, features } = publicInstance();
   const googleAllowed = features.googleSignIn && await googleSignInAllowed();
