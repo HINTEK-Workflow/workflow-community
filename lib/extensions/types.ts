@@ -23,7 +23,7 @@ export type EeRouteKey =
   | "superadmin/accounting-export" | "superadmin/bank-payments" | "superadmin/invoice-replacements"
   | "ai/evals" | "ai/chat" | "ai/conversations" | "ai/digest" | "ai/memory" | "ai/policy" | "ai/proposals" | "ai/review" | "ai/quote" | "ai/status"
   | "superadmin/ai-usage" | "superadmin/ai-credit-settings" | "integration-keys" | "mcp" | "v1" | "v1/tool" | "import"
-  | "oauth/protected-resource" | "oauth/authorization-server" | "oauth/register" | "oauth/token" | "oauth/revoke" | "oauth/decide" | "oauth/connections";
+  | "oauth/protected-resource" | "oauth/authorization-server" | "oauth/register" | "oauth/token" | "oauth/revoke" | "oauth/decide" | "oauth/connections" | "superadmin/ai-provider";
 
 export type CloudWriteAccess = {
   allowed: boolean;

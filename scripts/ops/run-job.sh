@@ -17,7 +17,7 @@ readonly JOB="${1:-}"
 
 # Only the known jobs – never an arbitrary command.
 case "$JOB" in
-  billing:email|billing:delinquency|billing:card-retries|rounds:reminders|history:retention|integrity:check|ai:digest) ;;
+  billing:email|billing:delinquency|billing:card-retries|rounds:reminders|history:retention|integrity:check|ai:digest|keys:alerts) ;;
   *) printf 'ERROR: unknown job %s\n' "$JOB" >&2; exit 2 ;;
 esac
 readonly NAME="${JOB//:/-}"

@@ -1744,6 +1744,8 @@ model SystemSettings {
   mail        Json   @default("{}")
   /// HINTEK AI credit settings made in the app (ee/ai/credit-settings.ts); empty = the defaults.
   ai          Json   @default("{}")
+  /// HINTEK's own AI provider set in the app (ee/ai/provider-settings.ts): the sealed key and the switches; empty = .env.
+  aiProvider  Json   @default("{}")
 }
 
 model ControlVisit {
