@@ -28,6 +28,8 @@ type LoginFormProps = {
   termsOf?: string | null;
   /** The community edition shows a button to the fictional demo (2026-09-30). */
   demo?: boolean;
+  /** "Tillåt nya konton" is on: a link to Skapa konto (2026-10-03). */
+  registerOpen?: boolean;
 };
 
 export function LoginForm({
@@ -37,6 +39,7 @@ export function LoginForm({
   googleEnabled = false,
   googleOffered = true,
   termsOf = null,
+  registerOpen = false,
   demo = false,
 }: LoginFormProps) {
   const router = useRouter();
@@ -150,6 +153,7 @@ export function LoginForm({
           >
             Glömt lösenord?
           </Link>
+          {registerOpen ? <Link href="/register" className="font-medium text-primary underline-offset-4 hover:underline" data-testid="login-register">Skapa konto</Link> : null}
         </div>
 
         <Button

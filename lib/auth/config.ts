@@ -1,4 +1,3 @@
-import { UserRole } from "@prisma/client";
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
@@ -14,6 +13,7 @@ import {
 import { verifyPassword } from "@/lib/auth/password";
 import { googleSignInAllowed } from "@/lib/auth/login-settings";
 import { GOOGLE_LINK_COOKIE, linkGoogleAccount, readLinkIntent } from "@/lib/auth/google-link";
+import { REGISTRATION_COOKIE, RegistrationError, readRegistrationIntent, refreshRegistrationGate, registerAccount } from "@/lib/auth/registration";
 import { cookies } from "next/headers";
 import { canAccessTest, isAllowedPrivateEmail, localRoleQaSessionCookie, mayAuthenticate, sessionOutdated } from "@/lib/auth/access";
 import {
@@ -70,6 +70,7 @@ export const authOptions: NextAuthOptions = {
         },
       },
       async authorize(credentials) {
+        await refreshRegistrationGate();
         const email = normalizeEmail(credentials?.email ?? "");
         const password = credentials?.password ?? "";
 
@@ -106,8 +107,7 @@ export const authOptions: NextAuthOptions = {
         if (
           !user ||
           !user.isActive ||
-          !user.passwordHash ||
-          user.role !== UserRole.SUPERADMIN
+          !user.passwordHash
         ) {
           return null;
         }
@@ -148,6 +148,7 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async signIn({ user, account, profile }) {
+      await refreshRegistrationGate();
       if (account?.provider !== "google") return mayAuthenticate(user.email) ? true : "/login?error=test_access";
       if (!(await googleSignInAllowed())) return "/login?error=google_disabled";
 
@@ -160,6 +161,20 @@ export const authOptions: NextAuthOptions = {
         return linked.ok ? true : `/?view=settings&googleLink=${linked.error}`;
       }
 
+      // Skapa konto med Google (2026-10-03): the company details wait in a signed cookie from the registration page.
+      const registration = readRegistrationIntent(jar.get(REGISTRATION_COOKIE)?.value);
+      if (jar.get(REGISTRATION_COOKIE)) jar.delete(REGISTRATION_COOKIE);
+      if (registration) {
+        const google = profile as GoogleOAuthProfile | undefined;
+        const googleEmail = String(google?.email ?? "").trim().toLowerCase();
+        if (!googleEmail || google?.email_verified !== true) return "/register?error=google_unverified_email";
+        const known = await prisma.user.findUnique({ where: { email: googleEmail }, select: { id: true } });
+        if (!known) {
+          try { await registerAccount(registration, { email: googleEmail, name: String(google?.name ?? "").trim() || googleEmail, emailVerified: true }); }
+          catch (error) { return `/register?error=${encodeURIComponent(error instanceof RegistrationError ? error.message : "Kontot kunde inte skapas.")}`; }
+        }
+      }
+
       // The Google address must be allowed – unless this Google account is already linked to an allowed account.
       const result = await syncGoogleAccountSignIn(profile as GoogleOAuthProfile | undefined);
 
@@ -170,6 +185,7 @@ export const authOptions: NextAuthOptions = {
       return true;
     },
     async jwt({ token, user, account }) {
+      await refreshRegistrationGate();
       if (account?.provider === "google" && account.providerAccountId) {
         const linkedUser = await findUserForLinkedAuthAccount(
           account.provider,

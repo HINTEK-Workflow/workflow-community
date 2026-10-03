@@ -86,6 +86,21 @@ export async function GET(request: Request) {
     const profileByOrganization = new Map(
       profiles.map((item) => [item.organizationId, item.profile]),
     );
+    // Skapa konto (2026-10-03): when the company registered itself, and what was accepted, with versions and times.
+    const ids = organizations.map((item) => item.id);
+    const [registrations, acceptances] = await Promise.all([
+      prisma.administrationEvent.findMany({ where: { organizationId: { in: ids }, action: "self_registration" }, select: { organizationId: true, detail: true, createdAt: true } }),
+      prisma.legalAcceptance.findMany({
+        where: { OR: [{ organizationId: { in: ids } }, { user: { organizationMemberships: { some: { organizationId: { in: ids }, role: { in: ["OWNER", "ADMIN"] } } } } }] },
+        orderBy: { acceptedAt: "desc" }, take: 2000,
+        select: { organizationId: true, documentVersion: true, acceptedAt: true, document: { select: { title: true } }, user: { select: { email: true, organizationMemberships: { where: { organizationId: { in: ids } }, select: { organizationId: true } } } } },
+      }),
+    ]);
+    const registrationOf = new Map(registrations.map((item) => [item.organizationId, { at: item.createdAt, detail: item.detail }]));
+    const acceptancesOf = (organizationId: string) => acceptances
+      .filter((item) => item.organizationId === organizationId || item.user.organizationMemberships.some((member) => member.organizationId === organizationId))
+      .slice(0, 20)
+      .map((item) => ({ title: item.document.title, version: item.documentVersion, acceptedAt: item.acceptedAt, by: item.user.email }));
 
     return NextResponse.json({
       organizations: organizations.map((item) => {
@@ -125,6 +140,8 @@ export async function GET(request: Request) {
           purchasedCreditBalance: item.wallet?.purchasedBalance ?? 0,
           creditExpiryEnabled: item.wallet?.expiryEnabled ?? true,
           creditExpiryOverrideAt: item.wallet?.expiryOverrideAt ?? null,
+          registration: registrationOf.get(item.id) ?? null,
+          acceptances: acceptancesOf(item.id),
         };
       }),
     });

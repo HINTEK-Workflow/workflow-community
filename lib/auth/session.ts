@@ -6,8 +6,10 @@ import { DEFAULT_LOGIN_REDIRECT } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 import { authUserSelect } from "@/lib/auth/service";
 import { canAccessTest } from "@/lib/auth/access";
+import { refreshRegistrationGate } from "@/lib/auth/registration";
 
 export async function getCurrentUser() {
+  await refreshRegistrationGate();
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.id) {

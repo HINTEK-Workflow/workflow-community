@@ -983,8 +983,8 @@ export function LocalWorkspace({
           <div className="notice flex gap-3">
             <ShieldCheck className="mt-0.5 size-5 shrink-0" />
             <p>
-              Serverspärren för lokal lagring är aktiv. Workflows moln-API avvisar
-              kund- och kontrolldata för detta företag.
+              Företagets kunder och kontroller sparas i en fil på den här datorn
+              och skickas aldrig till HINTEK.
             </p>
           </div>
         </>

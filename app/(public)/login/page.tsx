@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { registrationOpen } from "@/lib/auth/registration";
 import { googleSignInAllowed } from "@/lib/auth/login-settings";
 import { AuthShell } from "@/features/auth/components/auth-shell";
 import { LoginForm } from "@/features/auth/components/login-form";
@@ -84,6 +85,7 @@ export default async function LoginPage({
         googleOffered={googleAllowed}
         termsOf={name}
         demo={features.demoOnLogin}
+        registerOpen={await registrationOpen()}
       />
     </AuthShell>
   );

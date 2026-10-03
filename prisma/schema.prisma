@@ -1750,6 +1750,10 @@ model SystemSettings {
   aiProvider  Json   @default("{}")
   /// Inloggning: whether "Fortsätt med Google" is offered and accepted (lib/auth/login-settings.ts).
   googleSignIn Boolean @default(true)
+  /// "Tillåt nya konton": self-registration, and sign-in for everyone with an account (off = invitations and the pilot list only).
+  registrationOpen Boolean @default(false)
+  /// Företagsuppslag: the sealed SCB key for looking up a company by organisation number (lib/kfid/company-lookup.ts).
+  companyLookup Json @default("{}")
 }
 
 model ControlVisit {

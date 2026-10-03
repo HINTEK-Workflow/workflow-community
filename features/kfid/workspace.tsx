@@ -153,6 +153,8 @@ export function Workspace({
   }, []);
   // Customers are read only for the views whose forms list them (2026-09-26: fetch only what is shown).
   const customerOptions = useCustomerOptions(Boolean(overview) && overview?.organization.storageMode !== "LOCAL" && ["workflow_task", "new_project", "project"].includes(view));
+  // A newly registered owner meets the guide at once, whatever page they land on (2026-10-03).
+  useEffect(() => { if (overview?.admin && preferences.tours.setupPending && !preferences.tours.setup) setSetupOpen(true); }, [overview?.admin, preferences.tours.setupPending, preferences.tours.setup]);
   const refresh = useCallback(async () => {
     if (!user) return;
     try {
@@ -317,7 +319,7 @@ export function Workspace({
       </Panel>
     );
   else if (overview && (overview.legalRequired || setupOpen || view === "setup"))
-    content = <SetupGuide key="setup-guide" admin={overview.admin} gate={overview.legalRequired} aiAvailable={Boolean(SharingPolicyPanel) && instance.features.ai && overview.organization.storageMode !== "LOCAL"}
+    content = <SetupGuide key="setup-guide" admin={overview.admin} gate={overview.legalRequired} local={overview.organization.storageMode === "LOCAL"} aiAvailable={Boolean(SharingPolicyPanel) && instance.features.ai && overview.organization.storageMode !== "LOCAL"}
       companyName={overview.settings?.companyName || overview.organization.name} contactEmail={overview.settings?.contactEmail ?? ""} notify={notify}
       onLegalAccepted={refresh}
       onClose={async () => {
@@ -1093,7 +1095,7 @@ export function Workspace({
       {sectionTabs}
       {content}
       {overview?.organization.storageMode === "LOCAL" && !overview.legalRequired && (
-        <div hidden={loading || Boolean(error) || !["stats", "notifications", "new", "controls", "customers", "new_project", "projects", "planning", "rounds", "project", "tasks", "work_orders", "time", "workflow_task"].includes(view)}>
+        <div hidden={loading || Boolean(error) || setupOpen || !["stats", "notifications", "new", "controls", "customers", "new_project", "projects", "planning", "rounds", "project", "tasks", "work_orders", "time", "workflow_task"].includes(view)}>
           <LocalWorkspace
             key={overview.organization.id}
             organization={overview.organization}

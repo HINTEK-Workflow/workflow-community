@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { ApiError } from "@/lib/kfid/errors";
 import { isLegalDocumentRequired } from "@/lib/kfid/legal-policy";
@@ -231,4 +232,36 @@ export async function acceptLegalDocument(
       },
     });
   });
+}
+
+/**
+ * The documents a new account accepts when it registers (2026-10-03: one plain "jag har läst" checkbox): the
+ * current terms and privacy policy, and the DPA for a Cloud company – the same set the legal gate asks for.
+ */
+export async function registrationDocuments(storageMode: "LOCAL" | "HINTEK_CLOUD") {
+  const now = new Date();
+  const types = ["TERMS", "PRIVACY", ...(storageMode === "HINTEK_CLOUD" ? ["DPA"] : [])] as Array<"TERMS" | "PRIVACY" | "DPA">;
+  const published = await prisma.legalDocument.findMany({
+    where: { ...activeDocumentWhere(now), version: { not: { startsWith: "qa-only-" } }, type: { in: types } },
+    orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
+    select: { id: true, type: true, scope: true, title: true, version: true, contentHash: true },
+  });
+  return published.filter((document, index, all) => all.findIndex((candidate) => candidate.type === document.type && candidate.scope === document.scope) === index);
+}
+
+/** Records the acceptances given at registration, bound to the exact versions, as the new company's owner. */
+export async function recordRegistrationAcceptances(
+  tx: Prisma.TransactionClient,
+  input: { userId: string; organizationId: string; documents: Awaited<ReturnType<typeof registrationDocuments>> },
+) {
+  for (const document of input.documents)
+    await tx.legalAcceptance.create({ data: {
+      documentId: document.id,
+      scopeKey: document.scope === "INDIVIDUAL" ? `USER:${input.userId}` : `ORGANIZATION:${input.organizationId}`,
+      userId: input.userId,
+      organizationId: document.scope === "ORGANIZATION" ? input.organizationId : null,
+      organizationRole: "OWNER",
+      documentVersion: document.version,
+      documentContentHash: document.contentHash,
+    } });
 }

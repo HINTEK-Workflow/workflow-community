@@ -1,4 +1,5 @@
 import { instanceAdminEmail } from "@/lib/instance-server";
+import { registrationAllowsEmail, registrationGateOpen } from "@/lib/auth/registration-gate";
 
 // Temporary private test: only the installation's owner account (INSTANCE_ADMIN_EMAIL) may sign in.
 // Change deliberately when opening registration.
@@ -79,11 +80,15 @@ export function pilotAccessEmails(): Set<string> {
  */
 export function mayAuthenticate(email: string | null | undefined): boolean {
   const normalized = email?.trim().toLowerCase();
-  return isTestEmail(normalized) || (Boolean(normalized) && pilotAccessEmails().has(normalized!));
+  if (!normalized) return false;
+  // Once "Tillåt nya konton" is on (2026-10-03), everyone with an account may sign in.
+  if (registrationGateOpen() && registrationAllowsEmail(normalized)) return true;
+  return isTestEmail(normalized) || pilotAccessEmails().has(normalized);
 }
 
 export function isAllowedPrivateEmail(email: string | null | undefined): boolean {
   const normalized = email?.trim().toLowerCase();
+  if (normalized && registrationGateOpen() && registrationAllowsEmail(normalized)) return true;
   return isTestEmail(normalized) || (Boolean(normalized) && pilotAccessEmails().has(normalized!)) ||
     (localRoleQaEnabled() && QA_EMAILS.has(normalized ?? ""));
 }

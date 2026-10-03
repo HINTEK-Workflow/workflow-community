@@ -33,8 +33,8 @@ const policyFor = (choice: AiChoice, current: AiPolicy): AiPolicy => choice === 
  * agreements as one plain checkbox, the company, security, HINTEK AI and where to start. Only the agreements are
  * required; everything else can be skipped and changed later under Inställningar. A member only meets the agreements.
  */
-export function SetupGuide({ admin, companyName, contactEmail, aiAvailable, gate, notify, onLegalAccepted, onClose }: {
-  admin: boolean; companyName: string; contactEmail: string; aiAvailable: boolean; gate: boolean;
+export function SetupGuide({ admin, companyName, contactEmail, aiAvailable, gate, local = false, notify, onLegalAccepted, onClose }: {
+  admin: boolean; companyName: string; contactEmail: string; aiAvailable: boolean; gate: boolean; local?: boolean;
   notify: (text: string, error?: boolean) => void; onLegalAccepted: () => Promise<void> | void; onClose: () => Promise<void> | void;
 }) {
   const steps = admin ? STEPS : STEPS.slice(0, 1);
@@ -70,8 +70,8 @@ export function SetupGuide({ admin, companyName, contactEmail, aiAvailable, gate
     {step.key === "legal" ? <LegalStep notify={notify} onDone={async () => { await onLegalAccepted(); await next(); }} last={steps.length === 1} />
       : step.key === "company" ? <CompanyStep companyName={companyName} contactEmail={contactEmail} notify={notify} onDone={next} />
       : step.key === "security" ? <SecurityStep notify={notify} onDone={next} />
-      : step.key === "ai" ? <AiStep available={aiAvailable} notify={notify} onDone={next} />
-      : <StartStep onDone={next} />}
+      : step.key === "ai" ? <AiStep available={aiAvailable} local={local} notify={notify} onDone={next} />
+      : <StartStep local={local} onDone={next} />}
     {admin && !gate ? <div className="flex flex-wrap items-center justify-between gap-2">
       <Button type="button" variant="ghost" disabled={index === 0} onClick={() => setIndex(index - 1)}><ArrowLeft />Tillbaka</Button>
       <Button type="button" variant="ghost" onClick={() => void onClose()} data-testid="setup-skip">Hoppa över guiden</Button>
@@ -166,7 +166,7 @@ function SecurityStep({ notify, onDone }: { notify: (text: string, error?: boole
   </Panel>;
 }
 
-function AiStep({ available, notify, onDone }: { available: boolean; notify: (text: string, error?: boolean) => void; onDone: () => Promise<void> }) {
+function AiStep({ available, local = false, notify, onDone }: { available: boolean; local?: boolean; notify: (text: string, error?: boolean) => void; onDone: () => Promise<void> }) {
   const [policy, setPolicy] = useState<AiPolicy | null>(null);
   const [choice, setChoice] = useState<AiChoice>("off");
   const [busy, setBusy] = useState(false);
@@ -174,7 +174,7 @@ function AiStep({ available, notify, onDone }: { available: boolean; notify: (te
     try { const result = await api<{ policy: AiPolicy }>("/api/ai/policy"); setPolicy(result.policy); setChoice(aiChoiceOf(result.policy)); } catch { setPolicy(null); }
   }, []);
   useEffect(() => { if (available) void load(); }, [available, load]);
-  if (!available) return <Panel title="HINTEK AI" description="AI finns inte i den här installationen."><p className="text-sm text-muted-foreground">De direkta svaren ur Workflow fungerar ändå och kostar inget.</p><StepActions busy={false} label="Fortsätt" onSave={() => void onDone()} /></Panel>;
+  if (!available) return <Panel title="HINTEK AI" description={local ? "HINTEK AI ingår i Cloud." : "AI finns inte i den här installationen."}><p className="text-sm text-muted-foreground">{local ? "Ditt företag sparar allt i en egen fil, så inget skickas till någon AI. Vill du ha AI och dela arbetet med kollegor senare väljer du Cloud." : "De direkta svaren ur Workflow fungerar ändå och kostar inget."}</p><StepActions busy={false} label="Fortsätt" onSave={() => void onDone()} /></Panel>;
   const save = async () => {
     if (!policy) { await onDone(); return; }
     setBusy(true);
@@ -202,9 +202,13 @@ function AiStep({ available, notify, onDone }: { available: boolean; notify: (te
   </Panel>;
 }
 
-function StartStep({ onDone }: { onDone: () => Promise<void> }) {
+function StartStep({ local = false, onDone }: { local?: boolean; onDone: () => Promise<void> }) {
   const [busy, setBusy] = useState(false);
-  const links = [
+  const links = local ? [
+    { href: "/?view=stats", title: "Skapa din arbetsyta", text: "Workflow sparar i en fil på din dator. Välj Skapa ny (eller en mapp) på Översikten." },
+    { href: "/?view=new_task", title: "Gör en kontroll eller arbetsorder", text: "Välj bland HINTEK:s kontroller när arbetsytan är öppen." },
+    { href: "/?view=customers", title: "Lägg in en kund", text: "Kundregistret sparas i samma fil." },
+  ] : [
     { href: "/?view=administration", title: "Bjud in kollegor", text: "Under Företag och användare. De börjar utan åtkomst tills du ger dem rättigheter." },
     { href: "/?view=new_project", title: "Skapa ett projekt", text: "Projektet är ramen för uppgifter, tid och planering." },
     { href: "/?view=new_task", title: "Gör en kontroll eller arbetsorder", text: "Välj bland HINTEK:s kontroller eller bygg en egen." },

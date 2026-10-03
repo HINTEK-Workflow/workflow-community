@@ -23,6 +23,9 @@ type CustomerCompany = {
   billingEmail: string;
   city: string;
   owner: { name: string | null; email: string } | null;
+  createdAt?: string;
+  registration?: { at: string; detail: string } | null;
+  acceptances?: { title: string; version: string; acceptedAt: string; by: string }[];
   administrators: { name: string | null; email: string }[];
   preparedOwnerEmail: string | null;
   preparedOwnerName: string | null;
@@ -125,6 +128,10 @@ export function CustomerCompanies() {
                 <div><dt className="text-xs text-muted-foreground">Kunder / kontroller</dt><dd>{item.customerCount} / {item.controlCount}</dd></div>
                 <div><dt className="text-xs text-muted-foreground">Faktura-e-post</dt><dd className="break-all">{item.billingEmail || "Saknas"}</dd></div>
               </dl>
+              <div className="mt-4 grid gap-3 border-t pt-4 text-sm lg:grid-cols-2" data-testid="company-registration">
+                <div><p className="text-xs text-muted-foreground">Skapades</p><p>{formatSwedish(item.registration?.at ?? item.createdAt ?? new Date().toISOString(), { dateStyle: "medium", timeStyle: "short" })} · {item.registration ? "av kunden själv" : "av HINTEK"}</p>{item.registration ? <p className="mt-1 text-xs text-muted-foreground">{item.registration.detail}</p> : null}</div>
+                <div><p className="text-xs text-muted-foreground">Godkända villkor</p>{item.acceptances?.length ? <ul className="mt-1 space-y-0.5 text-xs">{item.acceptances.map((acceptance) => <li key={`${acceptance.title}-${acceptance.version}-${acceptance.by}`}>{acceptance.title} version {acceptance.version} – {acceptance.by}, {formatSwedish(acceptance.acceptedAt, { dateStyle: "short", timeStyle: "short" })}</li>)}</ul> : <p className="text-xs text-muted-foreground">Inga godkännanden ännu.</p>}</div>
+              </div>
               <div className="mt-4 border-t pt-4">
                 <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => {
                   setSettingsCompany(item);

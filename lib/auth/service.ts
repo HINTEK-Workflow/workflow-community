@@ -8,6 +8,7 @@ import {
 } from "@/lib/mail/templates";
 import { hashPassword } from "@/lib/auth/password";
 import { canAccessTest, mayAuthenticate } from "@/lib/auth/access";
+import { refreshRegistrationGate } from "@/lib/auth/registration";
 import {
   createRawToken,
   expiresInHours,
@@ -106,6 +107,7 @@ export async function findUserById(id: string) {
 }
 
 export async function requestPasswordReset(email: string) {
+  await refreshRegistrationGate();
   if (!mayAuthenticate(email)) return;
   const user = await prisma.user.findUnique({
     where: { email: normalizeEmail(email) },
@@ -158,6 +160,7 @@ export async function requestPasswordReset(email: string) {
 }
 
 export async function sendVerificationEmail(email: string) {
+  await refreshRegistrationGate();
   if (!mayAuthenticate(email)) return;
   const user = await prisma.user.findUnique({
     where: { email: normalizeEmail(email) },
