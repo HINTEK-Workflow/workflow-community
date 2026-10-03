@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
-import { Building2, CreditCard, Factory, FileText, HelpCircle, History, KeyRound, LogIn, Mail, PanelsTopLeft, Settings2, Sparkles, Tags, Users } from "lucide-react";
+import { Building2, Cloud, CreditCard, Factory, FileText, HelpCircle, History, KeyRound, LogIn, Mail, PanelsTopLeft, Server, Settings2, Sparkles, Tags, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Tab = { view: string; label: string; icon: LucideIcon };
@@ -16,14 +16,15 @@ type Tab = { view: string; label: string; icon: LucideIcon };
 // Since 2026-10-02 also what belongs to the company but lay elsewhere: its places, its report settings and its credits;
 // and the product owner's prices and AI, which shared one long page with the customer companies.
 export const COMPANY_VIEWS = ["administration", "facilities", "company_settings", "credits", "ai_settings", "integrations", "history_retention"] as const;
-export const PRODUCT_VIEWS = ["customer_companies", "pricing_admin", "ai_admin", "landing_editor", "mail_settings", "login_settings"] as const;
+export const PRODUCT_VIEWS = ["customer_companies", "pricing_admin", "ai_admin", "landing_editor", "mail_settings", "login_settings", "server_keys"] as const;
 
 export function companyTabs(options: { admin: boolean; cloud: boolean; ai: boolean; integrations: boolean; credits: boolean }): Tab[] {
   return [
     ...(options.admin ? [{ view: "administration", label: "Företag och användare", icon: Users }] : []),
     { view: "facilities", label: "Platser", icon: Factory },
     ...(options.admin ? [{ view: "company_settings", label: "Rapporter och logotyp", icon: FileText }] : []),
-    ...(options.credits ? [{ view: "credits", label: "Krediter", icon: CreditCard }] : []),
+    // A free company in Local has nothing to spend credits on; the tab offers Cloud instead (2026-10-03).
+    ...(options.credits ? [options.cloud ? { view: "credits", label: "Krediter", icon: CreditCard } : { view: "credits", label: "Uppgradera till Cloud", icon: Cloud }] : []),
     ...(options.ai && options.cloud ? [{ view: "ai_settings", label: "HINTEK AI", icon: Sparkles }] : []),
     ...(options.admin && options.cloud && options.integrations ? [{ view: "integrations", label: "API och MCP", icon: KeyRound }] : []),
     ...(options.admin && options.cloud ? [{ view: "history_retention", label: "Historik och lagring", icon: History }] : []),
@@ -38,7 +39,7 @@ export function settingsTabs(options: Parameters<typeof companyTabs>[0]): Tab[] 
   return [{ view: "settings", label: "Mina inställningar", icon: Settings2 }, ...companyTabs(options), { view: "help", label: "Hjälp", icon: HelpCircle }];
 }
 
-export function productTabs(options: { landingEditor: boolean; pricing: boolean; ai: boolean }): Tab[] {
+export function productTabs(options: { landingEditor: boolean; pricing: boolean; ai: boolean; serverKeys?: boolean }): Tab[] {
   return [
     { view: "customer_companies", label: "Kundföretag", icon: Building2 },
     ...(options.pricing ? [{ view: "pricing_admin", label: "Priser", icon: Tags }] : []),
@@ -46,10 +47,11 @@ export function productTabs(options: { landingEditor: boolean; pricing: boolean;
     ...(options.landingEditor ? [{ view: "landing_editor", label: "Landningssidan", icon: PanelsTopLeft }] : []),
     { view: "mail_settings", label: "E-post", icon: Mail },
     { view: "login_settings", label: "Inloggning", icon: LogIn },
+    ...(options.serverKeys ? [{ view: "server_keys", label: "Servernycklar", icon: Server }] : []),
   ];
 }
 
-export function SectionTabs({ label, tabs, current }: { label: string; tabs: Tab[]; current: string }) {
+export function SectionTabs({ label, tabs, current, owner }: { label: string; tabs: Tab[]; current: string; owner?: boolean }) {
   const router = useRouter();
   if (tabs.length < 2) return null;
   // No sideways scrolling (2026-10-02: the scroll bar under Inställningar): on a phone one picker; on a wider
@@ -61,7 +63,7 @@ export function SectionTabs({ label, tabs, current }: { label: string; tabs: Tab
         {tabs.map((tab) => <option key={tab.view} value={tab.view}>{tab.label}</option>)}
       </select>
     </label>
-    <nav aria-label={label} className="section-tabs hidden flex-wrap gap-2 border-b pb-4 sm:flex" data-testid="section-tabs">
+    <nav aria-label={label} className={cn("section-tabs hidden flex-wrap gap-2 border-b pb-4 sm:flex", owner && "section-tabs-owner")} data-testid="section-tabs">
       {tabs.map((tab) => <Link key={tab.view} href={`/?view=${tab.view}`} aria-current={tab.view === current ? "page" : undefined}
         className={cn("flex h-9 shrink-0 items-center gap-2 rounded-full border px-3.5 text-sm transition-colors", tab.view === current ? "border-primary/30 bg-secondary font-medium text-secondary-foreground ring-1 ring-primary/15" : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground")}>
         <tab.icon className={cn("size-4", tab.view === current ? "text-primary" : "")} aria-hidden="true" />{tab.label}

@@ -47,6 +47,9 @@
   --feature-customer-soft: #ecfeff;
   --feature-credit: #92400e;
   --feature-credit-soft: #fffbeb;
+  /* Produktägare: what only the superadmin sees (2026-10-03). */
+  --feature-owner: #a21caf;
+  --feature-owner-soft: #fdf4ff;
   --workflow-card-border: #e3eaf2;
   --workflow-card-border-hover: #afcfe9;
   --workflow-field-border: #cfdce8;
@@ -82,6 +85,8 @@
   --color-feature-control-soft: var(--feature-control-soft);
   --color-feature-customer: var(--feature-customer);
   --color-feature-customer-soft: var(--feature-customer-soft);
+  --color-feature-owner: var(--feature-owner);
+  --color-feature-owner-soft: var(--feature-owner-soft);
   --color-feature-credit: var(--feature-credit);
   --color-feature-credit-soft: var(--feature-credit-soft);
   --radius-sm: calc(var(--radius) - 2px);
@@ -160,6 +165,7 @@ html[data-theme="dark"] {
   --workflow-field-border: #4a556d; --workflow-field-border-hover: #78c1ea;
   --workflow-notice: #17364c; --workflow-notice-foreground: #d5effc;
   --panel-header: #172c42;
+  --feature-owner: #f0abfc; --feature-owner-soft: #3b1240;
 }
 html[data-theme="dark"] .bg-white { background-color: var(--card); }
 html[data-theme="dark"] input[data-slot="input"] {
@@ -270,6 +276,8 @@ html[data-theme="blue"] :is(.workspace-sidebar, .workspace-drawer, .workspace-he
 html[data-theme="blue"] :is(.workspace-aside, .workspace-header) { border-color: #2a5077; }
 html[data-theme="blue"] .workspace-sidebar .workspace-menu-item { color: #ffffff; }
 html[data-theme="blue"] .workspace-sidebar .workspace-menu-item > span:first-child { background: transparent; color: #ffffff; }
+html[data-theme="blue"] .workspace-sidebar .workspace-menu-item.owner-only > span:first-child { color: #f5d0fe; }
+html[data-theme="blue"] .workspace-sidebar .workspace-menu-item.owner-only { box-shadow: inset 3px 0 0 #e879f9; }
 html[data-theme="blue"] .workspace-sidebar .workspace-menu-item-active { background: #24507a; color: #ffffff; box-shadow: none; }
 html[data-theme="blue"] .workspace-sidebar-note { background: color-mix(in srgb, #ffffff 6%, transparent); border-color: var(--border); }
 /* Text wordmark in the self-hosted Gugi font (SIL OFL, public/picture/fonts/gugi). Other themes keep the image wordmark. */
@@ -605,3 +613,8 @@ html[data-detail="1"] :is([data-detail-min="2"], .workspace-main .editor-facts) 
   border-color: color-mix(in srgb, #ef4444 75%, transparent);
   box-shadow: 0 0 0 3px color-mix(in srgb, #ef4444 16%, transparent);
 }
+
+/* Produktägare (2026-10-03): a menu button or tab that only the superadmin sees carries a plum mark. */
+.workspace-menu-item.owner-only { box-shadow: inset 3px 0 0 var(--feature-owner); }
+.section-tabs-owner a[aria-current="page"] { border-color: color-mix(in srgb, var(--feature-owner) 40%, transparent); background: var(--feature-owner-soft); color: var(--feature-owner); --tw-ring-color: color-mix(in srgb, var(--feature-owner) 25%, transparent); }
+.section-tabs-owner a svg { color: var(--feature-owner); }

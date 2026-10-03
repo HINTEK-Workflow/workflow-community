@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { formatSwedish } from "@/lib/swedish-time";
-import { Building2, ChevronDown, Plus, Search, ShieldCheck } from "lucide-react";
+import { Building2, ChevronDown, Coins, Plus, Search, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Panel, Empty, Modal } from "./ui";
@@ -58,6 +58,8 @@ export function CustomerCompanies() {
   const [settingsCompany, setSettingsCompany] = useState<CustomerCompany | null>(null);
   const [creditCompany, setCreditCompany] = useState<CustomerCompany | null>(null);
   const [creditForm, setCreditForm] = useState({ expiryEnabled: true, expiryDate: "" });
+  const [grantCompany, setGrantCompany] = useState<{ id: string; name: string } | null>(null);
+  const [grantForm, setGrantForm] = useState({ credits: "100", reason: "" });
   const [settingsForm, setSettingsForm] = useState({ name: "", isActive: true, storageMode: "LOCAL" as "LOCAL" | "HINTEK_CLOUD", contactEmail: "", billingEmail: "" });
   const [ownerCompany, setOwnerCompany] = useState<CustomerCompany | null>(null);
   const [ownerForm, setOwnerForm] = useState({ name: "", email: "" });
@@ -92,6 +94,7 @@ export function CustomerCompanies() {
           <p className="page-description mt-2">Kundföretag och centrala priser. Dina egna kontroller hanteras i din HINTEK-arbetsyta; kundföretagens kontrollinnehåll visas inte här.</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="outline" onClick={() => { setGrantCompany({ id: "self", name: "ditt eget företag" }); setGrantForm({ credits: "100", reason: "" }); setFormError(""); }}><Coins /> Ge krediter till eget företag</Button>
           <Button type="button" variant="outline" onClick={() => setSandboxBillingOpen(true)}><ShieldCheck /> Testa betalningsflöde i sandbox</Button>
           <Button onClick={() => setCreateOpen(true)}><Plus /> Förbered företag</Button>
         </div>
@@ -143,6 +146,7 @@ export function CustomerCompanies() {
                   setCreditForm({ expiryEnabled: item.creditExpiryEnabled, expiryDate: item.creditExpiryOverrideAt?.slice(0, 10) ?? "" });
                   setFormError("");
                 }}>Kreditregel</Button>
+                <Button type="button" variant="outline" className="ml-2 w-full sm:w-auto" onClick={() => { setGrantCompany({ id: item.id, name: item.name }); setGrantForm({ credits: "100", reason: "" }); setFormError(""); }}><Coins />Ge krediter</Button>
               </div>
               {!item.owner && item.ownerInvitationStatus !== "PENDING" ? <div className="mt-4 flex flex-col gap-2 border-t pt-4 sm:flex-row">
                 <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => {
@@ -247,6 +251,30 @@ export function CustomerCompanies() {
           <div><label htmlFor="credit-expiry-override" className="mb-2 block text-xs font-medium">Individuellt slutdatum (valfritt)</label><Input id="credit-expiry-override" type="date" value={creditForm.expiryDate} onChange={(event) => setCreditForm({ ...creditForm, expiryDate: event.target.value })} /><p className="mt-1 text-xs text-muted-foreground">Ett manuellt datum ligger kvar även vid senare köp, tills du själv ändrar eller tar bort det.</p></div>
           {formError ? <p role="alert" className="text-sm text-destructive">{formError}</p> : null}
           <Button disabled={busy}>{busy ? "Sparar…" : "Spara kreditregel"}</Button>
+        </form>
+      </Modal>
+      <Modal open={Boolean(grantCompany)} onOpenChange={(open) => { if (!open) setGrantCompany(null); }} title="Ge krediter">
+        <p className="mb-5 text-sm text-muted-foreground">Kompensationskrediter till {grantCompany?.name}, utan köp. De gäller ett år, används före köpta krediter och loggas med orsak. AI kräver att företaget har Cloud.</p>
+        <form className="space-y-4" onSubmit={async (event) => {
+          event.preventDefault();
+          if (!grantCompany) return;
+          setBusy(true);
+          setFormError("");
+          try {
+            const result = await api<{ cloud: boolean }>("/api/superadmin/customer-companies", { method: "PATCH", body: JSON.stringify({
+              action: "grant_credits", organizationId: grantCompany.id, credits: Number(grantForm.credits), reason: grantForm.reason, requestKey: crypto.randomUUID(),
+            }) });
+            setNotice(`${grantForm.credits} krediter är tilldelade ${grantCompany.name}.${result.cloud ? "" : " Företaget är i Local – krediterna kan användas när det har Cloud."}`);
+            setGrantCompany(null);
+            setHistoryByCompany({});
+            setRevision((value) => value + 1);
+          } catch (cause) { setFormError((cause as Error).message); }
+          finally { setBusy(false); }
+        }}>
+          <div><label htmlFor="grant-credits" className="mb-2 block text-xs font-medium">Antal krediter</label><Input id="grant-credits" type="number" min={1} max={10000} required value={grantForm.credits} onChange={(event) => setGrantForm({ ...grantForm, credits: event.target.value })} /></div>
+          <div><label htmlFor="grant-reason" className="mb-2 block text-xs font-medium">Orsak</label><Input id="grant-reason" required minLength={3} maxLength={300} placeholder="Till exempel Prov av HINTEK AI" value={grantForm.reason} onChange={(event) => setGrantForm({ ...grantForm, reason: event.target.value })} /></div>
+          {formError ? <p role="alert" className="text-sm text-destructive">{formError}</p> : null}
+          <Button disabled={busy}><Coins />{busy ? "Ger krediter…" : "Ge krediter"}</Button>
         </form>
       </Modal>
       <Modal open={createOpen} onOpenChange={setCreateOpen} title="Förbered kundföretag">

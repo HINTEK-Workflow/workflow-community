@@ -13,6 +13,8 @@ export const storedMailSchema = z.object({
   secure: z.boolean().optional(),
   user: z.string().trim().max(320).optional(),
   passwordCipher: z.string().max(4000).optional(),
+  /** The bin was used: no password at all, not even the one in .env (2026-10-03). */
+  noPassword: z.boolean().optional(),
   fromName: z.string().trim().max(120).optional(),
   fromAddress: z.string().trim().email().max(320).optional(),
   invitations: z.boolean().optional(),
@@ -95,8 +97,8 @@ export function effectiveMailConfig(stored: StoredMail, env: MailEnv, options: {
   return {
     source: fromApp ? "app" : "server",
     transport: fromApp
-      ? { host: stored.host!, port: stored.port ?? 587, secure: stored.secure ?? false, user: stored.user ?? "", password: options.password || sameAccountAsEnv(stored, env) }
-      : { host: env.SMTP_HOST ?? "localhost", port: env.SMTP_PORT ?? 1025, secure: Boolean(env.SMTP_SECURE), user: env.SMTP_USER ?? "", password: env.SMTP_PASS ?? "" },
+      ? { host: stored.host!, port: stored.port ?? 587, secure: stored.secure ?? false, user: stored.user ?? "", password: stored.noPassword ? "" : options.password || sameAccountAsEnv(stored, env) }
+      : { host: env.SMTP_HOST ?? "localhost", port: env.SMTP_PORT ?? 1025, secure: Boolean(env.SMTP_SECURE), user: env.SMTP_USER ?? "", password: stored.noPassword ? "" : env.SMTP_PASS ?? "" },
     from: { name: stored.fromName || env.MAIL_FROM_NAME || "Workflow", address: stored.fromAddress || env.MAIL_FROM_ADDRESS || "noreply@example.com" },
     delivery: blockedReason ? { invitations: false, roundReminders: false, alerts: false } : delivery,
     alertEmail: stored.alertEmail ?? env.ALERT_EMAIL ?? "",

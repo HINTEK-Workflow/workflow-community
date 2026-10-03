@@ -7,6 +7,7 @@ import { oneYearFrom } from "@/lib/kfid/credit-policy";
 import { serverExtensions } from "@/lib/extensions/server";
 import { invitationActiveKey } from "@/lib/auth/invitations";
 import { ApiError, body, checkOrigin, context, failure } from "@/lib/kfid/server";
+import { grantCompensationCredits } from "@/lib/kfid/purchased-credits";
 
 const preparedCompanySchema = z.object({
   name: z.string().trim().min(2).max(200),
@@ -21,6 +22,7 @@ const customerAuditLabels = {
   customer_owner_invitation_revoke: "Admininbjudan återkallad",
   customer_company_settings_update: "Kundföretagets inställningar ändrade",
   customer_credit_policy_update: "Kundföretagets kreditregel ändrad",
+  customer_credit_grant: "Krediter tilldelade av HINTEK",
 } as const;
 
 export async function GET(request: Request) {
@@ -176,6 +178,14 @@ const ownerInvitationSchema = z.discriminatedUnion("action", [
     action: z.literal("revoke_owner"),
     organizationId: z.string().min(1).max(100),
   }),
+  // Ge krediter (2026-10-03): compensation credits for a company or for HINTEK itself ("self"), valid one year.
+  z.object({
+    action: z.literal("grant_credits"),
+    organizationId: z.string().min(1).max(100),
+    credits: z.number().int().min(1).max(10_000),
+    reason: z.string().trim().min(3, "Skriv varför krediterna ges.").max(300),
+    requestKey: z.uuid(),
+  }),
 ]);
 
 export async function PATCH(request: Request) {
@@ -185,6 +195,17 @@ export async function PATCH(request: Request) {
     if (ctx.user.role !== "SUPERADMIN")
       throw new ApiError(403, "Systemadministratör krävs.");
     const input = ownerInvitationSchema.parse(await body(request));
+    if (input.action === "grant_credits") {
+      const organizationId = input.organizationId === "self" ? ctx.organizationId : input.organizationId;
+      const organization = await prisma.organization.findUnique({ where: { id: organizationId }, select: { id: true, storageMode: true } });
+      if (!organization) throw new ApiError(404, "Företaget hittades inte.");
+      const expiresAt = new Date(Date.now() + 365 * 86_400_000);
+      const result = await grantCompensationCredits({ organizationId, actorId: ctx.user.id, credits: input.credits, requestKey: `grant-${input.requestKey}`, reason: input.reason, expiresAt });
+      if (result.created)
+        await prisma.administrationEvent.create({ data: { actorId: ctx.user.id, organizationId, action: "customer_credit_grant",
+          detail: `Gav ${input.credits} kompensationskrediter (gäller till ${expiresAt.toISOString().slice(0, 10)}): ${input.reason}` } });
+      return NextResponse.json({ ok: true, cloud: organization.storageMode === "HINTEK_CLOUD" });
+    }
     if (input.action === "update_credit_policy") {
       if (input.organizationId === ctx.organizationId)
         throw new ApiError(403, "Ändra inte HINTEK-företaget via kundföretagsvyn.");

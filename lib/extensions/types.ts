@@ -88,8 +88,10 @@ export type ClientExtensions = {
   SharingPolicyPanel: ComponentType | null;
   ProviderAdministration: ComponentType | null;
   AiUsageAdministration: ComponentType | null;
-  /** API och MCP: keys, connections and the server's keys. */
+  /** API och MCP: the company's keys and connected apps. */
   IntegrationKeys: ComponentType<{ notify: NotifyFn }> | null;
+  /** Produktadministration → Servernycklar: the keys HINTEK's server runs with, status only (superadmin). */
+  ServerKeysAdministration: ComponentType<{ notify: NotifyFn }> | null;
   /** The person's own apps connected to the MCP server through OAuth (Mina inställningar), with disconnect. */
   MyAppConnections: ComponentType<{ notify: NotifyFn }> | null;
   /** The Import page (2026-10-01): files become customers, projects, work orders, planning, control points or attachments; rule- and AI-driven. */

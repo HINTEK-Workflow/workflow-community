@@ -31,6 +31,11 @@ test("saved without a password for the .env account: the .env password still app
   assert.equal(effectiveMailConfig({ host: "smtp.env.test", user: "someone-else" }, env, options).transport.password, "");
 });
 
+test("the bin removes the password wherever it came from, also the one in .env", () => {
+  assert.equal(effectiveMailConfig({ noPassword: true }, env, options).transport.password, "");
+  assert.equal(effectiveMailConfig({ host: "smtp.env.test", user: "env-user", noPassword: true }, env, options).transport.password, "");
+});
+
 test("a loopback QA instance never sends the switched mail, whatever is saved", () => {
   const config = effectiveMailConfig({ host: "smtp.app.test", invitations: true, roundReminders: true, alerts: true }, { ...env, APP_URL: "http://localhost:3001" }, { password: "", loopbackQa: true });
   assert.deepEqual(config.delivery, { invitations: false, roundReminders: false, alerts: false });

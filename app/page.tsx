@@ -11,7 +11,8 @@ import { publicInstance } from "@/lib/instance";
 import { Workspace } from "@/features/kfid/workspace";
 import { serverExtensions } from "@/lib/extensions/server";
 import { WorkspaceActionsProvider } from "@/components/workspace-actions";
-import { defaultWorkflowPermissionProfile, normalizeWorkflowPermissionProfile } from "@/lib/workflow/permissions";
+import { defaultWorkflowPermissionProfile, normalizeWorkflowPermissionProfile, workflowPermissionPresets } from "@/lib/workflow/permissions";
+import { VIEW_AS_COOKIE, parseViewAs } from "@/lib/workflow/view-as";
 import { KFID_FORM_ID, RISK_FORM_ID } from "@/lib/workflow/builtin-originals";
 
 export const dynamic = "force-dynamic";
@@ -65,6 +66,7 @@ export default async function HomePage({
     "history_retention",
     "mail_settings",
     "login_settings",
+    "server_keys",
     "customer_companies",
     "pricing_admin",
     "ai_admin",
@@ -100,6 +102,9 @@ export default async function HomePage({
   const activeMemberRole = activeMembership?.role ?? null;
   // Signed-out visitors never see the app shell with locked menu buttons; they meet the login (2026-09-30).
   if (!user) redirect(`/login?returnTo=${encodeURIComponent(`/?view=${view}`)}`);
+  // "Visa som" (2026-10-03): the superadmin previews a customer's menus and pages; display only.
+  const viewAs = user.role === "SUPERADMIN" ? parseViewAs((await cookies()).get(VIEW_AS_COOKIE)?.value) : null;
+  if (view === "administration" && viewAs === "member") redirect("/?view=stats");
   if (view === "administration" && activeMemberRole !== "OWNER" && activeMemberRole !== "ADMIN")
     redirect("/?view=stats");
   const { features } = publicInstance();
@@ -108,7 +113,7 @@ export default async function HomePage({
   if (view === "ai_settings" && !features.ai) redirect("/?view=stats");
   if ((view === "landing_editor" && !features.landingEditor) || (view === "credits" && !features.billing && !features.credits) || ((view === "integrations" || view === "import") && !features.integrations))
     redirect("/?view=stats");
-  if ((view === "customer_companies" || view === "pricing_admin" || view === "ai_admin" || view === "landing_editor" || view === "mail_settings" || view === "login_settings") && user?.role !== "SUPERADMIN")
+  if ((view === "customer_companies" || view === "pricing_admin" || view === "ai_admin" || view === "landing_editor" || view === "mail_settings" || view === "login_settings" || view === "server_keys") && (user?.role !== "SUPERADMIN" || viewAs))
     redirect("/?view=stats");
   // The switch-over (2026-09-27, decision B; 2026-09-28: no drafts, all originals): a new control or risk
   // assessment is made with HINTEK's original of the form – or the company's own version of it – when it is published.
@@ -142,11 +147,22 @@ export default async function HomePage({
     // How much is shown on a phone and on a tablet (2026-10-02); the shell applies it to the device at hand.
     detailLevel: preferences?.data && typeof preferences.data === "object" && !Array.isArray(preferences.data) ? (preferences.data as { detailLevel?: { phone?: number; tablet?: number } }).detailLevel ?? null : null,
     canBuildForms: user.role === "SUPERADMIN" || ((activeMemberRole === "OWNER" || activeMemberRole === "ADMIN") && user.activeOrganization?.storageMode === "HINTEK_CLOUD"),
+    superadmin: user.role === "SUPERADMIN",
+    viewAs,
   } : null;
+  // Under "Visa som" the menus and pages are drawn as for that role and plan; the server's checks are unchanged.
+  const shownUser = shellUser && viewAs ? {
+    ...shellUser,
+    role: "USER",
+    memberRole: viewAs === "member" ? "MEMBER" as const : "OWNER" as const,
+    workflowPermissions: viewAs === "member" ? workflowPermissionPresets.find((preset) => preset.id === "field")!.profile : defaultWorkflowPermissionProfile(),
+    localStorageMode: viewAs === "local",
+    canBuildForms: viewAs === "owner",
+  } : shellUser;
   return (
     <WorkspaceActionsProvider>
     <AppShell
-      user={shellUser}
+      user={shownUser}
       view={view}
       branding={shellBranding(user?.activeOrganization, workspaceSettings?.logoPath)}
     >
@@ -157,7 +173,7 @@ export default async function HomePage({
         Stripe har tagit emot betalningen. Abonnemang och krediter aktiveras så snart Stripe har bekräftat den.
       </div> : null}
       <Workspace
-        user={shellUser}
+        user={shownUser}
         view={view}
         controlId={params.id}
         customerId={params.customerId}

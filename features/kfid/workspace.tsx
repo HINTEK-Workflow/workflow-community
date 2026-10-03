@@ -65,6 +65,8 @@ import {
   type CustomerItem,
 } from "./types";
 import type { View, ShellUser } from "@/components/app-shell";
+import { ViewAsPanel } from "@/features/workflow/view-as-panel";
+import { UpgradeToCloud } from "@/features/workflow/upgrade-cloud";
 import {
   DEFAULT_REPORT_BRANDING,
   type ReportBranding,
@@ -77,7 +79,7 @@ import {
 } from "@/lib/branding";
 import { useInstance } from "@/components/instance-provider";
 // HINTEK's commercial views live in ee/ (Fas 2); without it they are null.
-const { AiUsageAdministration, BillingRead, ImportPage, IntegrationKeys, LandingEditor, PricingAdministration, ProviderAdministration, SharingPolicyPanel } = clientExtensions;
+const { AiUsageAdministration, BillingRead, ImportPage, IntegrationKeys, LandingEditor, PricingAdministration, ProviderAdministration, ServerKeysAdministration, SharingPolicyPanel } = clientExtensions;
 
 const blankCustomer = {
   name: "",
@@ -295,6 +297,9 @@ export function Workspace({
     </div>
   );
   let content: React.ReactNode;
+  // "Visa som" (2026-10-03): the superadmin's preview draws admin rights and the plan as for that role.
+  const shownAdmin = user?.viewAs ? user.viewAs !== "member" : Boolean(overview?.admin);
+  const localMode = user?.viewAs ? user.viewAs === "local" : overview?.organization.storageMode === "LOCAL";
   if (loading)
     content = (
       <Panel title="Hämtar din arbetsyta">
@@ -336,13 +341,16 @@ export function Workspace({
   else if (view === "integrations")
     content = IntegrationKeys ? <IntegrationKeys notify={notify} /> : null;
   else if (view === "ai_settings")
-    content = SharingPolicyPanel && overview?.organization.storageMode !== "LOCAL" ? <SharingPolicyPanel /> : <Panel title="HINTEK AI"><p className="text-sm text-muted-foreground">HINTEK AI finns i HINTEK Cloud. I Local stannar allt i den egna filen.</p></Panel>;
+    content = SharingPolicyPanel && !localMode ? <SharingPolicyPanel /> : <UpgradeToCloud admin={shownAdmin} />;
   else if (view === "history_retention")
     content = <HistoryRetention notify={notify} />;
   else if (view === "mail_settings")
     content = user?.role === "SUPERADMIN" ? <MailSettings notify={notify} /> : null;
   else if (view === "login_settings")
     content = user?.role === "SUPERADMIN" ? <LoginSettings notify={notify} /> : null;
+  // The server's keys belong to the whole installation, not to a company's API och MCP (2026-10-03).
+  else if (view === "server_keys")
+    content = user?.role === "SUPERADMIN" && ServerKeysAdministration ? <ServerKeysAdministration notify={notify} /> : null;
   else if (view === "customer_companies")
     content = <CustomerCompanies />;
   // Produktadministration in tabs (2026-10-02: innehåll som låg på fel ställe): prices and AI have their own.
@@ -694,6 +702,11 @@ export function Workspace({
         canEditCustomers={Boolean(overview.admin) || hasWorkflowPermission(normalizeWorkflowPermissionProfile(user?.workflowPermissions), "customers", "edit")}
       />
     );
+  else if (view === "credits" && localMode)
+    content = <>
+      {heading("Uppgradera till Cloud", "Det här ingår gratis i Local, och det här lägger Cloud till.")}
+      <div className="space-y-6"><UpgradeToCloud admin={shownAdmin} />{shownAdmin && BillingRead ? <BillingRead /> : null}</div>
+    </>;
   else if (view === "credits")
     content = (
       <>
@@ -825,6 +838,7 @@ export function Workspace({
           "Inställningar",
           "Anpassa din egen arbetsyta. Företagets sidor och Hjälp finns i flikarna ovan.",
         )}
+        {user?.superadmin ? <div className="mb-6"><ViewAsPanel current={user.viewAs ?? null} notify={notify} /></div> : null}
         <div className="grid gap-6 lg:grid-cols-2">
           <Panel title="Din arbetsyta" description={user?.email}>
             <form
@@ -1062,9 +1076,9 @@ export function Workspace({
     );
   // Mitt företag and Produktadministration are one menu button each with tabs (2026-10-01, menystädning).
   const sectionTabs = (SETTINGS_VIEWS as readonly string[]).includes(view) && !overview?.legalRequired && user
-    ? <SectionTabs label="Inställningar" current={view} tabs={settingsTabs({ admin: Boolean(overview?.admin), credits: instance.features.billing || instance.features.credits, cloud: overview?.organization.storageMode !== "LOCAL", ai: Boolean(SharingPolicyPanel) && instance.features.ai, integrations: Boolean(IntegrationKeys) && instance.features.integrations })} />
+    ? <SectionTabs label="Inställningar" current={view} tabs={settingsTabs({ admin: shownAdmin, credits: instance.features.billing || instance.features.credits, cloud: !localMode, ai: Boolean(SharingPolicyPanel) && instance.features.ai, integrations: Boolean(IntegrationKeys) && instance.features.integrations })} />
     : (PRODUCT_VIEWS as readonly string[]).includes(view) && user?.role === "SUPERADMIN"
-      ? <SectionTabs label="Produktadministration" current={view} tabs={productTabs({ landingEditor: Boolean(LandingEditor) && instance.features.landingEditor, pricing: Boolean(PricingAdministration), ai: Boolean(ProviderAdministration) || Boolean(AiUsageAdministration) })} />
+      ? <SectionTabs label="Produktadministration" owner current={view} tabs={productTabs({ landingEditor: Boolean(LandingEditor) && instance.features.landingEditor, pricing: Boolean(PricingAdministration), ai: Boolean(ProviderAdministration) || Boolean(AiUsageAdministration), serverKeys: Boolean(ServerKeysAdministration) })} />
       : null;
   return (
     <AdvisorSettingsProvider value={overview ? preferences.advisor : undefined} onSave={overview ? (next) => saveAdvisor({ ...next, autofill: Boolean(next.autofill) }) : undefined}>

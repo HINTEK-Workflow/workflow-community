@@ -68,14 +68,10 @@ export function MailSettings({ notify }: { notify: (text: string, error?: boolea
     } catch (cause) { notify((cause as Error).message, true); } finally { setBusy(""); }
   };
 
-  const sources = settings.source === "app"
-    ? "Inställningarna är sparade här i appen."
-    : "Inget är sparat här ännu – e-posten använder serverns inställningsfil (.env). När du sparar gäller det du anger här.";
-
   return <div className="space-y-6">
     <div>
       <h1 className="page-title">E-post</h1>
-      <p className="page-description mt-2">Servern som skickar e-post, avsändaren och vilka utskick som är påslagna. {sources}</p>
+      <p className="page-description mt-2">Servern som skickar e-post, avsändaren och vilka utskick som är påslagna.</p>
     </div>
     {settings.blockedReason ? <div className="notice" role="status"><p>{settings.blockedReason}</p></div> : null}
 
@@ -94,22 +90,17 @@ export function MailSettings({ notify }: { notify: (text: string, error?: boolea
           <label htmlFor="smtp-password">Lösenord</label>
           <div className="flex gap-2">
             <Input id="smtp-password" type="password" value={form.password} autoComplete="new-password"
-              placeholder={form.clearPassword ? "Tas bort när du sparar" : settings.hasPassword ? "Sparat – lämna tomt för att behålla" : "Inget lösenord sparat"}
+              placeholder={form.clearPassword ? "Tas bort när du sparar" : settings.hasPassword ? "••••••••••" : "Inget lösenord"}
               onChange={(event) => { set("password", event.target.value); set("clearPassword", false); }} />
-            {settings.hasPassword && settings.source === "app" ? (form.clearPassword
+            {settings.hasPassword ? (form.clearPassword
               ? <Button type="button" variant="outline" className="shrink-0" onClick={() => set("clearPassword", false)}><RotateCcw />Ångra</Button>
-              : <Button type="button" variant="outline" size="icon" className="size-10 shrink-0" aria-label="Ta bort det sparade lösenordet" title="Ta bort det sparade lösenordet"
+              : <Button type="button" variant="outline" size="icon" className="size-10 shrink-0" aria-label="Ta bort lösenordet" title="Ta bort lösenordet"
                   onClick={() => { set("password", ""); set("clearPassword", true); }}><Trash2 /></Button>) : null}
           </div>
         </div>
         <label className={field}>Avsändarens namn<Input value={form.fromName} onChange={(event) => set("fromName", event.target.value)} /></label>
         <label className={field}>Avsändarens e-postadress<Input type="email" value={form.fromAddress} onChange={(event) => set("fromAddress", event.target.value)} /></label>
       </div>
-      {settings.source === "app" ? <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
-        <Button type="button" variant="outline" onClick={() => setForm((current) => current && { ...current, host: "", user: "", password: "", clearPassword: true })}>
-          <RotateCcw />Använd serverns inställningar (.env)</Button>
-        <span className="text-muted-foreground">Tömmer server, användare och lösenord här. Tryck sedan Spara.</span>
-      </div> : null}
     </Panel>
 
     <Panel title="Utskick" description="Lösenordsåterställning och verifiering av e-post skickas alltid. Det här styr övriga utskick.">
