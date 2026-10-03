@@ -69,7 +69,7 @@ backup_age="$(age_hours "$STATE_DIR/backup.last-success")"
 if (( backup_age > BACKUP_MAX_AGE_HOURS )); then
   problems+=("Senaste lyckade backup är ${backup_age} timmar gammal (eller saknas).")
 fi
-for job in backup billing-email billing-delinquency billing-card-retries rounds-reminders history-retention integrity-check ai-digest keys-alerts; do
+for job in backup billing-email billing-delinquency billing-card-retries rounds-reminders history-retention integrity-check ai-digest keys-alerts mailings-send; do
   failure="$STATE_DIR/$job.last-failure"
   success="$STATE_DIR/$job.last-success"
   if [[ -f "$failure" ]] && { [[ ! -f "$success" ]] || [[ "$failure" -nt "$success" ]]; }; then

@@ -1935,3 +1935,49 @@ model AiMemory {
 
   @@unique([organizationId, scope, subject])
 }
+
+/// Utskick (2026-10-03): a newsletter to those who said yes, or important information to every company's
+/// administrators, written by the superadmin and sent from a queue (npm run mailings:send).
+enum MailingAudience {
+  NEWSLETTER
+  ADMINS
+}
+
+enum MailingStatus {
+  QUEUED
+  SENT
+}
+
+enum MailingRecipientStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
+model Mailing {
+  id          String             @id @default(cuid())
+  subject     String
+  body        String
+  audience    MailingAudience
+  status      MailingStatus      @default(QUEUED)
+  createdById String
+  createdAt   DateTime           @default(now())
+  finishedAt  DateTime?
+  recipients  MailingRecipient[]
+
+  @@index([createdAt])
+}
+
+model MailingRecipient {
+  id        String                 @id @default(cuid())
+  mailingId String
+  mailing   Mailing                @relation(fields: [mailingId], references: [id], onDelete: Cascade)
+  userId    String?
+  email     String
+  status    MailingRecipientStatus @default(PENDING)
+  sentAt    DateTime?
+
+  @@unique([mailingId, email])
+  @@index([status, mailingId])
+}

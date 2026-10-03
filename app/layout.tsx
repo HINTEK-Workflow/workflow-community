@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { AppRegistration } from "@/features/kfid/app-registration";
 import { InstanceProvider } from "@/components/instance-provider";
+import { CookieNotice } from "@/components/cookie-notice";
 import { publicInstance } from "@/lib/instance";
 import { instanceAppUrl } from "@/lib/instance-server";
 
@@ -53,6 +54,7 @@ export default function RootLayout({
         <InstanceProvider value={publicInstance()}>
           {children}
           <AppRegistration />
+          <CookieNotice />
         </InstanceProvider>
       </body>
     </html>

@@ -1,6 +1,6 @@
 {
   "name": "workflow-community",
-  "version": "0.4.8",
+  "version": "0.4.10",
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
@@ -19,6 +19,7 @@
     "prebuild": "npm run build:offline",
     "history:retention": "tsx scripts/history/run-retention.ts",
     "ops:alert": "tsx scripts/ops/send-alert.ts",
+    "mailings:send": "tsx scripts/mail/run-mailings.ts",
     "admin:create": "tsx scripts/admin/create-admin.ts",
     "admin:recover": "tsx scripts/admin/recover.ts",
     "typecheck": "tsc --noEmit",

@@ -67,6 +67,7 @@ import {
 import type { View, ShellUser } from "@/components/app-shell";
 import { ViewAsPanel } from "@/features/workflow/view-as-panel";
 import { UpgradeToCloud } from "@/features/workflow/upgrade-cloud";
+import { Mailings } from "@/features/workflow/mailings";
 import {
   DEFAULT_REPORT_BRANDING,
   type ReportBranding,
@@ -349,6 +350,8 @@ export function Workspace({
   else if (view === "login_settings")
     content = user?.role === "SUPERADMIN" ? <LoginSettings notify={notify} /> : null;
   // The server's keys belong to the whole installation, not to a company's API och MCP (2026-10-03).
+  else if (view === "mailings")
+    content = user?.role === "SUPERADMIN" ? <Mailings notify={notify} /> : null;
   else if (view === "server_keys")
     content = user?.role === "SUPERADMIN" && ServerKeysAdministration ? <ServerKeysAdministration notify={notify} /> : null;
   else if (view === "customer_companies")

@@ -280,10 +280,9 @@ html[data-theme="blue"] .workspace-sidebar .workspace-menu-item.owner-only > spa
 html[data-theme="blue"] .workspace-sidebar .workspace-menu-item.owner-only { box-shadow: inset 3px 0 0 #e879f9; }
 html[data-theme="blue"] .workspace-sidebar .workspace-menu-item-active { background: #24507a; color: #ffffff; box-shadow: none; }
 html[data-theme="blue"] .workspace-sidebar-note { background: color-mix(in srgb, #ffffff 6%, transparent); border-color: var(--border); }
-/* Text wordmark in the self-hosted Gugi font (SIL OFL, public/picture/fonts/gugi). Other themes keep the image wordmark. */
-.workflow-brand-text { display: none; }
-html[data-theme="blue"] .hintek-wordmark { display: none; }
-html[data-theme="blue"] .workflow-brand-text { display: block; overflow: hidden; font-family: Gugi, Inter, sans-serif; font-size: 1.25rem; line-height: 1.75rem; color: #ffffff; white-space: nowrap; text-overflow: ellipsis; }
+/* Text wordmark in the self-hosted Gugi font (SIL OFL, public/picture/fonts/gugi), in every theme (2026-10-03). */
+.workflow-brand-text { display: block; overflow: hidden; font-family: Gugi, Inter, sans-serif; font-size: 1.25rem; line-height: 1.75rem; color: var(--foreground); white-space: nowrap; text-overflow: ellipsis; }
+html[data-theme="blue"] .workflow-brand-text { color: #ffffff; }
 
 /* Public landing page (2026-09-26): always HINTEK Blue, independent of a signed-in user's theme. */
 .landing {
@@ -448,7 +447,6 @@ html[data-theme="blue"] :is(.workspace-aside, .workspace-drawer):hover { --menu-
   .workspace-header > div:first-child { max-width: 18rem; flex: 1; }
   .workspace-profile { padding-inline: .375rem; }
   .workspace-profile-menu { width: min(20rem, calc(100vw - 1.5rem)); max-height: min(78dvh, 42rem); overflow-y: auto; overscroll-behavior: contain; }
-  .hintek-wordmark { width: 13rem; height: 3rem; }
   .workspace-header [data-slot="button"], .workspace-menu-close { min-width: 2.75rem; min-height: 2.75rem; }
   .workspace-menu-item { min-height: 3rem; }
   .workspace-menu-item:disabled { opacity: .5; }
@@ -618,3 +616,7 @@ html[data-detail="1"] :is([data-detail-min="2"], .workspace-main .editor-facts) 
 .workspace-menu-item.owner-only { box-shadow: inset 3px 0 0 var(--feature-owner); }
 .section-tabs-owner a[aria-current="page"] { border-color: color-mix(in srgb, var(--feature-owner) 40%, transparent); background: var(--feature-owner-soft); color: var(--feature-owner); --tw-ring-color: color-mix(in srgb, var(--feature-owner) 25%, transparent); }
 .section-tabs-owner a svg { color: var(--feature-owner); }
+
+/* Kakor (2026-10-03): the notice sits above the phone menu bar and the safe area. */
+.cookie-notice { bottom: calc(1rem + env(safe-area-inset-bottom)); }
+@media (max-width: 1023px) { .cookie-notice { bottom: calc(5.5rem + env(safe-area-inset-bottom)); } }

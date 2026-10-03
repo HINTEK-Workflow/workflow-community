@@ -265,6 +265,13 @@ export const views = {
     tone: "text-feature-owner",
     surface: "bg-feature-owner-soft",
   },
+  // Utskick (2026-10-03): newsletters and important information, under Produktadministration; the superadmin.
+  mailings: {
+    label: "Utskick",
+    icon: Send,
+    tone: "text-feature-owner",
+    surface: "bg-feature-owner-soft",
+  },
   // Servernycklar (2026-10-03): the keys the server runs with, under Produktadministration; the superadmin.
   server_keys: {
     label: "Servernycklar",
@@ -335,7 +342,7 @@ export const views = {
 };
 export type View = keyof typeof views;
 /** The views only the superadmin sees; their menu button carries the plum produktägare mark (2026-10-03). */
-const OWNER_VIEWS = new Set<View>(["customer_companies", "pricing_admin", "ai_admin", "landing_editor", "mail_settings", "login_settings", "server_keys"]);
+const OWNER_VIEWS = new Set<View>(["customer_companies", "pricing_admin", "ai_admin", "landing_editor", "mail_settings", "login_settings", "server_keys", "mailings"]);
 
 /**
  * The menu's thin line (2026-09-30): the menu scrolls without the browser's scrollbar, and while it is taller
@@ -679,7 +686,7 @@ export function AppShell({
       <div id={`${testId}-items`} hidden={!open}>{child}</div>
     </div>;
   }
-  const productActive = view === "customer_companies" || view === "pricing_admin" || view === "ai_admin" || view === "landing_editor" || view === "mail_settings" || view === "login_settings" || view === "server_keys";
+  const productActive = view === "customer_companies" || view === "pricing_admin" || view === "ai_admin" || view === "landing_editor" || view === "mail_settings" || view === "login_settings" || view === "server_keys" || view === "mailings";
   const companyActive = view === "administration" || view === "integrations" || view === "history_retention" || view === "ai_settings" || view === "facilities" || view === "company_settings" || view === "credits";
   // Inställningar holds the person's own settings, the company's pages and Hjälp (2026-10-02).
   const settingsActive = view === "settings" || view === "help" || companyActive;

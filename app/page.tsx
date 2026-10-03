@@ -67,6 +67,7 @@ export default async function HomePage({
     "mail_settings",
     "login_settings",
     "server_keys",
+    "mailings",
     "customer_companies",
     "pricing_admin",
     "ai_admin",
@@ -113,7 +114,7 @@ export default async function HomePage({
   if (view === "ai_settings" && !features.ai) redirect("/?view=stats");
   if ((view === "landing_editor" && !features.landingEditor) || (view === "credits" && !features.billing && !features.credits) || ((view === "integrations" || view === "import") && !features.integrations))
     redirect("/?view=stats");
-  if ((view === "customer_companies" || view === "pricing_admin" || view === "ai_admin" || view === "landing_editor" || view === "mail_settings" || view === "login_settings" || view === "server_keys") && (user?.role !== "SUPERADMIN" || viewAs))
+  if ((view === "customer_companies" || view === "pricing_admin" || view === "ai_admin" || view === "landing_editor" || view === "mail_settings" || view === "login_settings" || view === "server_keys" || view === "mailings") && (user?.role !== "SUPERADMIN" || viewAs))
     redirect("/?view=stats");
   // The switch-over (2026-09-27, decision B; 2026-09-28: no drafts, all originals): a new control or risk
   // assessment is made with HINTEK's original of the form – or the company's own version of it – when it is published.

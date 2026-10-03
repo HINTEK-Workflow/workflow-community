@@ -26,7 +26,7 @@ function transporterFor(transport: MailConfig["transport"]) {
   return global.workflowTransporter.transporter;
 }
 
-type SystemEmail = { to: string; bcc?: string[]; subject: string; html: string; text: string; attachments?: { filename: string; content: Buffer; contentType: string }[] };
+type SystemEmail = { to: string; bcc?: string[]; subject: string; html: string; text: string; attachments?: { filename: string; content: Buffer; contentType: string }[]; headers?: Record<string, string> };
 
 /** Sends with the settings that apply now (E-post in the app, otherwise .env). */
 export async function sendSystemEmail(input: SystemEmail) {
@@ -43,5 +43,6 @@ export function deliverSystemEmail(transporter: ReturnType<typeof nodemailer.cre
     html: input.html,
     text: input.text,
     attachments: input.attachments,
+    headers: input.headers,
   });
 }

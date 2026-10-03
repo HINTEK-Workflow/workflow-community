@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
-import { Building2, Cloud, CreditCard, Factory, FileText, HelpCircle, History, KeyRound, LogIn, Mail, PanelsTopLeft, Server, Settings2, Sparkles, Tags, Users } from "lucide-react";
+import { Building2, Cloud, CreditCard, Factory, FileText, HelpCircle, History, KeyRound, LogIn, Mail, PanelsTopLeft, Send, Server, Settings2, Sparkles, Tags, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Tab = { view: string; label: string; icon: LucideIcon };
@@ -16,7 +16,7 @@ type Tab = { view: string; label: string; icon: LucideIcon };
 // Since 2026-10-02 also what belongs to the company but lay elsewhere: its places, its report settings and its credits;
 // and the product owner's prices and AI, which shared one long page with the customer companies.
 export const COMPANY_VIEWS = ["administration", "facilities", "company_settings", "credits", "ai_settings", "integrations", "history_retention"] as const;
-export const PRODUCT_VIEWS = ["customer_companies", "pricing_admin", "ai_admin", "landing_editor", "mail_settings", "login_settings", "server_keys"] as const;
+export const PRODUCT_VIEWS = ["customer_companies", "pricing_admin", "ai_admin", "landing_editor", "mail_settings", "login_settings", "server_keys", "mailings"] as const;
 
 export function companyTabs(options: { admin: boolean; cloud: boolean; ai: boolean; integrations: boolean; credits: boolean }): Tab[] {
   return [
@@ -46,6 +46,7 @@ export function productTabs(options: { landingEditor: boolean; pricing: boolean;
     ...(options.ai ? [{ view: "ai_admin", label: "AI", icon: Sparkles }] : []),
     ...(options.landingEditor ? [{ view: "landing_editor", label: "Landningssidan", icon: PanelsTopLeft }] : []),
     { view: "mail_settings", label: "E-post", icon: Mail },
+    { view: "mailings", label: "Utskick", icon: Send },
     { view: "login_settings", label: "Inloggning", icon: LogIn },
     ...(options.serverKeys ? [{ view: "server_keys", label: "Servernycklar", icon: Server }] : []),
   ];
