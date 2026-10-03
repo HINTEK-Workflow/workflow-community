@@ -895,7 +895,7 @@ function TeamCapacityPanel({ teamCapacity, anchor }: { teamCapacity: PlanningTea
 }
 
 function PlanningPanel({ project, tasks, activities, availabilityActivities, members, currentUserId, canViewTeamAvailability, busy, error, canCreate, canEdit, canFrameException, onSave, onRemove, aiAction }: {
-  /** "Föreslå planering" from HINTEK AI, where the company's AI is on. */
+  /** "Föreslå planering" from Workflow AI, where the company's AI is on. */
   aiAction?: React.ReactNode;
   canFrameException?: (project: WorkflowProject) => boolean;
   project: WorkflowProject;

@@ -9,7 +9,9 @@ import { openPassword, sealPassword } from "@/lib/mail/settings";
 const SCB_URL = "https://apiafr.scb.se/v1/juridiskaenheter";
 const secret = () => env.INTEGRATION_KEYS_SECRET ?? env.AUTH_SECRET;
 
-type Stored = { keyCipher?: string; keyHint?: string; updatedAt?: string; updatedBy?: string };
+// validUntil (2026-10-03: "den är aktiv i två år"): when SCB's key stops working, so keys:alerts warns in time;
+// alerted holds the warnings already sent for that date.
+type Stored = { keyCipher?: string; keyHint?: string; updatedAt?: string; updatedBy?: string; validUntil?: string; alerted?: string[] };
 const stored = async (): Promise<Stored> => {
   const row = await prisma.systemSettings.findUnique({ where: { id: "global" }, select: { companyLookup: true } });
   return (row?.companyLookup ?? {}) as Stored;
@@ -17,11 +19,18 @@ const stored = async (): Promise<Stored> => {
 
 export async function companyLookupView() {
   const value = await stored();
-  return { configured: Boolean(value.keyCipher), keyHint: value.keyHint ?? null, updatedAt: value.updatedAt ?? null, updatedBy: value.updatedBy ?? null };
+  return { configured: Boolean(value.keyCipher), keyHint: value.keyHint ?? null, updatedAt: value.updatedAt ?? null, updatedBy: value.updatedBy ?? null, validUntil: value.validUntil ?? null };
 }
 
 export async function saveCompanyLookupKey(key: string | null, actor: string) {
   const next: Stored = key ? { keyCipher: sealPassword(key.trim(), secret()), keyHint: `…${key.trim().slice(-4)}`, updatedAt: new Date().toISOString(), updatedBy: actor } : { updatedAt: new Date().toISOString(), updatedBy: actor };
+  await prisma.systemSettings.upsert({ where: { id: "global" }, update: { companyLookup: next }, create: { id: "global", companyLookup: next } });
+}
+
+/** The day SCB's key stops working (YYYY-MM-DD), or null; a new date starts the warnings over. */
+export async function saveCompanyLookupValidUntil(validUntil: string | null, actor: string) {
+  const current = await stored();
+  const next: Stored = { ...current, validUntil: validUntil ?? undefined, alerted: [], updatedAt: new Date().toISOString(), updatedBy: actor };
   await prisma.systemSettings.upsert({ where: { id: "global" }, update: { companyLookup: next }, create: { id: "global", companyLookup: next } });
 }
 

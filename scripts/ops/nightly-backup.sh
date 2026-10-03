@@ -1,25 +1,25 @@
 #!/usr/bin/env bash
-# Nightly backup of HINTEK Workflow (drift, 2026-09-30): the PostgreSQL database (custom format) and the private file
+# Nightly backup of Workflow (drift, 2026-09-30): the PostgreSQL database (custom format) and the private file
 # storage, each verified after it is written, with SHA-256 sums, daily and weekly retention and an optional copy to
 # another machine. Never writes to the database or the storage; only reads them.
 #
-#   sudo ./scripts/ops/nightly-backup.sh            (cron: see ops/cron/hintek-workflow)
+#   sudo ./scripts/ops/nightly-backup.sh            (cron: see ops/cron/workflow)
 #
 # Environment (defaults are the production server's):
-#   COMPOSE_PROJECT (workflowhintekse) · POSTGRES_SERVICE (postgres) · SOURCE_STORAGE (/opt/workflow.hintek.se/storage)
-#   BACKUP_ROOT (/opt/backups/hintek-workflow) · KEEP_DAILY (14) · KEEP_WEEKLY (8) · STATE_DIR (/var/lib/hintek-workflow)
-#   OFFSITE_TARGET (empty = no copy; e.g. backup@example-host:/srv/backups/hintek-workflow over ssh with a key)
+#   COMPOSE_PROJECT (workflow) · POSTGRES_SERVICE (postgres) · SOURCE_STORAGE (/opt/workflow/storage)
+#   BACKUP_ROOT (/opt/backups/workflow) · KEEP_DAILY (14) · KEEP_WEEKLY (8) · STATE_DIR (/var/lib/workflow)
+#   OFFSITE_TARGET (empty = no copy; e.g. backup@example-host:/srv/backups/workflow over ssh with a key)
 #   TAR_OPTIONS (--numeric-owner --acls --xattrs --one-file-system on Linux)
 set -Eeuo pipefail
 umask 077
 
-readonly COMPOSE_PROJECT="${COMPOSE_PROJECT:-workflowhintekse}"
+readonly COMPOSE_PROJECT="${COMPOSE_PROJECT:-workflow}"
 readonly POSTGRES_SERVICE="${POSTGRES_SERVICE:-postgres}"
-readonly SOURCE_STORAGE="${SOURCE_STORAGE:-/opt/workflow.hintek.se/storage}"
-readonly BACKUP_ROOT="${BACKUP_ROOT:-/opt/backups/hintek-workflow}"
+readonly SOURCE_STORAGE="${SOURCE_STORAGE:-/opt/workflow/storage}"
+readonly BACKUP_ROOT="${BACKUP_ROOT:-/opt/backups/workflow}"
 readonly KEEP_DAILY="${KEEP_DAILY:-14}"
 readonly KEEP_WEEKLY="${KEEP_WEEKLY:-8}"
-readonly STATE_DIR="${STATE_DIR:-/var/lib/hintek-workflow}"
+readonly STATE_DIR="${STATE_DIR:-/var/lib/workflow}"
 readonly OFFSITE_TARGET="${OFFSITE_TARGET:-}"
 read -r -a TAR_FLAGS <<< "${TAR_OPTIONS:---numeric-owner --acls --xattrs --one-file-system}"
 

@@ -12,7 +12,7 @@ export type InstanceFeatures = {
   billing: boolean;
   /** Credits are required for paid actions; off = unlimited use. */
   credits: boolean;
-  /** HINTEK AI (ee/). AI_ENABLED=false keeps the rule-based answers but switches the AI model off. */
+  /** Workflow AI (ee/). AI_ENABLED=false keeps the rule-based answers but switches the AI model off. */
   ai: boolean;
   /** The API and MCP server with its keys (ee/; 2026-09-30: not in the community edition). */
   integrations: boolean;
@@ -28,7 +28,7 @@ export type InstanceFeatures = {
 export type PublicInstance = {
   /** The product name shown in the shell, titles and e-mails, e.g. "HINTEK Workflow". */
   name: string;
-  /** The operator's short name, used for its originals and assistant ("HINTEK Original", "HINTEK AI"). */
+  /** The operator's short name, used for its originals and assistant ("HINTEK Original", "Workflow AI"). */
   operator: string;
   /** Organization domains and slugs that identify the operator's own organization. */
   operatorDomains: string[];
@@ -62,9 +62,9 @@ export function publicInstance(source: InstanceEnv = process.env): PublicInstanc
     features: {
       billing: EE_PRESENT && flag(source.BILLING_ENABLED),
       credits: EE_PRESENT && flag(source.CREDITS_ENABLED),
-      ai: EE_PRESENT && flag(source.AI_ENABLED),
-      integrations: EE_PRESENT,
-      googleSignIn: EE_PRESENT,
+      ai: flag(source.AI_ENABLED),
+      integrations: true,
+      googleSignIn: true,
       demoOnLogin: !EE_PRESENT,
       landingEditor: EE_PRESENT && flag(source.LANDING_EDITOR_ENABLED),
     },

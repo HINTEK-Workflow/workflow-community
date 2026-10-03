@@ -7,12 +7,12 @@ import { Panel } from "@/features/kfid/ui";
  */
 export function UpgradeToCloud({ admin }: { admin: boolean }) {
   const points = [
-    { icon: Sparkles, title: "HINTEK AI", text: "Chatt, förslag, granskning och import med AI. AI-krediter köps när företaget har Cloud." },
+    { icon: Sparkles, title: "Workflow AI", text: "Chatt, förslag, granskning och import med AI. AI-krediter köps när företaget har Cloud." },
     { icon: Users, title: "Hela teamet", text: "Medarbetare arbetar i samma projekt och uppgifter, från dator, surfplatta och telefon." },
-    { icon: Cloud, title: "Lagring och backup hos HINTEK", text: "Ingen egen fil att hålla reda på. Det du har i Local kan läsas in i Cloud." },
+    { icon: Cloud, title: "Lagring och backup på servern", text: "Ingen egen fil att hålla reda på. Det du har i Local kan läsas in i Cloud." },
     { icon: KeyRound, title: "API och MCP", text: "Koppla ChatGPT, Claude eller egna system till företagets data." },
   ];
-  return <Panel title="Uppgradera till HINTEK Cloud" description="Gratis i Local: hela Workflow i den egna filen. Cloud lägger till det som kräver att datan finns hos HINTEK."
+  return <Panel title="Uppgradera till serverlagring" description="Gratis i Local: hela Workflow i den egna filen. Cloud lägger till det som kräver att datan finns på servern."
     leadingActions={<span className="panel-icon" aria-hidden="true"><Bot className="size-4" /></span>}>
     <ul className="grid gap-3 sm:grid-cols-2" data-testid="upgrade-cloud">
       {points.map((point) => <li key={point.title} className="flex gap-3 rounded-lg border p-3">

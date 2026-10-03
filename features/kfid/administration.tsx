@@ -26,7 +26,7 @@ import { LegalDocumentContent } from "@/components/legal-document";
 import { OrganizationStructure } from "./organization-structure";
 import { useInstance } from "@/components/instance-provider";
 import { applyWorkflowPermissionToggle, noWorkflowPermissionProfile, normalizeWorkflowPermissionProfile, workflowPermissionMatrix, workflowPermissionPresets, type WorkflowPermissionGrant, type WorkflowPermissionSubject } from "@/lib/workflow/permissions";
-// HINTEK AI lives in ee/ (not in the community edition, 2026-09-30); without it this is null.
+// Workflow AI lives in ee/ (not in the community edition, 2026-09-30); without it this is null.
 type Company = {
   id: string;
   name: string;
@@ -194,8 +194,8 @@ export function LegalPanel({
     >
       <p className="page-description mb-3 text-xs">
         {gate
-          ? "Företagets Owner godkänner tjänstevillkoren. Varje användare bekräftar att integritetspolicyn har lästs. HINTEK Cloud kräver dessutom företagets DPA. Allt kan bekräftas med en knapp och sparas mot exakt dokumentversion."
-          : "Tjänstevillkor godkänns för företaget och integritetspolicyn bekräftas personligen. DPA krävs bara för företag med HINTEK Cloud. Varje registrering knyts till exakt dokumentinnehåll."}
+          ? "Företagets Owner godkänner tjänstevillkoren. Varje användare bekräftar att integritetspolicyn har lästs. serverlagring kräver dessutom företagets DPA. Allt kan bekräftas med en knapp och sparas mot exakt dokumentversion."
+          : "Tjänstevillkor godkänns för företaget och integritetspolicyn bekräftas personligen. DPA krävs bara för företag med serverlagring. Varje registrering knyts till exakt dokumentinnehåll."}
       </p>
       {documents === null ? (
         <p className="text-sm text-muted-foreground">Hämtar dokument…</p>
@@ -488,7 +488,7 @@ export function Administration({
           details={(c) => (
             <>
               <dl className="grid gap-3 text-sm sm:grid-cols-2">
-                <div><dt className="text-xs text-muted-foreground">Status och lagring</dt><dd className="mt-1">{c.isActive ? "Aktivt" : "Pausat"} · {c.storageMode === "LOCAL" ? "Lokal lagring" : "HINTEK Cloud"}</dd></div>
+                <div><dt className="text-xs text-muted-foreground">Status och lagring</dt><dd className="mt-1">{c.isActive ? "Aktivt" : "Pausat"} · {c.storageMode === "LOCAL" ? "Lokal lagring" : "serverlagring"}</dd></div>
                 <div><dt className="text-xs text-muted-foreground">Kontakt</dt><dd className="mt-1 break-all">{c.profile.email || "—"}</dd></div>
                 <div><dt className="text-xs text-muted-foreground">Innehåll</dt><dd className="mt-1">{c._count.customers} kunder · {c._count.controls} kontroller</dd></div>
                 <div><dt className="text-xs text-muted-foreground">Konto</dt><dd className="mt-1">{features.credits ? `${c.wallet?.balance ?? 0} krediter` : "—"}{c.invitations.length ? ` · ${c.invitations.length} väntande` : ""}</dd></div>
@@ -522,7 +522,7 @@ export function Administration({
                         {c.isActive ? "Aktivt" : "Pausat"}
                         {c.storageMode === "LOCAL"
                           ? " · Lokal lagring"
-                          : " · HINTEK Cloud"}
+                          : " · serverlagring"}
                         {c.id === data.activeOrganizationId
                           ? " · Din arbetsyta"
                           : ""}
@@ -621,7 +621,7 @@ export function Administration({
               options={["LOCAL", "HINTEK_CLOUD"]}
               optionLabels={{
                 LOCAL: "Lokalt på kundens dator",
-                HINTEK_CLOUD: "HINTEK Cloud",
+                HINTEK_CLOUD: "serverlagring",
               }}
               value={storageMode}
               onChange={(value) =>
@@ -632,7 +632,7 @@ export function Administration({
             <p className="mt-3 text-xs leading-5 text-muted-foreground">
               {storageMode === "LOCAL"
                 ? "Arbetsdata stannar i vald lokal mapp. Ingen central autosparning, backup eller synkning ingår."
-                : "Arbetsdata lagras hos HINTEK med autosparning, backup, återställning och åtkomst från flera datorer. DPA ska godkännas innan kommersiell användning."}
+                : "Arbetsdata lagras på servern med autosparning, backup, återställning och åtkomst från flera datorer. DPA ska godkännas innan kommersiell användning."}
             </p>
             <p className="mt-2 text-xs leading-5 text-muted-foreground">
               Aktuellt pris visas på prissidan och i kassan före beställning.

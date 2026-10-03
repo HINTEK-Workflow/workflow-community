@@ -44,7 +44,7 @@ function useAdvisorSettings(): AdvisorSettingsValue {
   return context ?? { ...local, save: async (next) => { setLocal(next); try { window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(next)); } catch { /* storage is optional */ } } };
 }
 
-/** Whether the person lets HINTEK AI put a proposal they asked for straight into an empty field (Inställningar). */
+/** Whether the person lets Workflow AI put a proposal they asked for straight into an empty field (Inställningar). */
 export function useAdvisorAutofill() {
   return Boolean(useAdvisorSettings().autofill);
 }
@@ -179,7 +179,7 @@ const writeDismissed = (page: string, id: string) => {
 };
 
 export type AdviceHandlers = { startTimer?: () => void; complete?: () => void; save?: () => void };
-/** What the page tells HINTEK AI when the person asks for help with the current step: no names, only the flow. */
+/** What the page tells Workflow AI when the person asks for help with the current step: no names, only the flow. */
 export type AdvisorPageContext = {
   kind: AdvisorContext["kind"];
   /** What the page is, e.g. "Kontroll före idrifttagning" – a kind, never a name. */
@@ -187,7 +187,7 @@ export type AdvisorPageContext = {
   step: string | null; hint: string | null; steps: { label: string; state: string }[]; tip: string | null;
   /** What is still missing before the task can be completed (the completion rules' own messages). */
   missing?: string[];
-  /** "tip" when asked from a tip's "Fråga HINTEK AI", "page" when the person types in the chat on the page. */
+  /** "tip" when asked from a tip's "Fråga Workflow AI", "page" when the person types in the chat on the page. */
   source?: "tip" | "page";
   /** The open task's id (2026-10-02): lets the assistant read this very task, within the person's own rights, instead of guessing. */
   taskId?: string;
@@ -197,7 +197,7 @@ export type AdvisorPageContext = {
 /**
  * The progress line and, below it, at most one tip (2026-10-01, beslutsstöd): shown only after the page has
  * been open a few seconds and the tip has held that long, never one dismissed here in the last 12 hours or muted, and
- * only as often as the person's setting says. "Fråga HINTEK AI" is the only way the tip uses AI – and credits.
+ * only as often as the person's setting says. "Fråga Workflow AI" is the only way the tip uses AI – and credits.
  */
 export function FlowGuide({ flow, advisor, page, handlers, label, pageLabel, missing }: {
   flow: Flow;
@@ -207,12 +207,12 @@ export function FlowGuide({ flow, advisor, page, handlers, label, pageLabel, mis
   page: string;
   handlers?: AdviceHandlers;
   label?: string;
-  /** What the page is ("Arbetsorder", "Kontroll före idrifttagning") and what is missing, for HINTEK AI. */
+  /** What the page is ("Arbetsorder", "Kontroll före idrifttagning") and what is missing, for Workflow AI. */
   pageLabel?: string;
   missing?: string[];
 }) {
   const settings = useAdvisorSettings();
-  // HINTEK AI always knows the page the person is on (2026-10-01: "den förstår inte att jag är på
+  // Workflow AI always knows the page the person is on (2026-10-01: "den förstår inte att jag är på
   // kontrollsidan"): kinds, steps and what is missing, never names.
   const pageContext: AdvisorPageContext | null = advisor ? { kind: advisor.kind, ...(advisor.currentTaskId ? { taskId: advisor.currentTaskId } : {}), label: pageLabel, step: flow.current?.label ?? null, hint: flow.current?.hint ?? null, steps: flow.steps.map((step) => ({ label: step.label, state: step.state })), tip: null, missing: (missing ?? []).slice(0, 10).map((item) => item.slice(0, 200)) } : null;
   const pageKey = JSON.stringify(pageContext);
@@ -264,7 +264,7 @@ export function FlowGuide({ flow, advisor, page, handlers, label, pageLabel, mis
         <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{shown.text}</p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           {shown.action ? <Button type="button" size="sm" onClick={() => act(shown)} data-testid="flow-advice-action">{shown.action.label}</Button> : null}
-          {assistantAvailable && advisor ? <Button type="button" size="sm" variant="outline" onClick={() => askAi(shown)} title="Öppnar HINTEK AI med det här steget. Frågor som kräver AI-modellen kostar krediter."><Sparkles />Fråga HINTEK AI</Button> : null}
+          {assistantAvailable && advisor ? <Button type="button" size="sm" variant="outline" onClick={() => askAi(shown)} title="Öppnar Workflow AI med det här steget. Frågor som kräver AI-modellen kostar krediter."><Sparkles />Fråga Workflow AI</Button> : null}
           <Button type="button" size="sm" variant="ghost" onClick={() => dismiss(shown)} data-testid="flow-advice-dismiss">Inte nu</Button>
           <Button type="button" size="sm" variant="ghost" className="text-muted-foreground" onClick={() => mute(shown)} data-testid="flow-advice-mute">Visa inte sådana tips</Button>
         </div>

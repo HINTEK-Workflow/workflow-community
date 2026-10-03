@@ -22,7 +22,7 @@ export const HISTORY_CATEGORIES = [
   { key: "planning", label: "Planeringshistorik", note: "Ändringar av planerade aktiviteter." },
   { key: "time", label: "Ändringshistorik för tidrapporter", note: "Själva tidposterna behålls." },
   { key: "administration", label: "Administrationshistorik", note: "Medlemmar, inställningar, nycklar, arbetstider och formulärändringar." },
-  { key: "ai", label: "Chattar med HINTEK AI", note: "Hela konversationer vars senaste meddelande är äldre. Kostnadsloggen för AI-körningar behålls." },
+  { key: "ai", label: "Chattar med Workflow AI", note: "Hela konversationer vars senaste meddelande är äldre. Kostnadsloggen för AI-körningar behålls." },
 ] as const;
 export type HistoryCategory = (typeof HISTORY_CATEGORIES)[number]["key"];
 export const HISTORY_CATEGORY_KEYS = HISTORY_CATEGORIES.map((category) => category.key) as HistoryCategory[];

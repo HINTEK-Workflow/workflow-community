@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
-# Runs one of HINTEK Workflow's scheduled jobs inside the app container (drift, 2026-09-30), one at a time per job
+# Runs one of Workflow's scheduled jobs inside the app container (drift, 2026-09-30), one at a time per job
 # (a lock), with a timestamped log and a success/failure marker that scripts/ops/monitor.sh watches.
 #
 #   ./scripts/ops/run-job.sh history:retention
 #
-# Environment: COMPOSE_PROJECT (workflowhintekse) · APP_SERVICE (app) · STATE_DIR (/var/lib/hintek-workflow)
-#              LOG_DIR (/var/log/hintek-workflow)
+# Environment: COMPOSE_PROJECT (workflow) · APP_SERVICE (app) · STATE_DIR (/var/lib/workflow)
+#              LOG_DIR (/var/log/workflow)
 set -Euo pipefail
 umask 027
 
-readonly COMPOSE_PROJECT="${COMPOSE_PROJECT:-workflowhintekse}"
+readonly COMPOSE_PROJECT="${COMPOSE_PROJECT:-workflow}"
 readonly APP_SERVICE="${APP_SERVICE:-app}"
-readonly STATE_DIR="${STATE_DIR:-/var/lib/hintek-workflow}"
-readonly LOG_DIR="${LOG_DIR:-/var/log/hintek-workflow}"
+readonly STATE_DIR="${STATE_DIR:-/var/lib/workflow}"
+readonly LOG_DIR="${LOG_DIR:-/var/log/workflow}"
 readonly JOB="${1:-}"
 
 # Only the known jobs – never an arbitrary command.

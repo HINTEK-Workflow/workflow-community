@@ -121,7 +121,7 @@ export function requireCloudStorage(ctx: Context) {
   if (ctx.organization.storageMode !== "HINTEK_CLOUD")
     throw new ApiError(
       409,
-      "Företaget använder lokal lagring. Kund- och kontrolldata får därför inte sparas hos HINTEK.",
+      "Företaget använder lokal lagring. Kund- och kontrolldata får därför inte sparas på servern.",
     );
 }
 

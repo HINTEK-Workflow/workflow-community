@@ -4,9 +4,9 @@ set -Eeuo pipefail
 
 umask 077
 
-readonly COMPOSE_PROJECT="${COMPOSE_PROJECT:-workflowhintekse}"
+readonly COMPOSE_PROJECT="${COMPOSE_PROJECT:-workflow}"
 readonly POSTGRES_SERVICE="${POSTGRES_SERVICE:-postgres}"
-readonly SOURCE_STORAGE="${SOURCE_STORAGE:-/opt/workflow.hintek.se/storage}"
+readonly SOURCE_STORAGE="${SOURCE_STORAGE:-/opt/workflow/storage}"
 readonly BACKUP_ROOT="${BACKUP_ROOT:-/opt/backups/kfid-restore-drills}"
 readonly RUN_ID="$(date -u +%Y%m%d_%H%M%S)_$$"
 readonly DRILL_DIR="${BACKUP_ROOT}/${RUN_ID}"

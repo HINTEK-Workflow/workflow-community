@@ -38,7 +38,7 @@ export function HistoryRetention({ notify }: { notify: (text: string, error?: bo
   const [error, setError] = useState("");
   const [months, setMonths] = useState<HistoryRetentionMonths>(null);
   const [before, setBefore] = useState(aYearAgo);
-  // HINTEK AI and its chats exist only in HINTEK's edition (ee/).
+  // Workflow AI and its chats exist only in HINTEK's edition (ee/).
   const { features } = useInstance();
   const categories = HISTORY_CATEGORIES.filter((category) => category.key !== "ai" || features.ai);
   const [chosen, setChosen] = useState<Set<HistoryCategory>>(() => new Set(HISTORY_CATEGORY_KEYS.filter((key) => key !== "ai" || features.ai)));

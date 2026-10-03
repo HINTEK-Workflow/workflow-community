@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
-# Watches HINTEK Workflow in production (drift, 2026-09-30) and e-mails the operations address when something is wrong:
+# Watches Workflow in production (drift, 2026-09-30) and e-mails the operations address when something is wrong:
 # readiness (database and file storage), the TLS certificate, disk space, the nightly backup and the scheduled jobs.
 # Alerts go out when the state changes and at most every six hours while it stays wrong, through the app's own SMTP
 # settings (npm run ops:alert). Run every five minutes from cron.
 #
-# Environment: APP_URL (https://workflow.hintek.se) · COMPOSE_PROJECT (workflowhintekse) · APP_SERVICE (app)
-#   STATE_DIR (/var/lib/hintek-workflow) · STORAGE_PATH (/opt/workflow.hintek.se/storage) · BACKUP_MAX_AGE_HOURS (26)
+# Environment: APP_URL (http://localhost:3000) · COMPOSE_PROJECT (workflow) · APP_SERVICE (app)
+#   STATE_DIR (/var/lib/workflow) · STORAGE_PATH (/opt/workflow/storage) · BACKUP_MAX_AGE_HOURS (26)
 #   DISK_MAX_PERCENT (85) · CERT_MIN_DAYS (14) · DRY_RUN (1 = print only)
 set -Euo pipefail
 
-readonly APP_URL="${APP_URL:-https://workflow.hintek.se}"
-readonly COMPOSE_PROJECT="${COMPOSE_PROJECT:-workflowhintekse}"
+readonly APP_URL="${APP_URL:-http://localhost:3000}"
+readonly COMPOSE_PROJECT="${COMPOSE_PROJECT:-workflow}"
 readonly APP_SERVICE="${APP_SERVICE:-app}"
-readonly STATE_DIR="${STATE_DIR:-/var/lib/hintek-workflow}"
-readonly STORAGE_PATH="${STORAGE_PATH:-/opt/workflow.hintek.se/storage}"
+readonly STATE_DIR="${STATE_DIR:-/var/lib/workflow}"
+readonly STORAGE_PATH="${STORAGE_PATH:-/opt/workflow/storage}"
 readonly BACKUP_MAX_AGE_HOURS="${BACKUP_MAX_AGE_HOURS:-26}"
 readonly DISK_MAX_PERCENT="${DISK_MAX_PERCENT:-85}"
 readonly CERT_MIN_DAYS="${CERT_MIN_DAYS:-14}"

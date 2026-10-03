@@ -219,7 +219,7 @@ function SectionPanel({ section, first, inline, moments, grid, leafProps, footer
     : main?.type === "summary" && !readOnly && document
       ? <span className="inline-flex flex-wrap items-center justify-end gap-2">
         <Button type="button" variant="outline" onClick={() => onChange({ ...values, deviationComment: formRuleSummary(document, values) })}><RefreshCw />Sammanställ resultat</Button>
-        {/* HINTEK AI writes from the rules' summary, where the company's AI is on (2026-10-01). */}
+        {/* Workflow AI writes from the rules' summary, where the company's AI is on (2026-10-01). */}
         {SummaryAssist ? <SummaryAssist draft={formSummaryMaterial(document, values)} label={document.report.title || "Protokollet"} current={values.deviationComment ?? ""} onText={(text) => onChange({ ...values, deviationComment: text })} /> : null}
       </span>
       : undefined;

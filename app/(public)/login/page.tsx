@@ -82,7 +82,7 @@ export default async function LoginPage({
         notice={notice}
         initialError={initialError}
         googleEnabled={googleEnabled}
-        googleOffered={googleAllowed}
+        googleOffered={googleEnabled}
         termsOf={name}
         demo={features.demoOnLogin}
         registerOpen={await registrationOpen()}

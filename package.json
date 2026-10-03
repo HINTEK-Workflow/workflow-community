@@ -1,6 +1,6 @@
 {
   "name": "workflow-community",
-  "version": "0.4.10",
+  "version": "0.4.11",
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
@@ -16,6 +16,8 @@
     "build:offline": "esbuild features/kfid/offline-editor.ts --bundle --minify --platform=browser --outfile=public/offline-editor.js",
     "integrity:check": "tsx scripts/integrity/check.ts",
     "rounds:reminders": "tsx scripts/rounds/run-round-reminders.ts",
+    "ai:digest": "tsx scripts/ai/run-daily-digest.ts",
+    "keys:alerts": "tsx scripts/integrations/run-key-alerts.ts",
     "prebuild": "npm run build:offline",
     "history:retention": "tsx scripts/history/run-retention.ts",
     "ops:alert": "tsx scripts/ops/send-alert.ts",

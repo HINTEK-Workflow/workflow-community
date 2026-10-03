@@ -128,7 +128,7 @@ function WorkflowTaskEditorBody({ kind, taskId, projectId, customerId, customers
   };
   const blankTask = (): WorkflowTaskRecord => inherit({ id: "", version: 0, kind, title: kind === "FORM" && form ? (roundParam && roundTitleParam && occurrenceParam ? `${roundTitleParam} ${occurrenceParam}` : form.name) : "", description: "", status: "PLANNED", progress: 0, projectId: null, customerId: customerId ?? null, facilityId: facilityParam ?? null, siteId: null, departmentId: null, assignedToUserId: null, assignedToName: "", dueDate: "", data: blankData(), totalDurationSec: 0, timerRunning: false }, projects.find((project) => project.id === projectId));
   const [task, setTask] = useState<WorkflowTaskRecord>(blankTask);
-  // The newest task, for what is applied after an answer has arrived (HINTEK AI's proposals, 2026-10-02).
+  // The newest task, for what is applied after an answer has arrived (Workflow AI's proposals, 2026-10-02).
   const latestTask = useRef(task);
   useEffect(() => { latestTask.current = task; });
   // The task's title follows a field when the form says so (the control's Projekt / anläggning), else stays as typed.
@@ -515,7 +515,7 @@ function WorkflowTaskEditorBody({ kind, taskId, projectId, customerId, customers
   };
   // Rows of a protocol that are meant to be followed up as work orders but have none yet, named in the dialog.
   const rowsWithoutOrder = task.data.kind === "FORM" ? formRowsWithoutOrder(task.data.details.document, task.data.details.values) : 0;
-  // HINTEK AI's proposed measures for a risk assessment form (2026-10-02): the table with a hazard and a measure column.
+  // Workflow AI's proposed measures for a risk assessment form (2026-10-02): the table with a hazard and a measure column.
   // Only rows with a hazard and no measure are offered; a proposal is put in – and undone – on the newest values.
   const riskTable = task.data.kind === "FORM" ? formLeafBlocks(task.data.details.document).find((block): block is FormTableBlock => block.type === "table" && ["fara", "atgard"].every((key) => block.columns.some((column) => column.key === key))) ?? null : null;
   const cellText = (value: unknown) => (typeof value === "string" ? value.trim() : "");
@@ -660,7 +660,7 @@ function WorkflowTaskEditorBody({ kind, taskId, projectId, customerId, customers
         {task.status === "COMPLETED" && task.formArea !== "kfid" ? <Button variant="outline" disabled={busy} onClick={() => void reopen()}><RotateCcw />Återöppna</Button> : null}
         {/* Spara som copies a saved protocol; the control's header shows it from the start, so an unsaved one just saves. */}
         {task.id && task.kind !== "WORK_ORDER" && !preview ? <Button variant="outline" disabled={busy} onClick={() => void createFollowUp()} title="Ny arbetsorder med uppgiftens projekt, kund och anläggning"><Wrench />Skapa arbetsorder</Button> : null}
-        {/* HINTEK AI words a work order from the saved task's deviations; nothing is created until the person confirms. */}
+        {/* Workflow AI words a work order from the saved task's deviations; nothing is created until the person confirms. */}
         {task.id && !preview && !local && WorkOrderProposal ? <WorkOrderProposal taskId={task.id} task={task as unknown as Record<string, unknown>} disabled={busy} /> : null}
         {/* Granska med AI: a second pair of eyes on a saved protocol with results; it changes nothing. */}
         {task.id && task.data.kind === "FORM" && !preview && !local && ProtocolReview && formHasContent(task.data.details.values) ? <ProtocolReview taskId={task.id} disabled={busy} /> : null}
@@ -821,7 +821,7 @@ function WorkOrderFields({ data, onChange }: { data: Extract<TaskData, { kind: "
 
 function RiskFields({ data, onChange, title = "", taskId, assist = false }: { data: Extract<TaskData, { kind: "RISK_ASSESSMENT" }>; onChange: (data: Extract<TaskData, { kind: "RISK_ASSESSMENT" }>) => void; title?: string; taskId?: string; assist?: boolean }) {
   const details = data.details;
-  // HINTEK AI's proposed measures are put in after the person has read them, and may be undone later: both work on
+  // Workflow AI's proposed measures are put in after the person has read them, and may be undone later: both work on
   // the newest data, not on what the page held when the proposal was asked for.
   const latest = useRef({ data, onChange });
   useEffect(() => { latest.current = { data, onChange }; });

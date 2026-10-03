@@ -19,7 +19,7 @@ const STEPS = [
   { key: "legal", label: "Avtal", icon: FileText },
   { key: "company", label: "Företaget", icon: Building2 },
   { key: "security", label: "Säkerhet", icon: ShieldCheck },
-  { key: "ai", label: "HINTEK AI", icon: Sparkles },
+  { key: "ai", label: "Workflow AI", icon: Sparkles },
   { key: "start", label: "Kom igång", icon: Rocket },
 ] as const;
 
@@ -30,7 +30,7 @@ const policyFor = (choice: AiChoice, current: AiPolicy): AiPolicy => choice === 
 
 /**
  * Kom igång (2026-10-02): the first time a company admin signs in, five steps with a progress line – the
- * agreements as one plain checkbox, the company, security, HINTEK AI and where to start. Only the agreements are
+ * agreements as one plain checkbox, the company, security, Workflow AI and where to start. Only the agreements are
  * required; everything else can be skipped and changed later under Inställningar. A member only meets the agreements.
  */
 export function SetupGuide({ admin, companyName, contactEmail, aiAvailable, gate, local = false, notify, onLegalAccepted, onClose }: {
@@ -174,7 +174,7 @@ function AiStep({ available, local = false, notify, onDone }: { available: boole
     try { const result = await api<{ policy: AiPolicy }>("/api/ai/policy"); setPolicy(result.policy); setChoice(aiChoiceOf(result.policy)); } catch { setPolicy(null); }
   }, []);
   useEffect(() => { if (available) void load(); }, [available, load]);
-  if (!available) return <Panel title="HINTEK AI" description={local ? "HINTEK AI ingår i Cloud." : "AI finns inte i den här installationen."}><p className="text-sm text-muted-foreground">{local ? "Ditt företag sparar allt i en egen fil, så inget skickas till någon AI. Vill du ha AI och dela arbetet med kollegor senare väljer du Cloud." : "De direkta svaren ur Workflow fungerar ändå och kostar inget."}</p><StepActions busy={false} label="Fortsätt" onSave={() => void onDone()} /></Panel>;
+  if (!available) return <Panel title="Workflow AI" description={local ? "Workflow AI ingår i Cloud." : "AI finns inte i den här installationen."}><p className="text-sm text-muted-foreground">{local ? "Ditt företag sparar allt i en egen fil, så inget skickas till någon AI. Vill du ha AI och dela arbetet med kollegor senare väljer du Cloud." : "De direkta svaren ur Workflow fungerar ändå och kostar inget."}</p><StepActions busy={false} label="Fortsätt" onSave={() => void onDone()} /></Panel>;
   const save = async () => {
     if (!policy) { await onDone(); return; }
     setBusy(true);
@@ -186,8 +186,8 @@ function AiStep({ available, local = false, notify, onDone }: { available: boole
     { value: "basic", title: "På – frågor och arbete", text: "AI får läsa frågor i chatten och företagets uppgifter och projekt." },
     { value: "full", title: "På – även kunder, kontroller och dokument", text: "AI får dessutom läsa kunder, kontroller och bifogade dokument." },
   ];
-  return <Panel title="HINTEK AI" description="Bestäm om AI ska få hjälpa till. Du kan ändra det under Inställningar → HINTEK AI.">
-    <div className="grid gap-2" role="radiogroup" aria-label="HINTEK AI">
+  return <Panel title="Workflow AI" description="Bestäm om AI ska få hjälpa till. Du kan ändra det under Inställningar → Workflow AI.">
+    <div className="grid gap-2" role="radiogroup" aria-label="Workflow AI">
       {options.map((option) => <label key={option.value} className={cn("flex cursor-pointer gap-3 rounded-lg border p-3 text-sm", choice === option.value && "border-primary bg-secondary/50")}>
         <input type="radio" name="setup-ai" className="mt-1" checked={choice === option.value} onChange={() => setChoice(option.value)} />
         <span><span className="block font-medium">{option.title}</span><span className="block text-xs text-muted-foreground">{option.text}</span></span>

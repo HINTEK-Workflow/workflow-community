@@ -1,5 +1,7 @@
-// The core without ee/ (Fas 2, 2026-09-30): no payment, unlimited use, no landing page, no AI, API or MCP.
+// The core without ee/ (Fas 2, 2026-09-30; 2026-10-03: Workflow AI, API and MCP are in the core): no payment, unlimited
+// use and no landing page.
 import type { ServerExtensions } from "@/lib/extensions/types";
+import { coreAiOverview, coreOauthAuthorize } from "@/lib/extensions/core-routes";
 
 export const serverExtensions: ServerExtensions = {
   routes: {},
@@ -9,10 +11,10 @@ export const serverExtensions: ServerExtensions = {
   }),
   syncCloudSeats: async () => undefined,
   syncCreditExpiryNotices: async () => undefined,
-  aiOverview: async () => ({ enabled: false, configured: false }),
+  aiOverview: coreAiOverview,
   paymentSandboxAvailable: async () => false,
   checkStripeSecretKey: async () => null,
   legalDocument: async () => null,
   landing: async () => ({ kind: "hidden" }),
-  oauthAuthorize: async () => ({ kind: "hidden" }),
+  oauthAuthorize: coreOauthAuthorize,
 };

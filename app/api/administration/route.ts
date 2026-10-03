@@ -229,7 +229,7 @@ export async function POST(request: Request) {
         )
           throw new ApiError(
             409,
-            "Molnlagringen kan inte stängas av medan kunder eller kontroller finns kvar hos HINTEK. Export och verifierad radering måste göras först.",
+            "Molnlagringen kan inte stängas av medan kunder eller kontroller finns kvar på servern. Export och verifierad radering måste göras först.",
           );
         const company = old
           ? await tx.organization.update({
@@ -270,7 +270,7 @@ export async function POST(request: Request) {
             actorId: user.id,
             organizationId: company.id,
             action,
-            detail: `${old ? "Uppdaterade" : "Skapade"} företag: ${name} · ${storageMode === "LOCAL" ? "lokal lagring" : "HINTEK Cloud"}`,
+            detail: `${old ? "Uppdaterade" : "Skapade"} företag: ${name} · ${storageMode === "LOCAL" ? "lokal lagring" : "serverlagring"}`,
           },
         });
         return company;

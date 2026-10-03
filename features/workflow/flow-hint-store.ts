@@ -30,7 +30,7 @@ export function useFlowHintShown(): boolean {
   return useSyncExternalStore(subscribe, () => current !== null, () => false);
 }
 
-// ---------- the page the person is on, for HINTEK AI ----------
+// ---------- the page the person is on, for Workflow AI ----------
 let pageContext: unknown = null;
 /** Set by the progress line of the open page; read by the assistant when a question is sent. */
 export function publishPageContext(next: unknown) { pageContext = next; }

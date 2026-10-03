@@ -49,6 +49,8 @@
   --feature-credit-soft: #fffbeb;
   /* Produktägare: what only the superadmin sees (2026-10-03). */
   --feature-owner: #a21caf;
+  /* The name in the menu and on the login card: HINTEK's dark blue from the wordmark (2026-10-03). */
+  --brand-wordmark: #113351;
   --feature-owner-soft: #fdf4ff;
   --workflow-card-border: #e3eaf2;
   --workflow-card-border-hover: #afcfe9;
@@ -165,7 +167,7 @@ html[data-theme="dark"] {
   --workflow-field-border: #4a556d; --workflow-field-border-hover: #78c1ea;
   --workflow-notice: #17364c; --workflow-notice-foreground: #d5effc;
   --panel-header: #172c42;
-  --feature-owner: #f0abfc; --feature-owner-soft: #3b1240;
+  --feature-owner: #f0abfc; --feature-owner-soft: #3b1240; --brand-wordmark: #edf0f7;
 }
 html[data-theme="dark"] .bg-white { background-color: var(--card); }
 html[data-theme="dark"] input[data-slot="input"] {
@@ -281,8 +283,9 @@ html[data-theme="blue"] .workspace-sidebar .workspace-menu-item.owner-only { box
 html[data-theme="blue"] .workspace-sidebar .workspace-menu-item-active { background: #24507a; color: #ffffff; box-shadow: none; }
 html[data-theme="blue"] .workspace-sidebar-note { background: color-mix(in srgb, #ffffff 6%, transparent); border-color: var(--border); }
 /* Text wordmark in the self-hosted Gugi font (SIL OFL, public/picture/fonts/gugi), in every theme (2026-10-03). */
-.workflow-brand-text { display: block; overflow: hidden; font-family: Gugi, Inter, sans-serif; font-size: 1.25rem; line-height: 1.75rem; color: var(--foreground); white-space: nowrap; text-overflow: ellipsis; }
-html[data-theme="blue"] .workflow-brand-text { color: #ffffff; }
+.workflow-brand-text { display: block; overflow: hidden; font-family: Gugi, Inter, sans-serif; font-size: 1.25rem; line-height: 1.75rem; color: var(--brand-wordmark); white-space: nowrap; text-overflow: ellipsis; }
+.auth-brand .workflow-brand-text { font-size: 1.625rem; line-height: 2rem; }
+html[data-theme="blue"] :is(.workspace-sidebar, .workspace-header, .workspace-drawer) .workflow-brand-text { color: #ffffff; }
 
 /* Public landing page (2026-09-26): always HINTEK Blue, independent of a signed-in user's theme. */
 .landing {

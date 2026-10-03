@@ -5,7 +5,7 @@ export const VIEW_AS_MODES = ["owner", "member", "local"] as const;
 export type ViewAs = (typeof VIEW_AS_MODES)[number];
 
 export const VIEW_AS_LABELS: Record<ViewAs, { label: string; description: string }> = {
-  owner: { label: "Kundföretagets ägare (Cloud)", description: "Ett betalande företag i HINTEK Cloud: allt utom Produktadministration." },
+  owner: { label: "Kundföretagets ägare (Cloud)", description: "Ett betalande företag i serverlagring: allt utom Produktadministration." },
   member: { label: "Medarbetare (Cloud)", description: "En anställd med behörigheten Utföra arbete: inga företagsinställningar." },
   local: { label: "Gratisföretag (Local)", description: "Ett nytt konto i Local: hela Workflow i den egna filen, utan AI och MCP." },
 };

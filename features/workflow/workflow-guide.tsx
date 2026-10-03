@@ -50,7 +50,7 @@ export function WorkflowGuide() {
       <Panel title="Tips i arbetsflödet" description="Beslutsstöd som följer progressionen.">
         <ul className="list-disc space-y-2 pl-5 text-sm leading-6">
           <li>Under progressionslinjen visas ibland ett tips: tiden går på en annan uppgift, ingen tid är registrerad, datumet har passerat, allt är klart att slutföra.</li>
-          <li>Tipsen bygger på regler i Workflow och kostar inga krediter. Fråga HINTEK AI på ett tips använder AI-modellen om företaget har slagit på den.</li>
+          <li>Tipsen bygger på regler i Workflow och kostar inga krediter. Fråga Workflow AI på ett tips använder AI-modellen om företaget har slagit på den.</li>
           <li><strong>Inte nu</strong> döljer tipset på den uppgiften, <strong>Visa inte sådana tips</strong> stänger av det helt. Hur ofta tips visas – Ofta, Normalt, Sällan eller Av – väljer du under Inställningar.</li>
         </ul>
       </Panel>

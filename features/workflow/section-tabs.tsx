@@ -25,7 +25,7 @@ export function companyTabs(options: { admin: boolean; cloud: boolean; ai: boole
     ...(options.admin ? [{ view: "company_settings", label: "Rapporter och logotyp", icon: FileText }] : []),
     // A free company in Local has nothing to spend credits on; the tab offers Cloud instead (2026-10-03).
     ...(options.credits ? [options.cloud ? { view: "credits", label: "Krediter", icon: CreditCard } : { view: "credits", label: "Uppgradera till Cloud", icon: Cloud }] : []),
-    ...(options.ai && options.cloud ? [{ view: "ai_settings", label: "HINTEK AI", icon: Sparkles }] : []),
+    ...(options.ai && options.cloud ? [{ view: "ai_settings", label: "Workflow AI", icon: Sparkles }] : []),
     ...(options.admin && options.cloud && options.integrations ? [{ view: "integrations", label: "API och MCP", icon: KeyRound }] : []),
     ...(options.admin && options.cloud ? [{ view: "history_retention", label: "Historik och lagring", icon: History }] : []),
   ];

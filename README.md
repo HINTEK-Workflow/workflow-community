@@ -32,20 +32,23 @@ Workflow is installed in the folder `workflow-community` in your home folder. Ru
 settings and data are kept. In that folder, `docker compose down` stops Workflow and `docker compose up -d` starts it
 again.
 
-## What is not included
+## What is included
 
-HINTEK's commercial parts are not part of this repository. Without them:
+Every function of Workflow, with your own keys:
 
-- there is no payment, subscription or invoicing (Stripe);
-- there are no credits to buy, and use is not limited by credits;
-- there is no public landing page or landing page editor;
-- there is no AI assistant, no API and no MCP server;
-- sign-in is with e-mail and password only (no Google sign-in).
+- projects, tasks, work orders, risk assessments, commissioning checks, rounds, planning, time and the form builder;
+- **Workflow AI** (chat, proposals, review, import with AI) with your own OpenAI key – no credits, OpenAI bills you;
+- the **API** and the **MCP server** with OAuth for ChatGPT, Claude and your own systems;
+- sign-in with e-mail and password, or with **Google** using your own OAuth keys; self sign-up that you can switch on;
+- e-mail through your own SMTP server, operations alerts, newsletters and announcements;
+- import of customer lists, projects and control points.
 
-## Private-test mode
+Not included are HINTEK's ways of charging customers (Stripe, invoicing, prices, credits) and HINTEK's public landing
+page. Nothing in this edition contacts HINTEK: you run e-mail, backup and keys yourselves, and the app loads nothing
+from third-party sites.
 
-The current release signs in only the owner account (`INSTANCE_ADMIN_EMAIL`) and, on a public HTTPS server, the
-addresses in `PILOT_ACCESS_EMAILS`. Open sign-up is not available yet.
+**For internal use at your company, read [INSTALLATION.md](INSTALLATION.md)** (in Swedish): what is required on a local
+server or on your own server on the internet, HTTPS, scheduled jobs, backup and security.
 
 ## Requirements
 

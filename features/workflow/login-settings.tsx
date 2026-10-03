@@ -8,7 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { api } from "@/features/kfid/api";
 import { Panel } from "@/features/kfid/ui";
 
-type Settings = { googleSignIn: boolean; googleConfigured: boolean; googleAvailable: boolean; registrationOpen: boolean; companyLookup: { configured: boolean; keyHint: string | null; updatedAt: string | null; updatedBy: string | null } };
+type Settings = { googleSignIn: boolean; googleConfigured: boolean; googleAvailable: boolean; registrationOpen: boolean; companyLookup: { configured: boolean; keyHint: string | null; updatedAt: string | null; updatedBy: string | null; validUntil: string | null } };
 
 /** Inloggning (2026-10-03): switch "Fortsätt med Google" on the login page on or off; saved at once. */
 export function LoginSettings({ notify }: { notify: (text: string, error?: boolean) => void }) {
@@ -56,6 +56,12 @@ export function LoginSettings({ notify }: { notify: (text: string, error?: boole
         <Button type="button" variant="outline" disabled={busy || !scbKey.trim()} onClick={() => void scb({ scbKey: scbKey.trim() }, "SCB-nyckeln är sparad.")}>Spara nyckeln</Button>
         {settings.companyLookup.configured ? <Button type="button" variant="ghost" disabled={busy} onClick={() => void scb({ scbKey: null }, "SCB-nyckeln är borttagen.")}>Ta bort</Button> : null}
       </div>
+      {settings.companyLookup.configured ? <div className="flex flex-wrap items-center gap-2">
+        <label htmlFor="scb-valid-until" className="text-xs">Giltig till</label>
+        <Input id="scb-valid-until" type="date" key={settings.companyLookup.validUntil ?? "none"} defaultValue={settings.companyLookup.validUntil ?? ""} className="w-44"
+          onChange={(event) => void scb({ scbValidUntil: event.target.value || null }, event.target.value ? "Slutdatumet är sparat. Du får ett driftlarm 14 och 3 dagar innan." : "Slutdatumet är borttaget.")} />
+        <span className="text-xs text-muted-foreground">Driftlarmet påminner 14 och 3 dagar innan nyckeln slutar gälla.</span>
+      </div> : null}
       <div className="flex flex-wrap gap-2">
         <Input value={testNumber} onChange={(event) => setTestNumber(event.target.value)} placeholder="Organisationsnummer att prova" aria-label="Organisationsnummer att prova" className="min-w-0 flex-1 basis-56" />
         <Button type="button" variant="outline" disabled={busy || !testNumber.trim() || (!settings.companyLookup.configured && !scbKey.trim())} onClick={() => void scb({ testNumber, ...(scbKey.trim() ? { scbKey: scbKey.trim() } : {}) }, "")}>Prova</Button>

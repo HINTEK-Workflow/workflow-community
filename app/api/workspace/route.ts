@@ -102,7 +102,7 @@ export async function GET(request: Request) {
     const ctx = await context({ skipLegal: action === "overview" });
     const canKfid = (permission: "read" | "create" | "edit" | "complete" | "report") => ctx.admin || hasWorkflowPermission(ctx.workflowPermissions, "kfid", permission);
     if (action === "overview") {
-      // HINTEK AI lives in ee/ (2026-09-30); without it the control review is off.
+      // Workflow AI lives in ee/ (2026-09-30); without it the control review is off.
       const ai = await serverExtensions.aiOverview();
       const legalRequired = (await legalStatus(ctx)).some(
         (document) => document.required && !document.acceptedAt,

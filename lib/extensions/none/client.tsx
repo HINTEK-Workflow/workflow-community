@@ -1,22 +1,11 @@
-// The core without ee/ (Fas 2): the commercial views do not exist.
+"use client";
+// The core without ee/ (Fas 2; since 2026-10-03 with every function): no payment views and no landing page editor.
+import { coreClientExtensions } from "@/lib/extensions/core-client";
 import type { ClientExtensions } from "@/lib/extensions/types";
 
 export const clientExtensions: ClientExtensions = {
   BillingRead: null,
   PricingAdministration: null,
   LandingEditor: null,
-  AssistantPanel: null,
-  SharingPolicyPanel: null,
-  SummaryAssist: null,
-  WorkOrderProposal: null,
-  RiskMeasuresAssist: null,
-  PlanningProposal: null,
-  ProtocolReview: null,
-  DailyDigestCard: null,
-  ProviderAdministration: null,
-  AiUsageAdministration: null,
-  IntegrationKeys: null,
-  ServerKeysAdministration: null,
-  MyAppConnections: null,
-  ImportPage: null,
+  ...coreClientExtensions,
 };

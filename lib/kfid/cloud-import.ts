@@ -442,7 +442,7 @@ export async function executeCloudWorkspaceImport(input: {
           const stored = await tx.formTemplateVersion.findUnique({ where: { templateId_version: { templateId: details.templateId, version: details.templateVersion } }, include: { template: { select: { permissionArea: true } } } });
           // A form deleted after the export (2026-09-26): the Cloud protocol's own copy of the form is kept.
           const deleted = !stored && current ? await tx.workflowTask.findFirst({ where: { id: current.id, kind: "FORM", formTemplateId: null }, select: { data: true } }) : null;
-          if (!stored && !deleted) throw new ApiError(422, `Protokollet ${local.title} kommer från ett formulär som inte finns hos HINTEK. Återimporten avbröts.`);
+          if (!stored && !deleted) throw new ApiError(422, `Protokollet ${local.title} kommer från ett formulär som inte finns på servern. Återimporten avbröts.`);
           if (stored) {
             form = { formTemplateId: stored.templateId, formTemplateVersion: stored.version, formArea: stored.template.permissionArea };
             data = { kind: "FORM", details: { ...details, templateName: stored.name, document: formDocumentSchema.parse(stored.document) } };

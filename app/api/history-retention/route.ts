@@ -22,7 +22,7 @@ async function admin() {
   const ctx = await context();
   requireAdmin(ctx);
   if (ctx.organization.storageMode !== "HINTEK_CLOUD")
-    throw new ApiError(409, "Lagringstid för historik gäller HINTEK Cloud. Local har historiken i den egna filen.");
+    throw new ApiError(409, "Lagringstid för historik gäller serverlagring. Local har historiken i den egna filen.");
   return ctx;
 }
 

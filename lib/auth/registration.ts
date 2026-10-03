@@ -5,6 +5,11 @@ import { env } from "@/lib/env";
 import { registrationAllowsEmail, setRegistrationGate } from "@/lib/auth/registration-gate";
 import { recordRegistrationAcceptances, registrationDocuments } from "@/lib/legal";
 import { formatOrgNumber, normalizeOrgNumber } from "@/lib/kfid/org-number";
+import { publicInstance } from "@/lib/instance";
+
+// HINTEK sells Cloud, so a new company there starts free in Local; an installation without billing (the community
+// edition on the customer's own server, 2026-10-03) keeps every company's data on its own server from the start.
+export const registrationStorageMode = () => (publicInstance().features.billing ? "LOCAL" as const : "HINTEK_CLOUD" as const);
 
 // Skapa konto (2026-10-03): a company signs itself up – organisation number, company name, the person, one
 // "jag har läst" checkbox and an optional yes to news. It starts free, in Local (the company's own file); Cloud is the
@@ -56,7 +61,7 @@ export async function checkCompany(input: CompanyInput) {
     WHERE regexp_replace(lower(coalesce(profile->>'organizationNumber', '')), '[^a-z0-9]', '', 'g') = ${number}
     LIMIT 1`;
   if (taken.length) throw new RegistrationError(409, "Företaget finns redan i Workflow. Be företagets administratör bjuda in dig.");
-  const documents = await registrationDocuments("LOCAL");
+  const documents = await registrationDocuments(registrationStorageMode());
   const accepted = new Set(input.accepted.map((item) => `${item.id}:${item.contentHash}`));
   if (!documents.every((document) => accepted.has(`${document.id}:${document.contentHash}`)))
     throw new RegistrationError(409, "Villkoren har ändrats sedan sidan öppnades. Ladda om sidan och kryssa i rutan igen.");
@@ -77,7 +82,7 @@ export async function registerAccount(input: CompanyInput, person: { email: stri
       WHERE regexp_replace(lower(coalesce(profile->>'organizationNumber', '')), '[^a-z0-9]', '', 'g') = ${number} LIMIT 1`;
     if (again.length) throw new RegistrationError(409, "Företaget finns redan i Workflow. Be företagets administratör bjuda in dig.");
     const now = new Date();
-    const organization = await tx.organization.create({ data: { name: input.companyName, slug: `company-${randomUUID()}`, storageMode: "LOCAL", wallet: { create: {} } } });
+    const organization = await tx.organization.create({ data: { name: input.companyName, slug: `company-${randomUUID()}`, storageMode: registrationStorageMode(), wallet: { create: {} } } });
     const user = await tx.user.create({ data: {
       email, name: person.name, passwordHash: person.passwordHash ?? null, role: "STAFF", isActive: true,
       emailVerifiedAt: person.emailVerified ? now : null, activeOrganizationId: organization.id,

@@ -9,7 +9,7 @@ const ROOTS = ["app", "components", "features", "lib", "public", "ee"];
 const EXTENSIONS = new Set([".ts", ".tsx", ".css", ".mjs", ".js", ".html", ".json", ".webmanifest"]);
 /** Integrations an administrator switches on with their own key, and links shown as text – never loaded by the page. */
 const ALLOWED = [
-  "api.openai.com", "eu.api.openai.com", // HINTEK AI with the installation's own OpenAI key
+  "api.openai.com", "eu.api.openai.com", // Workflow AI with the installation's own OpenAI key
   "apiafr.scb.se", // company lookup with the installation's own SCB key
   "workflow.hintek.se", // HINTEK's own default address (lib/instance-defaults.ts; the community edition replaces it)
   "github.com", // a link on HINTEK's landing page

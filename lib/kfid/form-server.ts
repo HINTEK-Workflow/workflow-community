@@ -31,7 +31,7 @@ import { publicInstance } from "@/lib/instance";
 
 /**
  * Who builds forms, and whose forms (2026-09-27, replacing "HINTEK only"): HINTEK's superadmin builds HINTEK's
- * forms, shown to every company; a company admin in HINTEK Cloud builds the company's own forms, shown only there.
+ * forms, shown to every company; a company admin in serverlagring builds the company's own forms, shown only there.
  * Employees never build forms. Every query in the form builder is limited to the returned scope.
  */
 export type FormScope = { organizationId: string | null; publisherName: string; hintek: boolean };

@@ -4,7 +4,7 @@ import type { Flow } from "@/lib/workflow/task-flow";
  * Beslutsstöd (2026-10-01): help in the background that follows the progress line and the page the person is
  * on, and says what matters now – the timer running elsewhere, a deadline passed, a high remaining risk, deviations
  * without a work order, a task that is ready to complete, a project whose tasks are all done. Rules only: free, the
- * same answer every time, nothing leaves Workflow. HINTEK AI is asked only when the person presses "Fråga HINTEK AI".
+ * same answer every time, nothing leaves Workflow. Workflow AI is asked only when the person presses "Fråga Workflow AI".
  *
  * Shown sparingly: at most one tip at a time, only after the page has been open a while, never one the person has
  * dismissed, and filtered by the person's own setting (often, normal, rarely, off).
@@ -110,5 +110,5 @@ export function pickAdvice(tips: Advice[], level: AdvisorLevel, muted: readonly 
 /** The person's setting as stored in their preferences; unknown values fall back to Normalt. */
 export const ADVISOR_DEFAULT: { level: AdvisorLevel; muted: string[] } = { level: "normal", muted: [] };
 
-/** The window event a tip sends when the person presses "Fråga HINTEK AI"; the shell opens the assistant with it. */
+/** The window event a tip sends when the person presses "Fråga Workflow AI"; the shell opens the assistant with it. */
 export const ASSISTANT_ASK_EVENT = "hintek:assistant-ask";

@@ -360,7 +360,7 @@ export function Workspace({
   else if (view === "pricing_admin")
     content = user?.role === "SUPERADMIN" && PricingAdministration ? <PricingAdministration notify={notify} /> : null;
   else if (view === "ai_admin")
-    content = user?.role === "SUPERADMIN" ? <>{heading("AI", "Leverantör, kostnad per AI-svar och användning – utan innehåll.")}<div className="space-y-6">{ProviderAdministration ? <ProviderAdministration /> : null}{AiUsageAdministration ? <AiUsageAdministration /> : null}</div></> : null;
+    content = user?.role === "SUPERADMIN" ? <>{heading("AI", instance.features.credits ? "Leverantör, kostnad per AI-svar och användning – utan innehåll." : "Leverantör och användning – utan innehåll.")}<div className="space-y-6">{ProviderAdministration ? <ProviderAdministration /> : null}{AiUsageAdministration ? <AiUsageAdministration /> : null}</div></> : null;
   // The company's report settings are a tab under Mitt företag, not part of the personal settings (2026-10-02).
   else if (view === "company_settings")
     content = (
@@ -609,7 +609,7 @@ export function Workspace({
     );
   else if (view === "landing_editor")
     // The landing editor lives in ee/ (Fas 2); without it page.tsx never opens this view.
-    content = user?.role === "SUPERADMIN" && LandingEditor ? <LandingEditor /> : <Panel title="Endast för HINTEK"><p className="text-sm text-muted-foreground">Landningssidan redigeras av HINTEK:s superadmin.</p></Panel>;
+    content = user?.role === "SUPERADMIN" && LandingEditor ? <LandingEditor /> : <Panel title="Endast för HINTEK"><p className="text-sm text-muted-foreground">Landningssidan redigeras av installationens superadmin.</p></Panel>;
   else if (view === "forms")
     // HINTEK's superadmin builds HINTEK's forms; a company admin in Cloud builds the company's own (2026-09-27).
     content = user?.role === "SUPERADMIN" || (overview?.admin && overview.organization.storageMode !== "LOCAL") ? <FormBuilder userName={user?.name || undefined} tourSeen={overview ? Boolean(preferences.tours?.formBuilder) : undefined}
@@ -617,7 +617,7 @@ export function Workspace({
   else if (view === "import")
     // Import (2026-10-01) writes through the same tools as the API; a Local workspace keeps its data in the file.
     content = ImportPage && overview?.organization.storageMode !== "LOCAL" ? <ImportPage canBuildForms={user?.role === "SUPERADMIN" || Boolean(overview?.admin)} />
-      : <Panel title="Import"><p className="text-sm text-muted-foreground">Import finns i HINTEK Cloud. I Local ligger dina data i den egna filen; använd Lagring för att öppna eller läsa in en fil.</p></Panel>;
+      : <Panel title="Import"><p className="text-sm text-muted-foreground">Import finns i serverlagring. I Local ligger dina data i den egna filen; använd Lagring för att öppna eller läsa in en fil.</p></Panel>;
   else if (view === "facilities")
     content = <><div className="mb-6"><h1 className="page-title">Platser</h1><p className="page-description mt-2">Företagets egna platser och avdelningar som kan kopplas till arbetet. Kundens anläggningar finns på kundkortet.</p></div><OrganizationStructure notify={notify} editable={Boolean(overview?.admin)} /></>;
   else if (view === "new_task")
@@ -828,7 +828,7 @@ export function Workspace({
     content = <>
       {overview?.admin && !preferences.tours.setup ? <div className="mb-6 flex flex-wrap items-center gap-3 rounded-xl border bg-secondary/40 p-4" data-testid="setup-banner">
         <span className="panel-icon"><Rocket className="size-4" /></span>
-        <div className="min-w-0 flex-1"><p className="font-medium">Ställ in Workflow</p><p className="text-xs text-muted-foreground">Fem korta steg: avtal, företaget, säkerhet, HINTEK AI och var du börjar.</p></div>
+        <div className="min-w-0 flex-1"><p className="font-medium">Ställ in Workflow</p><p className="text-xs text-muted-foreground">Fem korta steg: avtal, företaget, säkerhet, Workflow AI och var du börjar.</p></div>
         <Button asChild className="mobile-form-action"><Link href="/?view=setup">Starta guiden</Link></Button>
         <Button type="button" variant="ghost" className="mobile-form-action" onClick={() => { setPreferences((current) => ({ ...current, tours: { ...current.tours, setup: new Date().toISOString() } })); void action({ action: "tour", tour: "setup" }).catch(() => undefined); }}>Inte nu</Button>
       </div> : null}
@@ -1020,7 +1020,7 @@ export function Workspace({
                 <legend className="px-1 text-xs font-semibold">Visa i menyn</legend>
                 <p className="text-xs text-muted-foreground">Välj vilka knappar du vill se. Det du döljer finns kvar och kan väljas igen; Översikt, Hjälp och Inställningar visas alltid.</p>
                 <div className="grid gap-4 sm:grid-cols-2">
-                  {/* Only the buttons this installation has (HINTEK AI and Krediter live in ee/). */}
+                  {/* Only the buttons this installation has (Workflow AI and Krediter live in ee/). */}
                   {MENU_ITEM_GROUPS.map((group) => ({ ...group, items: group.items.filter((item) => (item.key !== "ai" || Boolean(clientExtensions.AssistantPanel)) && (item.key !== "import" || Boolean(clientExtensions.ImportPage))) })).filter((group) => group.items.length).map((group) => <div key={group.title} className="space-y-2">
                     <p className="text-xs font-medium text-muted-foreground">{group.title}</p>
                     {group.items.map((item) => <label key={item.key} className="flex items-center gap-3 text-sm">
@@ -1033,16 +1033,16 @@ export function Workspace({
               {/* Beslutsstöd (2026-10-01): how often tips appear under the progress line; saved at once. */}
               <fieldset className="space-y-3 rounded-lg border p-4" data-testid="advisor-settings">
                 <legend className="px-1 text-xs font-semibold">Tips i arbetsflödet</legend>
-                <p className="text-xs text-muted-foreground">Under progressionslinjen visas ibland ett tips om nästa steg. Tipsen bygger på regler i Workflow och kostar inga krediter; bara knappen Fråga HINTEK AI använder AI.</p>
+                <p className="text-xs text-muted-foreground">Under progressionslinjen visas ibland ett tips om nästa steg. Tipsen bygger på regler i Workflow och kostar inga krediter; bara knappen Fråga Workflow AI använder AI.</p>
                 <AdvisorLevelPicker level={preferences.advisor.level} name="advisor-level-settings" onChange={(level) => void saveAdvisor({ ...preferences.advisor, level })} />
                 {preferences.advisor.muted.length ? <Button type="button" size="sm" variant="outline" onClick={() => void saveAdvisor({ ...preferences.advisor, muted: [] })}>Visa avstängda tips igen ({preferences.advisor.muted.length})</Button> : null}
               </fieldset>
-              {/* HINTEK AI's proposals (2026-10-02: "normalt bara förslag, men användaren ska kunna välja"); saved at once. */}
+              {/* Workflow AI's proposals (2026-10-02: "normalt bara förslag, men användaren ska kunna välja"); saved at once. */}
               {clientExtensions.SummaryAssist ? <fieldset className="space-y-3 rounded-lg border p-4" data-testid="ai-autofill-settings">
-                <legend className="px-1 text-xs font-semibold">Förslag från HINTEK AI</legend>
+                <legend className="px-1 text-xs font-semibold">Förslag från Workflow AI</legend>
                 <label className="flex cursor-pointer items-start gap-2.5 text-sm">
                   <Checkbox className="mt-0.5" checked={preferences.advisor.autofill} onCheckedChange={(value) => void saveAdvisor({ ...preferences.advisor, autofill: value === true })} />
-                  <span><span className="block font-medium">Fyll i tomma fält direkt</span><span className="block text-xs text-muted-foreground">Av: HINTEK AI visar ett förslag som du väljer att använda. På: ett förslag du har bett om skrivs direkt i fältet när det är tomt, och du kan ångra. Att skapa eller ändra uppgifter och planering kräver alltid att du bekräftar.</span></span>
+                  <span><span className="block font-medium">Fyll i tomma fält direkt</span><span className="block text-xs text-muted-foreground">Av: Workflow AI visar ett förslag som du väljer att använda. På: ett förslag du har bett om skrivs direkt i fältet när det är tomt, och du kan ångra. Att skapa eller ändra uppgifter och planering kräver alltid att du bekräftar.</span></span>
                 </label>
               </fieldset> : null}
               <Button type="submit" className="mobile-form-action" disabled={busy}>
@@ -1051,7 +1051,7 @@ export function Workspace({
               </Button>
             </form>
           </Panel>
-          <div className="space-y-6"><Profile notify={notify} /><InstallApp />{overview?.admin ? <Panel title="Kom igång" description="Guiden för att ställa in Workflow: avtal, företaget, säkerhet, HINTEK AI och var du börjar."><Button asChild variant="outline"><Link href="/?view=setup"><Rocket />Öppna guiden</Link></Button></Panel> : null}{clientExtensions.MyAppConnections ? <clientExtensions.MyAppConnections notify={notify} /> : null}</div>
+          <div className="space-y-6"><Profile notify={notify} /><InstallApp />{overview?.admin ? <Panel title="Kom igång" description="Guiden för att ställa in Workflow: avtal, företaget, säkerhet, Workflow AI och var du börjar."><Button asChild variant="outline"><Link href="/?view=setup"><Rocket />Öppna guiden</Link></Button></Panel> : null}{clientExtensions.MyAppConnections ? <clientExtensions.MyAppConnections notify={notify} /> : null}</div>
         </div>
         <div className="mt-6">
           <SuggestionsEditor notify={notify} refresh={refresh} />

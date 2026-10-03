@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { hashPassword } from "@/lib/auth/password";
 import { sendVerificationEmail } from "@/lib/auth/service";
-import { REGISTRATION_COOKIE, RegistrationError, checkCompany, companyInputSchema, createRegistrationIntent, registerAccount, registrationOpen } from "@/lib/auth/registration";
+import { REGISTRATION_COOKIE, RegistrationError, checkCompany, companyInputSchema, createRegistrationIntent, registerAccount, registrationOpen, registrationStorageMode } from "@/lib/auth/registration";
 import { registrationDocuments } from "@/lib/legal";
 import { env } from "@/lib/env";
 import { ApiError, body, checkOrigin, failure } from "@/lib/kfid/server";
@@ -15,7 +15,7 @@ const LINK_OF: Record<string, string> = { TERMS: "/legal/terms", PRIVACY: "/lega
 export async function GET() {
   try {
     if (!(await registrationOpen())) return NextResponse.json({ open: false, documents: [] });
-    const documents = await registrationDocuments("LOCAL");
+    const documents = await registrationDocuments(registrationStorageMode());
     return NextResponse.json({ open: true, documents: documents.map((document) => ({ id: document.id, title: document.title, version: document.version, contentHash: document.contentHash, href: LINK_OF[document.type] ?? "/legal/terms" })) }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return failure(error);

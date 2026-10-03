@@ -18,7 +18,7 @@ export async function GET(request: Request) {
     // Protocols follow their form's permission area (2026-09-27).
     const readable = readableTaskScope(can).any ? readableTaskWhere(can) : null;
     const text = { contains: q, mode: "insensitive" as const };
-    // Files by name as well (2026-09-30), so the app, HINTEK AI and MCP share one search: control attachments with the
+    // Files by name as well (2026-09-30), so the app, Workflow AI and MCP share one search: control attachments with the
     // control read right, task attachments within the readable tasks.
     const [projects, tasks, controls, customers, controlFiles, taskFiles] = await Promise.all([
       can("projects") ? prisma.project.findMany({

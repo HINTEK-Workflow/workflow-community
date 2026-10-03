@@ -1,7 +1,7 @@
 // The boundary between the core and HINTEK's commercial part in ee/ (Fas 2, 2026-09-30). The core only ever reaches
 // ee/ through "@ee/server", "@ee/client" and "@ee/present"; without ee/ they resolve to lib/extensions/none/*.
-// Without ee/ (the community edition): no payment, unlimited use, no landing page, and no HINTEK AI, API or MCP
-// server (2026-09-30).
+// Without ee/ (the community edition): no payment, unlimited use and no landing page. Workflow AI, the API and MCP are
+// part of the core with the installation's own keys (2026-10-03).
 import type { ComponentType, ReactNode } from "react";
 
 export type RouteContext = { params: Promise<Record<string, string>> };
@@ -20,10 +20,7 @@ export type EeRouteKey =
   | "stripe/checkout" | "stripe/portal" | "stripe/webhook"
   | "billing" | "billing/discount-preview" | "billing/invoice"
   | "pricing" | "administration/pricing" | "administration/price-versions"
-  | "superadmin/accounting-export" | "superadmin/bank-payments" | "superadmin/invoice-replacements"
-  | "ai/evals" | "ai/chat" | "ai/conversations" | "ai/digest" | "ai/memory" | "ai/policy" | "ai/proposals" | "ai/review" | "ai/quote" | "ai/status"
-  | "superadmin/ai-usage" | "superadmin/ai-credit-settings" | "integration-keys" | "mcp" | "v1" | "v1/tool" | "import"
-  | "oauth/protected-resource" | "oauth/authorization-server" | "oauth/register" | "oauth/token" | "oauth/revoke" | "oauth/decide" | "oauth/connections" | "superadmin/ai-provider";
+  | "superadmin/accounting-export" | "superadmin/bank-payments" | "superadmin/invoice-replacements";
 
 export type CloudWriteAccess = {
   allowed: boolean;
@@ -45,7 +42,7 @@ export type ServerExtensions = {
   syncCloudSeats(input: { organizationId: string; actorId: string; reason: string }): Promise<unknown>;
   /** Re-plans the notices about purchased credits that expire. */
   syncCreditExpiryNotices(organizationId: string): Promise<unknown>;
-  /** Whether HINTEK AI's control review can run and whether a model provider is configured (workspace overview). */
+  /** Whether Workflow AI's control review can run and whether a model provider is configured (workspace overview). */
   aiOverview(): Promise<{ enabled: boolean; configured: boolean }>;
   paymentSandboxAvailable(): Promise<boolean>;
   /** Asks Stripe whether it accepts the configured secret key; null without ee/. */
@@ -70,12 +67,12 @@ export type ClientExtensions = {
   PricingAdministration: ComponentType<{ notify: NotifyFn }> | null;
   /** The landing page's inline editor. */
   LandingEditor: ComponentType | null;
-  /** HINTEK AI: the assistant in the shell, the company's sharing choices, and the product owner's provider and usage views. */
-  /** `ask`: a question from a tip's "Fråga HINTEK AI", sent with the page's step (2026-10-01). */
+  /** Workflow AI: the assistant in the shell, the company's sharing choices, and the product owner's provider and usage views. */
+  /** `ask`: a question from a tip's "Fråga Workflow AI", sent with the page's step (2026-10-01). */
   /** "Skriv med AI" beside Sammanställ resultat (2026-10-01); null in the community edition. */
   /** `current`: the field's text now (an empty field may be filled directly; a written one gets a proposal). */
   SummaryAssist: ComponentType<{ draft: string; label: string; onText: (text: string) => void; disabled?: boolean; current?: string; sourceId?: string }> | null;
-  /** HINTEK AI's proposals (2026-10-02): a work order from a task's deviations, measures for a risk assessment's risks and planning for a project's tasks. Nothing is created until the person confirms. */
+  /** Workflow AI's proposals (2026-10-02): a work order from a task's deviations, measures for a risk assessment's risks and planning for a project's tasks. Nothing is created until the person confirms. */
   /** `task`: the task as the page holds it; the button is shown only when it has deviations to act on. */
   WorkOrderProposal: ComponentType<{ taskId: string; task: Record<string, unknown>; disabled?: boolean }> | null;
   RiskMeasuresAssist: ComponentType<{ title: string; taskId?: string; risks: { id: string; hazard: string; likelihood: number; consequence: number }[]; onApply: (measures: { riskId: string; measure: string }[]) => () => void; disabled?: boolean }> | null;

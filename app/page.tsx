@@ -110,7 +110,7 @@ export default async function HomePage({
     redirect("/?view=stats");
   const { features } = publicInstance();
   // The Import page lives in ee/ like the API and MCP (2026-10-01); the community edition has no such view.
-  // HINTEK AI's permissions page lives in ee/ (2026-10-01); every signed-in member may read it, only admins change it.
+  // Workflow AI's permissions page lives in ee/ (2026-10-01); every signed-in member may read it, only admins change it.
   if (view === "ai_settings" && !features.ai) redirect("/?view=stats");
   if ((view === "landing_editor" && !features.landingEditor) || (view === "credits" && !features.billing && !features.credits) || ((view === "integrations" || view === "import") && !features.integrations))
     redirect("/?view=stats");

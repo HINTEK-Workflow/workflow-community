@@ -1918,7 +1918,7 @@ export function Editor({
             Färdigställ
           </Button>
         </div>
-        {/* Granska med AI (2026-10-02): HINTEK AI's reviewer reads the saved control and points at what to check; it
+        {/* Granska med AI (2026-10-02): Workflow AI's reviewer reads the saved control and points at what to check; it
             changes nothing. Lives in ee/; the community edition has none. */}
         {ProtocolReview && !localMode ? <div className="mobile-action-grid mt-4 flex flex-wrap items-center gap-3">
           <ProtocolReview controlId={id || undefined} unsaved={!id ? "Spara kontrollen innan den granskas." : dirty ? "Spara dina senaste ändringar, så granskas rätt version." : undefined} />
@@ -1970,7 +1970,7 @@ export function Editor({
             {(localMode || !canSave || readOnly) && (
               <p role="status" className="mt-2 text-xs leading-5 text-amber-700 dark:text-amber-300">
                 {localMode
-                  ? "Kan inte skicka i lokalt läge eftersom kontrolluppgifter inte överförs till HINTEK. Exportera rapporten och skicka den manuellt."
+                  ? "Kan inte skicka i lokalt läge eftersom kontrolluppgifter inte överförs till servern. Exportera rapporten och skicka den manuellt."
                   : "Kan inte skicka eftersom kontrollen inte är redigerbar för det här kontot."}
               </p>
             )}

@@ -977,14 +977,14 @@ export function LocalWorkspace({
             <h1 className="page-title">Lokal arbetsyta</h1>
             <p className="page-description mt-2">
               Kundregister och kontroller lagras på den här datorn – inte i
-              HINTEK Cloud.
+              serverlagring.
             </p>
           </div>
           <div className="notice flex gap-3">
             <ShieldCheck className="mt-0.5 size-5 shrink-0" />
             <p>
               Företagets kunder och kontroller sparas i en fil på den här datorn
-              och skickas aldrig till HINTEK.
+              och skickas aldrig till servern.
             </p>
           </div>
         </>
@@ -992,7 +992,7 @@ export function LocalWorkspace({
       {!workspace && recovery && (
         <Panel
           title="Återställ osparat arbete"
-          description="Workflow hittade en lokal, kraschbeständig återställningskopia i den här webbläsaren. Den har inte skickats till HINTEK."
+          description="Workflow hittade en lokal, kraschbeständig återställningskopia i den här webbläsaren. Den har inte skickats till servern."
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-muted-foreground">
@@ -1015,7 +1015,7 @@ export function LocalWorkspace({
       {!workspace && <Panel
         className="local-workspace-panel"
         title="Öppna lokal arbetsyta"
-        description="Använd en direktansluten mapp eller en komplett arbetsytefil. Innehållet skickas inte till HINTEK."
+        description="Använd en direktansluten mapp eller en komplett arbetsytefil. Innehållet skickas inte till servern."
       >
           <div className="space-y-5">
             {!supported ? (
@@ -1118,8 +1118,8 @@ export function LocalWorkspace({
             </div>
             <p className="text-sm leading-6 text-muted-foreground">
               {backend === "bundle"
-                ? "Spara behåller ändringarna i fliken. Ladda sedan ned arbetsytefilen. Inga kontrolluppgifter skickas till HINTEK."
-                : "Ändringar skrivs till den valda mappen när du väljer Spara. Inga kontrolluppgifter skickas till HINTEK."}
+                ? "Spara behåller ändringarna i fliken. Ladda sedan ned arbetsytefilen. Inga kontrolluppgifter skickas till servern."
+                : "Ändringar skrivs till den valda mappen när du väljer Spara. Inga kontrolluppgifter skickas till servern."}
             </p>
             {backend === "bundle" && bundleDirty && (
               <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm leading-6 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
@@ -1183,7 +1183,7 @@ export function LocalWorkspace({
             ) : null}
             <p className="text-sm leading-6 text-muted-foreground">
               Filens struktur, företagskoppling och samtliga bilagors
-              kontrollsummor är godkända. Inga data har skickats till HINTEK.
+              kontrollsummor är godkända. Inga data har skickats till servern.
             </p>
             <div className="flex justify-end gap-2">
               <Button variant="ghost" onClick={() => setPendingBundle(null)}>

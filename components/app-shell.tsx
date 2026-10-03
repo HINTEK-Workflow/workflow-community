@@ -75,7 +75,7 @@ import { DETAIL_LEVEL_EVENT, detailLevelFor, type DetailLevels } from "@/lib/wor
 import { ASSISTANT_ASK_EVENT } from "@/lib/workflow/flow-advisor";
 import type { AssistantAsk } from "@/lib/extensions/types";
 import { hasWorkflowPermission, type WorkflowPermissionProfile } from "@/lib/workflow/permissions";
-// HINTEK AI lives in ee/ (not in the community edition, 2026-09-30); without it this is null.
+// Workflow AI lives in ee/ (not in the community edition, 2026-09-30); without it this is null.
 const { AssistantPanel, ImportPage } = clientExtensions;
 
 export type ShellUser = {
@@ -85,7 +85,7 @@ export type ShellUser = {
   memberRole: "OWNER" | "ADMIN" | "MEMBER" | null;
   workflowPermissions: WorkflowPermissionProfile;
   organizationName: string | null;
-  /** HINTEK's superadmin, or a company admin in HINTEK Cloud (2026-09-27): may open Skapa formulär. */
+  /** HINTEK's superadmin, or a company admin in serverlagring (2026-09-27): may open Skapa formulär. */
   canBuildForms?: boolean;
   /** The company keeps its data in a local .hwf workspace; search then only reads the open file. */
   localStorageMode?: boolean;
@@ -237,9 +237,9 @@ export const views = {
     tone: "text-feature-customer",
     surface: "bg-feature-customer-soft",
   },
-  // What HINTEK AI may read and do (2026-10-01: "sidan går inte att hitta"): a tab under Mitt företag.
+  // What Workflow AI may read and do (2026-10-01: "sidan går inte att hitta"): a tab under Mitt företag.
   ai_settings: {
-    label: "HINTEK AI",
+    label: "Workflow AI",
     icon: Sparkles,
     tone: "text-primary",
     surface: "bg-secondary",
@@ -279,7 +279,7 @@ export const views = {
     tone: "text-feature-owner",
     surface: "bg-feature-owner-soft",
   },
-  // "Skapa formulär" (2026-09-26): HINTEK's superadmin and, since 2026-09-27, company admins in Cloud; next to HINTEK AI.
+  // "Skapa formulär" (2026-09-26): HINTEK's superadmin and, since 2026-09-27, company admins in Cloud; next to Workflow AI.
   forms: {
     label: "Skapa formulär",
     icon: FileSpreadsheet,
@@ -287,7 +287,7 @@ export const views = {
     surface: "bg-feature-control-soft",
   },
   // Import (2026-10-01): files become customers, projects, work orders, planning, control points or attachments.
-  // Lives in ee/ next to HINTEK AI; Cloud companies only.
+  // Lives in ee/ next to Workflow AI; Cloud companies only.
   import: {
     label: "Import",
     icon: Upload,
@@ -391,7 +391,7 @@ export function AppShell({
   const [confirmCard, confirmElement] = useConfirm();
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [assistantExpanded, setAssistantExpanded] = useState(false);
-  // "Fråga HINTEK AI" on a tip (2026-10-01): opens the panel and sends the question with the page's step.
+  // "Fråga Workflow AI" on a tip (2026-10-01): opens the panel and sends the question with the page's step.
   const [assistantAsk, setAssistantAsk] = useState<AssistantAsk | null>(null);
   useEffect(() => {
     const onAsk = (event: Event) => {
@@ -742,14 +742,14 @@ export function AppShell({
               <span className="flex size-7 items-center justify-center rounded-lg bg-secondary text-primary">
                 <Sparkles className="size-4" />
               </span>
-              <span>HINTEK AI</span>
+              <span>Workflow AI</span>
             </button> : null}
             {Boolean(ImportPage) && !user.localStorageMode && !demo && shown("import", view === "import") ? navItem("import") : null}
             {user.canBuildForms && shown("forms", view === "forms") ? navItem("forms") : null}
           </div>
         ) : null}
         <div className="my-5 border-t" />
-        {/* Menystädning (2026-10-01): HINTEK AI, API och MCP and Historik och lagring are tabs under Mitt
+        {/* Menystädning (2026-10-01): Workflow AI, API och MCP and Historik och lagring are tabs under Mitt
             företag; Landningssidan and E-post tabs under Produktadministration. One button each, the tabs on the page. */}
         {user?.role === "SUPERADMIN" && <div className="mt-1" data-testid="product-menu">
           {navItem("customer_companies", productActive)}

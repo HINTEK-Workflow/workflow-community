@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/session";
 import { googleKeysConfigured, googleSignInAllowed, setGoogleSignInAllowed } from "@/lib/auth/login-settings";
 import { registrationOpen, setRegistrationOpen } from "@/lib/auth/registration";
-import { companyLookupView, lookupCompany, saveCompanyLookupKey } from "@/lib/kfid/company-lookup";
+import { companyLookupView, lookupCompany, saveCompanyLookupKey, saveCompanyLookupValidUntil } from "@/lib/kfid/company-lookup";
 import { normalizeOrgNumber } from "@/lib/kfid/org-number";
 import { publicInstance } from "@/lib/instance";
 import { ApiError, body, checkOrigin, failure } from "@/lib/kfid/server";
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
   try {
     checkOrigin(request);
     const user = await superadmin();
-    const input = z.object({ googleSignIn: z.boolean().optional(), registrationOpen: z.boolean().optional(), scbKey: z.string().trim().max(400).nullable().optional(), testNumber: z.string().max(20).optional() }).strict().parse(await body(request));
+    const input = z.object({ googleSignIn: z.boolean().optional(), registrationOpen: z.boolean().optional(), scbKey: z.string().trim().max(400).nullable().optional(), scbValidUntil: z.union([z.iso.date(), z.null()]).optional(), testNumber: z.string().max(20).optional() }).strict().parse(await body(request));
     const changes: string[] = [];
     // A test lookup with the saved key (or the key typed): the company's name, so the superadmin sees that it works.
     if (input.testNumber !== undefined) {
@@ -44,6 +44,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ...(await view()), test: found ? `SCB svarar: ${found.name}${found.city ? `, ${found.city}` : ""}.` : "SCB gav inget svar – kontrollera nyckeln och numret." });
     }
     if (input.scbKey !== undefined) { await saveCompanyLookupKey(input.scbKey || null, user.name || user.email); changes.push(input.scbKey ? "SCB-nyckeln för företagsuppslag byttes." : "SCB-nyckeln för företagsuppslag togs bort."); }
+    if (input.scbValidUntil !== undefined) { await saveCompanyLookupValidUntil(input.scbValidUntil, user.name || user.email); changes.push(input.scbValidUntil ? `SCB-nyckeln gäller till ${input.scbValidUntil}.` : "SCB-nyckelns slutdatum togs bort."); }
     if (input.googleSignIn !== undefined) { await setGoogleSignInAllowed(input.googleSignIn); changes.push(`Inloggning med Google ${input.googleSignIn ? "påslagen" : "avstängd"}.`); }
     if (input.registrationOpen !== undefined) { await setRegistrationOpen(input.registrationOpen); changes.push(`Nya konton ${input.registrationOpen ? "tillåts – Workflow är öppet för alla med konto" : "tillåts inte – bara inbjudna och pilotlistan"}.`); }
     if (user.activeOrganizationId && changes.length)
