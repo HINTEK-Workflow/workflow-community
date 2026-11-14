@@ -1,0 +1,1967 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* `touch:` is the condition of the touch-target rule further down (a touch screen, or anything narrower than 1024 px, where every
+   control answers within 44 px): a control that must be 44 px high there and keep its drawn size on a computer writes `touch:min-h-11`. */
+@custom-variant touch {
+  @media (pointer: coarse), (max-width: 1023px) {
+    @slot;
+  }
+}
+/* `dark:` follows the app's own theme (data-theme on <html>, set from Ljust · Mörkt · Som enheten), not the device's colour
+   scheme (UX punkt 8, D2): with Tailwind's default media variant a person who chose Mörkt on a device in light mode got the
+   light theme's reds and greens on the dark cards ("Förfallen" read 2.59:1 in the review), and Ljust on a dark device the
+   dark ones on white. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+@font-face {
+  font-family: Gugi;
+  src: url('/picture/fonts/gugi/Gugi-Latin.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* The app's top bar (.workspace-header): sticky things stop under it (the media rules below set the narrower bars). */
+  --workspace-header-h: 4rem;
+  /* Flytande navigering (2026-10-27, beslut 7): its own look, the same blue whatever the theme's accent – a blue pill
+     with white symbols and words and a discreet shadow. Dark theme below. */
+  --floating-nav-bg: #0b65c2;
+  --floating-nav-bg-hover: #0952a0;
+  --floating-nav-fg: #ffffff;
+  --floating-nav-divider: rgb(255 255 255 / .22);
+  --floating-nav-ring: #ffffff;
+  --floating-nav-shadow: 0 6px 18px rgb(11 40 80 / .22), 0 1px 3px rgb(11 40 80 / .18);
+  --background: #f4f7fb;
+  --foreground: #18181b;
+  --card: #fff;
+  --card-foreground: #18181b;
+  --popover: #fff;
+  --popover-foreground: #18181b;
+  --primary: #174c72;
+  --primary-hover: #103b5b;
+  --primary-foreground: #ffffff;
+  --secondary: #e8f2f8;
+  --secondary-foreground: #123f60;
+  --muted: #eef2f7;
+  --muted-foreground: #46566b;
+  --accent: #dcecf5;
+  --accent-foreground: #123f60;
+  --destructive: #b91c1c;
+  /* Red text that carries a meaning (Förfallen, Försenat, a failed check): its own token, readable on cards in both themes (D2). */
+  --danger-text: #b91c1c;
+  --border: #e2e8f0;
+  --input: #d9e0ea;
+  --ring: #2e7eaa;
+  --selection: #c8e3f1;
+  --hintek-brand-start: #2e7eaa;
+  --hintek-brand-end: #103b5b;
+  --hintek-brand-shadow: #174c723d;
+  --feature-control: #6d28d9;
+  --feature-control-soft: #f5f3ff;
+  --feature-customer: #0e7490;
+  --feature-customer-soft: #ecfeff;
+  --feature-credit: #92400e;
+  --feature-credit-soft: #fffbeb;
+  /* The name in the menu and on the login card: HINTEK's dark blue from the wordmark (2026-10-03). */
+  --brand-wordmark: #113351;
+  --workflow-card-border: #e2e8f0;
+  --workflow-card-border-hover: #c3cfdd;
+  --workflow-field-border: #d9e0ea;
+  --workflow-field-border-hover: #c3cfdd;
+  --workflow-notice: #eaf2fb;
+  --workflow-notice-foreground: #23364f;
+  /* Panel headers are white like the panel (2026-10-16, the design lab): the title carries the panel, not a tint. */
+  --panel-header: var(--card);
+  /* The flat look (2026-10-16, docs/design-standard.md): a light blue-grey table head and search box, a quiet hover. */
+  --table-head: #f5f8fb;
+  --surface-hover: #f1f5fa;
+  --search-surface: #edf1f6;
+  /* Nivå 1 på mobil (2026-10-09): one fixed, clear colour per type for the icon squares in lists and tiles
+     (components/native/type-icon.tsx), bright like the phone's own settings (evening: "lite mer färgglada") and deep
+     enough for the white symbol. Blue stays the app's own colour for menus and buttons. Kontrasten (13b, 2026-10-24): every
+     colour reads at least 4.5:1 soft and solid in Light and Dark (tests/panel-area.test.ts), so Riskbedömning, Offert,
+     Rond, Kund, Arbetsorder, Instrument and the neutral grey are a little deeper than before, in the same hue; in Dark the
+     colours are as deep as in Light (the soft symbol is lightened by its own rule at .area-icon). */
+  --type-work-order: #e2281c;
+  --type-control: #9b4fd6;
+  --type-risk: #b75c00;
+  --type-round: #1c863a;
+  --type-time: #5552d9;
+  --type-customer: #0c8097;
+  --type-project: #0a72e8;
+  --type-quote: #9c6b00;
+  --type-purchase: #8a5a35;
+  --type-instrument: #e61546;
+  --type-neutral: #70757f;
+  /* Verktyg (2026-10-24, answer 7): one shared slate blue-grey for Rapportarkiv, Egenkontroll, Instrument, Import,
+     Skapa formulär and Kalkylator, apart from Inställningar's HINTEK Blue and from the status colours. Kalender (answer
+     14): a plum of its own, apart from Tid's indigo. Both read at least 4.5:1 soft and solid in Light and Dark
+     (tests/panel-area.test.ts measures them). */
+  --type-tools: #526b88;
+  --type-calendar: #b3328c;
+  /* Underhåll (2026-10-30): an olive green of its own, apart from Rond's green and Kund's teal. */
+  --type-maintenance: #4d7a12;
+  --type-foreground: #ffffff;
+  /* Shape (2026-10-16): 8 px on cards and panels, 6 px on fields and buttons; no shadows on surfaces. */
+  --radius: 6px;
+  --radius-control: 6px;
+  --radius-panel: 8px;
+  /* Fields and buttons: 34 px with a mouse, 44 px on a touch screen (the rule below). */
+  --control-h: 2.125rem;
+  /* Type scale: page title, panel title, body, meta (labels, descriptions). */
+  --text-page: 1.5rem;
+  --text-title: .9375rem;
+  --text-body: .875rem;
+  --text-meta: .75rem;
+  --heading-font: var(--font-manrope), Manrope, ui-sans-serif, system-ui, sans-serif;
+}
+@media (pointer: coarse) { :root { --control-h: 2.75rem; } }
+
+/* A wide screen (2026-10-16: "bättre att bygga på bredden"): 3xl = 1700 px, where card grids take a fourth column. */
+@theme { --breakpoint-3xl: 106.25rem; }
+
+@theme inline {
+  --font-sans: var(--font-manrope), Manrope, ui-sans-serif, system-ui, sans-serif;
+  /* Codes, keys and article numbers use the same typeface (2026-10-16: one typeface everywhere), with even digits. */
+  --font-mono: var(--font-manrope), Manrope, ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--heading-font);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-danger: var(--danger-text);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-feature-control: var(--feature-control);
+  --color-feature-control-soft: var(--feature-control-soft);
+  --color-feature-customer: var(--feature-customer);
+  --color-feature-customer-soft: var(--feature-customer-soft);
+  --color-feature-credit: var(--feature-credit);
+  --color-feature-credit-soft: var(--feature-credit-soft);
+  /* rounded-md = a control (6 px), rounded-lg/xl = a card or panel (8 px). */
+  --radius-sm: 4px;
+  --radius-md: var(--radius);
+  --radius-lg: var(--radius-panel);
+  --radius-xl: var(--radius-panel);
+  /* Flat (2026-10-16): no shadow on surfaces, buttons or bars; only floating layers (menus, popups) keep a soft one. */
+  --shadow-2xs: 0 0 #0000;
+  --shadow-xs: 0 0 #0000;
+  --shadow-sm: 0 0 #0000;
+  --shadow-md: 0 4px 14px rgb(15 23 42 / .08);
+  --shadow-lg: 0 8px 24px rgb(15 23 42 / .10);
+  --shadow-xl: 0 12px 32px rgb(15 23 42 / .12);
+}
+
+@layer base {
+  * { @apply border-border; }
+  html { overflow-y: scroll; scrollbar-gutter: stable; }
+  /* A dialog locks the page with a right margin as wide as the scrollbar, as if the scrollbar went away. The page keeps
+     its scrollbar (above), so the margin only moved the page and left an empty strip (2026-09-30). */
+  html body[data-scroll-locked] { margin-right: 0 !important; }
+  /* The lock sets overflow: hidden on body. With the page's own scroll on html (above) that made body a scroll container
+     of its own, so the sticky top bar stuck to body instead of the screen and slid away with a scrolled page while a view
+     was open (2026-10-10). The lock moves to html instead: the page keeps its scroll position and the bar stays put. */
+  html:has(> body[data-scroll-locked]) { overflow: hidden; }
+  html body[data-scroll-locked] { overflow: visible !important; }
+  /* Manrope at 400 has thin strokes that read light in small grey text; 500 reads as clearly as the old Inter (font check 2026-10-16). */
+  body { @apply bg-background font-sans text-sm text-foreground antialiased; font-weight: 500; }
+  button:not(:disabled), a { -webkit-tap-highlight-color: transparent; }
+  /* App feel on phones and tablets (2026-10-05: "inte vara floty, inte zooma in på fel sätt"). The page colour
+     also behind an overscroll, and a popup that scrolls keeps the scroll to itself instead of passing it to the page. */
+  html { background-color: var(--background); }
+  :is([role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"]) { overscroll-behavior: contain; }
+  /* A double tap never zooms the page (it made buttons feel slow and zoomed by mistake); pinch zoom stays for
+     accessibility. In the base layer, so a component that needs its own touch handling (touch-none) still wins. */
+  @media (pointer: coarse) { :where(*) { touch-action: manipulation; } }
+  a:focus-visible { @apply rounded-md outline-2 outline-offset-4 outline-ring; }
+  ::selection { background: var(--selection); }
+}
+
+@layer utilities {
+  .font-mono { font-variant-numeric: tabular-nums; letter-spacing: .01em; }
+}
+
+@layer components {
+  /* One typeface everywhere: headings are Manrope too, set apart by size and weight (2026-10-16). */
+  .page-title { font-family: var(--heading-font); font-size: var(--text-page); line-height: 1.2; font-weight: 700; letter-spacing: -.01em; }
+  .section-title { font-family: var(--heading-font); font-size: var(--text-title); line-height: 1.3; font-weight: 600; letter-spacing: 0; }
+  .page-description { @apply text-sm leading-6 text-muted-foreground; }
+}
+
+@layer components {
+  .form-select { @apply w-full min-w-0 border bg-card px-2.5 text-sm outline-none disabled:opacity-50; height: var(--control-h); border-color: var(--workflow-field-border); border-radius: var(--radius-control); transition: border-color 150ms ease, box-shadow 150ms ease;
+    /* A long choice ends in … instead of being cut mid-word (simulation 0.6.3: "Kommande 30 daga", a customer at 390 px). */
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .form-select:hover:not(:disabled) { border-color: var(--workflow-field-border-hover); }
+  .form-select:focus-visible { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 18%, transparent); }
+  .form-textarea { @apply min-h-24 w-full border bg-card px-2.5 py-2 text-sm leading-6 outline-none disabled:opacity-50; border-color: var(--workflow-field-border); border-radius: var(--radius-control); transition: border-color 150ms ease, box-shadow 150ms ease; }
+  .form-textarea:hover:not(:disabled) { border-color: var(--workflow-field-border-hover); }
+  .form-textarea:focus-visible { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 18%, transparent); }
+  .notice { @apply px-3 py-2.5 text-sm leading-6; border: 0; border-radius: var(--radius-control); background: var(--workflow-notice); color: var(--workflow-notice-foreground); }
+  .workflow-card { border: 1px solid var(--workflow-card-border); border-radius: var(--radius-panel); background: var(--card); transition: border-color 150ms ease, background-color 150ms ease; }
+  .workflow-card:hover, .workflow-card:focus-within { border-color: var(--workflow-card-border-hover); background: var(--surface-hover); }
+  /* A whole card that opens on a tap (2026-10-02: on a phone you had to hit the link exactly). The card is
+     .tap-card; its main link is .stretched-link and covers the card; other buttons in it sit above with .tap-above. */
+  .tap-card { position: relative; }
+  .stretched-link::after { content: ""; position: absolute; inset: 0; z-index: 1; border-radius: inherit; }
+  .tap-card .tap-above { position: relative; z-index: 2; }
+  /* Without a mouse there is no hover: a pressed card answers the finger, and a chevron shows what opens. */
+  @media (hover: none) {
+    .workflow-card:active, .tap-card:active { background: var(--surface-hover); }
+  }
+  .data-table tbody tr:hover td { background: var(--surface-hover); }
+  .panel-header { background: var(--panel-header); }
+  /* Hela kortet klickbart (2026-10-24): a foldable panel's whole header opens and folds it. The arrow is the button
+     (aria-expanded); from the keyboard its ring is drawn round the whole header, so the row reads as the button, and a
+     mouse over the header lights the arrow. No transition: nothing moves. */
+  .panel-header[data-panel-foldable]:has(.panel-fold-toggle:focus-visible) { outline: 2px solid var(--ring); outline-offset: -2px; }
+  @media (hover: hover) { .panel-header[data-panel-foldable]:hover .panel-fold-toggle { background: var(--secondary); color: var(--secondary-foreground); } }
+  /* A card that only leads on (Panel link): its one link covers the card (.stretched-link); the pointer says so. */
+  .panel-link { cursor: pointer; }
+  @media (hover: hover) { .panel-link:hover { border-color: var(--workflow-card-border-hover); } }
+  /* .field-group (grouped fields in a card) is flat since 2026-10-16: see the unlayered rule further down. */
+  /* Icon box beside a card title (UX-punkt 6, 2026-10-22: "som Ny tidrapport"): a clear square in the card area colour
+     (--panel-tone, set by Panel from the --type-* tokens; HINTEK Blue for Inställningar and Produktadministration) with a white
+     symbol, like the app icon squares. Outside a Panel it is HINTEK Blue. */
+  /* Since the icon standard (2026-10-24) the square is the shared solid `.area-icon` (components/area-icon.tsx); `.panel-icon` marks it as a card title icon. */
+  .field-label { color: var(--workflow-notice-foreground); }
+  .workspace-main label, .workspace-modal label { color: var(--workflow-notice-foreground); }
+  .stat-card { @apply flex min-w-0 items-center gap-3 rounded-xl border bg-card p-4 shadow-xs; }
+  .stat-icon { @apply flex size-10 shrink-0 items-center justify-center rounded-lg; }
+  .stat-violet .stat-icon { @apply bg-violet-100 text-violet-600; }
+  .stat-emerald .stat-icon { @apply bg-emerald-100 text-emerald-600; }
+  .stat-sky .stat-icon { @apply bg-sky-100 text-sky-600; }
+  .stat-amber .stat-icon { @apply bg-amber-100 text-amber-600; }
+  .section-violet { @apply border-t-2 border-t-violet-500; }
+  .section-cyan { @apply border-t-2 border-t-cyan-500; }
+  .section-amber { @apply border-t-2 border-t-amber-500; }
+  .section-rose { @apply border-t-2 border-t-rose-500; }
+  .table-scroll { @apply w-full max-w-full overflow-x-auto; contain: inline-size; }
+  .data-table { @apply w-full text-left text-sm tabular-nums; }
+  /* Stabil sidladdning steg 10: a list table with a <colgroup> keeps its column widths whatever its rows hold, so they do
+     not change when the rows come, when a page is turned or when a cell grows. */
+  .data-table:has(> colgroup) { table-layout: fixed; }
+  .data-table th { @apply whitespace-nowrap border-b px-4 py-2.5 text-xs font-semibold text-muted-foreground; background: var(--table-head); }
+  .data-table td { @apply border-b px-4 py-3; }
+  .data-table tr:last-child td { @apply border-b-0; }
+}
+/* A stretched link never moves when pressed (2026-10-24, clickable-cards): a button's press nudge (active:translate-y-px)
+   gives the link a transform, which makes the link itself the box of its ::after – the cover shrank to the button on
+   mousedown, the mouseup landed on the card, and a click on the card's text opened nothing. Unlayered, so it wins.
+   Only translate (the property Tailwind's translate-y-px sets): beside transform: none the CSS minifier (lightningcss)
+   dropped translate: none, and the built rule did nothing (QA 2026-10-24). */
+.stretched-link:active { translate: none; }
+html[data-density="compact"] .data-table td { padding-top: .5rem; padding-bottom: .5rem; }
+html[data-theme="dark"] {
+  --floating-nav-bg: #1a64b4; --floating-nav-bg-hover: #2373c8; --floating-nav-fg: #ffffff; --floating-nav-divider: rgb(255 255 255 / .2);
+  --floating-nav-ring: #ffffff; --floating-nav-shadow: 0 6px 18px rgb(0 0 0 / .5), 0 0 0 1px rgb(255 255 255 / .12);
+  --background: #10131c; --foreground: #edf0f7; --card: #191e2a; --card-foreground: #edf0f7;
+  --popover: #191e2a; --popover-foreground: #edf0f7; --primary: #78c1ea; --primary-hover: #91cff0; --primary-foreground: #10131c;
+  --secondary: #17364c; --secondary-foreground: #c5e8fb; --muted: #242a38; --muted-foreground: #b4bccc;
+  /* Readable on the dark cards and the calendar's grey days (contrast check 2026-10-16): lighter grey text and a lighter red. */
+  --destructive: #f87171;
+  /* A lighter red for text on the dark cards (D2, UX punkt 8): 9:1 on --card, over 4.5:1 also on --muted and the red pills. */
+  --danger-text: #fca5a5;
+  --accent: #1c4058; --accent-foreground: #d5effc; --border: #3a4358; --input: #4a556d; --ring: #78c1ea;
+  --selection: #225a7c;
+  --workflow-card-border: #3a4358; --workflow-card-border-hover: #78c1ea;
+  --workflow-field-border: #4a556d; --workflow-field-border-hover: #78c1ea;
+  --workflow-notice: #17364c; --workflow-notice-foreground: #d5effc;
+  --panel-header: var(--card);
+  --table-head: #1e2432; --surface-hover: #1f2635; --search-surface: #242a38;
+  --brand-wordmark: #edf0f7;
+  --type-work-order: #e51f13; --type-control: #9d4edc; --type-risk: #b35e08; --type-round: #248640; --type-time: #6866e4;
+  --type-customer: #188094; --type-project: #1072e3; --type-quote: #976d0d; --type-purchase: #9a6b45; --type-instrument: #e61245; --type-neutral: #6f757e;
+  --type-tools: #637797; --type-calendar: #aa5a9d; --type-maintenance: #557f1c;
+}
+html[data-theme="dark"] .bg-white { background-color: var(--card); }
+html[data-theme="dark"] input[data-slot="input"] {
+  background-color: color-mix(in srgb, var(--input) 30%, var(--card)) !important;
+  color: var(--foreground) !important;
+  color-scheme: dark;
+}
+html[data-theme="dark"] input[data-slot="input"]:disabled {
+  background-color: color-mix(in srgb, var(--input) 80%, var(--card)) !important;
+}
+html[data-theme="dark"] input[data-slot="input"]:-webkit-autofill,
+html[data-theme="dark"] input[data-slot="input"]:-webkit-autofill:hover,
+html[data-theme="dark"] input[data-slot="input"]:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--foreground);
+  -webkit-box-shadow: 0 0 0 1000px var(--card) inset !important;
+  caret-color: var(--foreground);
+}
+
+/* Light (2026-10-16: two themes, Light and Dark; Light is the former HINTEK Blue): a clear HINTEK blue accent on a
+   light blue-tinted page, the navy menu and top bar below. It is also what a page shows before the theme is applied. */
+:root:not([data-theme="dark"]) {
+  --background: #f4f7fb;
+  --foreground: #13223a;
+  --card: #ffffff;
+  --card-foreground: #13223a;
+  --popover: #ffffff;
+  --popover-foreground: #13223a;
+  --primary: #0b65c2;
+  --primary-hover: #0952a0;
+  --primary-foreground: #ffffff;
+  --secondary: #e7f1fc;
+  --secondary-foreground: #0a4d93;
+  --muted: #eef2f7;
+  --muted-foreground: #46566b;
+  --accent: #d8e9fb;
+  --accent-foreground: #0a4d93;
+  --destructive: #c42b2b;
+  --danger-text: #b91c1c;
+  --border: #e2e8f0;
+  --input: #d9e0ea;
+  --ring: #2d84d9;
+  --selection: #cfe4fa;
+  --hintek-brand-start: #2d84d9;
+  --hintek-brand-end: #0a4d93;
+  --hintek-brand-shadow: #0b65c233;
+  --feature-control: #6d3fd4;
+  --feature-control-soft: #f3effe;
+  --feature-customer: #0b7c8c;
+  --feature-customer-soft: #e6f7f9;
+  --feature-credit: #9a5a0a;
+  --feature-credit-soft: #fff4dc;
+  --workflow-card-border: #e2e8f0;
+  --workflow-card-border-hover: #c3cfdd;
+  --workflow-field-border: #d9e0ea;
+  --workflow-field-border-hover: #c3cfdd;
+  --workflow-notice: #dbeafe;
+  --workflow-notice-foreground: #123b6b;
+}
+/* Grouped fields without a box (2026-10-16: "här används fortfarande kort i kort … följer det nya temat bättre"):
+   a group inside a card is a titled part of the card – a thin line above it with the group's title on the line – never a
+   grey box with its own frame. Unlayered, so it wins over the rounded border, padding and tint the places still write
+   (rounded-lg border p-3 …); the fields inside stay white. The phone's level 1 has had this look since 2026-10-12. */
+.field-group { border-width: 1px 0 0; border-style: solid; border-color: var(--border); border-radius: 0; background: transparent; padding-inline: 0; padding-bottom: 0; padding-top: 1rem; }
+.field-group > legend { padding: 0 .625rem 0 0; font-size: .8125rem; font-weight: 600; color: var(--foreground); }
+/* A collapsible group keeps its row: only the frame and tint go. */
+:is(details, section[data-open], section[data-testid]).field-group { padding-top: .25rem; }
+/* The Light theme's chrome (HINTEK Blue, 2026-09-26): navy #113351 menu and drawer with white text; the menu's icons
+   in their function's colour since 2026-10-24 (the rule below). The selected
+   item is only a lighter tone, with no extra edge or ring. The top bar stays navy too (2026-10-16: "toppen skall vara
+   blå som innan"). */
+html:not([data-theme="dark"]) :is(.workspace-sidebar, .workspace-drawer, .workspace-header) {
+  --card: #113351;
+  --background: #1a3e62;
+  --foreground: #ffffff;
+  --muted: #1d4269;
+  --muted-foreground: #d3deea;
+  --secondary: #22496f;
+  --secondary-foreground: #ffffff;
+  --primary: #8ec3f5;
+  --primary-foreground: #113351;
+  --border: #2a5077;
+  --ring: #8ec3f5;
+  color: var(--foreground);
+}
+html:not([data-theme="dark"]) :is(.workspace-aside, .workspace-header) { border-color: #2a5077; }
+/* The search box on the navy top bar: a lighter navy tone with light text. */
+html:not([data-theme="dark"]) .workspace-header { --search-surface: #1d4269; --workflow-field-border: #3b6590; }
+html:not([data-theme="dark"]) .workspace-sidebar .workspace-menu-item { color: #ffffff; }
+html:not([data-theme="dark"]) .workspace-sidebar .workspace-menu-item > span:first-child:not(.area-icon) { background: transparent; color: #ffffff; }
+/* The menu's function colours in Light too (2026-10-24, answer 13; the icon standard): on the navy menu a small
+   square in a dark tone of the function's colour (28 % of it in the navy) behind a light tone of it (50 % in white). The
+   symbol reads at least 4.7:1 on its square for every function (WCAG 1.4.11 asks 3:1; tests/panel-area.test.ts measures
+   it), whatever the row's own background (resting, hover, the active row). */
+html:not([data-theme="dark"]) .workspace-sidebar .workspace-menu-item .area-icon { background: color-mix(in srgb, var(--area) 28%, var(--card)); color: color-mix(in srgb, var(--area) 50%, #ffffff); }
+/* The menu's icons without colour (2026-10-24, with a picture of the earlier menu: "Ta bort nuvarande ikonfärg helt
+   på menyn"): a plain symbol in the row's own text colour, no square, in Light and Dark; the pages, cards and lists keep
+   their function colours (the icon standard). Overrides the two rules above. */
+.workspace-sidebar .workspace-menu-item .area-icon,
+html:not([data-theme="dark"]) .workspace-sidebar .workspace-menu-item .area-icon { background: transparent; color: inherit; }
+html:not([data-theme="dark"]) .workspace-sidebar .workspace-menu-item-active { background: #24507a; color: #ffffff; box-shadow: none; }
+html:not([data-theme="dark"]) .workspace-sidebar-note { background: color-mix(in srgb, #ffffff 6%, transparent); border-color: var(--border); }
+/* Text wordmark in the self-hosted Gugi font (SIL OFL, public/picture/fonts/gugi), in every theme (2026-10-03). */
+.workflow-brand-text { display: block; overflow: hidden; font-family: Gugi, var(--font-manrope), sans-serif; font-size: 1.25rem; line-height: 1.75rem; color: var(--brand-wordmark); white-space: nowrap; text-overflow: ellipsis; }
+.auth-brand .workflow-brand-text { font-size: 1.625rem; line-height: 2rem; }
+/* WorkflowBrand measures the whole name and its first word with these rulers and shows what fits whole (2026-10-10). */
+.workflow-brand-ruler { position: absolute; top: 0; left: 0; width: max-content; overflow: visible; visibility: hidden; pointer-events: none; }
+html:not([data-theme="dark"]) :is(.workspace-sidebar, .workspace-header, .workspace-drawer) .workflow-brand-text { color: #ffffff; }
+/* The top bar's search is a quiet box, as in the design lab (computer); on the navy bar it is a lighter navy tone. */
+/* The article list's rows (2026-10-17): Art.nr, Leverantör, Beskrivning, Pris, then the antal and − antal +; stacked on a phone. */
+.article-offer-row { grid-template-columns: minmax(0, 1fr); }
+/* The last column: the antal field ("1 st") and − antal + with the bin's place (2026-10-26). */
+/* Below 1280 px the last column takes its own row, right-aligned: five fixed columns (about 44 rem) pushed a tablet sideways. */
+@media (min-width: 640px) and (max-width: 1279.98px) {
+  .article-offer-row { grid-template-columns: 7.5rem 9rem minmax(0, 1fr) 6.5rem; }
+  .article-offer-row > :nth-child(5) { grid-column: 1 / -1; justify-self: end; }
+  .article-offer-row[aria-hidden="true"] > :nth-child(5) { display: none; }
+}
+@media (min-width: 1280px) { .article-offer-row { grid-template-columns: 7.5rem 9rem minmax(0, 1fr) 6.5rem 21rem; } }
+/* Only colours animate: a width that animated from 11 rem down pushed the profile out of a phone-wide window for a moment. */
+.workspace-header .workspace-search-button { transition-property: color, background-color, border-color; }
+/* N14 (2026-11-01): while no time runs the timer's reserved place stands empty, and the trail may use it. Its own box and
+   Sök stay where they are (tests/top-bar-stable.browser.cjs); only the trail reaches over the empty place. */
+@media (min-width: 1024px) {
+  .workspace-header:has(.workspace-timer-slot:empty) [data-testid="breadcrumbs"] { margin-right: -7.25rem; }
+}
+@media (min-width: 1024px) {
+  .workspace-header .workspace-search-button { width: 11rem; justify-content: flex-start; border-color: transparent; background: var(--search-surface); color: var(--muted-foreground); font-weight: 500; }
+  .workspace-header .workspace-search-button:hover { border-color: var(--workflow-field-border); background: var(--search-surface); color: var(--foreground); }
+  .workspace-header .workspace-search-button kbd { margin-left: auto; padding: 0 .3rem; border: 1px solid var(--border); border-radius: 4px; background: var(--card); font-family: inherit; }
+}
+@media (min-width: 1440px) {
+  .workspace-header .workspace-search-button { width: 16rem; }
+}
+@media (max-width: 639px) {
+  /* The shell has search, calculator and profile controls beside the wordmark: a smaller name. Whether the whole name,
+     its first word ("HINTEK") or nothing is shown is measured by WorkflowBrand, so the name is never cut – also at 360 px
+     without a timer (simulation 0.6.3: "HINTEK Work"). */
+  .workspace-header .workflow-brand-text { font-size: 1rem; line-height: 1.5rem; letter-spacing: -.02em; text-overflow: clip; }
+  /* With a running timer a little more room: tighter gaps and the profile button without its arrow (the avatar is the button). */
+  html:not([data-native]) .workspace-header:has([data-testid="running-timer"]) { gap: .5rem; }
+  html:not([data-native]) .workspace-header:has([data-testid="running-timer"]) .workspace-profile > svg:last-child { display: none; }
+}
+
+/* Public landing page (2026-09-26): always HINTEK Blue, independent of a signed-in user's theme. */
+.landing {
+  --background: #f7f9fc; --foreground: #13223a; --card: #ffffff; --card-foreground: #13223a;
+  --primary: #0b65c2; --primary-hover: #0952a0; --primary-foreground: #ffffff;
+  --secondary: #e7f1fc; --secondary-foreground: #0a4d93; --muted: #eef3f8; --muted-foreground: #56657a;
+  --border: #dde7f2; --ring: #2d84d9;
+}
+.landing-brand { font-family: Gugi, var(--font-manrope), sans-serif; color: #ffffff; white-space: nowrap; }
+.landing-brand-dark { color: #113351; }
+/* The landing page's bar, the app picture's bar and menu: the navy of the app's own top bar and menu (2026-10-16). */
+.landing-bar { background: #113351; color: #ffffff; border-bottom: 1px solid #2a5077; }
+.landing-grid { background-image: linear-gradient(to right, color-mix(in srgb, #113351 6%, transparent) 1px, transparent 1px), linear-gradient(to bottom, color-mix(in srgb, #113351 6%, transparent) 1px, transparent 1px); background-size: 40px 40px; }
+.landing-dark { background: #113351; color: #ffffff; }
+.landing-button { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; height: 2.5rem; padding-inline: 1rem; border-radius: var(--radius-control); font-size: .875rem; font-weight: 600; transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease; }
+.landing-button:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.landing-button-lg { height: 2.75rem; padding-inline: 1.25rem; }
+.landing-button-primary { background: var(--primary); color: var(--primary-foreground); }
+.landing-button-primary:hover { background: var(--primary-hover); }
+.landing-button-outline { border: 1px solid var(--border); background: var(--card); color: var(--foreground); }
+.landing-button-outline:hover { border-color: color-mix(in srgb, var(--primary) 40%, transparent); background: var(--secondary); color: var(--secondary-foreground); }
+.landing-button-light { background: #ffffff; color: #113351; }
+.landing-button-light:hover { background: #e7f1fc; }
+.landing-button-ghost-light { border: 1px solid rgb(255 255 255 / .3); color: #ffffff; }
+/* A plan that cannot be chosen yet (prices "Kommer snart", 2026-10-16): looks like a button, does nothing. */
+.landing-button-muted, .landing-button-muted:hover { border: 1px dashed var(--border); background: var(--muted); color: var(--muted-foreground); cursor: default; }
+.landing-button-ghost-light:hover { background: rgb(255 255 255 / .1); }
+/* Community's installation line (2026-11-06: "i svart ruta"): a terminal look with fixed colours, so it reads the same
+   in Light and Dark; the text wraps inside the box, never the page. A small text link to the closed repository is plain grey. */
+.landing-code { background: #0d1117; color: #e6edf3; border: 1px solid #30363d; }
+.landing-code code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+.landing-code .landing-editable:hover, .landing-code .landing-editable:focus { outline-color: #ffffff; background: rgb(255 255 255 / .08); }
+.landing-code-copy { color: rgb(255 255 255 / .75); }
+.landing-code-copy:hover, .landing-code-copy[data-copied] { background: rgb(255 255 255 / .1); color: #ffffff; }
+@media (pointer: coarse) { .landing-code-copy { min-height: 2.75rem; min-width: 2.75rem; } }
+.landing-link-muted { color: var(--muted-foreground); cursor: default; }
+/* The landing page's top and footer, the same as the public website's (2026-11-11). */
+.landing-top-button { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: .55rem 1rem; border: 1px solid #174c72; border-radius: 6px; background: #174c72; color: #ffffff; font-size: 15px; font-weight: 600; line-height: 1.25; }
+.landing-top-button:hover { background: #103b5b; border-color: #103b5b; }
+.landing-top-button-outline { background: #ffffff; color: #174c72; }
+.landing-top-button-outline:hover { background: #f4f7fb; color: #103b5b; }
+.landing-foot :where(a, summary, button):focus-visible { outline: 3px solid #ffffff; outline-offset: 2px; }
+/* No underlines on the public pages (2026-11-11, the same as the public website): the landing page, the legal pages and the
+   sign-in pages (.public-page), and the cookie dialog while one of them is open. The signed-in app keeps its own look. */
+.public-page :is(a, button, summary),
+body:has(.public-page) :is([role="dialog"], [role="alertdialog"], [data-testid="cookie-notice"]) :is(a, button, summary) { text-decoration-line: none !important; }
+/* A link in running text: #0b5cb0 at 600 (6.6:1 on white), darker on hover. */
+.public-link,
+.public-page :is(p, li) > a:not([class*="button"]):not(.landing-foot *):not(.landing-header *),
+body:has(.public-page) :is([role="dialog"], [role="alertdialog"], [data-testid="cookie-notice"]) p a { color: #0b5cb0; font-weight: 600; transition: color 150ms ease; }
+.public-link:hover,
+.public-page :is(p, li) > a:not([class*="button"]):not(.landing-foot *):not(.landing-header *):hover,
+body:has(.public-page) :is([role="dialog"], [role="alertdialog"], [data-testid="cookie-notice"]) p a:hover { color: #08467f; }
+/* The top menu: a soft highlight on hover and for the item of the page shown, the padding always reserved. */
+/* The public top (2026-11-12; the public website's theme 1.0.9 measured at
+   390/768/1024/1440/1920): the company's blue bar and the product's light bar under it, sticky together (ee/landing/ui/landing-header.tsx).
+   z-index 50: above the page, under the cookie box (60) and the dialogs (70). */
+.landing-header summary { list-style: none; }
+.landing-header summary::-webkit-details-marker { display: none; }
+.landing-company { position: relative; background: #113351; border-bottom: 1px solid #2a5077; }
+.landing-company-home { display: block; line-height: 0; }
+.landing-company-logo { display: block; width: 150px; height: auto; }
+@media (max-width: 860px) { .landing-company-logo { width: 128px; } }
+.landing-company-link, .landing-company-toggle { display: inline-flex; align-items: center; padding: .5rem .75rem; border-radius: 6px; color: #ffffff; font-size: 16px; font-weight: 600; line-height: 1.4286; white-space: nowrap; transition: background-color 150ms ease; }
+.landing-company-link:hover, .landing-company-link[aria-current] { background: rgb(255 255 255 / .12); color: #ffffff; }
+/* The menu stands in the middle of the row on a computer, whatever is at the right (2026-11-12: it jumped between the public website
+   and this page, which has the Logga in icon too); under 1024 px between the logo and the buttons as before. The same in the public website theme 1.0.10. */
+@media (min-width: 1024px) { .landing-company-row { position: relative; } .landing-company-nav { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); margin: 0; } }
+.landing-company-sub { position: relative; border-radius: 6px; transition: background-color 150ms ease; }
+/* "Verktyg ▾": the whole item is one surface – on hover, while open and when one of its pages is shown. */
+.landing-company-toggle { gap: 8px; padding-right: .5rem; cursor: pointer; background: transparent; }
+.landing-company-nav { font-size: 16px; font-weight: 600; line-height: 1.4286; }
+/* The chevron sits .075em low, where WordPress puts it on the public website, so it centres on the lowercase text (2026-11-13). */
+.landing-company-toggle svg { position: relative; top: .075em; transition: transform 150ms ease; }
+.landing-company-sub[data-open] .landing-company-toggle svg { transform: rotate(180deg); }
+.landing-company-sub:hover, .landing-company-sub[data-open], .landing-company-sub[data-current] { background: rgb(255 255 255 / .12); }
+.landing-company-panel { display: none; position: absolute; right: 0; top: 100%; z-index: 60; min-width: calc(13rem + 2px); padding: .375rem 0; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 12px 24px rgb(11 40 80 / .12); }
+.landing-company-sub[data-open] > .landing-company-panel { display: block; }
+@media (hover: hover) { .landing-company-sub:hover > .landing-company-panel { display: block; } }
+.landing-company-panel-link { display: flex; align-items: center; min-height: 3.5rem; width: 100%; padding: .375rem 1rem; color: #113351; font-size: 16px; font-weight: 600; line-height: 1.3; white-space: nowrap; transition: background-color 150ms ease; }
+.landing-company-panel-link:hover, .landing-company-panel-link[aria-current] { background: #e7f1fc; }
+.landing-company-button { display: inline-flex; align-items: center; height: 40px; padding: 0 1rem; border: 1px solid #ffffff; border-radius: 6px; background: #ffffff; color: #113351; font-size: 14px; font-weight: 600; line-height: 20px; white-space: nowrap; transition: background-color 150ms ease, border-color 150ms ease; }
+.landing-company-button:hover, .landing-company-button:focus-visible { background: #e7f1fc; border-color: #e7f1fc; }
+.landing-company :where(a, button, summary):focus-visible { outline: 3px solid #ffffff; outline-offset: 2px; }
+.landing-header :is(.landing-company-panel, .landing-menu-panel, .landing-sub) :where(a, button, summary):focus-visible { outline: 3px solid #0b5cb0; outline-offset: 2px; }
+/* Meny on narrow screens, exactly the public website's: 46 px with the border, transparent, a white outline at 45 %, the three-line icon (an X while open). */
+.landing-company-menu-button { display: inline-flex; align-items: center; gap: .5rem; height: 46px; padding: 0 .875rem; border: 1px solid rgb(255 255 255 / .45); border-radius: 6px; background: transparent; color: #ffffff; font-size: 16px; font-weight: 600; line-height: 1.65; cursor: pointer; user-select: none; }
+.landing-company-menu-button:hover, .landing-company-menu[open] > .landing-company-menu-button { background: rgb(255 255 255 / .12); border-color: rgb(255 255 255 / .6); }
+.landing-menu-icon { width: 18px; height: 12px; background: linear-gradient(currentColor, currentColor) top / 100% 2px no-repeat, linear-gradient(currentColor, currentColor) center / 100% 2px no-repeat, linear-gradient(currentColor, currentColor) bottom / 100% 2px no-repeat; }
+.landing-company-menu[open] .landing-menu-icon { height: 18px; background: linear-gradient(45deg, transparent calc(50% - 1px), currentColor calc(50% - 1px), currentColor calc(50% + 1px), transparent calc(50% + 1px)), linear-gradient(-45deg, transparent calc(50% - 1px), currentColor calc(50% - 1px), currentColor calc(50% + 1px), transparent calc(50% + 1px)); }
+/* The white panel under a narrow screen's menu button: full width, rows of at least 48 px with 2 px between, as the public website's. */
+.landing-menu-panel { position: absolute; left: 0; right: 0; top: 100%; z-index: 60; max-height: calc(100dvh - 4rem); overflow-y: auto; padding: .75rem clamp(1rem, 4vw, 2rem) 1rem; background: #ffffff; border-bottom: 1px solid #e2e8f0; box-shadow: 0 12px 24px rgb(11 40 80 / .12); }
+.landing-sub-menu-panel { padding-top: .5rem; }
+.landing-menu-row { border-bottom: 1px solid #e2e8f0; }
+/* Rows of 48 px (2026-11-12: the 64 px rows were clumsy on a phone). */
+.landing-menu-link { display: flex; align-items: center; min-height: 48px; padding: .375rem .75rem; border-radius: 6px; color: #113351; font-size: 16px; font-weight: 600; line-height: 1.4286; transition: background-color 150ms ease; }
+.landing-menu-link:hover, .landing-menu-link[aria-current] { background: #e7f1fc; }
+.landing-menu-child { min-height: 44px; padding: .25rem .75rem; font-size: 15px; }
+.landing-menu-label { display: flex; align-items: center; min-height: 44px; padding: .375rem .75rem 0; color: #46566b; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; font-weight: 600; line-height: 1.4286; }
+.landing-menu-cta { display: inline-flex; align-items: center; min-height: 44px; padding: 0 1.25rem; border-radius: 6px; background: #174c72; color: #ffffff; font-size: 14px; font-weight: 600; line-height: 1.25; transition: background-color 150ms ease; }
+.landing-menu-cta:hover { background: #103b5b; }
+/* The product's light bar ("Ljus undermeny"): 52 px with its border, the page's parts and two buttons. */
+.landing-sub { position: relative; background: #ffffff; border-bottom: 1px solid #e2e8f0; }
+.landing-sub-link { display: inline-flex; align-items: center; padding: .375rem .75rem; border-radius: 6px; color: #113351; font-size: 15px; font-weight: 600; line-height: 1.4; white-space: nowrap; transition: background-color 150ms ease; }
+.landing-sub-link:hover, .landing-sub-link[aria-current] { background: #e7f1fc; }
+.landing-sub-button { display: inline-flex; align-items: center; justify-content: center; height: 36px; padding: 0 14px; border: 1px solid #174c72; border-radius: 6px; background: #174c72; color: #ffffff; font-size: 14px; font-weight: 600; line-height: 1.25; white-space: nowrap; transition: background-color 150ms ease, border-color 150ms ease; }
+.landing-sub-button:hover { background: #103b5b; border-color: #103b5b; }
+.landing-sub-button-outline { border-color: #c3cfdd; background: #ffffff; color: #113351; }
+.landing-sub-button-outline:hover { background: #e7f1fc; border-color: #c3cfdd; color: #113351; }
+.landing-sub-menu-button { display: inline-flex; align-items: center; gap: .375rem; height: 36px; padding: 0 .75rem; border: 1px solid #c3cfdd; border-radius: 6px; background: #ffffff; color: #113351; font-size: 15px; font-weight: 600; line-height: 1.4; cursor: pointer; user-select: none; transition: background-color 150ms ease; }
+.landing-sub-menu-button:hover, .landing-sub-menu[open] > .landing-sub-menu-button { background: #e7f1fc; }
+.landing-sub-menu-chevron { transition: transform 150ms ease; }
+/* Narrow screens: the blue bar's button and Logga in move into the menus (the utilities' hidden would lose to the rules above). */
+@media (max-width: 860px) { .landing-company-button, .landing-sub-login { display: none; } }
+.landing-sub-menu[open] .landing-sub-menu-chevron { transform: rotate(180deg); }
+/* After scrolling past the top buttons (2026-11-12): a slim white row under the blue bar with the parts and Prova demon
+   (ee/landing/ui/landing-scroll-bar.tsx); it slides in and out, never shown at the top of the page. */
+.landing-scroll-bar { position: absolute; left: 0; right: 0; top: 100%; background: #ffffff; border-bottom: 1px solid #e2e8f0; box-shadow: 0 6px 16px rgb(11 40 80 / .08); opacity: 0; transform: translateY(-6px); pointer-events: none; transition: opacity 200ms ease, transform 200ms ease; }
+.landing-scroll-bar[data-shown] { opacity: 1; transform: none; pointer-events: auto; }
+.landing-scroll-bar nav { scrollbar-width: none; }
+@media (max-width: 480px) { .landing-scroll-bar .landing-sub-link { padding: .375rem .5rem; font-size: 14px; } .landing-scroll-bar .landing-sub-button { padding: 0 10px; } .landing-scroll-bar .gap-4 { gap: .5rem; } }
+@media (prefers-reduced-motion: reduce) { .landing-scroll-bar { transition: none; transform: none; } }
+/* Logga in as a person icon at the right of the blue bar (2026-11-12), 44 px to tap, visible on every width. */
+.landing-company-login { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; flex: none; border-radius: 6px; color: #ffffff; transition: background-color 150ms ease; }
+.landing-company-login svg { width: 28px; height: 28px; stroke-width: 1.75; }
+.landing-company-login:hover { background: rgb(255 255 255 / .12); }
+/* Kontakta oss ends at the 1200 px row's right edge on both sites (2026-11-13). Where the side margin has room, the icon
+   stands outside the row, 10 px after the button; below that the public website's bar keeps the same 54 px empty, so nothing moves between them. */
+@media (min-width: 1360px) { .landing-company-login { position: absolute; left: calc(100% + 10px); top: 50%; transform: translateY(-50%); } }
+/* Between Meny and the centred menu (861–1023 px) the items get 6 px side padding instead of 12, so logo, menu, button and icon fit
+   on one row from 861 px (it overlapped the logo there); the public website the same. */
+@media (min-width: 861px) and (max-width: 1023px) { .landing-company-nav .landing-company-link { padding-left: .375rem; } .landing-company-nav li > a.landing-company-link { padding-right: .375rem; } }
+/* The page's parts under the top buttons: quiet chips. */
+.landing-hero-link { display: inline-flex; align-items: center; min-height: 36px; padding: .375rem .875rem; border: 1px solid #d9e0ea; border-radius: 999px; background: #ffffff; color: #113351; font-size: 14px; font-weight: 600; line-height: 1.3; transition: background-color 150ms ease; }
+.landing-hero-link:hover { background: #e7f1fc; }
+/* Anchors land under the sticky top (65 px, + 52 px when the light bar is shown). */
+html:has(.landing-header) { scroll-padding-top: 5rem; }
+html:has(.landing-sub) { scroll-padding-top: 8rem; }
+
+/* The landing editor (2026-09-30): the page is the canvas; a text shows a dashed outline on hover and a solid one
+   while it is being edited, like a block in Skapa formulär. */
+/* Ny uppgift → Anpassa (2026-09-30): the arrows and Flytta till only where dragging is hard – touch or narrow. */
+.arrange-touch-only { display: none; }
+@media (pointer: coarse), (max-width: 1023px) { .arrange-touch-only { display: flex; } }
+.landing-canvas { background: #f7f9fc; }
+.landing-editable { border-radius: 4px; outline: 1px dashed transparent; outline-offset: 2px; cursor: text; transition: outline-color 120ms ease, background-color 120ms ease; }
+.landing-canvas-edit .landing-editable { outline-color: color-mix(in srgb, var(--primary) 22%, transparent); }
+.landing-editable:hover { outline-color: var(--primary); background: color-mix(in srgb, var(--primary) 6%, transparent); }
+.landing-editable:focus { outline: 2px solid var(--ring); background: color-mix(in srgb, var(--primary) 8%, transparent); }
+.landing-dark .landing-editable:hover, .landing-dark .landing-editable:focus { outline-color: #ffffff; background: rgb(255 255 255 / .08); }
+.landing-edit-chip { display: inline-flex; min-height: 2rem; min-width: 2rem; align-items: center; justify-content: center; border-radius: .5rem; background: var(--secondary); color: var(--secondary-foreground); transition: background-color 120ms ease; }
+.landing-edit-chip:hover:not(:disabled) { background: color-mix(in srgb, var(--primary) 18%, var(--secondary)); }
+.landing-edit-chip:disabled { opacity: .4; }
+/* A plan card's tools in the editor (move, highlight, on/off; robot finding #9, 2026-10-24): 32 px drawn on a computer like the editor's
+   toolbar, a real 44 px on a touch screen and under 1024 px (docs/design-standard.md, Tryckytor). */
+@media (pointer: coarse), (max-width: 1023px) { .landing-edit-tools .landing-edit-chip { min-height: 2.75rem; min-width: 2.75rem; } }
+.landing-dark .landing-edit-chip { background: rgb(255 255 255 / .12); color: inherit; }
+/* A switched-off plan or add-on in the editor: marked by a dashed edge, a hatched background, grey colours and its own
+   "Släckt"/"Dold" chip – never by opacity, so every text keeps 4.5:1 (webbplatskartan 2026-10-25, axe color-contrast). */
+.landing-edit-off { height: 100%; }
+.landing-edit-off > * { background-image: repeating-linear-gradient(135deg, color-mix(in srgb, var(--muted-foreground) 9%, transparent) 0 6px, transparent 6px 14px); }
+.landing-edit-off > article { border-style: dashed; border-color: var(--muted-foreground); }
+.landing-edit-off > :not(article) { border-radius: .5rem; outline: 1px dashed color-mix(in srgb, currentColor 60%, transparent); outline-offset: 4px; }
+.landing-edit-off > * > :not(.landing-edit-tools) { filter: grayscale(1); }
+a.landing-edit-off, img.landing-edit-off { height: auto; background-image: repeating-linear-gradient(135deg, color-mix(in srgb, var(--muted-foreground) 14%, transparent) 0 6px, transparent 6px 14px); outline: 1px dashed color-mix(in srgb, currentColor 60%, transparent); outline-offset: 3px; filter: grayscale(1); }
+/* A text inside a button is its own target while editing: at least 24 px high (axe target-size). */
+.landing-canvas-edit .landing-button .landing-editable { display: inline-flex; align-items: center; min-height: 1.5rem; }
+.landing-canvas [data-landing-select] { cursor: pointer; }
+.landing-canvas[data-selected] [data-landing-select]:is(article, tr) { transition: box-shadow 120ms ease; }
+
+input[data-slot="input"] { border-color: var(--workflow-field-border); border-radius: var(--radius-control); }
+input[data-slot="input"]:hover:not(:disabled) { border-color: var(--workflow-field-border-hover); }
+input[data-slot="input"]:focus-visible { border-color: var(--primary); }
+
+@layer components {
+  .hintek-mark {
+    background: linear-gradient(145deg, var(--hintek-brand-start), var(--hintek-brand-end));
+    box-shadow: 0 .5rem 1.5rem var(--hintek-brand-shadow);
+  }
+}
+
+.editor-workflow-progress { min-height: 1.5rem; }
+/* Högerställd sammanfattning (components/editor-aside.tsx, 2026-10-16): the panels stack with the page's 20 px step;
+   from a 68.5 rem wide editor at display level 3 the summary moves to a sticky 17 rem column on the right, beside all
+   panels, while its place in the reading order stays the same for screen readers and narrow screens. */
+.editor-aside-box { container-type: inline-size; min-width: 0; }
+.editor-aside-layout { min-width: 0; }
+.editor-aside-layout > * + * { margin-top: var(--aside-step, 1.25rem); }
+.editor-aside { display: grid; gap: .75rem; min-width: 0; align-content: start; }
+/* An editor with a line table beside the column (quote, purchase) waits until the table keeps its table form (72 rem). */
+@container (min-width: 68.5rem) {
+  html:not([data-detail="1"], [data-detail="2"]) .editor-aside-box:not([data-fit="table"]) > .editor-aside-layout:has(> .editor-aside) { display: grid; grid-template-columns: minmax(0, 1fr) 17rem; column-gap: 1.25rem; align-items: start; }
+  html:not([data-detail="1"], [data-detail="2"]) .editor-aside-box:not([data-fit="table"]) > .editor-aside-layout:has(> .editor-aside) > * { grid-column: 1; }
+  html:not([data-detail="1"], [data-detail="2"]) .editor-aside-box:not([data-fit="table"]) > .editor-aside-layout > :first-child { margin-top: 0; }
+  html:not([data-detail="1"], [data-detail="2"]) .editor-aside-box:not([data-fit="table"]) > .editor-aside-layout > .editor-aside {
+    grid-column: 2; grid-row: 1 / span 60; margin-top: 0; position: sticky; top: calc(var(--workspace-header-h) + 1rem);
+    max-height: calc(100dvh - var(--workspace-header-h) - 2rem); overflow-y: auto; overscroll-behavior: contain;
+  }
+  html:not([data-detail="1"], [data-detail="2"]) .editor-aside-box:not([data-fit="table"]) > .editor-aside-layout > .editor-aside:first-child + * { margin-top: 0; }
+}
+@container (min-width: 72rem) {
+  html:not([data-detail="1"], [data-detail="2"]) .editor-aside-box[data-fit="table"] > .editor-aside-layout:has(> .editor-aside) { display: grid; grid-template-columns: minmax(0, 1fr) 17rem; column-gap: 1.25rem; align-items: start; }
+  html:not([data-detail="1"], [data-detail="2"]) .editor-aside-box[data-fit="table"] > .editor-aside-layout:has(> .editor-aside) > * { grid-column: 1; }
+  html:not([data-detail="1"], [data-detail="2"]) .editor-aside-box[data-fit="table"] > .editor-aside-layout > :first-child { margin-top: 0; }
+  html:not([data-detail="1"], [data-detail="2"]) .editor-aside-box[data-fit="table"] > .editor-aside-layout > .editor-aside {
+    grid-column: 2; grid-row: 1 / span 60; margin-top: 0; position: sticky; top: calc(var(--workspace-header-h) + 1rem);
+    max-height: calc(100dvh - var(--workspace-header-h) - 2rem); overflow-y: auto; overscroll-behavior: contain;
+  }
+  html:not([data-detail="1"], [data-detail="2"]) .editor-aside-box[data-fit="table"] > .editor-aside-layout > .editor-aside:first-child + * { margin-top: 0; }
+}
+/* In the narrow column a group of fields is one column (a quote's Moms and ROT fields). */
+.editor-aside .field-group.grid { grid-template-columns: minmax(0, 1fr); }
+.editor-aside .field-group.grid > * { grid-column: 1 / -1; }
+/* Amounts keep their "kr" on the same line in the narrow column. */
+.editor-aside dd { white-space: nowrap; }
+/* No box in a box (2026-10-16, the design lab): a framed list or table that stands directly in a panel – or in a
+   plain wrapper there – runs from edge to edge of the panel with only a line above and below, like the lab's tables. */
+:is(.panel-content, .panel-content > div:not([class^="p-"], [class*=" p-"], [class^="px-"], [class*=" px-"], [class*="border"], [class*="grid-cols"])) > :is(ul.divide-y, ol.divide-y, div.divide-y, [role="table"]).border {
+  margin-inline: -1rem; border-inline: 0; border-radius: 0;
+}
+.report-panel .panel-header,
+.local-workspace-panel .panel-header { align-items: flex-start; flex-wrap: nowrap; }
+.report-panel .panel-heading,
+.local-workspace-panel .panel-heading { flex: 1; }
+.report-panel .panel-heading > div,
+.local-workspace-panel .panel-heading > div { min-width: 0; }
+.report-panel .panel-actions,
+.local-workspace-panel .panel-actions { margin-left: auto; }
+/* V1 table structure, using V3 typography, components and theme tokens. */
+.measurement-panel { container-type: inline-size; }
+.measurement-panel .panel-header { padding: 1.5rem 1.25rem; border-bottom: 0; flex-wrap: nowrap; }
+/* The current step's marker never lies over the measurement panel's title (QA 2026-10-10): the header wraps, and in a
+   narrow panel the marker takes a line of its own under the title and the buttons. */
+.measurement-panel .panel-header:has(> .panel-flow-hint) { flex-wrap: wrap; }
+@container (max-width: 599px) { .measurement-panel .panel-header > .panel-flow-hint { order: 3; flex-basis: 100%; } }
+.measurement-panel .panel-heading { min-width: 0; gap: .75rem; }
+.measurement-panel .panel-content { padding-top: .25rem; }
+.measurement-actions { display: flex; flex-shrink: 0; gap: .375rem; }
+.measurement-action { position: relative; width: 2.5rem; height: 2.5rem; border-radius: 50%; border-color: color-mix(in srgb, var(--primary) 40%, var(--card)); background: var(--secondary); color: var(--foreground); }
+.measurement-action:hover { background: var(--accent); }
+.measurement-action > svg { width: 1.375rem; height: 1.375rem; }
+.measurement-count { position: absolute; bottom: -.25rem; right: -.125rem; min-width: 1rem; padding: 0 .125rem; border-radius: 1rem; background: var(--card); color: var(--foreground); font-size: .75rem; line-height: 1rem; font-weight: 600; }
+.measurement-collapse { width: 2.25rem; height: 2.25rem; border: 1px solid var(--border); border-radius: 50%; box-shadow: 0 1px 2px #00000008; }
+.measurement-list { border: 1px solid var(--border); border-radius: .625rem; }
+.measurement-list:empty { display: none; }
+.measurement-row { min-width: 0; padding: .75rem; border-bottom: 1px solid var(--border); }
+.measurement-row:last-child { border-bottom: 0; }
+/* Hidden datalists must not add spacing beneath fields with suggestions. */
+.measurement-row input, .measurement-row select { margin-block: 0; }
+.measurement-row[data-example] { background: color-mix(in srgb, var(--feature-credit-soft) 35%, transparent); }
+.measurement-row:first-child { border-radius: .625rem .625rem 0 0; }
+.measurement-row:last-child { border-radius: 0 0 .625rem .625rem; }
+.measurement-grid, .rcd-top, .rcd-bottom { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); align-items: end; gap: .75rem; }
+.measurement-head { display: none; }
+.rcd-bottom { margin-top: .75rem; }
+.measurement-tools { display: flex; align-items: center; gap: .125rem; height: 2.5rem; }
+.measurement-check { display: flex; flex-direction: column; align-items: center; justify-content: end; gap: .5rem; min-height: 3.75rem; font-size: .75rem; }
+.measurement-check > [data-slot="checkbox"] { width: 1.375rem; height: 1.375rem; margin-bottom: .5rem; }
+.measurement-check > [data-slot="checkbox"] svg { width: 1rem; height: 1rem; }
+/* "Ej bedömd – ange gräns" in Godkänd's place is text, never squeezed to the box's size (QA 2026-10-10). */
+.measurement-check > [data-testid="form-row-pending"] { text-align: center; }
+.measurement-auto-result:disabled { opacity: 1; }
+.measurement-remove { align-self: end; margin-bottom: .25rem; }
+.rcd-indent { display: none; }
+.rcd-guidance { margin-top: .75rem; }
+@container (max-width: 599px) {
+  .measurement-panel .panel-header { padding: 1.25rem .75rem; gap: .5rem; }
+  .measurement-panel .panel-content { padding-left: .75rem; padding-right: .75rem; }
+  .measurement-panel .panel-heading { flex-wrap: wrap; gap: .75rem; }
+  .measurement-row input, .measurement-row select { height: 2.75rem; font-size: 1rem; }
+  .measurement-tools { grid-column: 1 / -1; }
+  .measurement-tools button, .measurement-remove { width: 2.75rem; height: 2.75rem; }
+  .measurement-check { min-height: 4.25rem; }
+  .measurement-check > [data-slot="checkbox"] { width: 1.5rem; height: 1.5rem; }
+}
+@container (min-width: 800px) {
+  .measurement-iso { --measurement-columns: 3.5rem minmax(0,2.3fr) minmax(0,1.05fr) repeat(2,minmax(0,1fr)) minmax(0,2.4fr) 3.75rem 2rem; }
+  .measurement-cont, .measurement-volt { --measurement-columns: 3.5rem minmax(0,2.3fr) repeat(2,minmax(0,1.3fr)) minmax(0,3fr) 3.75rem 2rem; }
+  .measurement-row:not(.measurement-rcd) { padding: .25rem .75rem; }
+  .measurement-grid { grid-template-columns: var(--measurement-columns); align-items: center; column-gap: .5rem; row-gap: 0; }
+  .measurement-head { display: grid; padding: .625rem .75rem 0; align-items: end; font-size: .75rem; line-height: 1rem; color: var(--foreground); }
+  .measurement-grid input, .measurement-grid select { height: 2.25rem; padding-inline: .5rem; font-size: .875rem; box-shadow: none; }
+  .measurement-grid > div { margin: 0; }
+  .measurement-grid label:not(.measurement-check), .measurement-grid .measurement-check > span { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+  .measurement-grid .measurement-check { min-height: 2.25rem; height: 2.25rem; justify-content: center; }
+  .measurement-grid .measurement-check > [data-slot="checkbox"] { margin: 0; }
+  .measurement-grid .measurement-tools { height: 2.25rem; }
+  .measurement-grid .measurement-remove { align-self: center; margin: 0; }
+}
+/* Below the wide two-line layout the RCD row's tick boxes are rows of their own – the text, then the box – and a row that
+   is not judged yet says so on a line of its own, so nothing overlaps (QA 2026-10-10). */
+@container (max-width: 949px) {
+  .rcd-bottom .measurement-check { flex-direction: row; align-items: center; justify-content: start; gap: .75rem; min-height: 2.75rem; font-size: .875rem; }
+  .rcd-bottom .measurement-check > [data-slot="checkbox"] { margin: 0; }
+  .rcd-bottom .measurement-check:has(> [data-testid="form-row-pending"]) { grid-column: 1 / -1; }
+  .rcd-bottom .measurement-check > [data-testid="form-row-pending"] { text-align: left; font-size: .875rem; }
+  .rcd-bottom .measurement-remove { grid-column: 1 / -1; justify-self: end; margin: 0; }
+}
+@container (min-width: 950px) {
+  .measurement-rcd { --rcd-place: minmax(10rem, 20%); }
+  .measurement-rcd.measurement-row { padding: 0; }
+  .rcd-top, .rcd-bottom { column-gap: .5rem; row-gap: 0; padding: .625rem .75rem .375rem; margin: 0; }
+  .rcd-top { grid-template-columns: 3.5rem var(--rcd-place) repeat(5,minmax(0,1fr)) minmax(8rem,2.4fr); }
+  .rcd-bottom { grid-template-columns: 3.5rem var(--rcd-place) repeat(5,minmax(0,1fr)) 4.5rem 4.5rem 3.75rem 2rem; border-top: 1px solid var(--border); }
+  .rcd-top label, .rcd-bottom label:not(.measurement-check), .rcd-bottom .measurement-check > span { min-height: 2rem; display: flex; align-items: end; font-size: .75rem; line-height: 1rem; color: var(--foreground); font-weight: 400; }
+  .rcd-top label, .rcd-bottom label > span { overflow-wrap: anywhere; }
+  .rcd-top input, .rcd-top select, .rcd-bottom input { height: 2.25rem; padding-inline: .5rem; font-size: .875rem; box-shadow: none; }
+  .rcd-bottom .measurement-check { gap: .375rem; min-height: 4.625rem; }
+  .rcd-bottom .measurement-check > span { text-align: center; }
+  .rcd-bottom .measurement-check > [data-slot="checkbox"] { margin-bottom: .4375rem; }
+  .rcd-top .measurement-tools { height: 2.25rem; }
+  .rcd-bottom .measurement-remove { margin-bottom: .125rem; }
+  .rcd-indent { display: block; }
+  .rcd-guidance { margin: 0; padding: .125rem .75rem .5rem; }
+  /* A form's two-line measurement rows (the RCD test as a form) take their tracks from the form's columns. */
+  .form-rows .rcd-top, .form-rows .rcd-bottom { grid-template-columns: var(--line-columns); }
+}
+
+/* App navigation and touch layout. All surfaces follow the selected theme. */
+.workspace-menu-overlay { background: color-mix(in srgb, var(--foreground) 32%, transparent); }
+.workspace-drawer { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+/* The menu scrolls without a scrollbar strip (2026-09-30: "inte den breda listen … bara en tunn linje"): the
+   browser's scrollbar is hidden, so the menu never changes width, and a thin line at its right edge shows where in the
+   menu you are while it is taller than the screen (MenuScrollLine). */
+.workspace-aside, .workspace-drawer { --menu-scroll: color-mix(in srgb, var(--muted-foreground) 30%, transparent); scrollbar-width: none; }
+.workspace-aside::-webkit-scrollbar, .workspace-drawer::-webkit-scrollbar { display: none; }
+.menu-scroll-line { position: absolute; right: 2px; z-index: 1; width: 3px; border-radius: 3px; background: var(--menu-scroll); pointer-events: none; transition: background-color 150ms ease; }
+.workspace-aside:hover, .workspace-drawer:hover { --menu-scroll: color-mix(in srgb, var(--muted-foreground) 55%, transparent); }
+html:not([data-theme="dark"]) :is(.workspace-aside, .workspace-drawer) { --menu-scroll: rgb(255 255 255 / .2); }
+html:not([data-theme="dark"]) :is(.workspace-aside, .workspace-drawer):hover { --menu-scroll: rgb(255 255 255 / .38); }
+/* Popups scroll with a thin, quiet scrollbar too, instead of the browser's wide one (2026-09-30); :where keeps
+   it below the menu drawer's own "no scrollbar" rule. */
+:where([role="dialog"], [role="alertdialog"], [role="dialog"] *, [role="alertdialog"] *) { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--muted-foreground) 40%, transparent) transparent; }
+/* N15 (2026-11-01): on a low computer screen the menu's rows are closer, so the whole menu fits in 900 px; a touch screen keeps
+   its 44 px. Lower than that, or with Verktyg folded out, the menu scrolls under its foot (.workspace-sidebar-foot, always in sight). */
+@media (min-width: 1024px) and (max-height: 1080px) and (pointer: fine) {
+  .workspace-aside nav { padding-top: .75rem; }
+  .workspace-aside nav > p:first-child { margin-bottom: .375rem; }
+  .workspace-aside .workspace-menu-item { height: 2.125rem; min-height: 2.125rem; }
+  .workspace-aside .workspace-menu-group { margin-top: .25rem; padding-top: .25rem; }
+  .workspace-aside .space-y-1 > :not(:last-child) { margin-block-end: 1px; }
+  .workspace-aside .workspace-sidebar-foot { padding-top: .25rem; padding-bottom: .25rem; }
+  .workspace-aside [data-testid="product-menu"] { margin-top: .25rem; padding-top: .25rem; }
+}
+/* The menu groups' labels (2026-11-13): small capitals in the menu's muted text colour, instead of a divider. */
+.workspace-menu-label { margin: 0 0 .25rem; padding: 0 .75rem; font-size: .6875rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted-foreground); }
+@media (min-width: 1024px) and (max-height: 1080px) and (pointer: fine) { .workspace-aside .workspace-menu-label { margin-bottom: .125rem; } .workspace-aside .workspace-menu-group, .workspace-aside [data-testid="product-menu"] { margin-top: .5rem; } }
+/* The demo's own button under Verktyg, a little larger than the other buttons (2026-11-05). After the low-window rule above, which it overrides. */
+.workspace-menu-item.workspace-menu-item-large { height: 2.75rem; min-height: 2.75rem; font-size: 1rem; font-weight: 600; }
+.workspace-drawer .workspace-sidebar-brand { padding-right: 4rem; }
+.workspace-menu-close { top: calc(.75rem + env(safe-area-inset-top)); }
+.workspace-bottom-nav { display: none; }
+/* The computer: the page fills the window above the footer (2.5 rem), so the footer stands at the window's foot while a
+   page is being read and never jumps from mid-window to below it when the content comes (2026-10-16, "sidan hoppar"). */
+@media (min-width: 1024px) {
+  .workspace-main { min-height: calc(100svh - var(--workspace-header-h) - 2.5rem); }
+}
+@media (max-width: 1023px) {
+  html { scroll-padding-top: calc(5rem + env(safe-area-inset-top)); scroll-padding-bottom: calc(6rem + env(safe-area-inset-bottom)); }
+  /* Room for the bottom bar (4.75 rem) and, above it, the floating Bakåt/Framåt (their top sits 8.5 rem up: 5.5 rem
+     bottom plus 3 rem height) and half a rem of air, so the last row, link or button of every page and level can be
+     scrolled clear of them (2026-10-10; was level 1 only; 9 rem since plan 1A, 2026-10-11 – 8.25 rem left the
+     buttons a quarter rem over the last row). */
+  .workspace-shell { padding-bottom: calc(9rem + env(safe-area-inset-bottom)); }
+  :root { --workspace-header-h: calc(4rem + env(safe-area-inset-top)); }
+  .workspace-header { height: var(--workspace-header-h); padding-top: env(safe-area-inset-top); padding-left: max(1rem, env(safe-area-inset-left)); padding-right: max(1rem, env(safe-area-inset-right)); }
+  /* The bars follow the finger (AppShell sets --chrome-offset/--chrome-p on them); they only animate when they settle. */
+  .workspace-header { transform: translate3d(0, calc(-1 * var(--chrome-offset, 0px)), 0); will-change: transform; }
+  .workspace-shell[data-chrome-snap] :is(.workspace-header, .workspace-bottom-nav, [data-chrome-follow]) { transition: transform 180ms ease, top 180ms ease; }
+  .workspace-shell[data-chrome-snap] :is(.native-flow, .native-calc-dock) { transition: bottom 180ms ease; }
+  /* A bar that sticks under the top bar (form builder, landing editor) moves up with it and never leaves a gap. */
+  [data-chrome-follow] { top: calc(var(--workspace-header-h) - var(--chrome-offset, 0px)); }
+  .workspace-header > div:first-child { max-width: 18rem; flex: 1; }
+  .workspace-profile { padding-inline: .375rem; }
+  .workspace-profile-menu { width: min(20rem, calc(100vw - 1.5rem)); max-height: min(78dvh, 42rem); overflow-y: auto; overscroll-behavior: contain; }
+  .workspace-header [data-slot="button"], .workspace-menu-close { min-width: 2.75rem; min-height: 2.75rem; }
+  .workspace-menu-item { min-height: 3rem; }
+  .workspace-menu-item:disabled { opacity: .5; }
+  .workspace-main { padding-block: 1.5rem; }
+  .workspace-main .grid > *, .workspace-main .panel-heading, .workspace-modal .grid > * { min-width: 0; }
+  .workspace-bottom-nav { position: fixed; z-index: 30; bottom: 0; left: 0; right: 0; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); padding: .375rem max(.5rem, env(safe-area-inset-right)) calc(.375rem + env(safe-area-inset-bottom)) max(.5rem, env(safe-area-inset-left)); border-top: 1px solid var(--border); background: var(--card); transform: translate3d(0, calc(var(--chrome-p, 0) * 100%), 0); will-change: transform; overscroll-behavior: none; }
+  .workspace-bottom-nav > a, .workspace-bottom-nav > button { display: flex; min-width: 0; min-height: 3.875rem; flex-direction: column; align-items: center; justify-content: center; gap: .125rem; border-radius: .75rem; color: var(--muted-foreground); font-size: .6875rem; font-weight: 600; line-height: 1.25rem; cursor: pointer; }
+  .workspace-bottom-nav > button:disabled { opacity: .5; cursor: default; }
+  .workspace-bottom-nav > :focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+  .workspace-bottom-nav .nav-icon { position: relative; display: flex; width: 3rem; height: 2rem; align-items: center; justify-content: center; border-radius: 1rem; }
+  .workspace-bottom-nav svg { width: 1.375rem; height: 1.375rem; stroke-width: 1.8; }
+  .workspace-bottom-nav > :is([aria-current="page"], [data-active], [data-state="open"]) { color: var(--secondary-foreground); }
+  .workspace-bottom-nav > :is([aria-current="page"], [data-active], [data-state="open"]) .nav-icon { background: var(--secondary); }
+  .workspace-bottom-nav .nav-create { color: var(--primary); }
+  .workspace-bottom-nav .nav-create .nav-icon { height: 2.25rem; width: 3.25rem; border-radius: .875rem; background: var(--primary); color: var(--primary-foreground); }
+  .workspace-bottom-nav .nav-dirty { position: absolute; top: .125rem; right: .5rem; width: .4375rem; height: .4375rem; border-radius: 50%; background: var(--primary); }
+  .workspace-shell[data-keyboard-open] .workspace-bottom-nav { display: none; }
+  .workspace-shell[data-chrome-hidden] :is(.workspace-header, .workspace-bottom-nav) { pointer-events: none; }
+  /* The floating navigation follows the bars (2026-10-09 for Bakåt/Framåt, kept 2026-10-27): it slides down and fades
+     with the bottom bar while scrolling down and comes back with it. */
+  .floating-nav { transform: translate3d(0, calc(var(--chrome-p, 0) * (9rem + env(safe-area-inset-bottom))), 0); opacity: calc(1 - var(--chrome-p, 0)); will-change: transform; }
+  .workspace-shell[data-chrome-snap] .floating-nav { transition: transform 180ms ease, opacity 180ms ease; }
+  .workspace-shell[data-chrome-hidden] .floating-nav { pointer-events: none; }
+  .workspace-toast { bottom: calc(5.5rem + env(safe-area-inset-bottom)); right: 1rem; left: 1rem; width: fit-content; max-width: calc(100vw - 2rem); margin-left: auto; }
+  .workspace-main :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select), .workspace-modal :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select) { min-height: 2.75rem; font-size: 1rem; }
+  .workspace-main textarea, .workspace-modal textarea { font-size: 1rem; }
+  .workspace-main [data-slot="button"], .workspace-modal [data-slot="button"], .workspace-profile-menu [role="menuitem"] { min-height: 2.75rem; }
+  .workspace-main [data-slot="button"][data-size^="icon"], .workspace-modal [data-slot="button"][data-size^="icon"] { min-width: 2.75rem; }
+  .workspace-main [role="checkbox"], .workspace-modal [role="checkbox"] { width: 1.5rem; height: 1.5rem; }
+  .context-help summary { width: 2.75rem; height: 2.75rem; border: 1px solid var(--border); border-radius: 50%; }
+  .context-help > div { top: 3rem; max-width: calc(100vw - 3rem); }
+  .control-moments > div { border-radius: .875rem; }
+  .control-moments label { min-height: 2.75rem; flex: 1; font-weight: 500; }
+  .customer-link-button { height: 2.75rem; min-width: 2.75rem; }
+  .mobile-action-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
+  .mobile-action-grid > [data-slot="button"] { width: 100%; white-space: normal; text-align: center; }
+  .mobile-action-grid > p { grid-column: 1 / -1; }
+  .local-workspace-actions { display: grid; grid-template-columns: 1fr; }
+  .local-workspace-actions > [data-slot="button"], .report-notify-button { width: 100%; justify-content: center; }
+  .measurement-panel .panel-header { align-items: start; }
+  .measurement-panel .panel-heading { flex-direction: column-reverse; align-items: start; gap: .75rem; }
+  .measurement-action, .measurement-collapse { width: 2.75rem; height: 2.75rem; }
+  .measurement-tools { gap: .5rem; height: 2.75rem; }
+  .measurement-tools > span { width: 2.5rem; height: 2.5rem; font-size: .875rem; }
+  .measurement-camera { border: 1px solid var(--border); border-radius: 50%; }
+  .measurement-check { min-height: 2.75rem; flex-direction: row; justify-content: start; gap: .75rem; }
+  .measurement-check > [data-slot="checkbox"] { margin: 0; }
+}
+/* A phone on its side (simulation 0.6.4: 844x390 left about 100 px for the page): slimmer bars, the page needs less room
+   under it, and the floating Bakåt/Framåt – which sat over the buttons – are left out; the breadcrumbs and the phone own
+   back gesture serve there. */
+@media (max-width: 1023px) and (max-height: 500px) and (orientation: landscape) and (pointer: coarse) {
+  .workspace-shell { padding-bottom: calc(4.5rem + env(safe-area-inset-bottom)); }
+  :root { --workspace-header-h: calc(3rem + env(safe-area-inset-top)); }
+  .workspace-header { height: var(--workspace-header-h); }
+  [data-chrome-follow] { top: calc(var(--workspace-header-h) - var(--chrome-offset, 0px)); }
+  .workspace-bottom-nav { padding-block: .125rem calc(.125rem + env(safe-area-inset-bottom)); }
+  .workspace-bottom-nav > a, .workspace-bottom-nav > button { min-height: 2.75rem; line-height: 1rem; }
+  .workspace-bottom-nav .nav-icon { height: 1.5rem; }
+  .workspace-bottom-nav .nav-create .nav-icon { height: 1.75rem; }
+  .workspace-toast { bottom: calc(3.75rem + env(safe-area-inset-bottom)); }
+  /* HINTEK AI stays (2026-11-02): it has no other way in on a phone on its side outside the app look. */
+  .floating-nav > :not(.floating-nav-assistant) { display: none; }
+  .floating-nav[data-placement="left"] { bottom: calc(4rem + env(safe-area-inset-bottom)); }
+}
+@media (max-width: 639px) {
+  .mobile-form-action { width: 100%; justify-content: center; }
+  .stat-card { flex-direction: column; align-items: flex-start; gap: .5rem; padding: .75rem; }
+  .stat-card .stat-icon { width: 2rem; height: 2rem; }
+  .dashboard-work-panel .panel-actions { width: 100%; min-width: 0; flex-shrink: 1; }
+  .dashboard-work-panel .panel-actions > div { width: 100%; }
+  .workspace-main {
+    --gutter-l: max(.75rem, env(safe-area-inset-left)); --gutter-r: max(.75rem, env(safe-area-inset-right));
+    padding-inline: var(--gutter-l) var(--gutter-r);
+  }
+  /*
+   * App feel on a phone (2026-10-09: "dölja det yttersta cardet i mobil så det blir bredare visning"): the page's
+   * panels run edge to edge – no frame, rounded corners or shadow, and the side gutter is given back to the content – so
+   * the page reads as full-width sections with the background as a thin band between them, as in the phone's own apps.
+   * Cards inside a panel (rows, choices) keep their shape. Tablet and computer are unchanged.
+   */
+  .workspace-main .app-panel:not(.app-panel .app-panel) {
+    margin-inline: calc(-1 * var(--gutter-l)) calc(-1 * var(--gutter-r));
+    border-radius: 0; border-inline: 0; box-shadow: none;
+  }
+  .workspace-main .app-panel:not(.app-panel .app-panel) > .panel-header { border-radius: 0; padding-inline: max(1rem, var(--gutter-l)) max(1rem, var(--gutter-r)); }
+  .workspace-main .app-panel:not(.app-panel .app-panel) > .panel-content { padding-inline: max(1rem, var(--gutter-l)) max(1rem, var(--gutter-r)); }
+  /* The same for a page's own top-level box that is not a Panel but is a section of its own (Uppdraget).
+     Lists, filter/search rows, tables and card grids are NOT bleed boxes (2026-10-17: one side margin of 12 px on a phone for
+     the work lists' filter panels, Kundregister and Mina offerter): they stand inside the gutter, as the page's heading and buttons do. */
+  .workspace-main .app-bleed:not(:is(.app-panel, .app-bleed) .app-bleed) {
+    margin-inline: calc(-1 * var(--gutter-l)) calc(-1 * var(--gutter-r));
+    border-radius: 0; border-inline: 0; box-shadow: none;
+    padding-inline: max(1rem, var(--gutter-l)) max(1rem, var(--gutter-r));
+  }
+  /* A list of cards inside a section reads as rows with thin dividers, like the phone's own lists. */
+  .workspace-main .phone-rows { gap: 0; border-block: 1px solid var(--border); margin-inline: -1rem; }
+  .workspace-main .phone-rows > * { border-radius: 0; border-inline: 0; border-top: 0; box-shadow: none; padding-inline: 1rem; }
+  .workspace-main .phone-rows > :last-child { border-bottom: 0; }
+  .workspace-main .page-title { font-size: 1.375rem; overflow-wrap: anywhere; }
+  .workspace-main .panel-header { padding: .875rem 1rem .75rem; }
+  .workspace-main .panel-content { padding-inline: 1rem; padding-bottom: 1rem; }
+  .kfid-editor { gap: 1.25rem; }
+  .editor-workflow-description { display: none; }
+  .editor-actions { width: auto; }
+  .editor-primary-save { display: none; }
+  .editor-actions > [data-slot="button"]:first-child { max-width: 10.5rem; }
+  .editor-basics { gap: 1.25rem; }
+  .editor-basics label { color: var(--foreground); }
+  .measurement-panel .panel-content { padding: .25rem .75rem .75rem; }
+  .measurement-list { border: 0; border-radius: 0; }
+  .measurement-row, .measurement-row:first-child, .measurement-row:last-child { padding: 1rem .25rem; border: 0; border-top: 1px solid var(--border); border-radius: 0; }
+  .measurement-grid, .rcd-top, .rcd-bottom { gap: 1rem .75rem; }
+  .measurement-wide, .measurement-tools { grid-column: 1 / -1; }
+  .measurement-remove { justify-self: end; margin: 0; }
+  .rcd-bottom { padding-top: 1rem; border-top: 1px dashed var(--border); margin-top: 1rem; }
+  /* A box keeps 20 px around its content; a sheet from below and a side panel pad their own header and body. */
+  .workspace-modal:not(.workspace-sheet, [data-side]) { padding: 1.25rem; }
+  .mobile-action-grid { grid-template-columns: 1fr; }
+  /*
+   * A long dialog is a page of its own on a phone (2026-10-08: scrolling inside a floating box fought with the
+   * page behind it). Modal and the editors' sheet set data-modal="page" as soon as their content would scroll (or always
+   * with size="page"); short confirmations stay boxes. The page fills the visible area (useMobileDialogViewport sets
+   * top and height to the part the keyboard leaves free), the header with the title and Stäng stays at the top, only the
+   * content scrolls, and the dialog's own actions row (Avbryt / Skapa …) sticks to the bottom.
+   */
+  .workspace-modal[data-modal="page"] {
+    --modal-pl: max(1.25rem, env(safe-area-inset-left));
+    --modal-pr: max(1.25rem, env(safe-area-inset-right));
+    --modal-pb: calc(1rem + env(safe-area-inset-bottom));
+    top: 0; right: 0; bottom: auto; left: 0; width: auto; max-width: none; height: 100dvh; max-height: 100dvh;
+    margin: 0; padding: 0; border: 0; border-radius: 0; box-shadow: none; transform: none;
+    /* The box is centred with Tailwind's translate (-50% -50%). Zero its variables: a plain `translate: none` beside
+       `transform: none` is dropped by the CSS minifier, and the page then slid half off the screen. */
+    --tw-translate-x: 0; --tw-translate-y: 0;
+  }
+  .workspace-modal[data-modal="page"] > .workspace-modal-header {
+    display: flex; align-items: center; gap: .75rem; min-height: calc(3.5rem + env(safe-area-inset-top)); margin: 0;
+    padding: env(safe-area-inset-top) calc(var(--modal-pr) - .5rem) 0 var(--modal-pl); border-bottom: 1px solid var(--border); background: var(--card);
+  }
+  .workspace-modal[data-modal="page"] > .workspace-modal-header > :first-child { flex: 1; min-width: 0; }
+  .workspace-modal[data-modal="page"] .workspace-modal-close { position: relative; inset: auto; margin-left: auto; }
+  .workspace-modal[data-modal="page"] > .workspace-modal-body { margin: 0; padding: 1rem var(--modal-pr) var(--modal-pb) var(--modal-pl); overflow-x: hidden; }
+  /* The actions row: the last row of buttons pushed to the right (justify-end), last in the content or in its form. */
+  .workspace-modal[data-modal="page"] :is(.workspace-modal-content, .workspace-modal-content > :last-child, .workspace-modal-content > form:last-child, .workspace-modal-content > :last-child > form:last-child) > [class*="justify-end"]:last-child:has(> [data-slot="button"]) {
+    position: sticky; bottom: calc(-1 * var(--modal-pb)); z-index: 2;
+    margin: 1rem calc(-1 * var(--modal-pr)) calc(-1 * var(--modal-pb)) calc(-1 * var(--modal-pl));
+    padding: .75rem var(--modal-pr) var(--modal-pb) var(--modal-pl);
+    border-top: 1px solid var(--border); background: var(--card);
+  }
+  /* While the keyboard is up (2026-10-09) the little room left belongs to the field being typed in: the actions row
+     no longer sticks above the keyboard (it follows the content instead) and the home-bar space is not reserved. */
+  .workspace-modal[data-modal="page"][data-keyboard] { --modal-pb: 1rem; }
+  .workspace-modal[data-modal="page"][data-keyboard] :is(.workspace-modal-content, .workspace-modal-content > :last-child, .workspace-modal-content > form:last-child, .workspace-modal-content > :last-child > form:last-child) > [class*="justify-end"]:last-child:has(> [data-slot="button"]) {
+    position: static;
+  }
+}
+/*
+ * Skärm på nivå 1 (2026-10-09; plan 1O 2026-10-11): the only temporary view left. A dialog with fields at display
+ * level 1 on a phone takes the visible screen above the tab bar; the top bar (NativeBar) has Avbryt and the action.
+ * Computer, tablet and phone at level 2–3 never get it – a large form there is a page (FormPage).
+ */
+.workspace-modal[data-modal="view"] {
+  --modal-pl: max(1.25rem, env(safe-area-inset-left));
+  --modal-pr: max(1.25rem, env(safe-area-inset-right));
+  --modal-pb: 1rem;
+  top: 0; right: 0; bottom: 0; left: 0; width: auto; max-width: none; height: 100dvh; max-height: 100dvh;
+  margin: 0; padding: 0; border: 0; border-radius: 0; box-shadow: none; transform: none;
+  --tw-translate-x: 0; --tw-translate-y: 0;
+}
+.workspace-modal[data-modal="view"] > .workspace-modal-header {
+  display: flex; align-items: center; gap: .75rem; min-height: calc(3.5rem + env(safe-area-inset-top)); margin: 0;
+  padding: max(.5rem, env(safe-area-inset-top)) calc(var(--modal-pr) - .5rem) .5rem var(--modal-pl); border-bottom: 1px solid var(--border); background: var(--card);
+}
+.workspace-modal[data-modal="view"] > .workspace-modal-header > :first-child { flex: 1; min-width: 0; }
+.workspace-modal[data-modal="view"] .workspace-modal-close { position: relative; inset: auto; margin-left: auto; }
+.workspace-modal[data-modal="view"] > .workspace-modal-body { margin: 0; padding: 1rem var(--modal-pr) var(--modal-pb) var(--modal-pl); overflow-x: hidden; }
+/* The actions row (the shared DialogActions, or a dialog's own last row of buttons to the right) sticks to the bottom.
+   Sticky positions against the body's content edge, so the row reaches past the body's bottom padding (2026-10-10: a
+   16 px strip of content showed under it). In a short view the row still sits at the bottom of the view, not right
+   under the last field: the body and the wrappers down to the row are columns and the row takes the free space above. */
+.workspace-modal[data-modal="view"] :is(.workspace-modal-content, .workspace-modal-content > :last-child, .workspace-modal-content > form:last-child, .workspace-modal-content > :last-child > form:last-child) > [class*="justify-end"]:last-child:has(> [data-slot="button"]) {
+  position: sticky; bottom: calc(-1 * var(--modal-pb)); z-index: 2;
+  margin: auto calc(-1 * var(--modal-pr)) calc(-1 * var(--modal-pb)) calc(-1 * var(--modal-pl));
+  padding: .75rem var(--modal-pr) var(--modal-pb) var(--modal-pl);
+  border-top: 1px solid var(--border); background: var(--card);
+}
+/* Popup för formulär (plan 1Q, 2026-10-11): a box about 520 px wide, at most 85 % of the window high; the form's
+   buttons (DialogActions) stay fixed at its foot while the fields scroll. Level 1 draws the form as a screen instead. */
+.workspace-modal[data-modal-size="form"]:not([data-native-view]) .dialog-actions {
+  position: sticky; bottom: 0; z-index: 2; margin-top: 1.25rem; padding-top: .75rem;
+  border-top: 1px solid var(--border); background: var(--card);
+}
+.workspace-view-overlay { background: color-mix(in srgb, var(--foreground) 12%, transparent); backdrop-filter: none; }
+/*
+ * Nivå 1 på mobil (2026-10-10): a dialog with fields opens as a screen of its own, like the phone's apps – the
+ * top bar has Avbryt to the left (never asks), the title in the middle and the main action to the right (short word,
+ * full label for screen readers), or Stäng when there is nothing to save. The dialog's own Avbryt and action buttons are
+ * then not drawn twice (the top bar presses them, so their disabled and busy states hold); extra buttons in the row stay
+ * as an ordinary row. The body is the screen: full width, one scroll, the page's own panels as grouped lists
+ * (.native-screen), room at the end for the floating Bakåt, which closes the screen first and lies above it.
+ */
+@media (max-width: 639px) {
+  .workspace-modal[data-native-view] > .workspace-modal-header.native-top-bar {
+    /* The buttons keep their whole word and the title takes what is left (shortened with …), centred while it fits;
+       the bar keeps the shell bar's height and a little room above the pills (2026-10-10: they sat flush at the top). */
+    display: grid; grid-template-columns: minmax(max-content, 1fr) minmax(0, auto) minmax(max-content, 1fr); gap: .5rem; min-height: calc(3.25rem + env(safe-area-inset-top));
+    padding: calc(.25rem + env(safe-area-inset-top)) max(.5rem, env(safe-area-inset-right)) .25rem max(.5rem, env(safe-area-inset-left)); border-bottom: 1px solid var(--border); background: var(--card);
+  }
+  /* A long title (Färdigställ arbetsordern) is one line ending with … beside the two buttons, as on every page's bar (2026-10-17). */
+  .workspace-modal[data-native-view] > .workspace-modal-header .native-top-bar-title { line-height: 1.4rem; max-width: min(62vw, calc(100vw - 12.5rem)); white-space: nowrap; text-overflow: ellipsis; }
+  .workspace-modal[data-native-view] > .workspace-modal-body { padding: .75rem max(1rem, env(safe-area-inset-right)) 4.5rem max(1rem, env(safe-area-inset-left)); }
+  .workspace-modal[data-native-view] .dialog-actions[data-registered] > [data-dialog-role] { display: none; }
+  .workspace-modal[data-native-view] .dialog-actions[data-registered]:not(:has(> :not([data-dialog-role]))) { display: none; }
+  .workspace-modal[data-native-view] .dialog-actions[data-registered] { position: static !important; margin: 1rem 0 0 !important; padding: 0 !important; border: 0 !important; background: transparent !important; justify-content: flex-start; }
+  /* A page shown as a form screen (Ny kund at level 1) has Avbryt and Spara in its top bar: its own row is not drawn twice. */
+  html[data-native] .native-bar-actions .dialog-actions > [data-dialog-role] { display: none; }
+  html[data-native] .native-bar-actions .dialog-actions:not(:has(> :not([data-dialog-role]))) { display: none; }
+}
+/*
+ * Touch targets (2026-10-08): on a touch screen and below 1024 px every button, icon button, link button, chip,
+ * checkbox and radio answers within at least 44 × 44 px. Small controls keep their drawn size – an invisible ::after
+ * grows the hit area around them – so dense rows do not grow. Elements that use ::after themselves (Tailwind after:,
+ * .stretched-link) keep theirs. A computer with a mouse keeps 40 px controls (28 px chips and segments).
+ * Plain text links are controls too (simulation 0.6.3: "Se vad som är nytt" 24 px, a notice's title 20 px, an attachment's
+ * name, the fact row's links 16 px): every a[href] gets the same invisible area.
+ */
+@layer base {
+  @media (pointer: coarse), (max-width: 1023px) {
+    :where(button, [role="button"], [role="tab"], [role="switch"], [role="radio"], [role="checkbox"], summary, a[data-slot="button"], a[href], .touch-target, label:has(> input:is([type="checkbox"], [type="radio"]))):where(:not(.stretched-link, [class*="after:"])) { position: relative; }
+  }
+}
+@media (pointer: coarse), (max-width: 1023px) {
+  :is(button, [role="button"], [role="tab"], [role="switch"], [role="radio"], [role="checkbox"], summary, a[data-slot="button"], a[href], .touch-target, label:has(> input:is([type="checkbox"], [type="radio"]))):not(.stretched-link, [class*="after:"])::after,
+  [data-slot="checkbox"]::after { content: ""; position: absolute; inset: min(0px, calc((100% - 2.75rem) / 2)); }
+  :is([role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"], [role="option"]) { min-height: 2.75rem; }
+  /* A checkbox label is its own hit area; a link or a field inside it stays above the label's grown area (the terms
+     link in Skapa konto must open the terms, not tick the box). */
+  label:has(> input:is([type="checkbox"], [type="radio"])) :is(a, button, input, select, textarea) { position: relative; z-index: 1; }
+  /* driver.js resets its buttons with `all: unset` (position: static): without this their grown area would cover the
+     whole tour popover and take the taps meant for Hoppa över. */
+  .driver-popover .driver-popover-footer button { position: relative; }
+  /* The tab row scrolls sideways and would clip the chips' grown hit area: room for it without moving the chips. */
+  .section-tabs { padding-block: .25rem; margin-block: -.25rem; }
+  /* Wrapping rows of 28–32 px chips (person filters and the like): a 12 px row gap so the grown areas of two rows do
+     not overlap and each chip keeps its full 44 px. */
+  .flex-wrap:has(> :is(button, [role="button"], [role="radio"], [role="checkbox"]).h-8) { row-gap: .75rem; }
+  .flex-wrap:has(> :is(button, [role="button"], [role="radio"], [role="checkbox"]).h-7) { row-gap: 1rem; }
+}
+/* Every touch screen, also a tablet in landscape where the computer's layout is drawn (2026-10-21; UX punkt 8, D1):
+   the drawn element itself is 44 px, not only its grown hit area – the side menu's rows, the Verktyg arrow and the cookie
+   button beside the version, and the toggle chips (Teamet/Jag, Dagar/Veckor: a button with aria-pressed). */
+@media (pointer: coarse) {
+  .workspace-sidebar .workspace-menu-item { min-height: 2.75rem; }
+  .workspace-sidebar :is([data-testid="tools-menu-toggle"], [data-testid="cookie-button"]) { min-width: 2.75rem; min-height: 2.75rem; }
+  .workspace-main [data-slot="button"][aria-pressed] { min-height: 2.75rem; }
+}
+/* Stabil sidladdning steg 9 (UX punkt 8): a box that is closing never shows a scrollbar while its content changes height
+   (the form checking a field on blur as Avbryt is pressed). FormPagePopup also closes itself at once (features/kfid/ui.tsx). */
+.workspace-modal[data-state="closed"] .workspace-modal-body { overflow-y: hidden; }
+@media (prefers-reduced-motion: reduce) {
+  .workspace-header, .workspace-bottom-nav, .editor-workflow-header { transition: none !important; }
+}
+.ai-shimmer-text { color: var(--muted-foreground); }
+/*
+ * Visningsnivå (2026-10-02): a calmer view on phone and tablet, chosen per person and device under
+ * Inställningar. Level 2 leaves out the explaining texts under page and panel headings and the footer; level 1 also
+ * the header's minor facts, key figures, statistics, earlier protocols, trends and tips. Only what informs is hidden –
+ * never a field, a requirement or a button, and never the job or safety (2026-10-08: risk class, priority and due
+ * date stay in the header, marked data-fact-keep).
+ */
+/*
+ * Inställningar and Produktadministration (2026-10-10): the tab's own sentence under the tab row says what the tab is for;
+ * the page heading's description said nearly the same and is left out. Since the tab row stands under the heading (Fasta
+ * platser, 2026-10-30) this holds on every tab, also one with a row of sections, so the tab row never moves between
+ * the tabs. Planering's tabs have no sentence of their own, so its pages keep their description.
+ */
+.page-header:has(+ [data-section-tabs-slot] [data-testid="section-tab-intro"]) .page-description { display: none; }
+html:is([data-detail="1"], [data-detail="2"]) :is(.workspace-main h1.page-title + .page-description, .workspace-main .panel-heading h2 + p, .form-page-description, [data-detail-min="3"]),
+/* An information box right under a page's heading explains the page (Tidrapport's "Tid registreras på en uppgift …",
+   2026-10-10): hidden with the other explaining texts. Alerts and status boxes (role) and notices elsewhere stay. */
+html:is([data-detail="1"], [data-detail="2"]) .workspace-main :is(.page-header, :has(> h1.page-title), :has(> div > h1.page-title)) + .notice:not([role]),
+/* …also with the tab row between them (it stands under the heading since 2026-10-30). */
+html:is([data-detail="1"], [data-detail="2"]) .workspace-main .page-header + [data-section-tabs-slot] + .notice:not([role]),
+html[data-detail="1"] :is([data-detail-min="2"], .workspace-main .editor-facts > :not([data-fact-keep]), .workspace-main .editor-facts:not(:has([data-fact-keep]))) { display: none !important; }
+/*
+ * A5 (2026-10-21): the web page's parts are not in the app. On a phone (data-device, set by the shell from
+ * deviceClass) no explaining sentence under the heading, at every level and also after "Visa mer"; a computer and a
+ * tablet show it in display 3. (No page has an eyebrow over the heading since 2026-10-30, Fasta platser.)
+ */
+html[data-device="phone"] :is(.workspace-main h1.page-title + .page-description, .form-page-description) { display: none !important; }
+/*
+ * Fasta platser (2026-10-30): a page header's title column is at least as high as a button, so a page without buttons
+ * (Artiklar, Fakturaunderlag) starts its toolbar and list where the pages with buttons do (they were 5–15 px higher).
+ * Not in the app look on a phone, which has its own large title.
+ */
+html:not([data-native]) .page-header-title { min-height: var(--control-h); }
+/* One template for page tops (2026-11-02): every button in a page's head has the control height, text and padding, whatever size
+   a page asked for, so Avbryt, Spara, Tillbaka and the page's own buttons stand in one row of one height. Chips and segments are not here. */
+.page-actions [data-slot="button"]:not([data-size^="icon"]) { height: var(--control-h); padding-inline: .75rem; gap: .375rem; font-size: .875rem; }
+.page-actions [data-slot="button"][data-size^="icon"] { width: var(--control-h); height: var(--control-h); }
+.page-actions [data-slot="button"] svg:not([class*="size-"]) { width: 1rem; height: 1rem; }
+@media (prefers-reduced-motion: no-preference) {
+  .workspace-drawer[data-state="open"] { animation: workspace-menu-enter .18s ease-out; }
+  @keyframes workspace-menu-enter { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+  /* A calm pulse while a timer runs (2026-09-26); reduced motion keeps a steady dot. */
+  .running-timer-dot { animation: running-timer-pulse 2s ease-in-out infinite; }
+  @keyframes running-timer-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .45; transform: scale(.8); } }
+  /* HINTEK AI's waiting text (2026-10-02): a soft light that passes over the words, as in other chats. */
+  .ai-shimmer-text { background: linear-gradient(90deg, var(--muted-foreground) 35%, var(--foreground) 50%, var(--muted-foreground) 65%) 0 0 / 300% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: ai-shimmer 2.2s linear infinite; }
+  /* Notisklockan (2026-11-05): svänger till några gånger när något nytt kommer och står sedan still. Bara transform: inget flyttas. */
+  @keyframes notification-bell-swing { 0%, 100% { transform: rotate(0); } 12% { transform: rotate(20deg); } 30% { transform: rotate(-17deg); } 48% { transform: rotate(13deg); } 66% { transform: rotate(-9deg); } 84% { transform: rotate(5deg); } }
+  @keyframes notification-count-pop { 0%, 100% { transform: scale(1); } 25% { transform: scale(1.45); } 50% { transform: scale(.9); } 75% { transform: scale(1.15); } }
+  .notification-bell-ring { animation: notification-bell-swing 1.5s ease-in-out; transform-origin: 50% 8%; }
+  .notification-count-pop { animation: notification-count-pop .8s ease-out; }
+  @keyframes ai-shimmer { from { background-position: 100% 0; } to { background-position: 0 0; } }
+}
+
+/*
+ * One look for a label above its field (2026-09-27; the control's Grunduppgifter is the original): 12 px medium
+ * text in the label colour, flush with the field's left edge and 6 px above it (7 px to the glyphs, as in the original). Unlayered on purpose so it wins over
+ * the spacing and colour utilities that grew differently in each editor. Labels laid out in a row (items-center),
+ * search fields with an icon and screen-reader-only labels keep their own layout.
+ */
+:is(.workspace-main, .workspace-modal) label:not([class*="items-center"]):not(:has(> svg, > .sr-only)):has(> :is(input:not([type="checkbox"], [type="radio"], [type="file"], [type="hidden"], .sr-only), select, textarea)) {
+  display: block;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 500;
+  color: var(--workflow-notice-foreground);
+}
+:is(.workspace-main, .workspace-modal) label:not([class*="items-center"]):not(:has(> svg, > .sr-only)):has(> :is(input:not([type="checkbox"], [type="radio"], [type="file"], [type="hidden"], .sr-only), select, textarea)) > * {
+  margin-block: 0;
+}
+:is(.workspace-main, .workspace-modal) label:not([class*="items-center"]):not(:has(> svg, > .sr-only)) > :is(input:not([type="checkbox"], [type="radio"], [type="file"], [type="hidden"], .sr-only), select, textarea) {
+  margin-top: 0.375rem;
+}
+/* Block, so a narrow field (a time, a date, w-auto) starts on the line under its label and never beside it (
+   2026-10-09: "texten ligger framför fältet … jag föredrar att texten är över eller under fältet"). */
+:is(.workspace-main, .workspace-modal) label:not([class*="items-center"]):not(:has(> svg, > .sr-only)) > :is(input:not([type="checkbox"], [type="radio"], [type="file"], [type="hidden"], .sr-only), select, textarea):not([class*="hidden"]) {
+  display: block;
+}
+/* Help text directly under a field. */
+:is(.workspace-main, .workspace-modal) label:not([class*="items-center"]) > :is(input, select, textarea) ~ :is(span, p):not(.sr-only) {
+  display: block;
+  margin-top: 0.375rem;
+  font-weight: 400;
+}
+/* A label and its field as siblings (form protocols, read-only fields): the same step. */
+:is(.workspace-main, .workspace-modal) .field-stack {
+  display: grid;
+  align-content: start;
+  row-gap: 0.375rem;
+  min-width: 0;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 500;
+  color: var(--workflow-notice-foreground);
+}
+
+/* The guided tour of the form builder (2026-09-28, driver.js): the popover in the design tokens, light and dark. */
+.driver-popover.workflow-tour { background: var(--card); color: var(--foreground); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 12px 32px #0f172a2e; max-width: min(24rem, calc(100vw - 2rem)); padding: 1rem 1.1rem; font-family: inherit; }
+.driver-popover.workflow-tour .driver-popover-title { font-size: 0.95rem; font-weight: 600; color: var(--foreground); }
+.driver-popover.workflow-tour .driver-popover-description { font-size: 0.8125rem; line-height: 1.45; color: var(--muted-foreground); }
+.driver-popover.workflow-tour .driver-popover-progress-text { font-size: 0.75rem; color: var(--muted-foreground); }
+.driver-popover.workflow-tour .driver-popover-footer { gap: 0.375rem; flex-wrap: wrap; }
+.driver-popover.workflow-tour .driver-popover-footer button { height: 2.25rem; padding: 0 0.75rem; border-radius: var(--radius-control, 9px); border: 1px solid var(--border); background: var(--card); color: var(--foreground); font-size: 0.8125rem; font-weight: 500; text-shadow: none; }
+.driver-popover.workflow-tour .driver-popover-footer .driver-popover-next-btn { background: var(--primary); border-color: var(--primary); color: var(--primary-foreground); }
+.driver-popover.workflow-tour .driver-popover-footer button:hover { background: var(--secondary); }
+.driver-popover.workflow-tour .driver-popover-footer .driver-popover-next-btn:hover { background: var(--primary-hover, var(--primary)); }
+.driver-popover.workflow-tour .workflow-tour-skip { margin-right: auto; border-color: transparent; background: transparent; color: var(--muted-foreground); }
+.driver-popover.workflow-tour .driver-popover-close-btn { color: var(--muted-foreground); }
+.driver-popover.workflow-tour .driver-popover-arrow-side-left.driver-popover-arrow { border-left-color: var(--card); }
+.driver-popover.workflow-tour .driver-popover-arrow-side-right.driver-popover-arrow { border-right-color: var(--card); }
+.driver-popover.workflow-tour .driver-popover-arrow-side-top.driver-popover-arrow { border-top-color: var(--card); }
+.driver-popover.workflow-tour .driver-popover-arrow-side-bottom.driver-popover-arrow { border-bottom-color: var(--card); }
+
+/* Vägledning (2026-10-01): a field that is missing, reached from Kvar att fylla i, the progress line or a
+   disabled-looking Slutför, is marked light red until it is changed. */
+.flow-attention {
+  border-radius: 0.5rem;
+  background-color: color-mix(in srgb, #ef4444 7%, var(--card));
+  box-shadow: 0 0 0 1px color-mix(in srgb, #ef4444 60%, transparent);
+  transition: background-color 200ms, box-shadow 200ms;
+}
+/* Only the field itself (2026-10-01): its own border turns red, without an extra ring around it. */
+:is(input, textarea, select).flow-attention,
+:is(input, textarea, select).flow-attention:focus-visible {
+  border-color: color-mix(in srgb, #ef4444 75%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, #ef4444 16%, transparent);
+}
+
+
+/* Kakor (2026-10-03): the notice sits above the phone menu bar and the safe area. */
+.cookie-notice { bottom: calc(1rem + env(safe-area-inset-bottom)); }
+/*
+ * The round cookie button in the corner of the public pages (2026-11-11): the same button as on the public website, value for
+ * value (docs/regler/samtycke.md) – 48 px circle, 24 px cookie icon, bottom left inside the safe area, quiet card colours,
+ * a visible focus ring, never printed. Shown once a choice has been made (components/cookie-notice.tsx).
+ */
+.cookie-corner {
+  position: fixed; z-index: 60; left: calc(16px + env(safe-area-inset-left)); bottom: calc(16px + env(safe-area-inset-bottom));
+  display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; padding: 0; margin: 0;
+  border: 1px solid var(--border); border-radius: 9999px; background: var(--card); color: var(--primary);
+  box-shadow: 0 2px 8px rgb(15 23 42 / 0.16); cursor: pointer; transition: background-color 150ms ease;
+}
+.cookie-corner:hover { background: var(--secondary); }
+.cookie-corner:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.cookie-corner svg { width: 24px; height: 24px; flex: none; }
+@media print { .cookie-corner { display: none !important; } }
+/* Room under the page for the corner button, so the last line of a quote or a legal page can be scrolled clear of it (kundresa 2026-11-07, L70). */
+body:has(.cookie-corner) { padding-bottom: calc(4.5rem + env(safe-area-inset-bottom)); }
+@media (max-width: 1023px) { .cookie-notice { bottom: calc(5.5rem + env(safe-area-inset-bottom)); } }
+/* A public page with the footer has no floating cookie button: it is at the left of the copyright line (2026-11-12 phone,
+   2026-11-13 every width). */
+body:has(.landing-foot) .cookie-corner { display: none; }
+/* An open menu on a narrow screen holds the page behind it still; a long menu scrolls in itself (2026-11-12, as the public website). */
+@media (max-width: 860px) { html:has(.landing-header details[open] > .landing-menu-panel) { overflow: hidden; } .landing-menu-panel { overscroll-behavior: contain; } }
+/* A page with the footer needs no extra room under it: the copyright line keeps the corner free (2026-11-12: the light
+   band under the blue footer was taller here than on the public website). */
+body:has(.landing-foot), body:has(.landing-foot):has(.cookie-corner) { padding-bottom: 0; }
+
+/*
+ * App feel on phones and tablets (2026-10-05: "PWA app-känsla måste bli bättre, inte vara floty, inte zooma in
+ * på fel sätt"). V1 felt calm because it never bounced, never zoomed into a field and never panned sideways.
+ */
+/* iOS zooms the page into a field whose text is smaller than 16 px and leaves it zoomed. Every touch screen therefore
+   gets 16 px text in fields – also a tablet in landscape (1024 px and wider) and fields outside the workspace (login,
+   popups) – while a desktop with a mouse keeps its 14 px. Fields with larger text keep it. */
+@media (pointer: coarse) {
+  :is(input:not([type="checkbox"], [type="radio"], [type="file"], [type="range"], [type="color"], [type="button"], [type="submit"], [type="reset"], [type="image"], [type="hidden"]), select, textarea):not([class*="text-lg"], [class*="text-xl"], [class*="text-2xl"], [class*="text-3xl"], [class*="text-4xl"]) { font-size: 1rem; }
+}
+/* The installed app: nothing can pan the page sideways. Vertically the page keeps the soft rubber band at both ends
+   (2026-10-17: only Mer, a scroll container of its own, felt right; every other page stopped dead because
+   overscroll-behavior: none removed the bounce of the page scroll); the bars follow the finger, so nothing breaks. Only in the installed app – in a browser tab pull-to-refresh stays, and the overflow checks of the
+   browser tests still see a too wide element. */
+@media (display-mode: standalone), (display-mode: fullscreen), (display-mode: minimal-ui) {
+  html, body { overscroll-behavior-x: none; }
+  body { overflow-x: clip; }
+}
+/* A page that fits the screen does not bounce when dragged; longer pages keep the rubber band (2026-10-24). AppShell
+   sets data-fits on <html> in the app. */
+html[data-native][data-fits], html[data-native][data-fits] body { overscroll-behavior-y: none; }
+/* iOS Safari draws date and time fields at their own width, wider than a half-width column on a phone, and with the
+   value centred. Only iOS (-webkit-touch-callout); the native picker still opens on a tap. */
+@supports (-webkit-touch-callout: none) {
+  input:is([type="date"], [type="time"], [type="datetime-local"], [type="month"], [type="week"]) { -webkit-appearance: none; appearance: none; min-width: 0; max-width: 100%; }
+  input::-webkit-date-and-time-value { min-height: 1.5em; margin: 0; text-align: start; }
+}
+
+/*
+ * Nivå 1 på mobil (2026-10-09, docs/ui-system.md 9): display level 1 on a phone narrower than 640 px reads like
+ * the phone's own apps – lists like its settings (inset groups of rows with a coloured icon, one line of text and a
+ * chevron, thin dividers, no cards), one thing per screen with Tillbaka at the top left, big tiles on Hem and a tab bar.
+ * The shell sets data-native on <html>; the components live in components/native/.
+ */
+.native-group { overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-panel); background: var(--card); }
+.native-row { position: relative; display: flex; min-height: 3.25rem; width: 100%; align-items: center; gap: .75rem; padding: .5rem .875rem; text-align: left; color: var(--foreground); }
+.native-group > .native-row + .native-row::before { content: ""; position: absolute; top: 0; right: 0; left: 3.625rem; height: 1px; background: var(--border); }
+.native-group > .native-row[data-plain] + .native-row::before { left: .875rem; }
+.native-group > .native-row + .native-row[data-dot]::before { left: 2.25rem; }
+:is(a, button).native-row:active, .native-row:has(> a.stretched-link:active) { background: color-mix(in srgb, var(--secondary) 70%, var(--card)); }
+:is(a, button).native-row:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+.native-row .tap-above { position: relative; z-index: 2; }
+.native-group-title { padding: 1rem 1rem .375rem; font-size: .75rem; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; color: var(--muted-foreground); }
+/* A list on its way (ListSkeleton): soft grey shapes that breathe slowly; still where the person asked for less motion. */
+.native-skeleton { display: block; background: color-mix(in srgb, var(--muted-foreground) 16%, transparent); animation: native-skeleton 1.4s ease-in-out infinite; }
+@keyframes native-skeleton { 50% { opacity: .5; } }
+@media (prefers-reduced-motion: reduce) { .native-skeleton { animation: none; } }
+/* Svar direkt på klicket (stabil sidladdning steg 8a, components/link-pending.tsx): a thin primary line in the pressed menu
+   row or tab while its page is on its way. It takes no room and does not move or fade – it is there or it is not. */
+.link-pending { position: absolute; pointer-events: none; border-radius: 1px; background: var(--primary); visibility: hidden; }
+.link-pending[data-pending] { visibility: visible; }
+.link-pending[data-edge="left"] { left: 0; top: .5rem; bottom: .5rem; width: 2px; }
+.link-pending[data-edge="bottom"] { left: .5rem; right: .5rem; bottom: 0; height: 2px; }
+.link-pending[data-edge="top"] { left: 30%; right: 30%; top: 0; height: 2px; }
+.workspace-bottom-nav > a:has(> .link-pending), .workspace-menu-item:has(> .link-pending) { position: relative; }
+/* Ikonstandarden (2026-10-24; Uppgifter is the reference, components/area-icon.tsx): one icon square everywhere –
+   2 rem, 8 px rounding, a 16 px symbol – in the colour of its function (--area-color from the --type-* tokens; inside a card
+   the card's --panel-tone). Soft in lists and overviews (a light background in the colour, a darker symbol), solid in main
+   and content cards (the colour filled, a white symbol). Only tokens and color-mix, so Light and Dark follow by themselves:
+   in Dark the mix with the light foreground makes the soft symbol lighter instead of darker. Hem's large tiles are the one
+   size variant (`tile`). */
+.area-icon { --area: var(--area-color, var(--panel-tone, var(--primary))); display: grid; flex: none; place-items: center; width: 2rem; height: 2rem; border-radius: .5rem; }
+.area-icon svg { width: 1rem; height: 1rem; stroke-width: 2.25; }
+.area-icon[data-tone="soft"] { background: color-mix(in srgb, var(--area) 14%, var(--card)); color: color-mix(in srgb, var(--area) 78%, var(--foreground)); }
+.area-icon[data-tone="solid"] { background: var(--area); color: var(--type-foreground); }
+/* Dark (13b, 2026-10-24): the tokens are deep enough for the white symbol on the solid square, so the soft symbol takes
+   more of the light foreground to stay as clear on the dark card – soft and solid both read at least 4.5:1 in Light and
+   Dark for every function (tests/panel-area.test.ts). */
+html[data-theme="dark"] .area-icon[data-tone="soft"] { color: color-mix(in srgb, var(--area) 65%, var(--foreground)); }
+.area-icon[data-size="tile"] { width: 2.375rem; height: 2.375rem; border-radius: var(--radius-control); }
+.area-icon[data-size="tile"] svg { width: 1.375rem; height: 1.375rem; }
+.native-tile { display: flex; min-height: 6.5rem; min-width: 0; flex-direction: column; justify-content: space-between; gap: .75rem; border: 1px solid var(--border); border-radius: var(--radius-panel); background: var(--card); padding: .875rem; text-align: left; color: var(--foreground); }
+.native-tile[data-wide] { grid-column: 1 / -1; min-height: 4rem; flex-direction: row; align-items: center; justify-content: flex-start; }
+.native-tile:active { background: color-mix(in srgb, var(--secondary) 70%, var(--card)); }
+.native-tile:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+/* A tile with a button of its own (Tid with Stoppa, punkt 7): the link covers the tile, so the tile answers for it. */
+.native-tile:has(.stretched-link:focus-visible) { outline: 2px solid var(--ring); outline-offset: 2px; }
+.native-tile:has(.stretched-link:active) { background: color-mix(in srgb, var(--secondary) 70%, var(--card)); }
+/* Hem without scrolling and edited in place (2026-10-21, UX-granskningen A1, avsnitt 3–4): tiles 96 px high, two in a
+   row; three in a row from seven small tiles (icon and one word, 84 px); four in a row on a phone held sideways. */
+.native-home-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .625rem; padding-block: .25rem; list-style: none; margin: 0; }
+.native-home-grid[data-cols="3"] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.native-home-grid[data-cols="4"] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.native-home-grid .native-tile { min-height: 6rem; gap: .25rem; padding: .625rem .75rem; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.native-home-grid .area-icon[data-size="tile"] { width: 2rem; height: 2rem; }
+.native-home-grid .area-icon[data-size="tile"] svg { width: 1.125rem; height: 1.125rem; }
+.native-home-grid .native-tile[data-wide] { min-height: 4rem; }
+.native-home-grid[data-cols="3"] .native-tile:not([data-wide]) { min-height: 5.25rem; padding: .625rem; }
+.native-home-grid[data-cols="3"] .native-tile:not([data-wide]) :is(.native-tile-hint, .block > .block + .block) { display: none; }
+.native-home-grid[data-cols="4"] .native-tile:not([data-wide]) { min-height: 5.25rem; }
+/* A low screen (iPhone SE, a phone with the browser's bars): the small tiles put the icon beside the name and leave out
+   the hint, so Hem still fits without scrolling (2026-10-24). */
+@media (max-height: 620px) {
+  .native-home-grid .native-tile:not([data-wide]), .native-home-grid[data-cols] .native-tile:not([data-wide]) { min-height: 3rem; flex-direction: row; align-items: center; justify-content: flex-start; gap: .5rem; padding-block: .5rem; }
+  .native-home-grid .native-tile:not([data-wide]) :is(.native-tile-hint, .block > .block + .block) { display: none; }
+}
+.native-home-grid > li { min-width: 0; }
+.native-home-grid > li[data-wide], .native-home-grid > .col-span-full { grid-column: 1 / -1; }
+/* A list tile (dashboard etapp 2, 2026-10-28; components/native/tile.tsx TileList): the card of a tile, across the row,
+   with a fixed room for three 44 px rows, so loading, rows and the empty line all keep the same height. */
+.native-tile-list { grid-column: 1 / -1; min-width: 0; border: 1px solid var(--border); border-radius: var(--radius-panel); background: var(--card); color: var(--foreground); padding: .375rem .75rem; }
+.native-tile-list-head { display: flex; min-height: 2.75rem; align-items: center; gap: .5rem; }
+.native-tile-list-head:focus-visible, .native-tile-list-row:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; border-radius: var(--radius-control); }
+.native-tile-list-count { flex-shrink: 0; font-size: .8125rem; font-variant-numeric: tabular-nums; color: var(--muted-foreground); }
+.native-tile-list-rows { display: block; height: 8.25rem; margin: 0; padding: 0; list-style: none; }
+.native-tile-list-row { display: flex; height: 2.75rem; min-width: 0; align-items: center; gap: .5rem; border-top: 1px solid var(--border); font-size: .875rem; font-weight: 500; }
+.native-tile-list-row:active { background: color-mix(in srgb, var(--secondary) 70%, var(--card)); }
+.native-tile-list-detail { flex-shrink: 0; font-size: .75rem; font-variant-numeric: tabular-nums; color: var(--muted-foreground); }
+.native-tile-list-empty { display: flex; align-items: center; justify-content: center; border-top: 1px solid var(--border); font-size: .875rem; color: var(--muted-foreground); }
+/* The edit mode (2026-10-26): a moved tile or tab takes the finger itself, so the page neither scrolls nor swipes
+   back under it (pointer events, components/native/home-edit.tsx). */
+.native-movable { touch-action: none; -webkit-touch-callout: none; }
+/* A tile Hem shows only sometimes says when; dashed while Hem has it away right now. */
+.native-tile-when { display: block; margin-top: .125rem; font-size: .6875rem; line-height: .875rem; font-weight: 500; color: var(--primary); }
+.native-tile[data-conditional="away"] { border-style: dashed; background: transparent; }
+/* "Kan läggas till" apart from what is shown: a quieter, dashed group of its own. */
+.native-home-pool .native-group { border-style: dashed; background: color-mix(in srgb, var(--secondary) 45%, var(--background)); }
+.native-group-subtitle { padding: .25rem 1rem .375rem; font-size: .75rem; font-weight: 600; color: var(--muted-foreground); }
+/* The × of a tile in edit mode: a 44 px tap area with a small round badge in its corner. */
+.native-home-remove { position: absolute; top: -.875rem; left: -.875rem; z-index: 2; display: grid; width: 2.75rem; height: 2.75rem; place-items: center; border-radius: 9999px; }
+.native-home-remove > span { display: grid; width: 1.5rem; height: 1.5rem; place-items: center; border-radius: 9999px; background: var(--foreground); color: var(--background); box-shadow: 0 0 0 2px var(--background); }
+.native-home-remove:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+.native-home-row-action { display: grid; width: 2.75rem; height: 2.75rem; margin: -.5rem -.5rem -.5rem 0; place-items: center; border-radius: 9999px; color: var(--muted-foreground); }
+.native-home-row-action:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+/* The tiles wiggle a little while they can be moved; not for whoever asked the device for less motion. */
+@keyframes native-tile-wiggle { 0%, 100% { transform: rotate(-.6deg); } 50% { transform: rotate(.6deg); } }
+.native-tile-wiggle { animation: native-tile-wiggle .32s ease-in-out infinite; transform-origin: 50% 50%; }
+.native-home-grid li:nth-child(2n) .native-tile-wiggle { animation-delay: -.16s; }
+@media (prefers-reduced-motion: reduce) { .native-tile-wiggle { animation: none; } }
+/* Hem at level 1 has only the tab bar under it (no floating Bakåt/Framåt since 2026-10-12): the room kept under the page
+   is the bar's own height, not the 9 rem the other pages keep, so the default Hem fits 390 × 844 (avsnitt 4). */
+@media (max-width: 1023px) {
+  html[data-native] .workspace-shell:has(.native-home) { padding-bottom: calc(4.75rem + env(safe-area-inset-bottom)); }
+}
+/* A tile just added is marked for a moment. */
+.native-home-grid[data-just-added] .native-tile:last-child { box-shadow: 0 0 0 2px var(--ring); }
+.native-steps { display: flex; gap: .25rem; }
+.native-steps > i { height: .25rem; flex: 1; border-radius: 1px; background: var(--border); }
+.native-steps > i[data-state="done"] { background: var(--type-round); }
+.native-steps > i[data-state="current"] { background: var(--primary); }
+/* The month grid (2026-10-12): week number + seven day columns; today framed, the chosen day filled, hours small under the number. */
+.native-month-head { display: grid; grid-template-columns: 2.75rem minmax(0, 1fr) 2.75rem; align-items: center; padding-bottom: .5rem; }
+.native-month-head > button { display: grid; width: 2.75rem; height: 2.75rem; place-items: center; color: var(--primary); }
+.native-month-title { display: flex; align-items: center; justify-content: center; gap: .5rem; font-size: 1rem; font-weight: 600; }
+.native-month-today { min-height: 2.75rem; padding-inline: .5rem; font-size: .875rem; font-weight: 500; color: var(--primary); }
+.native-month-grid { display: grid; grid-template-columns: 1.5rem repeat(7, minmax(0, 1fr)); gap: 3px; padding-bottom: .625rem; }
+.native-month-wd { padding-block: 2px; text-align: center; font-size: .625rem; font-weight: 700; color: var(--muted-foreground); }
+.native-month-week { display: grid; place-items: center; font-size: .625rem; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+.native-month-day { display: flex; min-height: 2.75rem; aspect-ratio: 1 / 1.05; flex-direction: column; align-items: center; justify-content: center; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--card); font-size: .8125rem; font-variant-numeric: tabular-nums; color: var(--foreground); }
+.native-month-day > small { font-size: .625rem; line-height: 1; color: var(--muted-foreground); }
+.native-month-day[data-has] > small { font-weight: 700; color: color-mix(in srgb, var(--type-round) 70%, var(--foreground)); }
+/* A day that needs attention (the rounds' preview, 2026-10-27): the indicator's amber, as indicatorText("warning"). */
+.native-month-day[data-tone="success"] { background: #dcfce7; border-color: #15803d; color: #14532d; font-weight: 600; }
+[data-theme="dark"] .native-month-day[data-tone="success"] { background: rgb(22 101 52 / .45); border-color: #4ade80; color: #dcfce7; }
+.native-month-day[data-tone="warning"] { border-color: #b45309; border-style: dashed; }
+.native-month-day[data-tone="warning"] > small { color: #b45309; }
+[data-theme="dark"] .native-month-day[data-tone="warning"] { border-color: #fcd34d; }
+[data-theme="dark"] .native-month-day[data-tone="warning"] > small { color: #fcd34d; }
+.native-month-day[data-out] { opacity: .4; }
+.native-month-day[data-today] { border-color: var(--primary); border-width: 2px; font-weight: 700; }
+.native-month-day[data-selected] { border-color: var(--primary); background: var(--primary); color: var(--primary-foreground); }
+.native-month-day[data-selected] > small { color: var(--primary-foreground); }
+.native-month-day:focus-visible, .native-month-head > button:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+/* The title stands in the middle of the bar whatever the buttons' widths, on ONE line (2026-10-17; replaces the two lines of
+   2026-10-13): a title that does not fit ends with … ("Mina arbetsord…"), the whole title stays in the text for screen readers. */
+/* The title keeps its room (2026-10-14): it never grows past 56 vw and always leaves 7 rem on each side, so the two sides share
+   what is left equally and the title stays centred as long as the back pill is one short word ("Jobbet", "Kunder"). A longer
+   title is cut with … instead of pushing against the buttons. */
+.native-top-bar { position: sticky; z-index: 15; display: grid; grid-template-columns: minmax(max-content, 1fr) minmax(0, auto) minmax(max-content, 1fr); align-items: center; column-gap: .25rem; min-height: 2.75rem; background: var(--background); }
+.native-top-bar > :first-child { justify-self: start; min-width: 0; }
+.native-top-bar > :last-child { justify-self: end; min-width: 0; }
+/* Every title at level 1 – the top bar's, a dialog shown as a screen, Hem, Ny and Mer – is one size: 18 px bold, centred
+   (2026-10-16: "en storlek större … alla sidor som har rubrik ha samma storlek … centrerad i mitten"). */
+.native-top-bar-title { min-width: 0; max-width: min(62vw, calc(100vw - 12.5rem)); padding-inline: .25rem; overflow: hidden; text-align: center; font-size: 1.0625rem; font-weight: 700; line-height: 1.4rem; white-space: nowrap; text-overflow: ellipsis; }
+/* A job's screens (2026-10-22, "en liten bricka eller notis"): the save state and who else has the job open as one small
+   line under the title, inside the bar's own 44 px – the bar, the page and the buttons never move when it changes. */
+.native-top-bar-heading { display: flex; min-width: 0; max-width: min(62vw, calc(100vw - 12.5rem)); flex-direction: column; align-items: center; }
+.native-top-bar-heading > .native-top-bar-title { max-width: 100%; line-height: 1.25rem; }
+.native-top-bar-status { display: flex; height: .875rem; max-width: 100%; min-width: 0; align-items: center; justify-content: center; overflow: hidden; color: var(--muted-foreground); font-size: .6875rem; font-weight: 500; line-height: .875rem; white-space: nowrap; }
+.native-top-bar-status-save { flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.native-top-bar-status-save[data-error] { color: var(--destructive); text-decoration: underline dotted; text-underline-offset: 2px; }
+.native-top-bar-status-presence { display: inline-flex; min-width: 0; align-items: center; gap: .25rem; color: var(--foreground); }
+.native-top-bar-status-presence:not(:empty) { margin-left: .25rem; }
+.native-top-bar-button { display: inline-flex; min-height: 2.75rem; min-width: 2.75rem; max-width: 100%; align-items: center; gap: .125rem; padding-inline: .25rem; color: var(--primary); font-size: 1rem; }
+.native-top-bar-button > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.native-top-bar-button:disabled, .native-top-bar-button[aria-disabled="true"] { opacity: .45; }
+.native-top-bar-button[data-strong] { font-weight: 600; }
+/* Avbryt and the main action look like buttons, not loose words (2026-10-10): a framed pill and a filled one, inside
+   the 44 px tap area. */
+.native-top-bar-button[data-kind] > span { display: inline-flex; height: 2.125rem; align-items: center; border-radius: var(--radius-control); padding-inline: .875rem; font-size: .9375rem; font-weight: 600; }
+.native-top-bar-button[data-kind="cancel"] > span { border: 1px solid var(--border); background: var(--card); color: var(--foreground); }
+.native-top-bar-button[data-kind="save"] > span { background: var(--primary); color: var(--primary-foreground); }
+/* A list's Redigera / Klar (Kunder, 2026-10-14): plain blue text like the phone's own lists, never the filled main action. */
+.native-top-bar-button[data-kind="save"][data-plain] > span { background: transparent; color: var(--primary); padding-inline: .5rem; }
+/* Icon buttons (Avbryt/Stäng as ×, Ny as +): a square 34 px face inside the 44 px tap area. */
+.native-top-bar-button[data-icon] > span { width: 2.125rem; justify-content: center; padding-inline: 0; }
+.native-top-bar-button[data-kind]:active > span { filter: brightness(.94); }
+/* Back, "‹ <the page above>" (2026-10-12): a white framed field with the chevron inside, so it reads as a button and not as part of the title
+   (2026-10-12). The tap area stays 44 px through the pseudo-element. */
+.native-top-bar-button[data-kind="back"] { min-height: 2.75rem; height: 2.75rem; min-width: 0; max-width: 38vw; margin-left: 0; padding-inline: 0; color: var(--foreground); }
+/* The bottom row of a flow (NativeFlowBar, 2026-10-12): fixed just above the tab bar (follows it when it slides away), never behind it. */
+.native-flow { position: fixed; left: 0; right: 0; bottom: calc((1 - var(--chrome-p, 0)) * (4.625rem + env(safe-area-inset-bottom))); z-index: 25; margin: 0; padding: .5rem max(1rem, env(safe-area-inset-right)) .5rem max(1rem, env(safe-area-inset-left)); background: var(--background); border-top: 1px solid var(--border); }
+.workspace-shell[data-keyboard-open] .native-flow { bottom: 0; }
+/* The row is out of the page's flow (fixed), wherever its wrapper sits; the content gets room under it so the last field is never hidden. */
+html[data-native] .workspace-main:has(.native-flow) { padding-bottom: 8.5rem; }
+/* A row scrolled into view (a new measurement row, 2026-10-12) stops clear of the fixed flow row and the top bar. */
+html[data-native] .workspace-main:has(.native-flow) [data-deviation-target] { scroll-margin-top: 4rem; scroll-margin-bottom: 10rem; }
+/* The result bar of a calculator at level 1 (Kalkylator, 2026-10-12): the main figures stay in sight under the fields, above the tab bar, like the flow row. */
+.native-calc-dock { position: fixed; left: 0; right: 0; bottom: calc((1 - var(--chrome-p, 0)) * (4.625rem + env(safe-area-inset-bottom))); z-index: 24; margin: 0; padding: .5rem max(1rem, env(safe-area-inset-right)) .5rem max(1rem, env(safe-area-inset-left)); min-height: 3.25rem; background: var(--background); border-top: 1px solid var(--border); }
+.workspace-shell[data-keyboard-open] .native-calc-dock { bottom: 0; }
+html[data-native] .workspace-main:has(.native-calc-dock) { padding-bottom: 8rem; }
+/* A toast on level 1 sits above the tab bar and is dismissed by a tap. */
+html[data-native] .workspace-toast { bottom: calc(5.75rem + env(safe-area-inset-bottom)); }
+/* The framed white pill is the inner span; the button element itself is the 44 px tap area (the same as Avbryt and Spara). */
+.native-top-bar-button[data-kind="back"] > .native-top-bar-pill { display: inline-flex; height: 2.125rem; width: 2.125rem; min-width: 0; align-items: center; justify-content: center; gap: 0; padding-inline: 0; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--card); }
+.native-top-bar-button[data-kind="back"] svg { color: var(--primary); }
+.native-top-bar-button[data-kind="back"]:active > .native-top-bar-pill { filter: brightness(.94); }
+/* The round × that closes a sheet: a 44 px tap area around a small grey circle, like the phone's own sheets. */
+.native-sheet-close { display: grid; width: 2.75rem; height: 2.75rem; margin: -.25rem -.375rem -.25rem 0; place-items: center; border-radius: 9999px; color: var(--muted-foreground); background: radial-gradient(circle, color-mix(in srgb, var(--muted-foreground) 14%, transparent) 1.0625rem, transparent 1.125rem); }
+.native-sheet-close:active { background: radial-gradient(circle, color-mix(in srgb, var(--muted-foreground) 26%, transparent) 1.0625rem, transparent 1.125rem); }
+.native-sheet-close:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.native-sheet-close svg { width: 1.125rem; height: 1.125rem; stroke-width: 2.5; }
+.native-large-title { font-family: var(--heading-font); font-size: 1.125rem; font-weight: 700; line-height: 1.4rem; text-align: center; overflow-wrap: anywhere; }
+.native-sheet { position: fixed; top: 0; right: 0; left: 0; bottom: 0; z-index: 25; overflow-y: auto; overscroll-behavior: contain; background: var(--background); padding: calc(.5rem + env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) calc(9.25rem + env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left)); }
+/* The picker row (NativePickerRow): the select or date field covers the row invisibly; a tap opens the phone's picker. */
+:is(.native-picker-row, .native-picker-field) > :is(select, input) { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; opacity: 0; font-size: 16px; cursor: pointer; appearance: none; }
+.native-picker-row:has(> :is(select, input):focus-visible) { outline: 2px solid var(--ring); outline-offset: -2px; }
+.native-picker-field { position: relative; display: flex; min-height: 2.75rem; align-items: center; gap: .5rem; border: 1px solid var(--input); border-radius: .5rem; background: var(--card); padding: .5rem .75rem; font-size: 1rem; line-height: 1.375rem; }
+.native-picker-field:has(> select:focus-visible) { outline: 2px solid var(--ring); outline-offset: 1px; }
+.native-picker-row:active { background: color-mix(in srgb, var(--secondary) 70%, var(--card)); }
+.native-search-field { background: color-mix(in srgb, var(--muted-foreground) 14%, transparent); }
+/* The sheet reaches under the tab bar, so nothing of the page shows below it when the bar slides away while scrolling. */
+@media (max-width: 1023px) {
+  .workspace-bottom-nav.native-tab-bar { z-index: 30; }
+  /* Darker than the ordinary bar's grey, so the symbols read clearly (2026-10-09 evening). */
+  .workspace-bottom-nav.native-tab-bar > :is(a, button) { font-weight: 500; color: color-mix(in srgb, var(--foreground) 72%, var(--background)); }
+  .workspace-bottom-nav.native-tab-bar > :is([aria-current="page"], [data-active]) { color: var(--primary); }
+  .workspace-bottom-nav.native-tab-bar > :is([aria-current="page"], [data-active]) .nav-icon { background: transparent; }
+  .workspace-bottom-nav.native-tab-bar .nav-icon { width: 2.5rem; height: 1.75rem; }
+  .workspace-bottom-nav.native-tab-bar svg { width: 1.5rem; height: 1.5rem; }
+}
+@media (max-width: 639px) {
+  /* The native top bar takes the breadcrumbs' place right under the header and stays there while scrolling. */
+  html[data-native] .workspace-main { padding-top: 0; }
+  /* A slimmer top bar at level 1 (2026-10-09 evening: "kvar, men smalare"): the same buttons, less height. */
+  html[data-native] { --workspace-header-h: calc(3.25rem + env(safe-area-inset-top)); }
+  html[data-native] .workspace-header { height: var(--workspace-header-h); }
+  html[data-native] [data-chrome-follow] { top: calc(var(--workspace-header-h) - var(--chrome-offset, 0px)); }
+  html[data-native] .workspace-header .workflow-brand-text { font-size: .9375rem; }
+  html[data-native] .workspace-main .native-top-bar { margin-inline: calc(-1 * var(--gutter-l)) calc(-1 * var(--gutter-r)); padding-inline: max(.25rem, var(--gutter-l)) max(.25rem, var(--gutter-r)); }
+  html[data-native] .workspace-main > .native-page:first-child, html[data-native] .workspace-main > .native-top-bar + * { margin-top: .5rem; }
+  /* An ordinary page (Ny uppgift, Planering …) gets the same large title and the same space above it as the native lists
+     (2026-10-09: Ny uppgift sat higher and smaller than Mina jobb). */
+  html[data-native] .workspace-main .page-header { padding-top: .75rem; }
+  html[data-native] .workspace-main .page-title { font-size: 1.875rem; font-weight: 700; letter-spacing: -.02em; line-height: 2.25rem; }
+}
+/*
+ * Visning 1 below Hem (2026-10-15: "HINTEK Workflow och klockan är bara på hemskärmen, sedan när jag är på andra sidor
+ * är det navigeringsknappar"): no header; the page's top bar is the top row under the status bar and follows the finger out
+ * and back like the tab bar (AppShell measures it as the range). The status bar strip stays, so nothing scrolls under it.
+ */
+html[data-native] .workspace-shell[data-native-bare] .workspace-header { display: none; }
+html[data-native] .workspace-shell[data-native-bare] .workspace-main { padding-top: env(safe-area-inset-top); }
+html[data-native] .workspace-shell[data-native-bare] .workspace-main > .native-top-bar { top: calc(env(safe-area-inset-top) - var(--chrome-offset, 0px)); }
+html[data-native] .workspace-shell[data-native-bare]::before { content: ""; position: fixed; z-index: 16; top: 0; left: 0; right: 0; height: env(safe-area-inset-top); background: var(--background); }
+html[data-native] .workspace-shell[data-native-bare][data-chrome-snap] .workspace-main > .native-top-bar { transition: top 180ms ease; }
+/* Hem's header lies over the top of the page instead of pushing it down (stabil sidladdning, 2026-10-23): the page area
+   (.workspace-main) starts at the top on every screen and Hem keeps the header's height as its own top padding, so going
+   between Hem and a screen below it swaps the page instead of moving the whole page 52 px (CLS 0,06–0,08 on a phone).
+   The header stays sticky and follows the finger as before; the edit mode of Hem (below) still hides it. */
+html[data-native] .workspace-shell[data-home] .workspace-header { margin-bottom: calc(-1 * var(--workspace-header-h)); }
+html[data-native] .workspace-shell[data-home] .workspace-main { padding-top: var(--workspace-header-h); }
+/*
+ * Telefonens första bild (stabil sidladdning steg 4, lib/workflow/first-frame.ts): when the server could not tell the device
+ * (data-shell="auto": a browser without client hints, Safari on an iPad), a window the shell makes a phone – the same rule
+ * as deviceClass: narrower than 768 px, or a touch screen under 600 px high – never shows the computer's frame while the
+ * page loads: no bottom row, no breadcrumbs, no Sök or profile in the top bar, and below Hem no top bar, as in the app.
+ * The shell sets data-shell="ready" as soon as it has decided (apply()), so this holds only until then.
+ */
+@media (max-width: 767px), (pointer: coarse) and (max-height: 599px) {
+  html[data-shell="auto"] :is(.workspace-bottom-nav, .workspace-breadcrumbs, .floating-nav, .workspace-header-tools, .workspace-profile) { display: none; }
+  html[data-shell="auto"] .workspace-shell:not([data-home]) .workspace-header { display: none; }
+}
+/* When the shell has chosen the app look (data-native="1") the computer's bottom row and the header's Sök are never shown, also
+   in the frame between the shell's decision and React drawing the app's tab bar (Telefonens första bild, 2026-11-14). */
+html[data-native="1"] :is(.workspace-bottom-nav:not(.native-tab-bar), .workspace-header-center) { display: none; }
+/* Hem in edit mode is a screen like the others (2026-10-22: Klart sat against the blue header): the header and the
+   update notice step aside and the bar with Hemskärmen and Klart is the top row. */
+html[data-native] .workspace-shell:has([data-testid="native-home-edit-grid"]) .workspace-header { display: none; }
+html[data-native] .workspace-shell:has([data-testid="native-home-edit-grid"]) .workspace-main { padding-top: env(safe-area-inset-top); }
+html[data-native] .workspace-shell:has([data-testid="native-home-edit-grid"]) .workspace-main > .native-top-bar { top: calc(env(safe-area-inset-top) - var(--chrome-offset, 0px)); }
+html[data-native] .workspace-shell:has([data-testid="native-home-edit-grid"]) [data-testid="release-notice"] { display: none; }
+
+/*
+ * ---- Nivå 1 på mobil: jobben (arbetsorder, uppgift, protokoll, projekt, planering) – 2026-10-09/10 ----
+ * A page's own panels on a screen of its own (.native-screen, drawn only by the native screens) read like the phone's
+ * grouped lists: no light-blue header row, the heading as the small group heading over a rounded white group, inset like
+ * the menu's rows. The lead panel's heading is the top bar's title (NativeLead), so it is never shown twice. One page
+ * scroll: nothing on a screen scrolls inside its own box. The page's buttons as rows: .native-actions (NativeActions).
+ */
+.native-segmented { background: color-mix(in srgb, var(--muted-foreground) 14%, transparent); }
+.native-actions { display: flex; flex-direction: column; }
+/* A group whose buttons all turned out to render nothing (a right the person lacks) is not shown with an empty heading (resa 2026-11-06). */
+.native-actions-group:has(> .native-actions:empty) { display: none; }
+.native-actions > * { position: relative; width: 100%; }
+.native-actions > * + *::before { content: ""; position: absolute; z-index: 1; top: 0; right: 0; left: .875rem; height: 1px; background: var(--border); }
+.native-actions > [data-testid="disabled-reason"] { margin: -.375rem 0 0; padding: 0 .875rem .5rem 2.75rem; }
+.native-actions > [data-testid="disabled-reason"]::before { display: none; }
+.native-actions :is(button, a[href]) { position: relative; display: flex; width: 100%; min-height: 3.25rem; height: auto; align-items: center; justify-content: flex-start; gap: .75rem; border: 0; border-radius: 0; background: transparent; box-shadow: none; padding: .5rem .875rem; font-size: .9375rem; font-weight: 500; line-height: 1.25rem; color: var(--primary); text-align: left; white-space: normal; }
+.native-actions :is(button, a[href]) svg { width: 1.125rem; height: 1.125rem; flex: none; }
+.native-actions :is(button, a[href]):active { background: color-mix(in srgb, var(--secondary) 70%, var(--card)); }
+/* Ta bort … (the destructive variant, or a bin) reads in the destructive red as everywhere else, never in the blue (QA 2026-10-10). */
+.native-actions :is(button, a[href]):is([data-variant="destructive"], :has(> svg.lucide-trash-2)):not(:disabled, [aria-disabled="true"]) { color: var(--destructive); }
+.native-actions :is(button, a[href]):is(:disabled, [aria-disabled="true"]) { color: var(--muted-foreground); }
+.native-actions > span:has(> button) { display: flex; flex-direction: column-reverse; align-items: stretch; }
+.native-actions > span:has(> button) > span { padding: 0 .875rem .5rem 2.75rem; text-align: left; }
+@media (max-width: 639px) {
+  html[data-native] .native-screen .app-panel:not(.app-panel .app-panel) { margin-inline: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+  html[data-native] .native-screen .app-panel:not(.app-panel .app-panel) > .panel-header { min-height: 0; border: 0; border-radius: 0; background: transparent; padding: 1rem 1rem .375rem; gap: .5rem; }
+  html[data-native] .native-screen .app-panel:not(.app-panel .app-panel) > .panel-header .section-title { font-size: .75rem; line-height: 1rem; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; color: var(--muted-foreground); }
+  html[data-native] .native-screen .app-panel:not(.app-panel .app-panel) > .panel-header .panel-flow-hint { display: none; }
+  html[data-native] .native-screen .app-panel:not(.app-panel .app-panel) > .panel-header[data-native-lead] { padding-top: .5rem; }
+  html[data-native] .native-screen .app-panel:not(.app-panel .app-panel) > :is(.panel-content, .panel-persistent-content) { border: 1px solid var(--border); border-radius: var(--radius-panel); background: var(--card); padding: 1rem .875rem; }
+  html[data-native] .native-screen .app-panel:not(.app-panel .app-panel) > .panel-persistent-content + .panel-content { margin-top: .5rem; }
+  html[data-native] .native-screen .app-panel:not(.app-panel .app-panel) > .panel-content[hidden] { display: none; }
+  /* A page's own row of buttons on a screen (the project's Rapport och hantering) reads as rows of one group. */
+  html[data-native] .native-screen [data-native-actions-header] > :first-child { display: none; }
+  html[data-native] .native-screen [data-native-actions] { display: flex; width: 100%; flex-direction: column; flex-wrap: nowrap; gap: 0; overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-panel); background: var(--card); }
+  html[data-native] .native-screen [data-native-actions] > * { position: relative; width: 100%; }
+  html[data-native] .native-screen [data-native-actions] > * + *::before { content: ""; position: absolute; z-index: 1; top: 0; right: 0; left: .875rem; height: 1px; background: var(--border); }
+  html[data-native] .native-screen [data-native-actions] :is(button, a[href]) { position: relative; display: flex; width: 100%; min-height: 3.25rem; height: auto; align-items: center; justify-content: flex-start; gap: .75rem; border: 0; border-radius: 0; background: transparent; box-shadow: none; padding: .5rem .875rem; font-size: .9375rem; font-weight: 500; line-height: 1.25rem; color: var(--primary); text-align: left; white-space: normal; }
+  html[data-native] .native-screen [data-native-actions] :is(button, a[href]):is([data-variant="destructive"], :has(> svg.lucide-trash-2)):not(:disabled, [aria-disabled="true"]) { color: var(--destructive); }
+  html[data-native] .native-screen [data-native-actions] :is(button, a[href]):is(:disabled, [aria-disabled="true"]) { color: var(--muted-foreground); }
+  /* Avsluta projekt with its reason: the button comes first in the DOM and the reason under it (plan 1A, 2026-10-11). */
+  html[data-native] .native-screen [data-native-actions] > span:has(> button) { display: flex; flex-direction: column; align-items: stretch; }
+  html[data-native] .native-screen [data-native-actions] > span:has(> button) > span { padding: 0 .875rem .5rem 2.75rem; text-align: left; }
+  /* One page scroll (2026-10-10: a list scrolled inside its own box): boxes with a fixed height let it grow. */
+  html[data-native] .native-screen :is(.overflow-y-auto, .overflow-auto)[class*="max-h-"] { max-height: none; overflow: visible; }
+  /* The lead panel's heading is the top bar's title, so its icon box would stand alone above the group (Hjälp → Nytt i versionen). */
+  html[data-native] .native-screen .panel-header[data-native-lead] .panel-icon { display: none; }
+  /* A page whose columns hold one screen each (Mina inställningar, NativeScreenFrame): only one part is drawn at a time, so the
+     columns' gaps would only leave an empty band under the top bar. */
+  html[data-native] .native-screen > .grid { gap: 0; }
+  html[data-native] .native-screen > .grid > [class*="space-y-"] > * { margin-block: 0; }
+}
+
+/*
+ * Nivå 1 på mobil: ett jobbs skärmar (QA 2026-10-10). Fields and choices read like the phone's own: a list opens with the
+ * same text size as a field, no boxes inside the screen's group, Ja/Nej/Osäker as a full-width segmented control, a
+ * measurement row's tick boxes as 44 px rows (the text, then the box) and a hint under its label.
+ */
+@media (max-width: 639px) {
+  /* The phone's own list button drew its text larger than the fields' (Chromium on Android); the same text, our chevron. */
+  html[data-native] .form-select { -webkit-appearance: none; appearance: none; padding-right: 2.25rem; font-size: 1rem; background-repeat: no-repeat;
+    background-image: linear-gradient(45deg, transparent 50%, var(--muted-foreground) 50%), linear-gradient(135deg, var(--muted-foreground) 50%, transparent 50%);
+    background-position: calc(100% - 1.125rem) 52%, calc(100% - .8125rem) 52%; background-size: .3125rem .3125rem; }
+  /* No box inside the screen's group: grouped fields, the risk questions, the material's price, Bilkostnad's parts and the
+     completion card lie directly in the group. */
+  html[data-native] :is(.native-screen, .workspace-modal[data-native-view]) .field-group,
+  html[data-native] :is(.native-screen, .workspace-modal[data-native-view]) [data-testid="car-cost-preview"],
+  html[data-native] .native-screen .completion-card { border: 0; border-radius: 0; background: transparent; padding-inline: 0; }
+  html[data-native] :is(.native-screen, .workspace-modal[data-native-view]) .field-group > legend { padding-inline: 0; }
+  html[data-native] .workspace-modal[data-native-view] :is(.field-group, [data-testid="car-cost-preview"]) + :is(.field-group, [data-testid="car-cost-preview"]) { border-top: 1px solid var(--border); border-radius: 0; padding-top: 1rem; }
+  /* Riskbedömning: Ja / Nej / Osäker as one segmented control across the width, 44 px high. */
+  html[data-native] .risk-answers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .125rem; padding: .125rem; border-radius: .625rem; background: color-mix(in srgb, var(--muted-foreground) 14%, transparent); }
+  html[data-native] .risk-answers > label { height: 2.75rem; min-width: 0; border-color: transparent; background: transparent; border-radius: .5rem; font-size: .9375rem; }
+  html[data-native] .risk-answers > label:has(> input:checked) { background: var(--card); box-shadow: 0 1px 2px #0000001f; }
+  /* A measurement row's tick boxes: rows of 44 px across the width, the text first and the box at the end. */
+  html[data-native] .measurement-row .measurement-check { grid-column: 1 / -1; flex-direction: row; align-items: center; justify-content: space-between; gap: .75rem; min-height: 2.75rem; font-size: .9375rem; }
+  html[data-native] .measurement-row .measurement-check > [data-slot="checkbox"] { width: 1.5rem; height: 1.5rem; margin: 0; }
+  html[data-native] .measurement-row .measurement-check + .measurement-check { border-top: 1px solid var(--border); }
+  html[data-native] .measurement-row .measurement-remove { grid-column: 1 / -1; justify-self: start; }
+  /* The chosen standard's limits under the label, on a line of their own. */
+  html[data-native] .form-label-hint { display: block; flex-basis: 100%; margin-left: 0; }
+  /* Kontrollmoment as rows of one group (the box, the name, the help), not a card per moment. */
+  html[data-native] .native-screen .control-moments { gap: 0; }
+  html[data-native] .native-screen .control-moments > div { min-height: 2.75rem; border: 0; border-radius: 0; background: transparent; padding-inline: 0; }
+  html[data-native] .native-screen .control-moments > div + div { border-top: 1px solid var(--border); }
+  html[data-native] .native-screen .control-moments label > span { font-size: .9375rem; font-weight: 400; }
+}
+
+/*
+ * HINTEK AI at level 1 on a phone (2026-10-10, docs/ui-system.md 9): a screen of the app that ends above the tab
+ * bar (or above the keyboard while it is up), with the top bar and the round ×; the messages are its one scrolling list
+ * and the field stays at the bottom, edge to edge.
+ */
+.native-assistant { position: fixed; top: 0; right: 0; left: 0; height: calc(100dvh - 4.5rem - env(safe-area-inset-bottom)); z-index: 25; display: flex; flex-direction: column; overflow: hidden; background: var(--background); padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left); }
+.native-assistant .native-top-bar { position: static; }
+/* The field runs edge to edge (2026-10-10); the round × closes the chat. */
+
+/*
+ * Fält med förslag (datalist), t.ex. Enhet på material-, utgifts-, offert- och fakturarader (simulation 2026-10-10): på
+ * pekskärm och under 1024 px ritade webbläsaren en egen grå listknapp. Fältet får i stället samma pil som listvalen
+ * bredvid (.form-select på mobilen); förslagen visas som förut när man skriver eller trycker i fältet.
+ */
+@media (max-width: 1023px), (pointer: coarse) {
+  input[list]::-webkit-calendar-picker-indicator { display: none !important; }
+  input[list] { padding-right: 2.25rem; background-repeat: no-repeat;
+    background-image: linear-gradient(45deg, transparent 50%, var(--muted-foreground) 50%), linear-gradient(135deg, var(--muted-foreground) 50%, transparent 50%);
+    background-position: calc(100% - 1.125rem) 52%, calc(100% - .8125rem) 52%; background-size: .3125rem .3125rem; }
+}
+
+/*
+ * Appkolumnen (plan 1P, 2026-10-11): visning 1 på en surfplatta eller dator ritas i en smal kolumn (560 px) mitt på
+ * skärmen, hela höjden, med en lätt ram och skugga mot sidans bakgrund. Kolumnen är en ram med samma app som på telefon
+ * (components/native/app-column.tsx); datorns meny och topplist ritas inte. Egen klassgrupp: app-column-*.
+ */
+html[data-column], html[data-column] body { overflow: hidden; scrollbar-gutter: auto; }
+html[data-column] body { background: var(--muted); }
+.app-column-stage { position: fixed; inset: 0; display: flex; justify-content: center; background: var(--muted); }
+.app-column-frame { height: 100%; background: var(--background); box-shadow: 0 0 0 1px var(--border), 0 0 2.5rem #0000001a; }
+.app-column-frame > iframe { display: block; width: 100%; height: 100%; border: 0; }
+/* The window around the column draws no cookie notice of its own: the frame has the same one, inside the column. */
+html[data-column] :is([data-testid="cookie-notice"], .cookie-corner) { display: none; }
+
+/* A larger form opened as a page of its own (features/kfid/dialog-page.tsx, plan 1O): it takes the place of the page it was
+   opened from inside the content area; the page's own content stays mounted underneath, hidden, so nothing typed is lost. */
+.workspace-main[data-page-takeover] > :not([data-page-takeover-root], .workspace-breadcrumbs, .workspace-toast) { display: none; }
+.workspace-main [data-page-takeover-root][data-page-covered] { display: none; }
+
+/*
+ * Anläggningar as two panels (2026-10-15 night, features/workflow/place-tree.tsx and place-browser.tsx): the tree in
+ * one Panel – one row per place with arrow, icon, name and the address or type – and the open place in the Panel beside it,
+ * stacked under 44rem of width (a phone, a narrow window). The open row is marked as the side menu marks its page
+ * (--secondary with the thin primary ring), starting at the row's own indent and never outside the panel. The icon keeps a
+ * tone per level from the theme's tokens – the address HINTEK blue (--primary), an object turquoise (--type-customer), a
+ * sub-object amber (--type-quote) – only tokens and color-mix, so Light, Dark, Blue and Customer follow by themselves.
+ */
+:is(.place-node, .place-icon) { --tone: var(--primary); --tone-ink: color-mix(in srgb, var(--tone) 74%, var(--foreground)); }
+:is(.place-node, .place-icon)[data-level="object"] { --tone: var(--type-customer); }
+:is(.place-node, .place-icon)[data-level="sub"] { --tone: var(--type-quote); }
+.place-explorer-wrap { container-type: inline-size; }
+.place-explorer { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.5rem; align-items: start; }
+.place-explorer-tree, .place-pane, .place-explorer-above, .place-explorer-bar { min-width: 0; }
+@container (min-width: 44rem) {
+  /* More room and air (2026-10-22, punkt 5): a wider tree column, so names and addresses are cut less often. */
+  .place-explorer { grid-template-columns: minmax(18rem, 24rem) minmax(0, 1fr); }
+  .place-explorer-above, .place-explorer-bar { grid-column: 1 / -1; }
+  /* The tree stays in view while the page scrolls (2026-10-16: "menyn hamnar fel när jag scrollar … går förbi"):
+     the whole panel, its header row included, stops 1 rem under the app's top bar (--workspace-header-h) and follows that
+     bar when it slides away with the finger ([data-chrome-follow]); a tree taller than the window scrolls inside the panel. */
+  .place-explorer .place-explorer-tree { position: sticky; top: calc(var(--workspace-header-h) + 1rem - var(--chrome-offset, 0px)); }
+  .place-tree-panel { display: flex; flex-direction: column; max-height: calc(100dvh - var(--workspace-header-h) - 2rem); }
+  .place-tree-panel > .panel-content { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+  /* Phone and tablet: the bottom bar (4.75 rem) covers the foot of the window. */
+  @media (max-width: 1023px) { .place-tree-panel { max-height: calc(100dvh - var(--workspace-header-h) - 6.75rem - env(safe-area-inset-bottom)); } }
+}
+.place-tree-panel > .panel-content { padding: .75rem 1rem 1rem; }
+/* SplitPane (components/page-shell.tsx, Kopplingar 2026-11-02): narrower than the two columns, the list first and the chosen area alone. */
+@container (max-width: 43.999rem) {
+  .split-pane[data-chosen] > .split-pane-list { display: none; }
+  .split-pane:not([data-chosen]) > .split-pane-content { display: none; }
+}
+/* The content column: the panel fills the column's least height (the tallest place of the visit), so nothing under it moves. */
+.place-pane { display: flex; flex-direction: column; min-height: 20rem; }
+.place-pane > * { display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; }
+.place-pane > .app-panel, .place-pane > * > .app-panel { flex: 1 1 auto; }
+.place-pane-panel > .panel-header > .panel-heading { gap: .75rem; }
+/* The headers' buttons wrap inside the panel instead of running out of it (a phone, the narrow tree column). */
+:is(.place-pane-panel, .place-tree-panel) > .panel-header > .panel-actions { flex-shrink: 1; min-width: 0; max-width: 100%; }
+/* A key card's status and buttons wrap inside the card on the narrowest phones instead of widening the page. */
+.panel-header > .panel-actions:has(> [data-testid="key-card-actions"]) { flex-shrink: 1; min-width: 0; max-width: 100%; }
+.place-tree-panel > .panel-header > .panel-heading { flex-basis: auto; }
+.place-loading { display: grid; min-height: 4rem; align-content: start; }
+/* The information card's overview (2026-10-24): the chosen level, how much lies under it and the jobs registered there –
+   three facts in a row, label above value, no boxes (no card in a card); the value has one line's height also while read. */
+.place-overview-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem 1.5rem; }
+.place-overview-facts > div { min-width: 0; }
+.place-overview-facts dt { font-size: var(--text-meta); line-height: 1rem; color: var(--muted-foreground); }
+.place-overview-facts dd { margin-top: .125rem; min-height: 1.25rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-body); font-weight: 600; line-height: 1.25rem; }
+/* "Välj en plats": the invitation in the middle of the panel with room around it, and the customer page's Anläggningar keep
+   a clear distance to the page's foot (2026-10-22, punkt 5). */
+.place-pane-empty { display: flex; flex: 1 1 auto; min-height: 12rem; flex-direction: column; align-items: center; justify-content: center; gap: .75rem; padding: 2rem 1rem; text-align: center; }
+.place-pane-empty .place-icon { width: 2.5rem; height: 2.5rem; border-radius: .75rem; }
+.place-pane-empty .place-icon svg { width: 1.25rem; height: 1.25rem; }
+.place-pane .place-pane-panel > .panel-content { display: flex; flex: 1 1 auto; flex-direction: column; }
+.customer-facilities { padding-bottom: 2.5rem; }
+/*
+ * Kundsidans rutnät (2026-10-24, after his prototype; replaces the two stacks of 2026-10-23): Kontaktuppgifter wide on
+ * the left, Projekt and Offerter as two cards side by side on the right with Uppgifter under them – no lone half cards and
+ * no holes: cards beside each other share their row's height (a card's own content decides the row), Kontaktuppgifter
+ * spans both rows. Measured on the sections' own width (a container), so the menu beside them does not matter. Narrower:
+ * Kontaktuppgifter across, Projekt | Offerter, Uppgifter across; narrowest one column in reading order (Kontaktuppgifter,
+ * Projekt, Offerter, Uppgifter). Without Offerter (Local, or no right to quotes) Projekt takes both places.
+ */
+.customer-sections-wrap { container-type: inline-size; }
+.customer-sections { display: grid; gap: 1.5rem; grid-template-columns: minmax(0, 1fr); grid-template-areas: "contact" "projects" "quotes" "tasks"; }
+.customer-sections > [data-section] { display: flex; min-width: 0; flex-direction: column; }
+.customer-sections > [data-section] > .app-panel { flex: 1 1 auto; }
+.customer-sections > [data-section="contact"] { grid-area: contact; }
+.customer-sections > [data-section="projects"] { grid-area: projects; }
+.customer-sections > [data-section="quotes"] { grid-area: quotes; }
+.customer-sections > [data-section="tasks"] { grid-area: tasks; }
+/* Eget företag (2026-10-24): the company's own places have only Uppgifter above the places, across the page. */
+.customer-sections[data-own="1"] { grid-template-columns: minmax(0, 1fr) !important; grid-template-areas: "tasks" !important; }
+@container (min-width: 40rem) {
+  .customer-sections { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "contact contact" "projects quotes" "tasks tasks"; }
+  .customer-sections[data-quotes="0"] { grid-template-areas: "contact contact" "projects projects" "tasks tasks"; }
+}
+@container (min-width: 60rem) {
+  .customer-sections { grid-template-columns: minmax(0, 1.2fr) repeat(2, minmax(0, 1fr)); grid-template-rows: auto 1fr; grid-template-areas: "contact projects quotes" "contact tasks tasks"; }
+  .customer-sections[data-quotes="0"] { grid-template-areas: "contact projects projects" "contact tasks tasks"; }
+}
+/* Anläggningar's heading across the page with one line of explanation (the prototype), above the action card. */
+.customer-facilities-head { margin-bottom: 1rem; }
+
+/*
+ * The light icon menu (components/icon-action-bar.tsx, 2026-10-24): a compact card with a title and a line, and line
+ * icons without a filled background; a faint background on hover, the secondary tone when pressed; the same size (the
+ * control height, 44 px on touch) and spacing for every action; groups split by a thin line, the end group at the far right.
+ * The words show from 64 rem of the card's own width; narrower the buttons are icons (the word is the tooltip and the name).
+ */
+.icon-action-bar-wrap { container-type: inline-size; min-width: 0; }
+.icon-action-bar { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; min-height: 3.5rem; padding: .5rem .75rem .5rem 1rem; border: 1px solid var(--border); border-radius: var(--radius-panel); background: var(--card); }
+.icon-action-bar-head { display: flex; min-width: 0; flex: 1 1 14rem; align-items: center; gap: .75rem; }
+.icon-action-bar-title { font-size: var(--text-body); font-weight: 600; line-height: 1.25rem; color: var(--foreground); }
+.icon-action-bar-line { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-meta); line-height: 1rem; color: var(--muted-foreground); }
+.icon-action-bar-tools { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem; margin-left: auto; }
+.icon-action-group { display: flex; align-items: center; gap: .125rem; }
+.icon-action-group + .icon-action-group { margin-left: .25rem; padding-left: .375rem; border-left: 1px solid var(--border); }
+.icon-action { position: relative; display: inline-flex; flex: none; align-items: center; justify-content: center; gap: .375rem; height: var(--control-h); min-width: var(--control-h); padding: 0 .625rem; border-radius: var(--radius-control); background: transparent; color: var(--foreground); font-size: .8125rem; font-weight: 500; white-space: nowrap; transition: background-color 120ms ease, color 120ms ease; }
+.icon-action svg { width: 1rem; height: 1rem; flex: none; stroke-width: 2; color: var(--muted-foreground); }
+.icon-action:hover:not([aria-disabled="true"], :disabled) { background: var(--surface-hover); }
+.icon-action:hover:not([aria-disabled="true"], :disabled) svg { color: var(--primary); }
+.icon-action[aria-pressed="true"] { background: var(--secondary); color: var(--secondary-foreground); }
+.icon-action[aria-pressed="true"] svg { color: var(--primary); }
+.icon-action[data-tone="danger"]:not([aria-disabled="true"]) :is(svg, .icon-action-label) { color: var(--destructive); }
+.icon-action:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+.icon-action[data-icon-only] { width: var(--control-h); padding: 0; }
+/* A label that changes keeps the width of its longest form: every form in one cell, only the current one visible. */
+.icon-action-label { display: inline-grid; }
+.icon-action-label > * { grid-area: 1 / 1; visibility: hidden; }
+.icon-action-label > [data-shown] { visibility: visible; }
+@container (max-width: 63.99rem) {
+  .icon-action { width: var(--control-h); padding: 0; }
+  .icon-action-label { display: none; }
+}
+.place-tree-box { min-width: 0; }
+.place-tree-tools { display: flex; justify-content: flex-end; gap: .125rem; margin: 0 -.25rem .125rem 0; }
+.place-tool { display: grid; place-items: center; width: 1.75rem; height: 1.75rem; border-radius: .375rem; color: var(--muted-foreground); opacity: .7; }
+.place-tool:hover:not(:disabled) { background: var(--muted); color: var(--foreground); opacity: 1; }
+.place-tool:disabled { opacity: .3; }
+.place-tool svg { width: .875rem; height: .875rem; }
+.place-tree, .place-children { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; }
+.place-node { min-width: 0; }
+/* A row is indented by its level, so the marking begins where the row begins. */
+.place-row { display: flex; min-width: 0; align-items: center; gap: .125rem; margin-left: calc(min(var(--depth, 0), 8) * 1.125rem); border-radius: .375rem; transition: background-color 120ms ease; }
+.place-row:hover { background: var(--muted); }
+.place-row[data-selected] { background: var(--secondary); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 15%, transparent); }
+.place-row[data-selected] :is(.place-name, .place-meta) { color: var(--secondary-foreground); }
+.place-row[data-paused] .place-icon { opacity: .65; }
+.place-row[data-paused] .place-name { color: var(--muted-foreground); }
+/* Dra och släpp (2026-11-02): the grip shows on a mouse's hover and never on touch; a target is lit all around, a refusing row dimmed. */
+.place-drag { display: grid; flex: none; place-items: center; width: 1rem; color: var(--muted-foreground); cursor: grab; opacity: 0; transition: opacity 120ms ease; }
+.place-drag svg { width: .875rem; height: .875rem; }
+.place-row:hover > .place-drag { opacity: 1; }
+@media (pointer: coarse) { .place-drag { display: none; } }
+.place-row[data-drop="ok"] { background: var(--secondary); box-shadow: inset 0 0 0 2px var(--primary); }
+.place-row[data-drop="refused"] { box-shadow: inset 0 0 0 1px var(--border); }
+.place-row[data-drop="refused"] :is(.place-name, .place-meta, .place-icon) { opacity: .55; }
+.place-toggle { display: grid; flex: none; place-items: center; width: 1.5rem; height: 2.5rem; border-radius: .375rem; color: var(--muted-foreground); }
+button.place-toggle:hover { color: var(--foreground); }
+:is(button.place-toggle, .place-name-button, .place-tool):focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+.place-name-button { display: flex; min-width: 0; min-height: 2.5rem; flex: 1 1 auto; align-items: center; gap: .625rem; border-radius: .375rem; padding: .25rem .5rem .25rem .125rem; text-align: left; }
+.place-icon { display: grid; flex: none; place-items: center; width: 1.75rem; height: 1.75rem; border-radius: .5rem; background: color-mix(in srgb, var(--tone) 14%, var(--card)); color: var(--tone-ink); }
+.place-icon svg { width: 1rem; height: 1rem; }
+.place-node[data-level="address"] > .place-row .place-icon, .place-icon[data-level="address"] { background: var(--tone); color: var(--primary-foreground); }
+.place-text { display: flex; min-width: 0; flex-direction: column; }
+.place-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .875rem; font-weight: 500; line-height: 1.25rem; color: var(--foreground); }
+.place-paused { font-weight: 400; color: var(--muted-foreground); }
+.place-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .75rem; line-height: 1rem; color: var(--muted-foreground); }
+@media (max-width: 639px) {
+  .place-row { margin-left: calc(min(var(--depth, 0), 3) * .75rem); }
+}
+
+/*
+ * Pass över mobil visning 1–2 (2026-10-17): the place tree's fold arrow and the two tree tools answer within 44 px
+ * and no longer share their grown hit areas with the neighbour (arrow 24 px wide, tools 28 px with a 2 px gap), and a search
+ * or text field ends a text that is too long with … instead of cutting a letter (the register's search hint).
+ */
+@media (pointer: coarse), (max-width: 1023px) {
+  .place-toggle { width: 2.75rem; height: 2.75rem; }
+  .place-name-button { min-height: 2.75rem; }
+  .place-tree-tools { gap: 0; }
+  .place-tool { width: 2.75rem; height: 2.75rem; }
+}
+input:where(:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="color"])) { text-overflow: ellipsis; }
+
+/*
+ * Tryckytor, synliga (2026-10-18, beslut h): on a touch screen or below 1024 px the visible element itself is at least
+ * 44 px high and wide – not only an invisible hit area: breadcrumbs, Stäng, Tillbaka/Ny/Avbryt, tabs and segments, filter
+ * buttons, the answer buttons of a control, the legal links and the search field of level 1. Whole-card links
+ * (.stretched-link) already cover their card. A computer with a mouse keeps its sizes.
+ */
+@media (pointer: coarse), (max-width: 1023px) {
+  .breadcrumb-link { min-height: 2.75rem; }
+  html:not([data-native]) .page-header-title { min-height: 2.75rem; }
+  [data-slot="button"], [role="tab"], .native-sheet-close { min-height: 2.75rem; min-width: 2.75rem; }
+  button:is(.h-6, .h-7, .h-8, .h-9, .h-10):not([data-slot="checkbox"], [role="checkbox"], [role="switch"]) { min-height: 2.75rem; }
+  button:is(.size-6, .size-7, .size-8, .size-9, .size-10):not([data-slot="checkbox"], [role="checkbox"], [role="switch"]) { min-height: 2.75rem; min-width: 2.75rem; }
+  .touch-segments { height: auto !important; }
+  .touch-segments > *, [role="radiogroup"] > [role="radio"] { min-height: 2.75rem; min-width: 2.75rem; }
+  [data-testid="answer-buttons"] > button { min-height: 2.75rem; min-width: 2.75rem; }
+  [data-testid="cookie-notice"] button { min-height: 2.75rem; }
+  nav[aria-label="Juridiska dokument"] a { display: inline-flex; min-height: 2.75rem; min-width: 2.75rem; align-items: center; justify-content: center; }
+  .native-search-field { min-height: 2.75rem; }
+  .native-top-bar-button[data-kind] > span { height: 2.75rem; }
+  .native-top-bar-button[data-icon] > span, .native-top-bar-button[data-kind="back"] > .native-top-bar-pill { width: 2.75rem; height: 2.75rem; }
+}
+/*
+ * Flytande navigering (2026-10-27, beslut 5–7; components/floating-nav.tsx, docs/ui-system.md): blue pills with white
+ * symbols, rounded ends, a little air between them and a discreet shadow, in the --floating-nav-* tokens (light and dark).
+ * A computer: bottom right; visning 3 with words, visning 2 symbols only. A tablet: left above the bottom bar, symbols only.
+ * The page ends above the group, so its last field, row or button can always be scrolled clear of it, and a toast on a
+ * computer stands above it. Visning 1 never draws it (its top bar and edge swipe).
+ */
+.floating-nav { position: fixed; z-index: 30; display: flex; align-items: center; gap: .5rem; pointer-events: none; }
+.floating-nav[data-placement="right"] { right: 1.5rem; bottom: 1.5rem; }
+/*
+ * Nedre utrymme (kundresa 2026-11-07, M1: the buttons lay over links, cards and calendar cells at 1440 px): on a computer the group
+ * stands in a band of its own along the bottom of the page column, in the page's colour with a hairline, so the page goes under
+ * the band and never under the buttons. The band takes the clicks there; the page's own room below (8.5 rem) still lets every
+ * last row be scrolled clear of it.
+ */
+@media (min-width: 1024px) {
+  .floating-nav[data-placement="right"]:has(button)::before { content: ""; position: fixed; z-index: -1; left: 16rem; right: 0; bottom: 0; height: 5.25rem; border-top: 1px solid var(--border); background: var(--background); pointer-events: auto; }
+}
+.floating-nav[data-placement="left"] { left: .75rem; bottom: calc(5.5rem + env(safe-area-inset-bottom)); }
+.floating-nav-button { pointer-events: auto; display: inline-flex; height: 2.75rem; min-width: 2.75rem; align-items: center; justify-content: center; gap: .5rem; border-radius: 9999px; padding: 0 1.125rem 0 1rem; background: var(--floating-nav-bg); color: var(--floating-nav-fg); box-shadow: var(--floating-nav-shadow); font-size: .875rem; font-weight: 600; line-height: 1; white-space: nowrap; cursor: pointer; transition: background-color 150ms ease; }
+.floating-nav-button:hover { background: var(--floating-nav-bg-hover); }
+.floating-nav-button:focus-visible { outline: 2px solid var(--floating-nav-ring); outline-offset: -4px; }
+.floating-nav-button > svg { width: 1.25rem; height: 1.25rem; flex-shrink: 0; stroke-width: 2.2; }
+/* Tillbaka and Framåt (2026-11-01): round, the arrow in the middle; nearly transparent and not clickable without a function here. */
+.floating-nav-button.floating-nav-round { width: 2.75rem; padding: 0; }
+.floating-nav-idle, .floating-nav-idle:hover { pointer-events: none; cursor: default; opacity: .14; box-shadow: none; }
+.floating-nav-compact .floating-nav-button { width: 2.75rem; padding: 0; }
+.floating-nav-compact { gap: .375rem; }
+/* HINTEK AI's round button (2026-11-02): solid in the primary colour, a speech bubble, an X in the same place while the chat is open. */
+.floating-nav-assistant, .floating-nav-assistant:hover { color: var(--primary-foreground); }
+.floating-nav-assistant { background: var(--primary); }
+.floating-nav-assistant:hover { background: var(--primary-hover, var(--primary)); }
+.floating-nav-assistant:focus-visible { outline-color: var(--primary-foreground); }
+@media (prefers-reduced-motion: reduce) { .floating-nav-button { transition: none; } }
+/*
+ * HINTEK AI's window (2026-11-02, features/ai/assistant-panel.tsx; docs/ui-system.md, "Motiverade varianter"): a popup at the
+ * round button, over the page but not blocking it, no higher than the window leaves under the top bar. A tablet has the group
+ * at the left above the bottom bar, a computer at the bottom right; under 640 px the window is the whole screen (Dialog).
+ */
+.assistant-popup { position: fixed; z-index: 35; display: flex; flex-direction: column; overflow: hidden; left: .75rem; bottom: calc(8.75rem + env(safe-area-inset-bottom)); width: min(24rem, calc(100vw - 1.5rem)); height: min(34rem, calc(100dvh - 8.75rem - env(safe-area-inset-bottom) - var(--workspace-header-h) - .5rem)); border: 1px solid var(--border); border-radius: 1rem; background: var(--card); box-shadow: 0 16px 40px rgb(11 40 80 / .22), 0 2px 6px rgb(11 40 80 / .12); }
+.assistant-popup > * { min-height: 0; flex: 1; }
+@media (min-width: 1024px) {
+  .assistant-popup { left: auto; right: 1.5rem; bottom: 5rem; height: min(38rem, calc(100dvh - 5rem - var(--workspace-header-h) - .5rem)); }
+  .assistant-popup[data-expanded] { width: min(60rem, calc(100vw - 3rem)); height: calc(100dvh - 5rem - var(--workspace-header-h) - .5rem); }
+}
+@media print { .assistant-popup { display: none; } }
+/* Kontrollera och synka (2026-11-02): the next key slides in softly; under reduced motion the steps stay, without the animation. */
+@media (prefers-reduced-motion: no-preference) {
+  .central-sync-step { animation: central-sync-step-enter .18s ease-out; }
+  @keyframes central-sync-step-enter { from { opacity: 0; transform: translateY(.25rem); } to { opacity: 1; transform: none; } }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .assistant-popup { animation: assistant-popup-enter .14s ease-out; }
+  @keyframes assistant-popup-enter { from { opacity: 0; transform: translateY(.5rem); } to { opacity: 1; transform: none; } }
+}
+/* The assistant is thinking (2026-11-02): lines of a soft skeleton with a light passing over them; still under reduced motion. */
+.ai-thinking > span { display: block; height: .625rem; border-radius: 9999px; background: linear-gradient(90deg, color-mix(in srgb, var(--muted-foreground) 14%, transparent) 30%, color-mix(in srgb, var(--muted-foreground) 34%, transparent) 50%, color-mix(in srgb, var(--muted-foreground) 14%, transparent) 70%) 0 0 / 300% 100%; animation: ai-thinking 1.8s ease-in-out infinite; }
+.ai-thinking > span:nth-child(2) { animation-delay: .15s; }
+.ai-thinking > span:nth-child(3) { animation-delay: .3s; }
+@keyframes ai-thinking { from { background-position: 100% 0; } to { background-position: 0 0; } }
+@media (prefers-reduced-motion: reduce) { .ai-thinking > span { animation: none; } }
+/*
+ * Luft längst ned (2026-11-02): the group never covers the last row of a page (Tid's Månadens tid, Skicka in). In the shell, for
+ * every page outside the app look, and always the same: the group comes and goes (keyboard, menu, no button) and the page must not move then.
+ * A computer: the group's top is 4.25 rem up. Narrower: it stands higher, but .workspace-shell also keeps the bottom bar's room.
+ */
+@media screen {
+  html:not([data-native]) .workspace-main { padding-bottom: 8.5rem; }
+}
+body:has(.floating-nav[data-placement="right"] button) .workspace-toast { bottom: 5.25rem; }
+@media screen and (max-width: 1023px) {
+  html:not([data-native]) .workspace-main { padding-bottom: 7.5rem; }
+}
+@media print { .floating-nav { display: none; } }
+/*
+ * Webbplatskartan (Produktadministration → Drift och säkerhet → Avancerat, 2026-10-24; features/workflow/site-map.tsx):
+ * the map's SVG in the theme's tokens – a box in its function's colour (--c from the --type-* tokens), the lines in their
+ * kind's colour, dimming for focus and search, and the anomaly marks in the risk colour. A motivated variant: no other
+ * page draws a graph.
+ */
+.site-map-main { height: min(78vh, 900px); min-height: 30rem; }
+.site-map:fullscreen { overflow: auto; background: var(--background); padding: 1rem; }
+.site-map:fullscreen .site-map-main { height: calc(100vh - 7.5rem); }
+.site-map-stage { background: var(--background); cursor: grab; touch-action: none; }
+.site-map-stage.dragging { cursor: grabbing; }
+.site-map-stage svg { display: block; width: 100%; height: 100%; user-select: none; }
+.site-map .colhead { font-size: 12px; font-weight: 650; fill: var(--muted-foreground); }
+.site-map .colline { stroke: var(--border); stroke-dasharray: 2 6; }
+.site-map .node { cursor: pointer; }
+.site-map .node rect.box { fill: color-mix(in srgb, var(--c) 13%, var(--card)); stroke: var(--c); stroke-width: 1.2; }
+.site-map .node:is(.k-group, .k-entry) rect.box { stroke-width: 2.2; fill: color-mix(in srgb, var(--c) 24%, var(--card)); }
+.site-map .node:is(.k-modal, .k-popup) rect.box { stroke-dasharray: 4 3; }
+.site-map .node:is(.k-step, .k-section) rect.box { fill: var(--card); }
+.site-map .node.k-dead rect.box { stroke: var(--destructive); stroke-dasharray: 3 3; }
+/* Externa tjänster (2026-10-25): a box outside Workflow, in the colour of whose key it uses, drawn heavier than a page. */
+.site-map .node.k-service rect.box { stroke-width: 2.2; fill: color-mix(in srgb, var(--c) 20%, var(--card)); }
+.site-map .node text { fill: var(--foreground); font-size: 13px; pointer-events: none; }
+.site-map .node:is(.k-group, .k-entry) text { font-weight: 650; }
+.site-map .node text.tag { font-size: 9.5px; fill: var(--muted-foreground); font-weight: 600; }
+.site-map .node:hover rect.box { stroke-width: 2.4; }
+.site-map .node.sel rect.box { stroke-width: 3; }
+.site-map .node .ring, .site-map .node .badge { display: none; }
+.site-map .ring { fill: none; stroke: var(--type-risk); stroke-width: 2.5; }
+.site-map .anom .node.has-anom :is(.ring, .badge) { display: block; }
+.site-map .badge rect { fill: var(--type-risk); }
+.site-map .badge text { fill: var(--type-foreground); font-size: 9.5px; font-weight: 700; }
+.site-map .edge { fill: none; stroke-width: 1.4; opacity: .75; }
+.site-map .edge.cat-tree { stroke-width: 1; opacity: .5; }
+.site-map .edge.cond-mark { stroke: var(--type-control) !important; stroke-dasharray: 7 3 1 3 !important; }
+.site-map .edge.dead { stroke: var(--destructive) !important; stroke-width: 3; opacity: 1; }
+.site-map .edge:hover { stroke-width: 3; opacity: 1; }
+.site-map .focus .edge { opacity: .08; }
+.site-map .focus .edge.hi { opacity: 1; stroke-width: 2.4; }
+.site-map .focus .node { opacity: .23; }
+.site-map .focus .node.hi { opacity: 1; }
+.site-map .searching .node:not(.match) { opacity: .23; }
+.site-map .searching .node.match rect.box { stroke-width: 3; stroke: var(--primary); }
+.site-map .anom .edge.anom-edge { stroke: var(--type-risk) !important; stroke-width: 2.6; opacity: 1; }
+/* Provat i appen (the click robot, scripts/sitemap/observed.json): a bar at the box's left edge – tried, only in the code, only the robot's. */
+.site-map .node rect.seen, .site-map-seen-key { fill: var(--type-round); background: var(--type-round); }
+.site-map .node rect.seen.no, .site-map-seen-key.no { fill: var(--muted-foreground); background: var(--muted-foreground); opacity: .45; }
+.site-map .node rect.seen.robot { opacity: 1; }
+.site-map-seen-key { display: inline-block; width: 4px; height: 12px; border-radius: 2px; }
+.site-map .edge.cat-robot { stroke-width: 2; opacity: .9; }
+
+/* Pilen på en klickbar rad (components/row-chevron.tsx). */
+a:hover .row-chevron, button:hover .row-chevron, .tap-card:hover .row-chevron { color: var(--primary); }
+
+/* A toast placed at the top (Serveruppdateringar väntar) is as tall as its text: the bottom offsets above that belong to the bottom toast (2026-11-08). */
+.workspace-toast[data-placement="top"] { bottom: auto !important; height: fit-content; }

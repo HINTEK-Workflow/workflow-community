@@ -1,0 +1,8 @@
+ALTER TABLE "AiMessage" ADD COLUMN "runId" TEXT;
+
+CREATE UNIQUE INDEX "AiMessage_runId_key" ON "AiMessage"("runId");
+
+ALTER TABLE "AiMessage"
+ADD CONSTRAINT "AiMessage_runId_fkey"
+FOREIGN KEY ("runId") REFERENCES "AiRun"("id")
+ON DELETE RESTRICT ON UPDATE CASCADE;

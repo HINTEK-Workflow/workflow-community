@@ -1,0 +1,355 @@
+"use client";
+import { AreaIcon } from "@/components/area-icon";
+import { RowChevron } from "@/components/row-chevron";
+import { typeOfTaskKind } from "@/lib/workflow/native-mode";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { Plus, ClipboardCheck, FolderKanban, LayoutList } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Panel, ShowMore } from "./ui";
+import { DelayedSkeleton, RowsSkeleton, ShowWhenReady, SkeletonText } from "@/components/skeleton";
+import { indicatorBadge, indicatorBar, indicatorText, progressTone, statusTone } from "@/features/workflow/indicator-tone";
+import { api } from "./api";
+import { OverviewKpiDashboard } from "@/features/workflow/overview-kpis";
+import { clientExtensions } from "@ee/client";
+import { TaskStatistics } from "@/features/workflow/task-statistics";
+import { swedishDayKey } from "@/lib/swedish-time";
+import { localOverviewWork as sharedLocalOverviewWork, selectOverviewWork, type OverviewWorkFilter, type OverviewWorkItem, type OverviewWorkSort } from "@/lib/workflow/overview-work";
+import type { OverviewKpis } from "@/lib/workflow/overview-kpis";
+import type { ProjectStatus } from "@/lib/workflow/project-status";
+import { PageHeader } from "@/components/page-shell";
+import { PersonAvatars } from "@/features/workflow/person-avatars";
+
+const { DailyDigestCard } = clientExtensions;
+export type ProjectOverview = {
+  id: string;
+  name: string;
+  description: string;
+  dueDate: string;
+  /** Project frame start; part of the status (a future start is "Planerat"). */
+  startDate?: string;
+  updatedAt: string;
+  archivedAt?: string | null;
+  closedAt?: string | null;
+  /** Computed by the shared project status function; Local computes it from the open file. */
+  status?: ProjectStatus;
+  /** The responsible person, first among the project card's name badges. */
+  responsibleUserId?: string | null;
+  responsibleName?: string;
+  workflowTasks?: GenericTaskOverview[];
+};
+export type GenericTaskOverview = { id: string; title: string; kind: "WORK_ORDER" | "RISK_ASSESSMENT" | "FORM"; status: string; progress: number; dueDate?: string; updatedAt: string; projectId: string | null;
+  /** Who has the job, for its project's name badges. */
+  assignedToUserId?: string | null; assignedToName?: string };
+export type WorkflowOverviewData = { projects: ProjectOverview[]; workflowTasks: GenericTaskOverview[] };
+type WorkItem = OverviewWorkItem;
+
+const updatedLabel = (value: string) =>
+  new Intl.DateTimeFormat("sv-SE", {
+    dateStyle: "short",
+    timeStyle: "short",
+    timeZone: "Europe/Stockholm",
+  }).format(new Date(value));
+
+function WorkCard({ item }: { item: WorkItem }) {
+  return (
+    <div className="workflow-card tap-card flex min-w-0 flex-col gap-2.5 p-3.5">
+      <div className="flex min-w-0 items-start gap-3">
+        <AreaIcon area={item.kind === "PROJECT" ? "project" : typeOfTaskKind(item.kind)} icon={item.kind === "PROJECT" ? FolderKanban : ClipboardCheck} />
+        <div className="min-w-0 flex-1">
+          <Link href={item.href} title={item.title} data-card-title="" className="stretched-link block truncate text-sm font-semibold hover:text-primary">{item.title}</Link>
+          {/* Text in a card may take two lines (2026-10-22, D3); the title keeps one. */}
+          <p className="line-clamp-2 text-xs text-muted-foreground">{item.kind === "PROJECT" ? "Projekt" : item.taskType}{item.projectName ? ` · ${item.projectName}` : ""}</p>
+        </div>
+        <RowChevron className="mt-1" />
+      </div>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Badge variant="outline" className={indicatorBadge(statusTone(item.status))}>{item.status}</Badge>
+        {item.dueDate ? <span className={`text-xs ${item.overdue ? `font-medium ${indicatorText("danger")}` : "text-muted-foreground"}`}>{item.overdue ? "Förfallen " : "Slutdatum "}{item.dueDate}</span> : null}
+      </div>
+      <div>
+        <div className="flex items-baseline justify-between gap-3 text-xs"><span className={`font-semibold ${item.progress === 100 ? indicatorText("success") : ""}`}>{item.progress}%</span><span className="truncate text-muted-foreground">{item.remaining}</span></div>
+        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted"><div className={`h-full rounded-full ${indicatorBar(progressTone({ percent: item.progress, attention: item.needsAction || item.overdue }))}`} style={{ width: `${item.progress}%` }} /></div>
+      </div>
+      {/* The project's name badges, as on Mina projekt (2026-10-22). */}
+      {item.kind === "PROJECT" && item.people ? <PersonAvatars people={item.people} /> : null}
+    </div>
+  );
+}
+
+const relativeUpdated = (value: string) => {
+  const minutes = Math.max(0, Math.round((Date.now() - new Date(value).getTime()) / 60000));
+  if (minutes < 1) return "ändrad nyss";
+  if (minutes < 60) return `ändrad för ${minutes} min sedan`;
+  if (minutes < 24 * 60) return `ändrad för ${Math.round(minutes / 60)} h sedan`;
+  if (minutes < 7 * 24 * 60) { const days = Math.round(minutes / 1440); return `ändrad för ${days} ${days === 1 ? "dag" : "dagar"} sedan`; }
+  return `ändrad ${updatedLabel(value)}`;
+};
+
+/**
+ * One compact row in "Senast ändrat": icon, title, type/project, status, when, progression and the next step. Status,
+ * bar and action sit in fixed columns so they line up whatever the text length (2026-09-29, F19).
+ * UX punkt 8 (D1, D3): the link holds the title and the line under it, at least 44 px on a touch screen, and covers the whole
+ * row; the line under the title may take two lines, and on a phone the action stands under the title instead of beside it.
+ */
+function LatestRow({ item }: { item: WorkItem }) {
+  return (
+    <li className="tap-card grid grid-cols-1 items-center gap-x-3 gap-y-1 px-3.5 py-2.5 hover:bg-secondary/40 sm:grid-cols-[minmax(0,1fr)_9rem_8rem_9rem]">
+      <div className="flex min-w-0 items-center gap-3">
+        <AreaIcon area={item.kind === "PROJECT" ? "project" : typeOfTaskKind(item.kind)} icon={item.kind === "PROJECT" ? FolderKanban : ClipboardCheck} />
+        <Link href={item.href} title={item.title} className="stretched-link group flex min-w-0 flex-1 flex-col justify-center touch:min-h-11" data-testid="overview-latest-link">
+          <span className="block truncate text-sm font-medium group-hover:text-primary">{item.title}</span>
+          <span className="line-clamp-2 text-xs text-muted-foreground">{item.kind === "PROJECT" ? "Projekt" : item.taskType}{item.projectName ? ` · ${item.projectName}` : ""} · {relativeUpdated(item.updatedAt)}</span>
+        </Link>
+      </div>
+      <div className="hidden sm:block"><Badge variant="outline" className={indicatorBadge(statusTone(item.status))}>{item.status}</Badge></div>
+      <div className="hidden sm:block">
+        <div className="flex items-baseline justify-between text-xs"><span className={`font-semibold ${item.progress === 100 ? indicatorText("success") : ""}`}>{item.progress}%</span></div>
+        <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted"><div className={`h-full rounded-full ${indicatorBar(progressTone({ percent: item.progress, attention: item.needsAction || item.overdue }))}`} style={{ width: `${item.progress}%` }} /></div>
+      </div>
+      <Button asChild size="sm" variant="ghost" className="tap-above justify-self-start max-sm:ml-11 sm:justify-self-end"><Link href={item.href} aria-label={`${item.action}: ${item.title}`}>{item.action}</Link></Button>
+    </li>
+  );
+}
+
+type WorkPage = ReturnType<typeof selectOverviewWork>;
+
+/** Local: the same list built from the open file with the shared rules (no network); see lib/workflow/overview-work. */
+const localOverviewWork = (data: WorkflowOverviewData, today: string) => sharedLocalOverviewWork(data, today);
+
+export function WorkOverview({ localData, onLoaded }: { localData?: WorkflowOverviewData; onLoaded?: () => void }) {
+  const [filter, setFilter] = useState<OverviewWorkFilter>("all"),
+    [sort, setSort] = useState<OverviewWorkSort>("updated"),
+    // Folded by default: three compact cards; the header opens the full list (2026-09-26; the whole header and
+    // only the arrow since 2026-10-24).
+    [expanded, setExpanded] = useState(false),
+    [localShown, setLocalShown] = useState(1),
+    [remote, setRemote] = useState<WorkPage | null>(null),
+    // The default page (all, latest changed): the folded view always shows it, so folding after a filter is instant
+    // and never shows the filtered rows for a moment (innehåll först när det är klart, 2026-10-24).
+    [home, setHome] = useState<WorkPage | null>(null),
+    [moreBusy, setMoreBusy] = useState(false),
+    [loading, setLoading] = useState(!localData),
+    [error, setError] = useState("");
+  // Cloud reads one page of ten, the three most urgent items and the counts from the server (bounded reads).
+  useEffect(() => {
+    if (localData) return;
+    const abort = new AbortController();
+    api<WorkPage>(`/api/overview-work?filter=${filter}&sort=${sort}&page=1`, { signal: abort.signal })
+      .then((page) => { setRemote(page); if (filter === "all" && sort === "updated") setHome(page); setError(""); })
+      .catch((e) => { if (!abort.signal.aborted) setError((e as Error).message); })
+      .finally(() => { if (!abort.signal.aborted) setLoading(false); });
+    return () => abort.abort();
+  }, [localData, filter, sort]);
+  // The overview shows its parts together once the first answer is here (Analytics, ShowWhenReady).
+  useEffect(() => { if (!loading) onLoaded?.(); }, [loading, onLoaded]);
+  const today = swedishDayKey(new Date());
+  const localItems = useMemo(() => localData ? localOverviewWork(localData, today) : null, [localData, today]);
+  const localPages = localItems ? Array.from({ length: localShown }, (_, index) => selectOverviewWork(localItems, { filter, sort, page: index + 1 })) : null;
+  const page: WorkPage | null = localPages ? { ...localPages[localPages.length - 1], items: localPages.flatMap((item) => item.items) } : remote;
+  const items = page?.items ?? [];
+  const total = page?.total ?? 0;
+  const counts = page?.counts ?? { all: 0, projects: 0, tasks: 0, action: 0 };
+  // The folded view: the default page (Local computes it from the open file; Cloud keeps the last one read).
+  const folded: WorkPage | null = localItems ? selectOverviewWork(localItems, { filter: "all", sort: "updated", page: 1 }) : home ?? remote;
+  const urgent = folded?.urgent ?? page?.urgent ?? [];
+  const needsAction = counts.action;
+  const late = Math.min(page?.late ?? 0, needsAction);
+  const otherAction = needsAction - late;
+  // The folded list reads the default page (all, latest changed) and skips what the focus cards already show.
+  const latest = (folded?.items ?? []).filter((item) => !urgent.some((shown) => shown.kind === item.kind && shown.id === item.id)).slice(0, 5);
+  const foldable = counts.all > urgent.length || expanded;
+  const toggle = (collapsed: boolean) => {
+    // Folding returns to the default list so "Senast ändrat" is always the latest of everything.
+    if (collapsed) { setFilter("all"); setSort("updated"); setLocalShown(1); }
+    setExpanded(!collapsed);
+  };
+  async function showMore() {
+    if (localData) { setLocalShown((value) => value + 1); return; }
+    if (!remote) return;
+    setMoreBusy(true);
+    try {
+      const next = await api<WorkPage>(`/api/overview-work?filter=${filter}&sort=${sort}&page=${remote.page + 1}`);
+      setRemote({ ...next, items: [...remote.items, ...next.items.filter((item) => !remote.items.some((known) => known.kind === item.kind && known.id === item.id))] });
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setMoreBusy(false);
+    }
+  }
+  const choose = (next: OverviewWorkFilter) => { setFilter(next); setLocalShown(1); };
+  // Folded (2026-09-27): what needs attention first, then the latest changed work, each item once.
+  const focusView = () => (
+    <div className="space-y-5">
+      <div>
+        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">I fokus</h3>
+        <div className="phone-rows grid gap-3 md:grid-cols-3" data-testid="overview-top-work">
+          {urgent.map((item) => <WorkCard key={`${item.kind}-${item.id}`} item={item} />)}
+        </div>
+      </div>
+      {latest.length ? (
+        <div>
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Senast ändrat</h3>
+          <ul className="divide-y rounded-xl border" data-testid="overview-latest-work" aria-label="Senast ändrade projekt och uppgifter">
+            {latest.map((item) => <LatestRow key={`${item.kind}-${item.id}`} item={item} />)}
+          </ul>
+        </div>
+      ) : null}
+    </div>
+  );
+  return (
+    <div className="space-y-6">
+      {error && (
+        <p role="alert" className="notice text-destructive">
+          {error}
+        </p>
+      )}
+      <Panel
+        title="Projekt och uppgifter"
+        // Allt du får se (2026-10-07): the list and its count say everything the person may read, the key figures only
+        // their own work, so the two are told apart in words. The count stands here, not on a button (2026-10-24).
+        description={[`Allt du får se: ${counts.all} ${counts.all === 1 ? "projekt eller uppgift" : "projekt och uppgifter"}`, !expanded && late ? `${late} förfallna` : "", !expanded && otherAction ? `${otherAction} behöver åtgärdas` : ""].filter(Boolean).join(" · ")}
+        className="dashboard-work-panel"
+        icon={LayoutList}
+        // Hela kortet klickbart (2026-10-24): the header opens the whole list and folds it back to the work in
+        // focus; only the arrow at the right. The list is the page already read, so it opens at once.
+        collapsible={foldable}
+        collapsed={foldable ? !expanded : undefined}
+        onCollapsedChange={toggle}
+        foldedContent={foldable && counts.all ? focusView() : undefined}
+      >
+        {loading && !localData ? (
+          <DelayedSkeleton><RowsSkeleton rows={4} label="Hämtar senaste arbete…" /></DelayedSkeleton>
+        ) : !counts.all ? (
+          <div className="py-6 text-center">
+            <p className="text-sm font-medium">Inga projekt eller uppgifter ännu.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Skapa ett projekt eller en uppgift för att börja arbeta.</p>
+          </div>
+        ) : !foldable ? focusView() : (
+          <div id="overview-work-list">
+            <div className="mb-4 flex flex-col gap-3 rounded-xl border bg-muted/25 p-2.5 lg:flex-row lg:items-center lg:justify-between">
+              <div className="grid grid-cols-2 gap-1 tabular-nums sm:flex sm:flex-wrap" role="group" aria-label="Filtrera projekt och uppgifter">
+                {([
+                  ["all", `Alla (${counts.all})`],
+                  ["projects", `Projekt (${counts.projects})`],
+                  ["tasks", `Uppgifter (${counts.tasks})`],
+                  ["action", `Förfallet eller åtgärd (${counts.action})`],
+                ] as const).map(([value, label]) => (
+                  <Button key={value} size="sm" variant={filter === value ? "secondary" : "ghost"} aria-pressed={filter === value} className="justify-center" onClick={() => choose(value)}>
+                    {label}
+                  </Button>
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="shrink-0 text-xs font-medium text-muted-foreground" htmlFor="work-sort">Sortera</label>
+                <select id="work-sort" className="form-select min-w-0 flex-1 sm:w-48 sm:flex-none" value={sort} onChange={(event) => { setSort(event.target.value as OverviewWorkSort); setLocalShown(1); }}>
+                  <option value="updated">Senast ändrad</option>
+                  <option value="progress">Mest kvar</option>
+                  <option value="due">Närmaste slutdatum</option>
+                </select>
+              </div>
+            </div>
+            {items.length ? (
+              <div aria-live="polite">
+                <div className="mb-2 hidden grid-cols-[minmax(0,1fr)_12rem_14rem_8rem] gap-4 rounded-lg bg-muted/35 px-4 py-2.5 text-xs font-medium text-muted-foreground lg:grid">
+                  <span>Objekt</span>
+                  <span>Typ och status</span>
+                  <span>Progression</span>
+                  <span className="text-right">Åtgärd</span>
+                </div>
+                <div className="grid gap-2">
+                  {items.map((item) => (
+                    <div key={`${item.kind}-${item.id}`} className="workflow-card tap-card grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2.5 px-4 py-3 lg:grid-cols-[minmax(0,1fr)_12rem_14rem_8rem] lg:gap-4">
+                      <div className="col-span-2 flex min-w-0 items-center gap-3 lg:col-span-1">
+                        <AreaIcon area={item.kind === "PROJECT" ? "project" : typeOfTaskKind(item.kind)} icon={item.kind === "PROJECT" ? FolderKanban : ClipboardCheck} />
+                        <div className="min-w-0 flex-1">
+                          <Link href={item.href} className="stretched-link block truncate font-semibold hover:text-primary" tabIndex={-1}>{item.title}</Link>
+                          <p className="mt-1 truncate text-xs text-muted-foreground">{item.projectName ? `Projekt: ${item.projectName} · ` : ""}Senast ändrad {updatedLabel(item.updatedAt)}</p>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="outline">{item.kind === "PROJECT" ? "Projekt" : item.taskType ?? "Uppgift"}</Badge>
+                        <Badge variant="outline" className={indicatorBadge(statusTone(item.status))}>{item.status}</Badge>
+                      </div>
+                      <div className="order-last col-span-2 min-w-0 lg:order-none lg:col-span-1">
+                        <div className="flex items-baseline justify-between gap-3"><p className={`text-sm font-semibold ${item.progress === 100 ? indicatorText("success") : "text-foreground"}`}>{item.progress}%</p><p className="truncate text-xs text-muted-foreground">{item.remaining}</p></div>
+                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted"><div className={`h-full rounded-full ${indicatorBar(progressTone({ percent: item.progress, attention: item.needsAction || item.overdue }))}`} style={{ width: `${item.progress}%` }} /></div>
+                      </div>
+                      <div className="tap-above flex justify-end">
+                        <Button asChild size="sm" variant="outline">
+                          <Link href={item.href}>
+                            {item.action}
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <ShowMore shown={items.length} total={total} busy={moreBusy} onMore={() => void showMore()} />
+              </div>
+            ) : (
+              <div className="py-6 text-center">
+                <p className="text-sm font-medium">Inget matchar filtret.</p>
+                <p className="mt-1 text-xs text-muted-foreground">Välj ett annat filter för att se arbetet.</p>
+              </div>
+            )}
+          </div>
+        )}
+      </Panel>
+    </div>
+  );
+}
+
+/**
+ * Översikt on its way: the key figures' heading and eight tiles of their real height (6.5 rem), and the work card with grey
+ * rows, so the page has its shape while both are read (DelayedSkeleton: seen only after ~150 ms).
+ */
+function OverviewSkeleton() {
+  return <DelayedSkeleton className="space-y-6" testId="overview-skeleton">
+    <div className="space-y-3" data-detail-min="2" aria-hidden="true">
+      <div><span className="section-title block"><SkeletonText className="w-24" /></span><span className="block text-xs"><SkeletonText className="w-72 max-w-full" /></span></div>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{Array.from({ length: 8 }, (_, index) => <div key={index} className="native-skeleton h-[6.5rem] rounded-xl" />)}</div>
+    </div>
+    <div className="app-panel rounded-lg border bg-card">
+      <div className="px-4 pb-3 pt-3.5" aria-hidden="true"><span className="section-title block"><SkeletonText className="w-44" /></span></div>
+      <div className="px-4 pb-4"><RowsSkeleton rows={5} label="Hämtar översikten…" /></div>
+    </div>
+  </DelayedSkeleton>;
+}
+
+/** canViewTeam: admins or team:read (2026-10-28); canReadProjects decides the statistics' Projekt tab, as the server. */
+export function Analytics({ canViewTeam, canReadProjects = false, projectCount = 0, canCreateProject = true, canCreateTask = true }: { canViewTeam: boolean; canReadProjects?: boolean; projectCount?: number; canCreateProject?: boolean; canCreateTask?: boolean }) {
+  const [kpis, setKpis] = useState<{ team: OverviewKpis | null; mine: OverviewKpis } | null>(null),
+    [kpiError, setKpiError] = useState(""),
+    [workLoaded, setWorkLoaded] = useState(false);
+  const markWorkLoaded = useCallback(() => setWorkLoaded(true), []);
+  useEffect(() => {
+    const abort = new AbortController();
+    api<{ team: OverviewKpis | null; mine: OverviewKpis }>("/api/overview-kpis", { signal: abort.signal })
+      .then((result) => { setKpis(result); setKpiError(""); })
+      .catch((e) => { if (!abort.signal.aborted) setKpiError((e as Error).message); });
+    return () => abort.abort();
+  }, []);
+  // Order (2026-09-26): key figures → folded projects and tasks → task statistics at the bottom.
+  return (
+    <div className="space-y-6">
+      <PageHeader title="Översikt" description="Följ projektens progression och fortsätt där arbetet stannade." actions={<>
+          <Button asChild variant="outline"><Link href="/?view=projects">{projectCount} projekt</Link></Button>
+          {canCreateProject ? <Button asChild variant="outline"><Link href="/?view=new_project"><Plus />Nytt projekt</Link></Button> : null}
+          {canCreateTask ? <Button asChild><Link href="/?view=new_task"><Plus />Ny uppgift</Link></Button> : null}
+        </>} />
+      {/* Dagsammanställningen (2026-10-02): the night's short digest, where the company has chosen it. */}
+      {/* Visningsnivå 1 on a phone or tablet shows the work itself; the digest, key figures and statistics are left out. */}
+      {DailyDigestCard ? <div data-detail-min="2"><DailyDigestCard /></div> : null}
+      {/* Innehåll först när det är klart (2026-10-24): the key figures and the work are read together and shown in
+          one sweep once both are here – not the figures first and then the work pushing Statistik down. Meanwhile one
+          skeleton of the same parts holds the room. */}
+      <ShowWhenReady ready={Boolean(kpis || kpiError) && workLoaded} placeholder={<OverviewSkeleton />} className="space-y-6" testId="overview-parts">
+        <div data-detail-min="2"><OverviewKpiDashboard key={kpis ? "ready" : "loading"} team={canViewTeam ? (kpis?.team ?? null) : null} mine={kpis?.mine ?? null} loading={!kpis} error={kpiError} /></div>
+        <WorkOverview onLoaded={markWorkLoaded} />
+        {canViewTeam ? <div data-detail-min="2"><TaskStatistics projects={canReadProjects} /></div> : null}
+      </ShowWhenReady>
+    </div>
+  );
+}

@@ -1,0 +1,21 @@
+.git
+.next
+node_modules
+npm-debug.log
+.env
+.env.local
+storage/*
+!storage/.gitkeep
+!storage/attachments/.gitkeep
+
+storage-test
+tests
+tmp
+backups
+storage-qa
+storage-local
+storage-local-qa
+certs
+# Claude Code agent worktrees and settings (2026-10-05): never part of an image
+.claude
+host-status
