@@ -70,7 +70,7 @@ export function collapseRepeated(items: readonly TaskNotification[]): Notificati
     const { read: _read, ...first } = item;
     void _read;
     const row: TaskNotification = { ...first, id: `REPEAT:${key}`, repeats: members.length, ...(read ? { read: true } : {}) };
-    if (item.kind === "ROUND") return { row: { ...row, title: `${members.length} ronder ej klara`, detail: members.slice(0, 3).map((member) => member.title).join(", ") + (members.length > 3 ? " med flera" : ""), href: "/?view=rounds" }, members };
+    if (item.kind === "ROUND") return { row: { ...row, title: `${members.length} ronder inte klara`, detail: members.slice(0, 3).map((member) => member.title).join(", ") + (members.length > 3 ? " med flera" : ""), href: "/?view=rounds" }, members };
     if (item.kind === "COMMENT") return { row: { ...row, label: "Nya kommentarer", detail: `${members.length} nya kommentarer. ${item.detail ?? ""}`.trim() }, members };
     return { row: { ...row, detail: `${members.length} händelser. ${item.detail ?? ""}`.trim() }, members };
   });

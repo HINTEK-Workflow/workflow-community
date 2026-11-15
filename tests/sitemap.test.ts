@@ -98,7 +98,7 @@ test("lines: the menu button, the tab and Mer's row are offered only to those wh
 test("only the superadmin may read the map", () => {
   assert.deepEqual(sitemapAccess(null), { ok: false, status: 401, message: "Logga in för att fortsätta." });
   for (const role of ["USER", "ADMIN", "OWNER", "MEMBER", undefined, null]) assert.equal(sitemapAccess({ role }).ok, false, String(role));
-  assert.deepEqual(sitemapAccess({ role: "ADMIN" }), { ok: false, status: 403, message: "Systemadministratör krävs." });
+  assert.deepEqual(sitemapAccess({ role: "ADMIN" }), { ok: false, status: 403, message: "Bara installationens administratör kan göra det." });
   assert.deepEqual(sitemapAccess({ role: "SUPERADMIN" }), { ok: true });
 });
 

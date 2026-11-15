@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { genitive } from "@/lib/plural";
 import { swedishDate, swedishParts } from "@/lib/swedish-time";
 import { countsInPlanning } from "@/lib/workflow/absence";
 import { isWorkday } from "@/lib/workflow/schedule";
@@ -199,7 +200,7 @@ export function timePeriodAuditText(action: TimePeriodAction, status: TimePeriod
   if (action === "submit") return status === "APPROVED" ? `Skickade in och godkände sin tid för ${month} (ingen annan kan godkänna).` : `Skickade in sin tid för ${month}.`;
   if (action === "approve") return `Godkände tiden för ${person}, ${month}.`;
   if (action === "return") return `Skickade tillbaka tiden för ${person}, ${month}.`;
-  return `Öppnade ${person}s tid för ${month} igen.`;
+  return `Öppnade ${genitive(person)} tid för ${month} igen.`;
 }
 export const TIME_PERIOD_REMIND_AUDIT = "time_period_remind";
 export const timePeriodRemindAuditText = (person: string, period: string) => `Påminde ${person} om att skicka in tiden för ${periodLabel(period)}.`;

@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     checkOrigin(request);
     const ctx = await context();
     requireCloudStorage(ctx);
-    if (!ctx.admin) throw new ApiError(403, "Företagsadministratör krävs.");
+    if (!ctx.admin) throw new ApiError(403, "Bara en företagsadministratör kan göra det.");
     await requireCloudWriteAccess(ctx);
     const input = z.object({ goals: z.unknown() }).parse(await body(request));
     return NextResponse.json({ goals: await writeCompanyGoals(ctx, input.goals) });

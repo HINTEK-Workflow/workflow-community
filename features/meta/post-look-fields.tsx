@@ -31,7 +31,7 @@ export function PostLookFields({ value, onChange, logos, prefix, disabled = fals
     <div className="grid gap-3 sm:grid-cols-2">
       <Field id={`${prefix}-logo-variant`} label="Logga" value={value.logoVariant} onChange={(next) => set({ logoVariant: next })} options={LOGO_VARIANTS.map((variant) => variant.key)} optionLabels={variantLabels} disabled={disabled}
         help={missing ? "Den varianten finns inte. Logotypen väljs automatiskt. Ladda upp varianter under Inställningar → Företag." : value.logoVariant === "auto" ? "Den som syns bäst på mallen." : undefined} />
-      <div className="field-stack"><span className="text-xs font-medium" id={`${prefix}-logo-size-label`}>Storlek på loggan</span>
+      <div className="field-stack"><span className="text-xs font-medium" id={`${prefix}-logo-size-label`}>Storlek på logotypen</span>
         <div role="radiogroup" aria-labelledby={`${prefix}-logo-size-label`} className="grid grid-cols-3 gap-2" data-testid={`${prefix}-logo-sizes`}>
           {LOGO_SIZES.map((size) => <Button key={size.key} type="button" role="radio" aria-checked={value.logoSize === size.key} variant={value.logoSize === size.key ? "secondary" : "outline"} size="sm" disabled={disabled}
             className={cn("w-full min-w-0 justify-center", value.logoSize === size.key && "font-semibold")} onClick={() => set({ logoSize: size.key })} data-testid={`${prefix}-logo-size-${size.key}`}>{size.label}</Button>)}

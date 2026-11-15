@@ -509,7 +509,7 @@ function WorkOrderFooter({ context, row, index }: { context: CellContext; row: T
   const state = row.workOrderId ? actions?.workOrderStatus?.(row.workOrderId) : undefined;
   const waiting = !row.workOrderId && !readOnly && actions?.canCreateWorkOrder === false;
   const text = state ? `Arbetsorder: ${state.label}${state.status === "COMPLETED" ? " – åtgärden är utförd" : ""}`
-    : row.workOrderId ? "Arbetsorder skapad av anmärkningen."
+    : row.workOrderId ? "Arbetsorder skapad från anmärkningen."
     : waiting ? UNSAVED_REASON
     : logged ? "Avvikelsen finns i avvikelseloggen."
     : actions?.logDeviation ? "Avvikelsen kan åtgärdas som en arbetsorder och föras till avvikelseloggen." : "Avvikelsen kan åtgärdas som en arbetsorder.";

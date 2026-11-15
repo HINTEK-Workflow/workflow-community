@@ -51,7 +51,7 @@ export function threePhasePower(input: PowerInput): EngineResult<PowerResult> {
   if (u === undefined && input.phaseVoltageV !== undefined) u = phases === 3 ? input.phaseVoltageV * SQRT3 : input.phaseVoltageV;
   else if (u !== undefined && input.phaseVoltageV !== undefined) {
     const expected = phases === 3 ? input.phaseVoltageV * SQRT3 : input.phaseVoltageV;
-    if (!agrees(u, expected)) issues.warn("voltageMismatch", "Linje- och fasspänning stämmer inte med varandra; linjespänningen används.");
+    if (!agrees(u, expected)) issues.warn("voltageMismatch", "Linje- och fasspänning stämmer inte med varandra. Linjespänningen används.");
   }
   if (u === undefined) issues.error("voltageMissing", "Ange spänningen.");
   if (issues.errors.length || u === undefined) return issues.fail();
@@ -96,7 +96,7 @@ export function threePhasePower(input: PowerInput): EngineResult<PowerResult> {
   if (cos === null) issues.warn("noCosPhi", "cos φ saknas, så aktiv och reaktiv effekt kan inte räknas. Ange cos φ.");
   else if (pf === undefined && p === undefined) issues.warn("cosPhiFromQ", "cos φ är härledd ur reaktiv effekt.");
   issues.usual(current, 0.001, 20000, "currentRange", "Strömmen", "1 mA till 20 kA");
-  if (q !== undefined && q < 0) issues.warn("capacitive", "Negativ reaktiv effekt (kapacitiv last) behandlas som induktiv i resultatet; beloppet används.");
+  if (q !== undefined && q < 0) issues.warn("capacitive", "Negativ reaktiv effekt (kapacitiv last) behandlas som induktiv i resultatet. Beloppet används.");
 
   return issues.done({
     phases, lineVoltageV: u, phaseVoltageV: phases === 3 ? u / SQRT3 : u, currentA: current, apparentVA: s,
@@ -111,7 +111,7 @@ export function compensationReactivePower(powerW: number, cosPhiBefore: number, 
   issues.cosPhi(cosPhiBefore, "cosPhiBefore");
   issues.cosPhi(cosPhiAfter, "cosPhiAfter");
   if (issues.errors.length) return issues.fail();
-  if (cosPhiAfter < cosPhiBefore) issues.warn("worse", "Önskad cos φ är lägre än nuvarande; ingen kompensering behövs.");
+  if (cosPhiAfter < cosPhiBefore) issues.warn("worse", "Önskad cos φ är lägre än den nuvarande, så ingen kompensering behövs.");
   const tan = (cos: number) => Math.sqrt(1 - cos * cos) / cos;
   const before = powerW * tan(cosPhiBefore);
   const after = powerW * tan(cosPhiAfter);

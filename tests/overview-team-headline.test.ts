@@ -38,7 +38,7 @@ test("Läget i teamet: the figures and the sentence come from the tab's own answ
   // Frånvaro (2026-10-29): who is away is said, and the work it touches is a krock.
   const away = { ...base(), absence: { canRegister: true, today: [{ userId: "b", name: "Bo Ek", label: "Sjuk", to: "2026-10-29" }], affected: [{ key: "k", absenceId: "x", userId: "b", kind: "booking" as const, id: "b1", title: "Jordfel", day: "2026-10-29", href: "/", backOn: "2026-10-30", personName: "Bo Ek", label: "Sjuk", suggestions: [] }] } };
   assert.equal(teamGroupCounts(away).conflicts, 1);
-  assert.match(teamSentence(away), /^En av två arbetar just nu\. Bo är frånvarande idag\. En krock och ett hinder – börja där\./);
+  assert.match(teamSentence(away), /^En av två arbetar just nu\. Bo är frånvarande i dag\. En krock och ett hinder – börja där\./);
   assert.equal(teamSentence(base()), "En av två arbetar just nu. Ett hinder – börja där. Ett projekt är förfallet. En person är överbokad den här veckan.");
   const calm = { ...base(), now: { people: [{ id: "b", name: "Bo", todayMinutes: 0, running: null }] }, needsAction: { total: 0, rows: [] }, overdueJobs: null, lateStarts: null, riskBeforeStart: { total: 0, rows: [] },
     deviations: { ...base().deviations, counts: { open: 0, overdue: 0, withoutResponsible: 0, systematic: 0 } }, projects: { ...base().projects!, overdue: 0 }, load: { ...base().load, people: [] } };

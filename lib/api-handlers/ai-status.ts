@@ -64,7 +64,7 @@ export async function GET(request: Request) {
       conditions.creditLedger.healthy && conditions.availableCredits.available;
     const details = new URL(request.url).searchParams.get("details") === "admin";
     if (details && ctx.user.role !== "SUPERADMIN")
-      throw new ApiError(403, "Endast superadmin får se teknisk AI-status.");
+      throw new ApiError(403, "Bara superadmin får se teknisk AI-status.");
     return NextResponse.json({
       lifecycle: available ? "READY" : "EXECUTION_LOCKED",
       available,

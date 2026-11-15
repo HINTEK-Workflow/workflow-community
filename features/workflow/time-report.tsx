@@ -315,7 +315,7 @@ export function TimeReport({ local, focusTaskId, tab = "mine" }: { local?: Local
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <IconButton label="Föregående period" variant="outline" onClick={() => move(-1)}><ChevronLeft /></IconButton>
-          <Button variant="outline" onClick={() => setAnchor(new Date())}>Idag</Button>
+          <Button variant="outline" onClick={() => setAnchor(new Date())}>I dag</Button>
           <IconButton label="Nästa period" variant="outline" onClick={() => move(1)}><ChevronRight /></IconButton>
         </div>
         <div className="flex w-full rounded-lg border bg-muted/40 p-1 sm:w-auto">{(["day", "week", "month"] as const).map((item) => <button key={item} type="button" onClick={() => setMode(item)} className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium sm:flex-none ${mode === item ? "bg-card text-foreground shadow-xs" : "text-muted-foreground"}`}>{item === "day" ? "Dag" : item === "week" ? "Vecka" : "Månad"}</button>)}</div>
@@ -772,7 +772,7 @@ function TeamTime({ team, tasks, timeTypes, taskById, busy, onEdit, onDelete, lo
       </ListGroup>
     </NativePage>;
   }
-  return <Panel className="@container" title="Teamets rapporterade tid" description={editable ? "Alla medarbetares tid. Administratörer kan korrigera poster; ändring av andras tid kräver en kommentar." : "Alla medarbetares tid."} icon={Users} actions={<ExportMenu title="Exportera teamets tid" description={`${filtered.length} poster med nuvarande filter. Filen öppnas i Excel.`} disabled={!filtered.length} testId="team-export-menu"
+  return <Panel className="@container" title="Teamets rapporterade tid" description={editable ? "Alla medarbetares tid. Administratörer kan korrigera poster, och den som ändrar någon annans tid måste skriva en kommentar." : "Alla medarbetares tid."} icon={Users} actions={<ExportMenu title="Exportera teamets tid" description={`${filtered.length} poster med nuvarande filter. Filen öppnas i Excel.`} disabled={!filtered.length} testId="team-export-menu"
     formats={[{ id: "csv", label: "CSV", icon: FileSpreadsheet, primary: true, run: exportCsv }]} />}>
     <div className={cn("grid gap-3 @xl:grid-cols-2", typeOptions.length ? "@4xl:grid-cols-3 @6xl:grid-cols-6" : "@4xl:grid-cols-5")}>
       {/* Distinct accessible names: the personal list on the same page has its own Projekt/Uppgift filters. */}
@@ -917,7 +917,7 @@ function TimeEntryForm({ onCancel, tasks, timeTypes = NO_TYPES, workdayStartMinu
   const removeEntry = async () => {
     if (!entry || !onDelete) return;
     if (locked) { announce(locked, true); return; }
-    if (deleteReasonRequired && !reason.trim()) { announce("Skriv en kommentar till korrigering först. Den sparas med borttagningen.", true); return; }
+    if (deleteReasonRequired && !reason.trim()) { announce("Skriv en kommentar till korrigeringen först. Den sparas med borttagningen.", true); return; }
     if (await confirm({ title: "Ta bort tidposten?", message: `${minutes(entry.durationSec)} på ${entry.taskTitle} (${dateTime(entry.startedAt)}). Borttagningen sparas i historiken.`, confirmLabel: "Ta bort", tone: "danger" })) await onDelete(reason);
   };
   const chosenTask = byId.get(taskId);

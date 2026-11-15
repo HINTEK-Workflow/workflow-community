@@ -38,5 +38,5 @@ test("anything that is not a form file is rejected with a readable message", () 
 test("the publisher label shows where an imported form came from", () => {
   assert.equal(publisherLabel("HINTEK", null), "HINTEK");
   assert.equal(publisherLabel("Kund AB", { publisherName: "Elbolaget AB", exportedBy: "Elbolaget AB", verified: true, sourceTemplateId: "x", sourceVersion: 1, importedAt: "2026-09-27" }), "Kund AB · från Elbolaget AB");
-  assert.equal(publisherLabel("Kund AB", { publisherName: "Okänd", exportedBy: "Okänd", verified: false, sourceTemplateId: "x", sourceVersion: null, importedAt: "2026-09-27" }), "Kund AB · från Okänd (ej verifierad)");
+  assert.equal(publisherLabel("Kund AB", { publisherName: "Okänd", exportedBy: "Okänd", verified: false, sourceTemplateId: "x", sourceVersion: null, importedAt: "2026-09-27" }), "Kund AB · från Okänd (inte verifierad)");
 });

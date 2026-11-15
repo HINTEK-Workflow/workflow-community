@@ -62,7 +62,7 @@ function TodayLines({ lines }: { lines: readonly TimeLine[] }) {
   const total = lines.reduce((sum, line) => sum + line.minutes, 0);
   return <section aria-labelledby="overview-today" data-testid="overview-today-entries">
     <div className="flex items-baseline justify-between gap-2 text-xs">
-      <h3 id="overview-today" className="font-semibold">Idag</h3>
+      <h3 id="overview-today" className="font-semibold">I dag</h3>
       <span className="text-muted-foreground">Summa <span className="font-semibold tabular-nums text-foreground">{clockText(total)}</span></span>
     </div>
     {lines.length ? <ul className="mt-2 divide-y rounded-lg border">{lines.slice(-4).map((line) => <li key={line.id} className="relative flex items-center gap-2 px-3 py-2 text-xs">
@@ -71,7 +71,7 @@ function TodayLines({ lines }: { lines: readonly TimeLine[] }) {
         <p className="tabular-nums text-muted-foreground">{line.start}–{line.end ?? "pågår"}</p>
       </div>
       {line.end ? <span className="font-semibold tabular-nums">{clockText(line.minutes)}</span> : <Pill tone="info" className="shrink-0">Pågår</Pill>}
-    </li>)}</ul> : <EmptyNote compact icon={Clock3} title="Ingen tid rapporterad idag" />}
+    </li>)}</ul> : <EmptyNote compact icon={Clock3} title="Ingen tid rapporterad i dag" />}
   </section>;
 }
 const clockText = (minutes: number) => `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, "0")}`;
@@ -173,7 +173,7 @@ function TimeCard({ week, today, recent, todayEntries, chosen, onClear }: { week
         </Link>
       </div>
       <p className="mt-1 flex flex-wrap justify-between gap-x-3 text-xs text-muted-foreground">
-        <span>Idag <span className="font-semibold tabular-nums text-foreground">{hours(todayMinutes)} h</span></span>
+        <span>I dag <span className="font-semibold tabular-nums text-foreground">{hours(todayMinutes)} h</span></span>
         {gap ? <Link href={week.href} className={cn("font-medium hover:underline", indicatorText("warning"))} data-testid="overview-week-gap">{gap} · Lägg till tid</Link> : null}
       </p>
       <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden="true"><div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, week.ordinaryMinutes ? (week.reportedMinutes / week.ordinaryMinutes) * 100 : 0)}%` }} /></div>
@@ -251,7 +251,7 @@ function Greeting({ data, name, footer }: { data: MeTabData; name: string; foote
     title={`${greetingWord(Number(swedishClock().slice(0, 2)))}${who ? `, ${who}` : ""}`} sentence={greetingSentence(data)}
     chips={[
       { count: figures.overdue, label: figures.overdue === 1 ? "förfallen" : "förfallna", href: "#forfallet", icon: AlarmClock, tone: "danger", testId: "greeting-overdue" },
-      { count: figures.today, label: "idag", href: "#tidslinje", icon: Clock3, tone: "info", testId: "greeting-today" },
+      { count: figures.today, label: "i dag", href: "#tidslinje", icon: Clock3, tone: "info", testId: "greeting-today" },
       { count: figures.deviations, label: figures.deviations === 1 ? "avvikelse" : "avvikelser", href: "#mina-avvikelser", icon: OctagonAlert, tone: data.deviations?.overdue ? "danger" : "warning", testId: "greeting-deviations" },
       { count: figures.laterThisWeek, label: "senare i veckan", href: "#min-plan", icon: CalendarDays, tone: "neutral", testId: "greeting-week" },
     ]} />;

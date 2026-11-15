@@ -104,7 +104,7 @@ const settingsInput = z.object({
 /** Only the company's admin changes the setting. Turning it on with an accounting link needs the company's own choice. */
 export async function saveInvoiceSettings(caller: InvoiceCaller, raw: unknown): Promise<InvoiceSettingsView> {
   requireCloud(caller);
-  if (!caller.admin) throw new ApiError(403, "Företagsadministratör krävs.");
+  if (!caller.admin) throw new ApiError(403, "Bara en företagsadministratör kan göra det.");
   const input = settingsInput.parse(raw);
   const connected = await connectedSystem(caller.organizationId);
   await prisma.$transaction(async (tx) => {

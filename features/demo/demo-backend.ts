@@ -128,7 +128,7 @@ function context() {
 type Context = ReturnType<typeof context>;
 const nextId = (ctx: Context, prefix: string) => `demo-${prefix}-${++ctx.db.sequence}`;
 const userName = (ctx: Context, id: string | null | undefined) => ctx.db.users.find((user) => user.id === id)?.name ?? "";
-const requireAdmin = (ctx: Context) => { if (!ctx.admin) throw new DemoError(403, "Företagsadministratör krävs."); };
+const requireAdmin = (ctx: Context) => { if (!ctx.admin) throw new DemoError(403, "Bara en företagsadministratör kan göra det."); };
 /** Teamet (2026-10-28): the same rule as Cloud, admins or team:read. */
 const seesTeam = (ctx: Context) => canViewTeam({ admin: ctx.admin, workflowPermissions: ctx.user.permissions });
 const isMine = (ctx: Context, task: DemoTask) => task.assignedToUserId === ctx.user.id || (!task.assignedToUserId && task.createdBy === ctx.user.id);
@@ -1244,7 +1244,7 @@ function projectSchedule(ctx: Context, request: Request) {
   if (!task) throw new DemoError(404, "Jobbet hittades inte.");
   ctx.require(workflowSubjectForTask(task.kind), "edit");
   if (task.status === "COMPLETED") throw new DemoError(409, "Jobbet är färdigställt. Återöppna det innan du ändrar tidplanen.");
-  if (task.status === "CANCELLED") throw new DemoError(409, "Jobbet utgår. Återuppta det innan du ändrar tidplanen.");
+  if (task.status === "CANCELLED") throw new DemoError(409, "Jobbet har utgått. Återuppta det innan du ändrar tidplanen.");
   if (task.version !== input.version) throw new DemoError(409, "Jobbet har ändrats. Läs in den senaste versionen.");
   const project = ctx.db.projects.find((item) => item.id === task.projectId) ?? null;
   if (project?.archivedAt) throw new DemoError(409, "Återställ projektet innan du ändrar tidplanen.");
@@ -1272,7 +1272,7 @@ function projectSchedule(ctx: Context, request: Request) {
   let predecessorTitles: string[] = [];
   if (input.predecessorIds) {
     const wanted = [...new Set(input.predecessorIds)];
-    if (!project && wanted.length) throw new DemoError(400, "Börjar efter finns för jobb i ett projekt.");
+    if (!project && wanted.length) throw new DemoError(400, "Börjar efter finns bara för jobb i ett projekt.");
     const projectJobs = project ? ctx.db.tasks.filter((item) => item.projectId === project.id) : [];
     const readableIds = new Set(readableTasks(ctx).filter((item) => item.projectId === project?.id).map((item) => item.id));
     if (wanted.some((id) => !readableIds.has(id))) throw new DemoError(400, "Börjar efter kan bara peka på jobb i samma projekt.");
@@ -1892,7 +1892,7 @@ function route(request: Request): Json | unknown {
     case "/api/form-limits": if (get) return { family: request.url.searchParams.get("templateId") ?? "", canEdit: false, profiles: [], company: ctx.db.companyValues }; break;
     // Värden och referenser (2026-10-06): the invented company's values in memory, the same rules as Cloud.
     case "/api/company-values":
-      if (!ctx.admin) throw new DemoError(403, "Företagsadministratör krävs.");
+      if (!ctx.admin) throw new DemoError(403, "Bara en företagsadministratör kan göra det.");
       if (get) return { canEdit: true, catalog: companyValueCatalog(ctx.db.forms.map((form) => ({ id: form.id, name: form.name, document: form.document }))), values: ctx.db.companyValues };
       try { ctx.db.companyValues = mergeCompanyValues(ctx.db.companyValues, companyValuesSaveSchema.parse(request.body).values, ctx.user.name); }
       catch (error) { throw new DemoError(409, (error as Error).message); }
@@ -1948,7 +1948,7 @@ function route(request: Request): Json | unknown {
     // them is an action of the person and still says it cannot be tried here.
     case "/api/security": if (get) return { twoFactor: { enabled: false, enabledAt: null, backupCodesLeft: 0, hasPassword: false }, required: false, method: "demo", google: false, fresh: true, sessionTracked: false, sessions: [], log: { events: [], next: null } }; break;
     // Operatörskonton (2026-10-30): invented accounts in this browser only (features/demo/demo-operator.ts).
-    case "/api/operator-accounts": if (!ctx.admin) throw new DemoError(403, "Företagsadministratör krävs."); try { return get ? demoOperatorAdminView() : demoOperatorAdminAction((request.body ?? {}) as Record<string, unknown>); } catch (error) { throw error instanceof DemoOperatorError ? new DemoError(error.status, error.message) : error; }
+    case "/api/operator-accounts": if (!ctx.admin) throw new DemoError(403, "Bara en företagsadministratör kan göra det."); try { return get ? demoOperatorAdminView() : demoOperatorAdminAction((request.body ?? {}) as Record<string, unknown>); } catch (error) { throw error instanceof DemoOperatorError ? new DemoError(error.status, error.message) : error; }
     case "/api/security/company": if (get && ctx.admin) return { required: false, me: ctx.user.id, members: [], log: { events: [], next: null } }; break;
     case "/api/oauth/connections": if (get) return { connections: [] }; break;
     case "/api/passkeys": if (get) return { passkeys: [] }; break;

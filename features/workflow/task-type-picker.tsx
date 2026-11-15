@@ -191,11 +191,11 @@ export function TaskTypePicker({ projectId, customerId, permissions, admin = fal
       <ShowMoreMarker when={canArrange || canBuildForms} />
       <NativeLargeTitle inBar>Ny uppgift</NativeLargeTitle>
       {workOrderId ? <p className="notice mb-2 text-sm" data-testid="linked-task-target">{linkedTaskNotice(searchParams.get("workOrderTitle"))}</p> : null}
-      {!activeTypes.length && !shownForms.length ? <p className="notice">Du saknar behörighet att skapa uppgifter. En företagsadministratör kan ändra dina modulrättigheter.</p> : null}
+      {!activeTypes.length && !shownForms.length ? <p className="notice">Du saknar behörighet att skapa uppgifter. En företagsadministratör kan ändra dina behörigheter.</p> : null}
       {notice ? <p role="status" className="notice">{notice}</p> : null}
       {cards.length >= SEARCH_FROM ? <NativeSearch value={query} onChange={setQuery} label="Sök uppgiftstyp" placeholder="Sök uppgiftstyp" /> : null}
       {groups.map(([groupCategory, groupCards], index) => <ListGroup key={groupCategory} title={sectionLabel(groupCategory)} testId="task-category"
-        footer={index === groups.length - 1 && !canBuildForms && shownCards.length ? "Saknar ni en uppgiftstyp? Er administratör kan skapa egna formulär. De visas här när de är publicerade och du har behörighet till dem." : undefined}>
+        footer={index === groups.length - 1 && !canBuildForms && shownCards.length ? "Saknas en uppgiftstyp? Företagets administratör kan skapa egna formulär. De visas här när de är publicerade och du har behörighet till dem." : undefined}>
         {groupCards.map((card) => <ListRow key={card.key} href={card.href} type={card.form?.area === "risk-assessment" || card.key === "type:RISK_ASSESSMENT" ? "risk" : "control"} title={card.name}
           subtitle={typeDescription(card) || undefined} testId="native-task-type" ariaLabel={`${card.linkLabel}: ${card.name}`} />)}
       </ListGroup>)}
@@ -227,7 +227,7 @@ export function TaskTypePicker({ projectId, customerId, permissions, admin = fal
         <ClipboardList className="size-4 text-feature-control" aria-hidden="true" />
         <span>{linkedTaskNotice(searchParams.get("workOrderTitle"))}</span>
       </p> : null}
-      {!activeTypes.length && !shownForms.length && <p className="notice">Du saknar behörighet att skapa uppgifter. En företagsadministratör kan ändra dina modulrättigheter.</p>}
+      {!activeTypes.length && !shownForms.length && <p className="notice">Du saknar behörighet att skapa uppgifter. En företagsadministratör kan ändra dina behörigheter.</p>}
       {notice ? <p role="status" className="notice">{notice}</p> : null}
       {riskEditing ? <RiskClassDialog name={riskEditing.name} current={riskEditing.current} proposal={riskEditing.proposal} onClose={() => setRiskEditing(null)}
         onSave={async (value) => { await setRiskClass(riskEditing.key, value); announce(value ? "Krävd nivå är sparad." : "Krävd nivå återgick till Workflows förslag."); }} /> : null}
@@ -309,7 +309,7 @@ export function TaskTypePicker({ projectId, customerId, permissions, admin = fal
           <Link href="/?view=forms&new=1" className={`${cardClass} border-dashed bg-card/60`} data-testid="create-form-card">
             <div className="flex items-start justify-between gap-3">
               <span className="flex size-11 items-center justify-center rounded-xl bg-secondary text-primary"><FilePlus2 className="size-5" /></span>
-              <Badge variant="outline">Endast ert företag</Badge>
+              <Badge variant="outline">Bara ert företag</Badge>
             </div>
             <h2 className="section-title mt-5 truncate group-hover:text-primary" data-card-title="">Ny uppgiftstyp</h2>
             <p className="mt-2 flex-1 text-sm leading-6 text-muted-foreground">Bygg ett formulär. När det publiceras blir det en egen uppgiftstyp här.</p>
@@ -318,8 +318,8 @@ export function TaskTypePicker({ projectId, customerId, permissions, admin = fal
         ) : activeTypes.length || shownForms.length ? (
           <div className="flex min-h-52 flex-col rounded-xl border border-dashed bg-card/45 p-5" data-testid="create-form-card">
             <span className="flex size-11 items-center justify-center rounded-xl bg-muted text-muted-foreground"><FilePlus2 className="size-5" /></span>
-            <h2 className="section-title mt-5 truncate" data-card-title="">Saknar ni en uppgiftstyp?</h2>
-            <p className="mt-2 flex-1 text-sm leading-6 text-muted-foreground">Er administratör kan skapa egna formulär. De visas här när de är publicerade och du har behörighet till dem.</p>
+            <h2 className="section-title mt-5 truncate" data-card-title="">Saknas en uppgiftstyp?</h2>
+            <p className="mt-2 flex-1 text-sm leading-6 text-muted-foreground">Företagets administratör kan skapa egna formulär. De visas här när de är publicerade och du har behörighet till dem.</p>
           </div>
         ) : null}
       </div>

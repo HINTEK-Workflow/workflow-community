@@ -94,7 +94,7 @@ export function RegisterForm({ googleEnabled, initialError, localStart = false }
     </label>
     <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm">
       <input type="checkbox" className="mt-0.5 size-4 shrink-0 accent-[var(--primary)]" checked={newsletter} onChange={(event) => setNewsletter(event.target.checked)} />
-      <span><span className="block">Ja, mejla mig om nyheter i Workflow</span><span className="block text-xs text-muted-foreground">Ändringar och förbättringar. Går att ändra under Mina inställningar.</span></span>
+      <span><span className="block">Ja, skicka nyheter om Workflow till min e-post</span><span className="block text-xs text-muted-foreground">Ändringar och förbättringar. Går att ändra under Mina inställningar.</span></span>
     </label>
 
     {googleEnabled ? <>

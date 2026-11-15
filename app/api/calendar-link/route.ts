@@ -17,7 +17,7 @@ const NO_STORE = { "Cache-Control": "no-store" };
 async function caller() {
   const ctx = await context();
   requireCloudStorage(ctx);
-  if (ctx.integration) throw new ApiError(403, "Kalenderlänken kan bara ändras inloggad i Workflow.");
+  if (ctx.integration) throw new ApiError(403, "Kalenderlänken kan bara ändras när du är inloggad i Workflow.");
   return ctx;
 }
 

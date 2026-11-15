@@ -254,7 +254,7 @@ export async function removeMetaConnection(actor: Actor) {
 export async function setMetaPublishing(actor: Actor, on: boolean) {
   const found = await row(actor.organizationId);
   if (!found) throw new ApiError(409, "Koppla Facebook och Instagram först.");
-  if (on && (!found.pageId || !found.pageTokenCipher || found.status === "invalid" || found.status === "choose")) throw new ApiError(409, "Kopplingen måste fungera och en sida vara vald innan publicering kan slås på.");
+  if (on && (!found.pageId || !found.pageTokenCipher || found.status === "invalid" || found.status === "choose")) throw new ApiError(409, "Innan publicering kan slås på måste kopplingen fungera och en sida vara vald.");
   if (found.publishingApproved === on) return metaView(actor.organizationId);
   await prisma.metaConnection.update({ where: { id: found.id }, data: on
     ? { publishingApproved: true, publishingApprovedAt: new Date(), publishingApprovedById: actor.userId }

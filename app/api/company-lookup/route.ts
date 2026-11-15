@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   try {
     const ctx = await context({ skipLegal: true });
-    if (!ctx.admin && ctx.user.role !== "SUPERADMIN") throw new ApiError(403, "Det här kräver företagsadministratör.");
+    if (!ctx.admin && ctx.user.role !== "SUPERADMIN") throw new ApiError(403, "Bara en företagsadministratör kan göra det här.");
     if (!(await companyLookupView()).configured) return NextResponse.json({ available: false, found: false }, { headers: { "Cache-Control": "no-store" } });
     if (!(await hitRateLimit(RATE_RULES.companyLookupUser, ctx.user.id)).allowed) throw new ApiError(429, "För många uppslag. Skriv in uppgifterna själv.");
     const given = new URL(request.url).searchParams.get("number") ?? "";

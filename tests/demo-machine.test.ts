@@ -268,7 +268,7 @@ test("the terminal's suggestion uses the machine, the signals and taught causes,
   assert.match(advice[0].basis, /från ett tidigare fel/);
   assert.ok(advice.some((item) => item.text === "Senast observerat: Fläkten stannade efter 20 s, förväntat 60 s"));
   assert.ok(advice.some((item) => item.text === "Stannade fläkten innan de 60 sekunderna gått?"));
-  assert.ok(advice.some((item) => item.text === "Se efter motorskyddet (DI1)"));
+  assert.ok(advice.some((item) => item.text === "Kontrollera motorskyddet (DI1)"));
   assert.match(OPERATOR_AI_NOTE, /Simulering av framtida AI.*En människa beslutar.*visas men tolkas inte/);
   assert.doesNotMatch(operatorAdvice.toString(), /\bdraft\b|\.text\.includes/);
 

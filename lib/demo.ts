@@ -33,9 +33,9 @@ export const demoSimulatorHref = (workflowWindow?: string | null) => workflowWin
 export const DEMO_OPERATOR_HREF = "/operator/demo?demokoppling=1";
 export const DEMO_START_STEPS = ["Beskriv maskinen", "Kör PLC:n", "Skriv på operatörssidan", "Se resultatet i Workflow"] as const;
 export const DEMO_START_ITEMS = [
-  { key: "workflow", title: "Workflow", line: "Larm, arbetsordrar och beskrivningen." },
-  { key: "simulator", title: "PLC-simulatorn", line: "Knapp, fläkt och motorskydd i eget fönster." },
-  { key: "operator", title: "Operatörsterminalen", line: "Välj maskin och skriv vad som hänt." },
+  { key: "workflow", title: "Workflow", line: "Larm, arbetsordrar och maskinens beskrivning." },
+  { key: "simulator", title: "PLC-simulatorn", line: "Knapp, fläkt och motorskydd i ett eget fönster." },
+  { key: "operator", title: "Operatörsterminalen", line: "Välj maskin och skriv vad som har hänt." },
 ] as const;
 export type DemoStartKey = (typeof DEMO_START_ITEMS)[number]["key"];
 

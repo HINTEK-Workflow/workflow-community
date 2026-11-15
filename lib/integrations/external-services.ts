@@ -73,7 +73,7 @@ export const SERVICE_GROUPS: Record<ServiceGroup, string> = {
 export const KEY_OWNERS: Record<KeyOwner, { label: string; note: string; type: string }> = {
   central: { label: "Central nyckel", note: "Installationens egen nyckel, under Installation → Tjänster och nycklar.", type: "project" },
   company: { label: "Företagets egen nyckel", note: "Företaget lägger in den under Inställningar → Kopplingar, på områdets sida.", type: "quote" },
-  issued: { label: "Nyckel som Workflow utfärdar", note: "Workflow skapar nyckeln eller godkännandet; bara en kontrollsumma sparas.", type: "round" },
+  issued: { label: "Nyckel som Workflow utfärdar", note: "Workflow skapar nyckeln eller godkännandet. Bara en kontrollsumma sparas.", type: "round" },
   none: { label: "Ingen nyckel", note: "Tjänsten behöver ingen nyckel.", type: "neutral" },
 };
 
@@ -135,7 +135,7 @@ export const EXTERNAL_SERVICES: readonly ExternalService[] = [
   },
   {
     id: "stripe", name: "Stripe", group: "payment", direction: "both",
-    purpose: "Kortbetalning, abonnemang och fakturor; Stripe meddelar betalningar tillbaka.",
+    purpose: "Kortbetalning, abonnemang och fakturor. Stripe meddelar betalningarna tillbaka.",
     key: { owner: "central", label: "Hemlig nyckel och webhookhemlighet", central: ["stripe.secretKey", "stripe.webhookSecret"] },
     admin: [{ label: `${KEYS} → Betalning`, at: "/?view=server_keys&section=keys-payment" }, { label: `${KEYS} → Prova betalflödet`, at: "/?view=server_keys&section=payments" }],
     usedBy: [{ label: "Abonnemang", at: "/?view=credits" }, { label: "Företag → Abonnemang och fakturor", at: "/?view=company&section=billing" }],
@@ -164,7 +164,7 @@ export const EXTERNAL_SERVICES: readonly ExternalService[] = [
   },
   {
     id: "lantmateriet-map", name: "Lantmäteriet karta", group: "lookup", direction: "out",
-    purpose: "Kartbilder till Platser; servern hämtar dem och visar dem från egen adress.",
+    purpose: "Kartbilder till Platser. Servern hämtar dem och visar dem från en egen adress.",
     key: { owner: "central", label: "Användare och lösenord", central: ["lantmateriet.mapUser", "lantmateriet.mapPassword"] },
     admin: [{ label: `${KEYS} → Lantmäteriet`, at: "/?view=server_keys&section=map" }],
     usedBy: [{ label: "Platser", at: "/?view=facilities" }],
@@ -182,9 +182,9 @@ export const EXTERNAL_SERVICES: readonly ExternalService[] = [
   },
   {
     id: "smtp", name: "E-postserver (SMTP)", group: "messages", direction: "out",
-    purpose: "Skickar mejl: inbjudningar, notiser, återställning och utskick.",
+    purpose: "Skickar e-post: inbjudningar, notiser, återställning och utskick.",
     key: { owner: "central", label: "SMTP-lösenord", central: ["smtp.password"] },
-    admin: [{ label: `${KEYS} → E-post`, at: "/?view=server_keys&section=keys-email" }, { label: "Installation → Drift och säkerhet → Mejl", at: "/?view=login_settings&section=mail" }],
+    admin: [{ label: `${KEYS} → E-post`, at: "/?view=server_keys&section=keys-email" }, { label: "Installation → Drift och säkerhet → Automatisk e-post", at: "/?view=login_settings&section=mail" }],
     usedBy: [{ label: "Utskick", at: "/?view=mailings" }],
     via: "servern som ägaren anger",
     modules: ["lib/mail/mailer.ts"],

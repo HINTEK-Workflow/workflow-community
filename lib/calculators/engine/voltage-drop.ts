@@ -116,7 +116,7 @@ export function minAreaForVoltageDrop(input: Omit<VoltageDropInput, "areaMm2"> &
   const reactiveV = (k * input.currentA * x * input.lengthM * sinOf(input.cosPhi)) / parallel;
   const room = allowedV - reactiveV;
   if (room <= 0) {
-    issues.warn("reactanceTooLarge", "Reaktansen ensam ger redan mer spänningsfall än tillåtet; ingen area räcker.");
+    issues.warn("reactanceTooLarge", "Reaktansen ensam ger redan mer spänningsfall än tillåtet, så ingen area räcker.");
     return issues.done({ minAreaMm2: null });
   }
   return issues.done({ minAreaMm2: (k * input.currentA * resistivity(input) * input.lengthM * input.cosPhi) / (parallel * room) });

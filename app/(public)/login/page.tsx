@@ -42,7 +42,7 @@ function mapLoginError(value: string | undefined) {
     case "google_disabled":
       return "Inloggning med Google är avstängd. Logga in med e-post och lösenord.";
     case "superadmin_required":
-      return "Inloggning är just nu endast öppen för superadmin-kontot.";
+      return "Just nu kan bara superadmin-kontot logga in.";
     default:
       // Microsoft (2026-10-11): the reasons a Microsoft sign-in was refused, in words.
       return value && Object.hasOwn(MICROSOFT_ERRORS, value) ? MICROSOFT_ERRORS[value as MicrosoftError] : undefined;

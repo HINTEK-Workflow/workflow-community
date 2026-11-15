@@ -92,7 +92,7 @@ test("only Solar has a connected API; Ahlsell, Rexel and Sonepar are prepared an
     assert.equal(row.prepared, true);
     assert.equal(row.configured, false);
     assert.deepEqual(row.variables, [], "no key names are invented for an API that has no documentation");
-    assert.match(row.note, /^Ej ansluten\./);
+    assert.match(row.note, /^Inte ansluten\./);
   }
   assert.equal(rows.find((item) => item.id === "solar")!.prepared, undefined);
 });

@@ -65,7 +65,7 @@ export function CompanyClosurePanel() {
     finally { setBusy(false); }
   }
 
-  return <Panel title="Radering efter avslut" description="Företag vars Cloud-avtal har upphört. De kan exportera i 30 dagar; därefter raderas företagets data. Bokföringsunderlag och personalliggaren sparas så länge lagen kräver."
+  return <Panel title="Radering efter avslut" description="Företag vars Cloud-avtal har upphört. De kan exportera i 30 dagar. Därefter raderas företagets data. Bokföringsunderlag och personalliggaren sparas så länge lagen kräver."
     icon={CalendarClock}>
     {confirmElement}
     <div data-testid="company-closure">

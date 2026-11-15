@@ -13,7 +13,7 @@ import { parseMailingBody, renderMailing } from "@/lib/mail/mailing-document";
  */
 export type MailingAudience = "NEWSLETTER" | "ADMINS";
 export const MAILING_AUDIENCES: Record<MailingAudience, { label: string; description: string }> = {
-  NEWSLETTER: { label: "Nyhetsbrev", description: "De som har sagt ja till nyheter om Workflow och de som följer nyhetsbrevet från webbplatsen. Mejlet får en länk för att avböja." },
+  NEWSLETTER: { label: "Nyhetsbrev", description: "De som har sagt ja till nyheter om Workflow och de som följer nyhetsbrevet från webbplatsen. Varje utskick har en länk för att avböja." },
   ADMINS: { label: "Viktig information", description: "Ägare och administratörer i alla aktiva företag. Bara information om tjänsten, till exempel driftstopp eller ändrade villkor – aldrig marknadsföring." },
 };
 

@@ -25,7 +25,7 @@ export const WORKFLOW_TASK_TYPES: readonly WorkflowTaskTypeDefinition[] = [
     label: "Kontroll före idrifttagning",
     shortLabel: "Kontroll före idrifttagning",
     description:
-      "Dokumentera kontrollpunkter, mätningar och bilder samt skapa protokoll och export.",
+      "Dokumentera kontrollpunkter, mätningar och bilder, och skapa protokoll och export.",
     icon: ClipboardCheck,
     available: true,
   },

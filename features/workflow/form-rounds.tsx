@@ -71,7 +71,7 @@ export const cloudRoundsBackend: RoundsBackend = {
 
 const STATE: Record<ScheduleOccurrenceState["state"], { label: string; tone: "success" | "warning" | "danger" | "neutral"; icon: typeof CheckCircle2 }> = {
   done: { label: "Utförd", tone: "success", icon: CheckCircle2 }, started: { label: "Påbörjad", tone: "warning", icon: CircleDashed },
-  missed: { label: "Missad", tone: "danger", icon: CircleAlert }, due: { label: "Idag", tone: "warning", icon: CalendarClock }, upcoming: { label: "Kommande", tone: "neutral", icon: CalendarClock },
+  missed: { label: "Missad", tone: "danger", icon: CircleAlert }, due: { label: "I dag", tone: "warning", icon: CalendarClock }, upcoming: { label: "Kommande", tone: "neutral", icon: CalendarClock },
   // Etapp 5 (2026-10-28): Ej utfört is handled (neutral); Utgått leaves the day open – försenad once its time has passed.
   not_done: { label: "Ej utfört", tone: "neutral", icon: CircleSlash }, cancelled: { label: "Utgått", tone: "warning", icon: Ban },
 };
@@ -236,7 +236,7 @@ export function FormRounds({ backend = cloudRoundsBackend, revision, personId = 
       search={{ label: "Sök rond", placeholder: "Rond, formulär, plats eller ansvarig…", value: query, onChange: setQuery }}
       sort={{ value: prefs.sort, options: ROUND_SORT_OPTIONS, onChange: prefs.setSort }}
       view={{ value: prefs.view, onChange: prefs.setView }} />
-    <Panel title="Ronder" description={data ? `Idag ${day(data.today)}.` : "Hämtar ronder…"} icon={Repeat}>
+    <Panel title="Ronder" description={data ? `I dag ${day(data.today)}.` : "Hämtar ronder…"} icon={Repeat}>
       {!data ? <p role="status" className="text-sm text-muted-foreground">Hämtar ronder…</p> : !shown.length
         ? schedules.length && (filter !== "attention" || query.trim() || prefs.scope === "mine") ? <div className="notice">Inget matchar urvalet. Ändra filter eller sökning.</div>
         : <Empty title={schedules.length ? "Inget behöver åtgärdas" : data.hidden ? "Inga ronder att visa" : "Inga ronder ännu"} description={schedules.length ? "Alla dagens ronder är hanterade, inga är missade och alla brister har en arbetsorder." : data.hidden ? (data.canPlan ? "Du får inte se någon av företagets ronder. Du kan planera en egen." : "Du får inte se någon av företagets ronder.") : data.canPlan ? "Planera en återkommande rond: välj formulär och hur ofta den görs." : "Du har inte behörighet att planera ronder."}>
@@ -252,7 +252,7 @@ export function FormRounds({ backend = cloudRoundsBackend, revision, personId = 
     {mapStatus && showMap && schedules.some((item) => roundPin(item)) ? <PlaceMap status={mapStatus} label="Ronderna på karta" points={shown.filter((item) => roundPin(item)).map((item) => ({ id: item.id, ...roundPin(item)!, label: `${item.title} · ${roundWhereLabel(item.holder)}`, ...(item.overview.current && roundAction(item) ? { href: roundAction(item)!.href } : {}) }))} /> : null}
     {/* No numbers for someone who reads none of the rounds (KTR-13): they would count nothing. */}
     {data?.hidden && !schedules.length ? null : <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      <div className="stat-card rounded-xl border bg-card p-4"><p className="text-xs text-muted-foreground">Att göra idag</p><p className="mt-1 text-2xl font-semibold tabular-nums">{dueToday}</p></div>
+      <div className="stat-card rounded-xl border bg-card p-4"><p className="text-xs text-muted-foreground">Att göra i dag</p><p className="mt-1 text-2xl font-semibold tabular-nums">{dueToday}</p></div>
       <div className="stat-card rounded-xl border bg-card p-4"><p className="text-xs text-muted-foreground">Missade senaste 30 dagarna</p><p className={cn("mt-1 text-2xl font-semibold tabular-nums", missed && "text-destructive")}>{missed}</p>{notDone ? <p className="mt-1 text-xs text-muted-foreground" data-testid="round-not-done-count">{notDone} ej utförda</p> : null}</div>
       <div className="stat-card rounded-xl border bg-card p-4"><p className="text-xs text-muted-foreground">Brister utan arbetsorder</p><p className={cn("mt-1 text-2xl font-semibold tabular-nums", openFaults && "text-destructive")} data-testid="round-open-faults">{openFaults}</p></div>
       <div className="stat-card rounded-xl border bg-card p-4"><p className="text-xs text-muted-foreground">Aktiva ronder</p><p className="mt-1 text-2xl font-semibold tabular-nums">{active.length}</p></div>
@@ -311,11 +311,11 @@ function RoundLabelsRow({ href }: { href: string }) {
 function roundStatus(schedule: ScheduleView): { label: string; tone: "success" | "warning" | "danger" | "neutral" } {
   const current = schedule.overview.current;
   const today = schedule.overview.today;
-  return !schedule.active ? { label: "Pausad", tone: "neutral" as const } : today?.state === "done" ? (schedule.overview.openDeviations ? { label: "Utförd idag – brist utan arbetsorder", tone: "warning" as const } : { label: "Utförd idag", tone: "success" as const }) // Today's occurrence is försenad once the round's klockslag has passed (2026-10-28), and "Idag kl. 07:00" before that.
+  return !schedule.active ? { label: "Pausad", tone: "neutral" as const } : today?.state === "done" ? (schedule.overview.openDeviations ? { label: "Utförd i dag – brist utan arbetsorder", tone: "warning" as const } : { label: "Utförd i dag", tone: "success" as const }) // Today's occurrence is försenad once the round's klockslag has passed (2026-10-28), and "I dag kl. 07:00" before that.
     // An utgått protocol leaves its day open (2026-10-28): late like a missed one once its time has passed.
     : current && occurrenceOverdue(current) ? { label: current.date === today?.date ? `Förfallen kl. ${schedule.rule.time}` : `Missad ${day(current.date)}`, tone: "danger" as const }
-    : today?.state === "not_done" && !current ? { label: "Ej utfört idag", tone: "neutral" as const }
-    : today ? { label: today.state === "started" ? "Påbörjad idag" : `Idag${schedule.rule.time ? ` kl. ${schedule.rule.time}` : ""}`, tone: "warning" as const } : schedule.overview.next && schedule.overview.nextTaskId ? { label: `Påbörjad ${day(schedule.overview.next)}`, tone: "warning" as const } : { label: schedule.overview.next ? `Nästa ${day(schedule.overview.next)}` : "Avslutad", tone: "neutral" as const };
+    : today?.state === "not_done" && !current ? { label: "Ej utfört i dag", tone: "neutral" as const }
+    : today ? { label: today.state === "started" ? "Påbörjad i dag" : `I dag${schedule.rule.time ? ` kl. ${schedule.rule.time}` : ""}`, tone: "warning" as const } : schedule.overview.next && schedule.overview.nextTaskId ? { label: `Påbörjad ${day(schedule.overview.next)}`, tone: "warning" as const } : { label: schedule.overview.next ? `Nästa ${day(schedule.overview.next)}` : "Avslutad", tone: "neutral" as const };
 }
 
 /**
@@ -463,7 +463,7 @@ export function ScheduleDialog({ schedule, initial, heading, backend, onClose, o
       <label className={cn(label, "sm:col-span-2")}>Namn på ronden<Input value={draft.title} maxLength={200} placeholder="T.ex. Daglig tillsyn Forsen kraftstation" onChange={(event) => setDraft({ ...draft, title: event.target.value })} /></label>
       {/* No customer, place, temporary place or project on the round (2026-10-27 kväll): the work order that holds it brings them. */}
       <p className="text-xs text-muted-foreground sm:col-span-2" data-testid="round-place-note">{schedule?.holder ? `Kund och plats följer arbetsordern ${schedule.holder.title?.trim() || ""}: ${roundWhereLabel(schedule.holder) || "ingen plats vald"}.` : "Kund och plats följer arbetsordern som håller ronden."}</p>
-      <label className={label}>Ansvarig (valfritt)<select className="form-select" value={draft.assignedToUserId ?? ""} onChange={(event) => { const member = members.find((item) => item.id === event.target.value); setDraft({ ...draft, assignedToUserId: member?.id ?? null, assignedToName: member?.name ?? "" }); }}><option value="">Ingen</option>{members.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}</select>{planOthers === false ? <span className="font-normal" data-testid="round-own-only">Du planerar ronder åt dig själv. Åt andra planerar administratör eller projektansvarig.</span> : null}</label>
+      <label className={label}>Ansvarig (valfritt)<select className="form-select" value={draft.assignedToUserId ?? ""} onChange={(event) => { const member = members.find((item) => item.id === event.target.value); setDraft({ ...draft, assignedToUserId: member?.id ?? null, assignedToName: member?.name ?? "" }); }}><option value="">Ingen</option>{members.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}</select>{planOthers === false ? <span className="font-normal" data-testid="round-own-only">Du planerar ronder åt dig själv. Ronder åt andra planeras av en administratör eller projektansvarig.</span> : null}</label>
       </>)}
       {section("hur-ofta", <div className="grid gap-4 sm:col-span-2">
         <RoundRuleFields rule={draft.rule} today={today} onChange={(rule) => setDraft((current) => ({ ...current, rule }))}

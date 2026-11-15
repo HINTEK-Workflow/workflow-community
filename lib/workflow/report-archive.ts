@@ -62,7 +62,7 @@ export const ARCHIVE_SORTS = ["updated", "title"] as const satisfies readonly Li
 export type ArchiveSort = (typeof ARCHIVE_SORTS)[number];
 export const ARCHIVE_PERIODS = ["all", "this-month", "last-month", "this-year"] as const;
 export type ArchivePeriod = (typeof ARCHIVE_PERIODS)[number];
-export const ARCHIVE_PERIOD_LABEL: Record<ArchivePeriod, string> = { all: "Alla datum", "this-month": "Denna månad", "last-month": "Förra månaden", "this-year": "I år" };
+export const ARCHIVE_PERIOD_LABEL: Record<ArchivePeriod, string> = { all: "Alla datum", "this-month": "Den här månaden", "last-month": "Förra månaden", "this-year": "I år" };
 
 /** A period as the moments it starts and ends (Swedish calendar months; the end is not included). */
 export function archivePeriodRange(period: ArchivePeriod, now: Date = new Date()): { from?: Date; before?: Date } {

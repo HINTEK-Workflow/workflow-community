@@ -151,7 +151,7 @@ export function demoCustomerInvoices(ctx: DemoInvoiceContext, request: { method:
 
   const input = (request.body ?? {}) as { action?: string; basisId?: string; revision?: number; details?: unknown; id?: string; reason?: string; paidOn?: string; settings?: Partial<InvoiceSettings> };
   if (input.action === "settings") {
-    if (!ctx.admin) throw fail(403, "Företagsadministratör krävs.");
+    if (!ctx.admin) throw fail(403, "Bara en företagsadministratör kan göra det.");
     const next = { ...store.settings, ...input.settings };
     const problem = startNumberProblem({ nextNumber: store.settings.nextNumber, issued: store.invoices.length }, next.nextNumber);
     if (problem) throw fail(409, problem);

@@ -176,7 +176,7 @@ export async function failureFor(request: Request, error: unknown) {
     { status: response.status, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
 }
 export function requireAdmin(ctx: Context) {
-  if (!ctx.admin) throw new ApiError(403, "Företagsadministratör krävs.");
+  if (!ctx.admin) throw new ApiError(403, "Bara en företagsadministratör kan göra det.");
 }
 
 export function requireCloudStorage(ctx: Context) {

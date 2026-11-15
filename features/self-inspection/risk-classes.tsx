@@ -52,7 +52,7 @@ export function RiskClassesTab({ view, busy, run }: { view: SelfInspectionView; 
         <details className="text-sm" data-testid="self-inspection-levels-more"><summary className="cursor-pointer text-primary">Så fungerar nivåerna</summary>
         <ul className="mt-2 list-disc space-y-1.5 pl-5">
           <li>Varje roll har en nivå (1–3). Personens nivå är den högsta bland rollerna.</li>
-          <li>Nivåer märkta förslag är Workflows förslag tills ni väljer en egen.</li>
+          <li>Nivåer märkta ”förslag” är Workflows förslag tills företaget väljer en egen.</li>
           <li>Ingen får arbeta i en uppgift som kräver högre nivå än den egna.</li>
           <li>Under handledning får man göra uppgifter över sin nivå när en handledare med rätt nivå är ansvarig.</li>
           <li>Inget spärras förrän minst en person har en roll.</li>

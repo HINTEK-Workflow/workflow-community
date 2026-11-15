@@ -67,7 +67,7 @@ export function checkDisconnection(input: DisconnectionInput): EngineResult<Disc
   if (zs < 0.0005) issues.warn("zsRangeLow", "Slingimpedansen är under 0,5 mΩ. Kontrollera att den är i ohm och inte i milliohm.");
   if (input.u0V < 50 || input.u0V > 1000) issues.warn("u0Range", "U0 ligger utanför det vanliga för fasspänning. Kontrollera värdet.");
   if (input.ratedCurrentA !== undefined && input.tripCurrentA < input.ratedCurrentA) issues.warn("tripBelowRated", "Utlösningsströmmen Ia är lägre än apparatens märkström. Kontrollera Ia.");
-  if (input.requiredTimeS === undefined) issues.warn("noTime", "Kravtiden är inte angiven; kontrollera att Ia gäller den tid som krävs.");
+  if (input.requiredTimeS === undefined) issues.warn("noTime", "Kravtiden är inte angiven. Kontrollera att Ia gäller den tid som krävs.");
   const ik1 = (c * input.u0V) / zs;
   const zsMax = (c * input.u0V) / input.tripCurrentA;
   return issues.done({

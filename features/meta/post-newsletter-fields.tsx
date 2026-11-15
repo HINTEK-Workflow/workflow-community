@@ -76,7 +76,7 @@ export function PostNewsletterFields({ info, post, checked, mail, disabled, onTo
       {preview ? <figure className="space-y-1" data-testid="post-newsletter-mail">
         <figcaption className="text-xs text-muted-foreground">Ämne: <span className="font-medium text-foreground">{preview.subject}</span></figcaption>
         {/* The mail's own HTML in a closed frame: no scripts, nothing of the app's page reaches it. */}
-        <iframe title="Mejlet som det skickas" sandbox="" srcDoc={preview.html} className="h-[32rem] w-full rounded-lg border bg-white" />
+        <iframe title="Nyhetsbrevet som det skickas" sandbox="" srcDoc={preview.html} className="h-[32rem] w-full rounded-lg border bg-white" />
       </figure> : null}
     </> : null}
   </div>;

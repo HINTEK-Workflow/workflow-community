@@ -77,7 +77,7 @@ function ActionList({ data, level }: { data: CustomersTabData; level: Level }) {
 }
 
 /** "idag", "imorgon" or "2 nov". */
-const whenText = (target: string, today: string) => { const days = daysBetween(today, target); return days <= 0 ? "idag" : days === 1 ? "imorgon" : day(target); };
+const whenText = (target: string, today: string) => { const days = daysBetween(today, target); return days <= 0 ? "i dag" : days === 1 ? "i morgon" : day(target); };
 
 /** Närmaste veckan: the work orders (rounds' included) that start or are due within the week, the soonest first. */
 function Upcoming({ data, rows: all, level }: { data: CustomersTabData; rows: NonNullable<CustomersTabData["upcoming"]>; level: Level }) {

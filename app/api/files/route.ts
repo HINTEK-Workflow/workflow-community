@@ -20,13 +20,13 @@ export async function POST(request: Request) {
     checkOrigin(request);
     const ctx = await context();
     if (Number(request.headers.get("content-length")) > 12_000_000)
-      throw new ApiError(413, "Maximal filstorlek är 10 MB.");
+      throw new ApiError(413, "Filen får vara högst 10 MB.");
     const form = await readLimitedFormData(request, 12_000_000);
     const file = form.get("file");
     const variantField = form.get("variant");
     const variant = typeof variantField === "string" && variantField ? logoVariantByKey(variantField) : null;
     if (typeof variantField === "string" && variantField && !variant) throw new ApiError(400, "Okänd logga.");
-    if (form.get("logo") !== "true" && !variant) throw new ApiError(400, "Endast företagets logotyp laddas upp här.");
+    if (form.get("logo") !== "true" && !variant) throw new ApiError(400, "Här kan bara företagets logotyp laddas upp.");
     requireAdmin(ctx);
     if (!(file instanceof File) || !file.size || file.size > 10_000_000)
       throw new ApiError(400, "Välj en fil på högst 10 MB.");

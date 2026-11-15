@@ -12,7 +12,8 @@ import { api } from "@/features/kfid/api";
 import { Panel } from "@/features/kfid/ui";
 import { KeyField, SecretField } from "@/features/kfid/secret-field";
 import { useServerKeySectionStatus } from "@/features/integrations/server-key-status";
-import { KEY_STATUS, KeyCard, type KeyCardStatus } from "@/features/integrations/key-card";
+import { KEY_STATUS, KeyCard, KeyExpiryLine, type KeyCardStatus } from "@/features/integrations/key-card";
+import { WARN_DAYS, expiryDateProblem } from "@/lib/secrets/key-expiry";
 import type { MicrosoftSettingsView } from "@/features/workflow/microsoft-settings";
 
 type LoginAccess = { mode: LoginAccessMode; allow: string[]; block: string[]; chosen: boolean; pilotCount: number; owner: string | null };
@@ -94,7 +95,7 @@ export function LoginSettings({ notify }: { notify: (text: string, error?: boole
     {!settings ? <p className="text-sm text-muted-foreground">Hämtar…</p> : !settings.googleAvailable ? <p className="text-sm text-muted-foreground">Google-inloggning finns inte i den här installationen.</p> : <div className="space-y-3" data-testid="login-settings">
       <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm">
         <Checkbox className="mt-0.5" checked={settings.googleSignIn} disabled={busy} onCheckedChange={(value) => void change({ googleSignIn: value === true })} aria-label="Fortsätt med Google" />
-        <span><span className="block font-medium">Fortsätt med Google</span><span className="block text-xs text-muted-foreground">Visar knappen på inloggningssidan. Av betyder att knappen försvinner och att servern vägrar Google-inloggning; alla loggar då in med e-post och lösenord. Sparas direkt.</span></span>
+        <span><span className="block font-medium">Fortsätt med Google</span><span className="block text-xs text-muted-foreground">Visar knappen på inloggningssidan. Av betyder att knappen försvinner och att servern vägrar Google-inloggning. Alla loggar då in med e-post och lösenord. Sparas direkt.</span></span>
       </label>
       {!settings.googleConfigured ? <p className="text-xs text-amber-700 dark:text-amber-300" data-testid="google-keys-missing">Google-nycklarna saknas, så knappen visas inte även om den är påslagen. Lägg in klient-id och klienthemlighet under <Link href="/?view=server_keys" className="underline underline-offset-2">Tjänster och nycklar</Link>.</p> : null}
     </div>}
@@ -138,7 +139,8 @@ function companyLookupStatus(configured: boolean, validUntil: string | null, ans
   const day = (offset: number) => { const date = new Date(today); date.setDate(date.getDate() + offset); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; };
   if (validUntil && validUntil < day(0)) return { ...KEY_STATUS.failed, problem: `Nyckeln gällde till ${validUntil}.` };
   const base = answered ? KEY_STATUS.works : KEY_STATUS.untested;
-  return validUntil && validUntil <= day(14) ? { label: base.label, tone: "warning", problem: `Nyckeln går ut ${validUntil}.` } : base;
+  // The same 30 days as every other key's Gäller till (lib/secrets/key-expiry.ts WARN_DAYS, 2026-11-14).
+  return validUntil && validUntil <= day(WARN_DAYS) ? { label: base.label, tone: "warning", problem: `Nyckeln går ut ${validUntil}.` } : base;
 }
 
 /**
@@ -170,7 +172,7 @@ export function CompanyLookupSettings({ notify }: { notify: (text: string, error
       if (validUntil !== saved) payload.scbValidUntil = validUntil || null;
       await post(payload);
       setScbKey(""); setRemoveKey(false);
-      notify(removeKey ? "SCB-nyckeln är borttagen." : validUntil && validUntil !== saved ? "Sparat. Du får ett driftlarm 14 och 3 dagar innan nyckeln går ut." : "SCB-nyckeln är sparad.");
+      notify(removeKey ? "SCB-nyckeln är borttagen." : validUntil && validUntil !== saved ? "Sparat. Du får ett driftlarm 30, 14, 7 och 1 dag innan nyckeln går ut." : "SCB-nyckeln är sparad.");
       return true;
     } catch (error) { notify((error as Error).message, true); return false; }
   };
@@ -185,7 +187,7 @@ export function CompanyLookupSettings({ notify }: { notify: (text: string, error
     // SCB has no call of its own to check with: Kontrollera is a test lookup of a number, under Mer.
     check={settings ? { onClick: () => void tryNumber(), busy, disabled: busy, disabledReason: !testNumber.trim() ? "Skriv ett organisationsnummer under Mer först." : !settings.companyLookup.configured && !scbKey.trim() ? "Lägg in nyckeln först." : null, label: "Kontrollera SCB", testId: "company-lookup-check" } : undefined}
     save={settings ? { dirty, onSave: save } : undefined} saveable
-    settings={settings?.companyLookup.configured ? <KeyField id="scb-valid-until" label="Giltig till" hint="Påminnelse 14 och 3 dagar innan.">
+    settings={settings?.companyLookup.configured ? <KeyField id="scb-valid-until" label="Gäller till (valfritt)" hint={validUntil && !expiryDateProblem(validUntil) ? <KeyExpiryLine on={validUntil} /> : "Du får ett mejl 30, 14, 7 och 1 dag innan."}>
       <Input id="scb-valid-until" type="date" value={validUntil} className="w-44" onChange={(event) => setValidUntil(event.target.value)} />
       <Button type="button" variant="outline" size="icon" className="size-[var(--control-h)] shrink-0" aria-label="Töm slutdatumet" title="Töm slutdatumet" disabled={!validUntil} onClick={() => setValidUntil("")}><Trash2 /></Button>
     </KeyField> : null}

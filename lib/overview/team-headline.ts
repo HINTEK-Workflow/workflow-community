@@ -71,7 +71,7 @@ export function teamSentence(data: TeamTabData): string {
   const figures = teamFigures(data);
   const parts: string[] = [];
   if (figures.people) parts.push(figures.working ? `${word(figures.working)} av ${word(figures.people, false)} arbetar just nu.` : "Ingen har tid igång just nu.");
-  if (figures.absent) parts.push(figures.absent === 1 ? `${data.absence!.today[0].name.split(" ")[0]} är frånvarande idag.` : `${word(figures.absent)} är frånvarande idag.`);
+  if (figures.absent) parts.push(figures.absent === 1 ? `${data.absence!.today[0].name.split(" ")[0]} är frånvarande i dag.` : `${word(figures.absent)} är frånvarande i dag.`);
   const first = startHere(figures.groups);
   if (first) parts.push(first);
   if (figures.missingTime) parts.push(figures.missingTime === 1 ? "En person saknar tidrapport." : `${word(figures.missingTime)} saknar tidrapport.`);

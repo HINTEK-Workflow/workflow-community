@@ -145,7 +145,7 @@ export function NoticeSettings({ notify, cloud, superadmin = false }: { notify: 
           <span><span className="flex items-center gap-1.5 font-medium"><Bell className="size-3.5" aria-hidden="true" />Klockan</span><span className="block text-xs text-muted-foreground">Alltid på.</span></span></label>
         <label className={`flex items-start gap-3 ${loaded ? "cursor-pointer" : ""}`}><Checkbox className="mt-0.5" checked={preference.email} disabled={!loaded} onCheckedChange={(value) => toggleEmail(value === true)} data-testid={id("notice-email")} />
           <span><span className="flex items-center gap-1.5 font-medium"><Mail className="size-3.5" aria-hidden="true" />E-post</span>
-            <span className="block text-xs text-muted-foreground">Ett samlat mejl med det som är nytt, aldrig mer än en gång per notis.</span>
+            <span className="block text-xs text-muted-foreground">Ett samlat e-postmeddelande med det som är nytt, aldrig mer än en gång per notis.</span>
             {data?.email.reason ? <span className="mt-1 block text-xs text-muted-foreground" data-testid="notice-email-note">{data.email.reason}</span> : null}</span></label>
         <label className={`flex items-start gap-3 ${pushDisabled ? "" : "cursor-pointer"}`}><Checkbox className="mt-0.5" checked={device === "on"} disabled={pushDisabled} onCheckedChange={(value) => void togglePush(value === true)} data-testid={id("notice-push")} />
           <span><span className="flex items-center gap-1.5 font-medium"><BellRing className="size-3.5" aria-hidden="true" />Push på den här enheten</span>

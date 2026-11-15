@@ -16,7 +16,7 @@ export type SetupStep = { key: SetupStepKey; label: string; required: boolean; d
 
 export const SETUP_STEPS: readonly SetupStep[] = [
   { key: "legal", label: "Avtal", required: true, description: "Det enda som krävs för att använda Workflow." },
-  { key: "profile", label: "Yrkesprofil", required: false, description: "Vad som visas först. Ger inga rättigheter." },
+  { key: "profile", label: "Yrkesprofil", required: false, description: "Vad som visas först. Ger inga behörigheter." },
   { key: "display", label: "Visning", required: false, description: "Hur mycket som visas på den här enheten." },
   { key: "company", label: "Företaget", required: false, description: "Namn och kontaktadress i rapporter och utskick." },
   { key: "security", label: "Säkerhet", required: false, description: "Så skyddas företagets uppgifter." },
@@ -68,7 +68,7 @@ export const SETUP_MODULES_LINK: SetupStartLink = { href: "/?view=company_featur
 
 /** The three first things to do, by what the company stores where. Short titles: they stand side by side on a wide screen. */
 export type SetupStartLink = { href: string; title: string; text: string };
-const SETUP_INVITE_LINK: SetupStartLink = { href: "/?view=administration", title: "Bjud in kollegor", text: "De börjar utan åtkomst tills du ger dem rättigheter." };
+const SETUP_INVITE_LINK: SetupStartLink = { href: "/?view=administration", title: "Bjud in kollegor", text: "De börjar utan åtkomst tills du ger dem behörigheter." };
 export function setupStartLinks(local: boolean, modules?: readonly string[] | null, profile?: { admin: boolean; steps: readonly SetupStartLink[] }): SetupStartLink[] {
   // The yrkesprofil's first steps (2026-11-04); an admin first sets up the company, so inviting the colleagues stays first there.
   if (!local && profile?.steps.length) return profile.admin ? [SETUP_INVITE_LINK, ...profile.steps.slice(0, 2)] : profile.steps.slice(0, 3);

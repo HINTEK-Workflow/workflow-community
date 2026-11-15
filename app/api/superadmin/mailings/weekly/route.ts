@@ -11,7 +11,7 @@ export async function PUT(request: Request) {
   try {
     checkOrigin(request);
     const ctx = await context();
-    if (ctx.user.role !== "SUPERADMIN") throw new ApiError(403, "Systemadministratör krävs.");
+    if (ctx.user.role !== "SUPERADMIN") throw new ApiError(403, "Bara installationens administratör kan göra det.");
     const saved = await saveWeeklySettings(await body(request));
     await prisma.administrationEvent.create({ data: { actorId: ctx.user.id, organizationId: ctx.organizationId, action: "mailing_weekly",
       detail: saved.enabled ? `Slog på veckobrevet, ${describeWeekly(saved)}.` : "Stängde av veckobrevet." } });

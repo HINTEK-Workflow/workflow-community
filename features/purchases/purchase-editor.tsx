@@ -196,7 +196,7 @@ export function PurchaseEditor({ purchaseId, projectId, projects, customers }: {
   };
   const changeStatus = async (to: Exclude<PurchaseAction, "delete">) => {
     if (!purchase) return;
-    if (to === "order" && !await confirm({ title: "Markera inköpet som beställt?", message: "Raderna låses. Skicka beställningen till grossisten med Till grossist om du inte redan gjort det. Bocka sedan av raderna när de kommer.", confirmLabel: "Markera som beställt" })) return;
+    if (to === "order" && !await confirm({ title: "Markera inköpet som beställt?", message: "Raderna låses. Skicka beställningen till grossisten med Till grossist om du inte redan har gjort det. Bocka sedan av raderna när de kommer.", confirmLabel: "Markera som beställt" })) return;
     if (to === "cancel" && !await confirm({ title: "Makulera inköpet?", message: "Inköpet finns kvar att läsa men används inte längre.", confirmLabel: "Makulera", tone: "danger" })) return;
     if (dirty && !await save()) return;
     setBusy(true);
@@ -269,7 +269,7 @@ export function PurchaseEditor({ purchaseId, projectId, projects, customers }: {
       primaryAction={editable ? <Button type="button" className="min-w-28" disabled={busy || (!dirty && Boolean(purchase))} onClick={() => void save()} data-testid="purchase-save"><Save />Spara</Button> : undefined}
     />
     {purchase && !editable ? <p className="notice flex items-start gap-2" role="status" data-testid="purchase-locked"><Lock className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-      {status === "ORDERED" ? `Beställt ${purchase.orderedAt ? formatSwedish(purchase.orderedAt, { dateStyle: "medium" }) : ""}. Raderna är låsta; bocka av dem när de kommer. Öppna igen för att ändra.` : status === "DELIVERED" ? "Alla rader har kommit." : "Inköpet är makulerat."}
+      {status === "ORDERED" ? `Beställt ${purchase.orderedAt ? formatSwedish(purchase.orderedAt, { dateStyle: "medium" }) : ""}. Raderna är låsta. Bocka av dem när de kommer. Öppna igen för att ändra.` : status === "DELIVERED" ? "Alla rader har kommit." : "Inköpet är makulerat."}
     </p> : null}
 
     {/* Högerställd sammanfattning (2026-10-16): Summa per leverantör beside the panels on a wide screen at level 3. */}
@@ -286,7 +286,7 @@ export function PurchaseEditor({ purchaseId, projectId, projects, customers }: {
         description={{ label: "Anteckning (bara för er)", ariaLabel: "Anteckning", value: draft.notes, onChange: (notes) => change({ notes }) }} />
     </SharedBasicsPanel>
 
-    <Panel icon={Package} title="Artiklar" description="Sök på benämning, artikelnummer, E-nummer, RSK eller EAN. Priset är inköpspris exkl. moms; försäljningspriset sätts i offerten.">
+    <Panel icon={Package} title="Artiklar" description="Sök på benämning, artikelnummer, E-nummer, RSK eller EAN. Priset är inköpspris exkl. moms. Försäljningspriset sätts i offerten.">
       {editable ? <div className="flex flex-wrap gap-2" data-testid="purchase-line-actions">
         <Button type="button" onClick={() => setBrowsing(true)} data-testid="purchase-add-articles"><Search />Lägg till artiklar</Button>
         <Button type="button" variant="outline" onClick={addLine} data-testid="purchase-add-line"><Plus />Lägg till rad</Button>

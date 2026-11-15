@@ -30,7 +30,7 @@ type Data = { audiences: Record<Audience, number>; subscribers?: number; blocked
   release: { current: string; baseline: string | null; draft: ReleaseDraft | null }; weekly: Weekly };
 
 const AUDIENCE: Record<Audience, { label: string; description: string }> = {
-  NEWSLETTER: { label: "Nyhetsbrev", description: "Till dem som har sagt ja till nyheter. Mejlet får en länk för att avböja." },
+  NEWSLETTER: { label: "Nyhetsbrev", description: "Till dem som har sagt ja till nyheter. Varje utskick får en länk för att avböja." },
   ADMINS: { label: "Viktig information", description: "Till ägare och administratörer i alla aktiva företag. Bara om tjänsten, till exempel driftstopp eller ändrade villkor – aldrig marknadsföring." },
 };
 
@@ -158,7 +158,7 @@ export function Mailings({ notify, embedded = false }: { notify: (text: string, 
     const scheduled = row.status === "SCHEDULED";
     if (!(await confirm(scheduled
       ? { title: "Avbryta utskicket?", message: `”${row.subject}” skickas inte och tas bort.`, confirmLabel: "Avbryt utskicket", cancelLabel: "Behåll", tone: "danger" }
-      : { title: "Ta bort utskicket?", message: `”${row.subject}” och dess mottagarlista tas bort ur historiken. Mejlen som redan skickats påverkas inte.`, confirmLabel: "Ta bort", tone: "danger" }))) return;
+      : { title: "Ta bort utskicket?", message: `”${row.subject}” och dess mottagarlista tas bort ur historiken. E-post som redan har skickats påverkas inte.`, confirmLabel: "Ta bort", tone: "danger" }))) return;
     try { await api(`/api/superadmin/mailings?id=${encodeURIComponent(row.id)}`, { method: "DELETE" }); notify(scheduled ? "Utskicket är avbrutet." : "Utskicket är borttaget ur historiken."); await load(); }
     catch (cause) { notify((cause as Error).message, true); }
   };
@@ -261,7 +261,7 @@ export function Mailings({ notify, embedded = false }: { notify: (text: string, 
         </li>)}
       </ul> : <Empty title="Inga utskick ännu" description="Det du skickar visas här med hur många som fick det." />}
     </Panel>
-    <Panel icon={Users} title="Listan över nyhetsbrev" description="De som har sagt ja till mejl om ändringar och förbättringar, när kontot skapades eller under Mina inställningar.">
+    <Panel icon={Users} title="Listan över nyhetsbrev" description="De som har sagt ja till e-post om ändringar och förbättringar, när kontot skapades eller under Mina inställningar.">
       <div className="flex flex-wrap items-center gap-3 text-sm" data-testid="newsletter-recipients">
         <span>{data.audiences.NEWSLETTER === 1 ? "1 mottagare" : `${data.audiences.NEWSLETTER} mottagare`}</span>
         {data.subscribers !== undefined ? <span className="text-xs text-muted-foreground" data-testid="newsletter-subscribers">Bekräftade prenumeranter från webbplatsen: {data.subscribers}</span> : null}

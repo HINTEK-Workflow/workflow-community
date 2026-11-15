@@ -19,7 +19,7 @@ export const dynamic = "force-dynamic";
 
 function requireSuperadmin(role: string) {
   if (role !== "SUPERADMIN")
-    throw new ApiError(403, "Endast superadmin får verifiera AI-leverantören.");
+    throw new ApiError(403, "Bara superadmin får verifiera AI-leverantören.");
 }
 
 export async function GET() {

@@ -11,7 +11,7 @@ export async function POST(request: Request) {
   try {
     checkOrigin(request);
     const ctx = await context();
-    if (ctx.user.role !== "SUPERADMIN") throw new ApiError(403, "Systemadministratör krävs.");
+    if (ctx.user.role !== "SUPERADMIN") throw new ApiError(403, "Bara installationens administratör kan göra det.");
     const file = (await readLimitedFormData(request, MAILING_IMAGE_MAX_BYTES + 200_000)).get("file");
     if (!(file instanceof File)) throw new ApiError(400, "Välj en bild.");
     if (file.size > MAILING_IMAGE_MAX_BYTES) throw new ApiError(413, "Bilden är större än 2 MB.");

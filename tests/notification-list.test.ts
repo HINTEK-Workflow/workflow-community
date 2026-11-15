@@ -103,7 +103,7 @@ test("repeated reminders: late rounds and a person's events about the same thing
   const rows = collapseRepeated([round("Skyddsrond", "2026-10-30"), round("Elrond", "2026-10-30"), round("Skyddsrond", "2026-10-31"), team("2026-11-01T08:00:00.000Z", 1), team("2026-11-01T09:00:00.000Z", 2), team("2026-11-02T09:00:00.000Z", 3)]);
   assert.equal(rows.length, 4, "two late days, two days of events");
   assert.equal(rows[0].row.repeats, 2);
-  assert.equal(rows[0].row.title, "2 ronder ej klara");
+  assert.equal(rows[0].row.title, "2 ronder inte klara");
   assert.equal(rows[0].row.href, "/?view=rounds");
   assert.equal(rows[1].row.title, "Skyddsrond", "one alone stays as it is");
   assert.equal(rows[1].row.repeats, undefined);

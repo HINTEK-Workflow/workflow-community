@@ -12,9 +12,9 @@ type Step = { name: string; what: string; choices?: string; result: string };
 const WORK_ORDER: Step[] = [
   { name: "1. Beställning", what: "Skriv en rubrik och vad som ska göras. Spara.", choices: "Koppla till ett projekt (då följer kunden och projektets datum med) eller låt den stå utan projekt. Välj kund och anläggning. Lägg till uppgifter (protokoll, kontroller, riskbedömningar) i arbetsordern.", result: "Arbetsordern finns och syns under Mina arbetsordrar. Status: Planerad." },
   { name: "2. Planering (valfri)", what: "Välj ansvarig och Klart senast.", choices: "Hoppa över om arbetet görs direkt.", result: "Den ansvarige ser arbetsordern under Arbetsordrar och får påminnelse när datumet närmar sig eller passeras." },
-  { name: "3. Riskbedömning", what: "Svara på frågorna i Riskbedömning och bekräfta. Visar ett svar en risk gör du en utökad riskbedömning med ett tryck.", choices: "Du kan alltid välja utökad. En uppgift som hör till en arbetsorder följer arbetsorderns riskbedömning.", result: "Steget är klart. Först nu går det att starta tiden och färdigställa." },
+  { name: "3. Riskbedömning", what: "Svara på frågorna i Riskbedömning och bekräfta. Om ett svar visar en risk gör du en utökad riskbedömning med ett tryck.", choices: "Du kan alltid välja utökad. En uppgift som hör till en arbetsorder följer arbetsorderns riskbedömning.", result: "Steget är klart. Först nu går det att starta tiden och färdigställa." },
   { name: "4. Utförande", what: "Tryck Starta tid när du börjar. Skriv vad som gjorts under Utfört arbete, lägg till material, avvikelser och bilder.", choices: "Pausa tid när du gör uppehåll. Starta tid igen när du fortsätter. Startar du tid på en annan uppgift pausas den här automatiskt.", result: "Status blir Pågår när tiden går och Pausad när du pausar. Tiden syns i toppraden, i Tidrapport och på projektet." },
-  { name: "5. Signering", what: "Skriv namnet på den som signerar och bocka i att dokumentationen är granskad.", result: "Arbetsordern är klar att färdigställa; progressionslinjen visar Färdigställd som nästa steg." },
+  { name: "5. Signering", what: "Skriv namnet på den som signerar och bocka i att dokumentationen är granskad.", result: "Arbetsordern är klar att färdigställa. Progressionslinjen visar Färdigställd som nästa steg." },
   { name: "6. Färdigställd", what: "Tryck Färdigställ längst ned.", choices: "En ruta frågar Vill du skriva tid? – Ja, skriv tid (datum, från, till och anteckning) eller Nej, färdigställ utan ny tid. Saknas något visas det i stället, med länk till fältet.", result: "Tidtagningen stoppas, arbetsordern låses och blir 100 % och Färdigställd. Nästa steg visas: projektets nästa uppgift, tillbaka till protokollet den kom från, projektet och tiden. Den kan återöppnas; då krävs ny signering." },
 ];
 
@@ -49,7 +49,7 @@ export function WorkflowGuide() {
           <li><strong>Starta tid</strong> sparar uppgiften först om den är ny, och sätter den som Pågår.</li>
           <li>Startar du tid på en annan uppgift pausas den förra automatiskt. Kollegors tid påverkas aldrig.</li>
           <li>Tiden syns i toppraden med en pausknapp, på alla sidor. En tidtagning som stoppas inom första minuten sparas inte.</li>
-          <li>Glömde du starta? Skriv tiden när du färdigställer, eller i Tidrapport. En färdigställd uppgift tar inte emot ny tid (admin kan rätta med kommentar).</li>
+          <li>Glömde du starta? Skriv tiden när du färdigställer, eller i Tidrapport. En färdigställd uppgift tar inte emot ny tid (en administratör kan rätta den med en kommentar).</li>
         </ul>
       </Panel></NativeScreen>
       <NativeScreen show={["ronder"]} lead><Panel icon={Repeat} title="Driftronder och Kalender" description="Kalendern är bara en planering.">
@@ -62,7 +62,7 @@ export function WorkflowGuide() {
       <NativeScreen show={["funktioner"]} lead><Panel icon={SlidersHorizontal} title="Funktioner att slå på" description="Under Inställningar → Arbetssätt, för företagets administratör.">
         <ul className="list-disc space-y-2 pl-5 text-sm leading-6">
           <li><strong>Objektdata på platser</strong>: driftstatus och typskylt på kundernas platser, och vyn Alla objekt under Kunder. Det som skrivits finns kvar om valet stängs av.</li>
-          <li><strong>Workflow AI</strong> slås på och ställs in under Workflow AI; raden i Funktioner leder dit.</li>
+          <li><strong>Workflow AI</strong> slås på och ställs in under Workflow AI. Raden i Funktioner leder dit.</li>
         </ul>
       </Panel></NativeScreen>
       <NativeScreen show={["tips"]} lead><Panel icon={Lightbulb} title="Tips i arbetsflödet" description="Beslutsstöd som följer progressionen.">
@@ -78,7 +78,7 @@ export function WorkflowGuide() {
           <li>Klockan i toppraden räknar det som är nytt för dig. Listan har flikarna Till mig och Teamet, Oläst och Läst, och Läs alla. Teamet ser bara den som har rätten Teamet.</li>
           <li>Kräver åtgärd står överst: hinder, anmälningspliktigt, avvikelse med hög grad, felanmälan och frånvarokrock. Det kommer också som e-post och push från början. Du kan stänga av det.</li>
           <li>Under <strong>Mina inställningar → Notiser</strong> väljer du själv om samma påminnelser också ska komma som e-post eller som push på din enhet, och vilka sorter du vill ha. Övriga sorter är avstängda från början.</li>
-          <li>E-post kommer som ett samlat mejl med nyheter. Push är en kort notis på enheten, även när Workflow är stängt. Samma notis skickas aldrig två gånger och aldrig på natten.</li>
+          <li>E-posten kommer som ett samlat meddelande med nyheter. Push är en kort notis på enheten, även när Workflow är stängt. Samma notis skickas aldrig två gånger och aldrig på natten.</li>
           <li>Push kräver att systemadministratören slagit på webbpush och att webbläsaren tillåter notiser. På iPhone och iPad måste Workflow vara installerat på hemskärmen.</li>
         </ul>
       </Panel></NativeScreen>

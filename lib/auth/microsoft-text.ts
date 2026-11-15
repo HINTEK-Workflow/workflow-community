@@ -7,7 +7,7 @@
 export const MICROSOFT_TENANT_MODES = ["common", "organizations", "consumers"] as const;
 export type MicrosoftTenantMode = (typeof MICROSOFT_TENANT_MODES)[number];
 export const MICROSOFT_TENANT_LABELS: Record<MicrosoftTenantMode | "single", string> = {
-  common: "Arbets- och skolkonton från alla kataloger samt personliga Microsoft-konton",
+  common: "Arbets- och skolkonton från alla kataloger och personliga Microsoft-konton",
   organizations: "Bara arbets- och skolkonton (alla kataloger)",
   consumers: "Bara personliga Microsoft-konton",
   single: "Bara en katalog (ange katalogens id)",

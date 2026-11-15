@@ -59,7 +59,7 @@ function addOrder(db: DemoDatabase, title: string, description: string, creator:
 /** What an alarm from the demo's source becomes. Same order of checks as lib/machine/alarm-orders.ts. */
 export function considerDemoAlarm(db: DemoDatabase, source: DemoSourceFacts, alarm: DemoAlarm, diagnosis: Diagnosis | null, now: Date): OrderOutcome {
   if (!triggersOrder(alarm)) {
-    return { kind: "none", text: alarm.state === "cleared" ? "Larmet släcktes. En order stängs aldrig av det." : alarm.type === "alarm" ? "Bara fel och kritiska larm ger en arbetsorder." : "Ger ingen arbetsorder." };
+    return { kind: "none", text: alarm.state === "cleared" ? "Larmet släcktes. Det stänger ingen order." : alarm.type === "alarm" ? "Bara fel och kritiska larm ger en arbetsorder." : "Ger ingen arbetsorder." };
   }
   const store = storeOf(db);
   const taskOf = (taskId: string) => db.tasks.find((task) => task.id === taskId);
@@ -92,7 +92,7 @@ export function makeDemoFaultOrder(db: DemoDatabase, report: DemoFaultReport, pl
   const text = faultOrderText({ machineLabel: report.machineLabel, cause: report.cause, text: report.text, severity: report.severity, reporter: report.reporter, accountName: report.accountName, label: report.label });
   const task = addOrder(db, text.title, [
     text.description,
-    plcAlarm ? `I demon också maskinens senaste larm från PLC:n: ${plcAlarm}` : "",
+    plcAlarm ? `I demon visas också maskinens senaste larm från PLC:n: ${plcAlarm}` : "",
     report.onCall ? SIMULATED_ON_CALL_TEXT : "",
     diagnosisBlock(diagnosis),
   ].filter(Boolean).join("\n\n"), DEMO_FAULT_CREATOR, now);

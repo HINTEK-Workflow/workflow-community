@@ -545,7 +545,7 @@ async function* cloudExportZipChunks(source: CloudExportSource, ids: CloudExport
       "Workflow – export av hela företaget",
       "",
       `Skapad ${exportedAt}.`,
-      "Företaget har för mycket data för en enda .hwf-fil, så datan ligger här i delar.",
+      "Företaget har för mycket data för en enda .hwf-fil, så uppgifterna ligger här i delar.",
       "innehall.json listar alla delar. foretag.json är företaget utan de stora registren.",
       "Varje del (kunder, platser, projekt, uppgifter, bilagor, tidhistorik, planering, kommentarer) har samma poster som en .hwf-fil.",
       "Bilagornas filer ligger i bilagor/filer.",

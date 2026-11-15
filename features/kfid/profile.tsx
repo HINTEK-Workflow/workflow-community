@@ -122,8 +122,8 @@ export function Profile({
           </section> : null}
           <label className="flex cursor-pointer items-start gap-3 pt-2 text-sm max-sm:min-h-11" data-testid="profile-newsletter">
             <Checkbox className="mt-0.5" checked={Boolean(data?.newsletter)} disabled={busy || !data}
-              onCheckedChange={(value) => { setData((current) => current ? { ...current, newsletter: value === true } : current); void api("/api/profile", { method: "POST", body: JSON.stringify({ action: "newsletter", on: value === true }) }).then(() => notify(value === true ? "Du får nyheter om Workflow." : "Du får inga nyhetsmejl.")).catch((e) => notify((e as Error).message, true)); }} />
-            <span><span className="block font-medium">Nyheter i Workflow</span><span className="block text-xs text-muted-foreground">Mejl om ändringar och förbättringar i appen. Sparas direkt.</span></span>
+              onCheckedChange={(value) => { setData((current) => current ? { ...current, newsletter: value === true } : current); void api("/api/profile", { method: "POST", body: JSON.stringify({ action: "newsletter", on: value === true }) }).then(() => notify(value === true ? "Du får nyheter om Workflow." : "Du får inga nyheter via e-post.")).catch((e) => notify((e as Error).message, true)); }} />
+            <span><span className="block font-medium">Nyheter i Workflow</span><span className="block text-xs text-muted-foreground">E-post om ändringar och förbättringar i appen. Sparas direkt.</span></span>
           </label>
         </form>
         <form

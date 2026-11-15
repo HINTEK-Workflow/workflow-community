@@ -516,7 +516,7 @@ export function WebsiteEditor() {
       <Button type="button" variant="outline" size="sm" onClick={() => void discardDraft()}>Kasta utkastet</Button>
     </div> : null}
     {overview.pagesError ? <p className="notice text-destructive" role="alert">{overview.pagesError}</p> : null}
-    {look && !look.ok ? <p className="text-xs text-muted-foreground" data-testid="site-look-missing">Sajtens typsnitt kunde inte läsas. Redigeraren visar ett liknande typsnitt.</p> : null}
+    {look && !look.ok ? <p className="text-xs text-muted-foreground" data-testid="site-look-missing">Webbplatsens typsnitt kunde inte läsas. Redigeraren visar ett liknande typsnitt.</p> : null}
     {loaded?.error ? <p className="notice text-destructive" role="alert" data-testid="site-unreadable">Sidan går inte att läsa som block och kan inte redigeras här: {loaded.error}</p> : null}
 
     {inLarge && selectedBlock && panelApi ? <div className="grid items-start gap-4 xl:grid-cols-2" data-testid="site-code-large">

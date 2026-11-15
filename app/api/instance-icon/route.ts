@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
  */
 async function superadmin() {
   const ctx = await context();
-  if (ctx.user.role !== "SUPERADMIN") throw new ApiError(403, "Systemadministratör krävs.");
+  if (ctx.user.role !== "SUPERADMIN") throw new ApiError(403, "Bara installationens administratör kan göra det.");
   if (!publicInstance().features.ownIcon) throw new ApiError(404, "Finns inte i den här installationen.");
   return ctx;
 }
@@ -71,7 +71,7 @@ export async function DELETE(request: Request) {
     checkOrigin(request);
     const ctx = await superadmin();
     await removeInstanceIcon();
-    await prisma.administrationEvent.create({ data: { actorId: ctx.user.id, organizationId: ctx.organizationId, action: "instance_icon", detail: "Tog bort den egna appikonen; den inbyggda gäller." } });
+    await prisma.administrationEvent.create({ data: { actorId: ctx.user.id, organizationId: ctx.organizationId, action: "instance_icon", detail: "Tog bort den egna appikonen. Den inbyggda används igen." } });
     return NextResponse.json(await view(), { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return failure(error);

@@ -89,7 +89,7 @@ export function PriceSettingsPanel({ accounting = true }: { accounting?: boolean
         <label className="space-y-1.5 text-xs font-medium text-muted-foreground">Tak för ROT-avdrag per offert (kr)
           <Input inputMode="decimal" value={settings.rotCap} aria-invalid={badRotCap || undefined} onChange={(event) => setSettings({ ...settings, rotCap: event.target.value })} {...leave} data-testid="price-settings-rot-cap" />
         </label>
-        <p className="text-xs text-muted-foreground sm:self-end">Förval för offerter till privatpersoner, går att ändra i varje offert. Ni ansvarar själva för att andel och tak stämmer.</p>
+        <p className="text-xs text-muted-foreground sm:self-end">Förval för offerter till privatpersoner. Det går att ändra i varje offert. Ni ansvarar själva för att andel och tak stämmer.</p>
       </div>
       {problems.length ? <p role="alert" className="text-xs text-destructive" data-testid="price-settings-problems">{problems.join(" ")} Ändringen sparas när värdet går att läsa.</p> : null}
       <label className="block space-y-1.5 text-xs font-medium text-muted-foreground">Era villkor i offerter
@@ -101,7 +101,7 @@ export function PriceSettingsPanel({ accounting = true }: { accounting?: boolean
         <textarea className="form-textarea min-h-20" maxLength={2000} value={settings.emailMessage} onChange={(event) => setSettings({ ...settings, emailMessage: event.target.value })} onBlur={commit} placeholder="Till exempel: Hej! Här kommer offerten vi pratade om." data-testid="price-settings-email-message" />
         <span className="block font-normal">Förifylls när offerten skickas till kunden och kan ändras varje gång. Kunden får en länk där offerten kan accepteras eller avböjas.</span>
       </label>
-      <p className="text-xs text-muted-foreground">Priser och påslag syns bara för administratörer och den som har rättigheten Artiklar och priser eller Offerter.</p>
+      <p className="text-xs text-muted-foreground">Priser och påslag syns bara för administratörer och den som har behörigheten Artiklar och priser eller Offerter.</p>
     </div>
   </Panel>{/* Arbetssätt shows Bokföring under its Avancerat (UX-granskningen C4, 2026-10-22): accounting={false} there. */}{accounting ? <div className="mt-5"><AccountingSettingsPanel /></div> : null}</div>;
 }

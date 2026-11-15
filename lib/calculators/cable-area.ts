@@ -21,7 +21,7 @@ import { formatQuantity } from "./units";
  */
 const GROUPS = {
   ...voltageGroups,
-  capacity: { title: "Belastbarhet", hint: "Belastbarheten hämtas ur företagets egen tabell under Värden och referenser. Har ni ingen kan du skriva den själv." },
+  capacity: { title: "Belastbarhet", hint: "Belastbarheten hämtas ur företagets egen tabell under Värden och referenser. Har företaget ingen tabell kan du skriva belastbarheten själv." },
 };
 
 const tableOptions = (ctx: CalcContext) => ctx.company.ampacity.map((table) => ({ value: String(table.slot), label: table.name === `Tabell ${table.slot}` ? table.name : `Tabell ${table.slot} – ${table.name}` }));
@@ -73,7 +73,7 @@ export const cableAreaModule: CalcModule = defineCalculator({
   help: [
     "Verktyget kontrollerar en vald area mot belastningsströmmen och mot spänningsfallet.",
     "Hur mycket ström en kabel av en viss area får bära är företagets egen tabell. Ange den under Inställningar → Arbetssätt → Värden och referenser. Workflow levererar ingen tabell och ingen gräns. Saknas värdet för arean visas det, och spänningsfallet kontrolleras ändå.",
-    "Har ni ingen tabell kan du skriva belastbarheten själv, och en korrektionsfaktor för temperatur, förläggning och gruppering.",
+    "Har företaget ingen tabell kan du skriva belastbarheten själv, och en korrektionsfaktor för temperatur, förläggning och gruppering.",
     "Verktyget kontrollerar inte skyddets märkström, kortslutningstålighet eller andra krav. Resultatet är ett beräkningsunderlag – bedömningen görs av en behörig person.",
   ],
   compute: (args): ComputeOutcome => {

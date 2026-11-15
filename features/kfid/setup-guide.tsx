@@ -280,7 +280,7 @@ function CompanyStep({ step, outcome, companyName, contactEmail, organizationNum
   </StepPanel>;
 }
 const SAFETY_FACTS = [
-  "Nya medlemmar börjar utan åtkomst. Ge rättigheter under Användare.",
+  "Nya medlemmar börjar utan åtkomst. Ge behörigheter under Användare.",
   "Varje person ser bara det hen har rätt till, kontrollerat på servern.",
   "Byts ett lösenord loggas alla gamla inloggningar ut.",
   "Företagets uppgifter är skilda från alla andra företags.",
@@ -359,7 +359,7 @@ function AiStep({ step, outcome, available, local = false, notify, onDone, onSki
       {AI_CHOICES.map((option) => <ChoiceCard key={option.value} name="setup-ai" value={option.value} checked={choice === option.value} onChange={() => setChoice(option.value)} title={option.title} description={option.text} />)}
     </div>
     {choice !== "off" ? <div className="mt-4" data-testid="setup-ai-eu">
-      <p className="mb-2 text-sm font-medium">Måste datan bearbetas inom EU?</p>
+      <p className="mb-2 text-sm font-medium">Måste uppgifterna behandlas inom EU?</p>
       <div className="grid gap-2.5 sm:grid-cols-2" role="radiogroup" aria-label="Behandling inom EU">
         <ChoiceCard name="setup-ai-eu" value="no" checked={!requireEu} onChange={() => setRequireEu(false)} title="Nej" description="AI får användas via OpenAI. Det räknas inte som behandling i EU." />
         <ChoiceCard name="setup-ai-eu" value="yes" checked={requireEu} onChange={() => setRequireEu(true)} title="Ja" description="AI körs bara via Azure, med behandling i EU. Är Azure inte klar är AI avstängd." />
@@ -367,7 +367,7 @@ function AiStep({ step, outcome, available, local = false, notify, onDone, onSki
     </div> : null}
     <ul className="mt-4 space-y-1 text-xs leading-5 text-muted-foreground">
       <li>Namn, adresser och kontaktuppgifter byts mot platshållare innan något lämnar Workflow.</li>
-      <li>AI föreslår bara; inget skapas eller ändras förrän en person bekräftar.</li>
+      <li>AI föreslår bara. Inget skapas eller ändras förrän en person bekräftar.</li>
       <li>AI-svar kostar krediter. De direkta svaren ur Workflow är alltid gratis.</li>
     </ul>
     <StepActions busy={busy} disabled={!policy} onSave={() => void save()} onSkip={() => void onSkip()} />
@@ -391,7 +391,7 @@ function StartStep({ step, outcome, local = false, cloudPath = false, admin = tr
       </li>)}
     </ul>
     <p className="mt-6 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">{profile ? `Börja här som ${WORK_PROFILE[profile].label}` : "Börja här"}</p>
-    {waiting ? <p className="mt-2 text-sm" data-testid="setup-start-waiting">Administratören ger dig rättigheter. Sedan står dina jobb här.</p> : null}
+    {waiting ? <p className="mt-2 text-sm" data-testid="setup-start-waiting">Administratören ger dig behörigheter. Sedan står dina jobb här.</p> : null}
     {/* Short titles: three side by side from a wide screen, otherwise one under the other – a title never breaks. */}
     {waiting ? null : <ul className="mt-2 grid gap-3 xl:grid-cols-3" data-testid="setup-start-links">
       {links.map((link) => <li key={link.href + link.title}><Link href={link.href} onClick={() => void onLeave()} className="workflow-card tap-card block h-full p-3.5">

@@ -111,7 +111,7 @@ async function answer(request: Request, live?: AssistantLive) {
       });
     if (!message) throw new ApiError(404, "AI-meddelandet finns inte.");
     if (message.conversation.messages[0]?.id !== message.id)
-      throw new ApiError(409, "Endast konversationens senaste meddelande kan skickas.");
+      throw new ApiError(409, "Bara konversationens senaste meddelande kan skickas.");
     const conversation = { id: message.conversationId, title: message.conversation.title };
     const userMessage = { id: message.id, role: "USER" as const, content: message.content, citations: [], model: null, createdAt: message.createdAt };
 

@@ -39,7 +39,7 @@ export function SummaryAssist({ draft, label, onText, disabled, current = "", so
     setBusy(true);
     try {
       const answer = await proposalRequest<{ text: string }>({ action: "create", kind: "SUMMARY", label, draft: draft.slice(0, 4000), ...(sourceId ? { sourceId } : {}) });
-      if (!answer.proposal) { announce(answer.reason || "AI-modellen kunde inte användas nu; regelsammanställningen står kvar.", true); return; }
+      if (!answer.proposal) { announce(answer.reason || "AI-modellen kunde inte användas nu. Regelsammanställningen står kvar.", true); return; }
       const item = { id: answer.proposal.id, text: answer.proposal.payload.text };
       if (autofill && !text.current.trim()) accept(item);
       else setProposal(item);

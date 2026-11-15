@@ -66,7 +66,7 @@ export async function runRoundReminderWorker(now = new Date(), dependencies: Dep
     const schedule = schedules.find((entry) => entry.id === item.schedule.id)!;
     const mail = buildRoundReminderEmail({ organizationName: schedule.organizationName, roundTitle: schedule.title, place: schedule.place, day: formatSwedish(`${today}T12:00:00`, { dateStyle: "long" }), roundsUrl: absoluteUrl("/?view=rounds") });
     try {
-      await send({ to: item.recipient.email, subject: `Rond idag: ${schedule.title}`, html: mail.html, text: mail.text });
+      await send({ to: item.recipient.email, subject: `Rond i dag: ${schedule.title}`, html: mail.html, text: mail.text });
       sent += 1;
     } catch (error) {
       failed += 1;

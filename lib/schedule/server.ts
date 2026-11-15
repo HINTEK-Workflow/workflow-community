@@ -346,7 +346,7 @@ async function notifyAdmins(item: ScheduleItem, reason: string) {
   const config = await mailConfig();
   if (config.blockedReason) return;
   const admins = await prisma.organizationMember.findMany({ where: { organizationId: item.organizationId, isActive: true, role: { in: ["OWNER", "ADMIN"] }, user: { isActive: true } }, select: { user: { select: { email: true } } } });
-  const what = item.kind === "post" ? `Inlägget "${item.title || "utan rubrik"}"` : `Sidan "${item.title || item.targetId}"`;
+  const what = item.kind === "post" ? `Inlägget ”${item.title || "utan rubrik"}”` : `Sidan ”${item.title || item.targetId}”`;
   const link = absoluteUrl(item.kind === "post" ? `/?view=company_posts&post=${encodeURIComponent(item.targetId)}` : "/?view=company_website");
   const text = `${what} skulle publiceras ${when(item.runAt)} men kunde inte publiceras.\nOrsak: ${reason}\n\nÖppna och försök igen:\n${link}`;
   for (const admin of admins) {

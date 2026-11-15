@@ -166,8 +166,8 @@ export function CookieNotice({ statistics = false }: { statistics?: boolean }) {
             </details>)}
             <div className="rounded-xl bg-muted/40 p-4 text-xs leading-5 text-muted-foreground">
               <p><span className="font-medium text-foreground">Andra webbplatser.</span> {features.billing
-                ? "Workflow laddar inga skript, typsnitt eller bilder från andra webbplatser. Produktbilder hämtas av vår server, inte av din webbläsare. Loggar du in med Google eller Microsoft, eller betalar via Stripe där installationen tar betalt, skickas du till deras sidor; där gäller deras egna kakor och villkor."
-                : "Workflow laddar inga skript, typsnitt eller bilder från andra webbplatser. Har installationen kopplat en grossist hämtas produktbilderna av installationens server, inte av din webbläsare. Loggar du in med Google eller Microsoft skickas du till deras sidor; där gäller deras egna kakor och villkor."} AI-anrop görs från servern och sätter inga kakor i din webbläsare.</p>
+                ? "Workflow laddar inga skript, typsnitt eller bilder från andra webbplatser. Produktbilder hämtas av vår server, inte av din webbläsare. Loggar du in med Google eller Microsoft, eller betalar via Stripe där installationen tar betalt, skickas du till deras sidor. Där gäller deras egna kakor och villkor."
+                : "Workflow laddar inga skript, typsnitt eller bilder från andra webbplatser. Har installationen kopplat en grossist hämtas produktbilderna av installationens server, inte av din webbläsare. Loggar du in med Google eller Microsoft skickas du till deras sidor. Där gäller deras egna kakor och villkor."} AI-anrop görs från servern och sätter inga kakor i din webbläsare.</p>
               <p className="mt-2">Du kan ta bort kakor och lagring i webbläsarens inställningar. Då loggas du ut och osparade utkast i webbläsaren försvinner. Hur personuppgifter behandlas står i <Link href="/legal/privacy" className="font-medium text-primary underline-offset-2 hover:underline">integritetspolicyn</Link>.</p>
             </div>
           </div>

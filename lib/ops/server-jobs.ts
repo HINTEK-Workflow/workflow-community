@@ -195,7 +195,7 @@ export function durationText(ms: number | null | undefined): string | null {
 export type ServerJobAccess = { ok: true } | { ok: false; status: 401 | 403; message: string };
 export function serverJobAccess(user: { role?: string | null } | null | undefined, integration?: unknown): ServerJobAccess {
   if (!user) return { ok: false, status: 401, message: "Logga in för att fortsätta." };
-  if (user.role !== "SUPERADMIN" || integration) return { ok: false, status: 403, message: "Systemadministratör krävs." };
+  if (user.role !== "SUPERADMIN" || integration) return { ok: false, status: 403, message: "Bara installationens administratör kan göra det." };
   return { ok: true };
 }
 

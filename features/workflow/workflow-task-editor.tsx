@@ -507,7 +507,7 @@ function WorkflowTaskEditorBody({ kind, taskId, projectId, customerId, customers
     const labels = (paths: MergePath[]) => [...new Set(paths.map((path) => taskPathLabel(server, path)))];
     const time = formatSwedish(new Date(), { timeStyle: "short" });
     if (server.status === "COMPLETED" && base.status !== "COMPLETED") {
-      const text = `${from.byName} har färdigställt uppgiften och den är nu låst.${unsaved.length ? " Dina senaste ändringar hann inte sparas; de finns kvar i webbläsaren." : ""}`;
+      const text = `${from.byName} har färdigställt uppgiften och den är nu låst.${unsaved.length ? " Dina senaste ändringar hann inte sparas. De finns kvar i webbläsaren." : ""}`;
       setRemoteNotice(text); announce(text, Boolean(unsaved.length));
       return;
     }
@@ -2208,7 +2208,7 @@ function WorkflowTaskEditorBody({ kind, taskId, projectId, customerId, customers
       <Button type="button" variant="outline" data-testid="task-send-mail" disabled={busy} disabledReason={sendReason} aria-describedby={sendReason ? "task-send-reason" : undefined} onClick={openSend}><Send />Skicka med e-post</Button>
       <DisabledReason id="task-send-reason" reason={sendReason} className="w-full" />
     </>;
-  const reportNote = local ? "Rapporter skapas på den här datorn. Ett osparat protokoll sparas när rapporten skapas; tomma mallar kan tas ut när som helst." : "Tomma mallar kan tas ut när som helst.";
+  const reportNote = local ? "Rapporter skapas på den här datorn. Ett osparat protokoll sparas när rapporten skapas. Tomma mallar kan tas ut när som helst." : "Tomma mallar kan tas ut när som helst.";
   const reportPanel = controlFoot ? <Panel icon={FileText} key="report" title="Rapport och hantering" description={`Rapport, export${isForm ? ", tomma mallar" : ""} och utskick av ${docWord.toLowerCase()}.`} className="report-panel" collapsible defaultCollapsed
     persistentContent={<div className="flex flex-wrap items-center gap-2">{reportButtons}</div>}>
     <p className="text-xs leading-5 text-muted-foreground">{reportNote}</p>
@@ -2557,7 +2557,7 @@ function WorkflowTaskEditorBody({ kind, taskId, projectId, customerId, customers
       onSaved={() => { setRepeatOpen(false); announce("Kontrollen är planerad som rond. Tillfällena syns under Driftronder."); }} /> : null}
     {/* The job's booking line is read again when the dialog closes: Färdigställ may have removed the coming bookings. */}
     <CompleteTaskDialog open={completeOpen} onOpenChange={(open) => { setCompleteOpen(open); if (!open) setBookingsRead((value) => value + 1); }} title={inOrder ? "Uppgiften klar" : `Färdigställ ${docWord.toLowerCase()}`}
-      lockText={`${completion.pendingText ? `${completion.pendingText[0].toUpperCase()}${completion.pendingText.slice(1)} (Ej bedömd). ` : ""}${isForm ? "Protokollet låses för ändringar; du kan senare skapa en kopia med Spara som." :`${docWord} låses för ändringar och sparas i historiken.${reopenable ? " Återöppna den vid behov." : ""}`}${rowsWithoutOrder ? ` ${rowsWithoutOrder === 1 ? "En rad" : `${rowsWithoutOrder} rader`} som kan följas upp saknar arbetsorder; skapa den på raden först om den behövs.` : ""}`}
+      lockText={`${completion.pendingText ? `${completion.pendingText[0].toUpperCase()}${completion.pendingText.slice(1)} (Ej bedömd). ` : ""}${isForm ? "Protokollet låses för ändringar. Du kan senare skapa en kopia med Spara som." :`${docWord} låses för ändringar och sparas i historiken.${reopenable ? " Återöppna den vid behov." : ""}`}${rowsWithoutOrder ? ` ${rowsWithoutOrder === 1 ? "En rad" : `${rowsWithoutOrder} rader`} som kan följas upp saknar arbetsorder. Skapa den på raden först om den behövs.` : ""}`}
       totalDurationSec={task.totalDurationSec} timerRunning={task.timerRunning} timerOnWorkOrder={inOrder && Boolean(task.workOrderId)} canReportTime={!preview && !inOrder} onComplete={completeWith}
       taskId={!local && !preview && task.id ? task.id : undefined} openTasks={openTasksText} />
   </>;

@@ -7,7 +7,7 @@ import { open, seal } from "@/lib/security/sealing";
 import { recordSecurityEvent, type SecurityEventType } from "@/lib/security/security-log";
 import { publicInstance } from "@/lib/instance";
 import { CENTRAL_FIELDS, LEGACY_COLUMNS, legacyCipherIn, visibleCentralFields, type CentralField, type LegacyColumn } from "@/lib/secrets/central-fields";
-import { centralStateValue, entryUsable, parseCentralState, retire, unreadableAlarmedAt, type CentralEntry, type CentralState } from "@/lib/secrets/central-state";
+import { centralStateValue, entryUsable, keyExpiryState, parseCentralState, retire, unreadableAlarmedAt, type CentralEntry, type CentralState, type KeyExpiryState } from "@/lib/secrets/central-state";
 import type { CentralKeyCopy } from "@/lib/extensions/types";
 
 /**
@@ -228,6 +228,31 @@ export async function sealedCheckAlarmedAt() {
 }
 export async function markSealedCheckAlarm(at: string) {
   await updateState((state) => { state.parts.sealedCheck = { ...(state.parts.sealedCheck as object | undefined), unreadableAlarmedAt: at }; });
+}
+
+/** Gäller till per key card (lib/secrets/key-expiry.ts): the dates, and the mark of each card's latest expiry alarm. */
+export async function keyExpiry(fresh = false): Promise<KeyExpiryState> {
+  if (fresh) clearCentralCache();
+  return keyExpiryState((await load()).state);
+}
+
+/** Sets (ÅÅÅÅ-MM-DD) or removes (null) a card's last day. Validated by the caller (expiryDateProblem); no value is involved. */
+export async function saveKeyExpiry(id: string, on: string | null, actor: CentralActor) {
+  await updateState((state) => {
+    const expiry = keyExpiryState(state);
+    if (on) expiry.dates[id] = { on, updatedAt: nowIso(), updatedBy: actor.label.slice(0, 200) };
+    else delete expiry.dates[id];
+    state.parts.keyExpiry = expiry;
+  });
+}
+
+/** After an expiry alarm: the marks sent, per card (lib/secrets/key-expiry.ts expiryAlarmMark). */
+export async function markKeyExpiryAlarms(marks: Record<string, string>) {
+  await updateState((state) => {
+    const expiry = keyExpiryState(state);
+    expiry.alarmed = { ...expiry.alarmed, ...marks };
+    state.parts.keyExpiry = expiry;
+  });
 }
 
 /**

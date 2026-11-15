@@ -164,7 +164,7 @@ export function PlanCalendar({ plan, today, level, className, onDay, dayList = t
     <div className="flex flex-wrap items-center gap-2">
       <div className="flex items-center gap-1">
         <Button size="icon-lg" variant="outline" aria-label="Föregående månad" onClick={() => go(shiftMonth(month, -1))}><ChevronLeft /></Button>
-        <Button variant="outline" onClick={() => go(today.slice(0, 7))} disabled={month === today.slice(0, 7) && selected === today}>Idag</Button>
+        <Button variant="outline" onClick={() => go(today.slice(0, 7))} disabled={month === today.slice(0, 7) && selected === today}>I dag</Button>
         <Button size="icon-lg" variant="outline" aria-label="Nästa månad" onClick={() => go(shiftMonth(month, 1))}><ChevronRight /></Button>
       </div>
       <p className="min-w-0 flex-1 truncate text-base font-semibold" aria-live="polite" aria-busy={read.fetching || undefined}>{monthLabel(month)}</p>
@@ -179,7 +179,7 @@ export function PlanCalendar({ plan, today, level, className, onDay, dayList = t
       </div>
       {dayList ? <section aria-label={`Valt datum: ${dayLabel(selected)}`} className="min-w-0" data-testid="plan-day-list">
         <div className="flex items-baseline justify-between gap-2 border-b pb-2">
-          <h3 className="text-sm font-semibold">{dayLabel(selected)}{selected === today ? " · idag" : ""}</h3>
+          <h3 className="text-sm font-semibold">{dayLabel(selected)}{selected === today ? " · i dag" : ""}</h3>
           <span className="text-xs tabular-nums text-muted-foreground">{shown ? posts(chosen.length) : <SkeletonText className="w-12" />}</span>
         </div>
         {chosen.length ? <ul className="divide-y">{chosen.map((item) => <PostRow key={item.id} item={item} />)}</ul>

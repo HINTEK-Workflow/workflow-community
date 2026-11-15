@@ -167,7 +167,7 @@ export function MailingEditor({ document, onChange, name, newsletter, notify }: 
             {block.type === "text" || block.type === "notice" ? <FormattedText label="Text" value={block.text} maxLength={block.type === "text" ? 8000 : 2000} onChange={(text) => update(block.id, { text })} /> : null}
             {block.type === "html" ? <label className={field}>HTML
               <textarea className="form-textarea min-h-48 font-mono text-xs text-foreground" spellCheck={false} value={block.html} maxLength={50000} placeholder="<p>Klistra in färdig HTML här …</p>" onChange={(event) => update(block.id, { html: event.target.value })} />
-              <span className="font-normal">För färdig HTML från ett annat verktyg. Skript, formulär och inbäddade ramar tas bort när mejlet skapas. Bilder måste ligga på en webbadress (https://).</span>
+              <span className="font-normal">För färdig HTML från ett annat verktyg. Skript, formulär och inbäddade ramar tas bort när utskicket skapas. Bilder måste ligga på en webbadress (https://).</span>
             </label> : null}
             {block.type === "notice" ? <label className={field}>Färg<select className="form-select" value={block.tone} onChange={(event) => update(block.id, { tone: event.target.value as "info" | "warning" })}><option value="info">Blå – information</option><option value="warning">Orange – viktigt</option></select></label> : null}
             {block.type === "button" ? <>
@@ -189,7 +189,7 @@ export function MailingEditor({ document, onChange, name, newsletter, notify }: 
     </div>
     <div className="min-w-0 xl:sticky xl:top-24">
       <div className="mb-2 flex items-center justify-between gap-3">
-        <p className="text-xs font-medium text-muted-foreground">Så här ser mejlet ut</p>
+        <p className="text-xs font-medium text-muted-foreground">Så här ser utskicket ut</p>
         <div className="inline-flex rounded-lg border bg-card p-0.5" role="radiogroup" aria-label="Visa som" data-testid="mailing-device">
           {([["desktop", "Dator", Monitor], ["mobile", "Mobil", Smartphone]] as const).map(([key, label, Icon]) => <button key={key} type="button" role="radio" aria-checked={device === key} onClick={() => setDevice(key)}
             className={cn("flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors", device === key ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}><Icon className="size-3.5" />{label}</button>)}
@@ -198,7 +198,7 @@ export function MailingEditor({ document, onChange, name, newsletter, notify }: 
       <div className="rounded-xl border bg-secondary/30">
         <iframe title="Förhandsvisning av utskicket" srcDoc={preview} sandbox="" className={cn("mx-auto block h-[36rem] bg-white", device === "mobile" ? "w-[375px] max-w-full border-x" : "w-full rounded-xl")} data-testid="mailing-preview" />
       </div>
-      <p className="mt-2 text-xs text-muted-foreground">Varje mejl får överst länken ”Visa i webbläsaren”, som öppnar samma utskick som en webbsida om mejlprogrammet blockerar innehållet.</p>
+      <p className="mt-2 text-xs text-muted-foreground">Varje utskick får överst länken ”Visa i webbläsaren”, som öppnar utskicket som en webbsida om e-postprogrammet blockerar innehållet.</p>
     </div>
   </div>;
 }

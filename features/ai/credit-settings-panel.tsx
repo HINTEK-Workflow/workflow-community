@@ -54,7 +54,7 @@ export function AiCreditSettingsPanel() {
       const result = await response.json() as Data & { error?: string };
       if (!response.ok) throw new Error(result.error || "Kunde inte sparas.");
       load(result);
-      setNotice("Sparat. Gäller nya AI-svar; tidigare körningar behåller sitt pris.");
+      setNotice("Sparat. Gäller nya AI-svar. Tidigare körningar behåller sitt pris.");
     } catch (issue) { setNotice(issue instanceof Error ? issue.message : "Kunde inte sparas."); } finally { setBusy(false); }
   }
   const formula = data.formula;

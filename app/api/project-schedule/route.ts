@@ -106,7 +106,7 @@ export async function POST(request: Request) {
     // The same right as saving the job itself.
     requireWorkflowPermission(ctx, workflowSubjectForTask(current.kind, current.formArea), "edit");
     if (current.status === "COMPLETED") throw new ApiError(409, "Jobbet är färdigställt. Återöppna det innan du ändrar tidplanen.");
-    if (current.status === "CANCELLED") throw new ApiError(409, "Jobbet utgår. Återuppta det innan du ändrar tidplanen.");
+    if (current.status === "CANCELLED") throw new ApiError(409, "Jobbet har utgått. Återuppta det innan du ändrar tidplanen.");
     if (current.version !== input.version) throw new ApiError(409, "Jobbet har ändrats. Läs in den senaste versionen.");
     const project = current.projectId ? await prisma.project.findFirst({ where: { id: current.projectId, organizationId: ctx.organizationId }, select: projectSelect }) : null;
     if (project?.archivedAt) throw new ApiError(409, "Återställ projektet innan du ändrar tidplanen.");
@@ -137,7 +137,7 @@ export async function POST(request: Request) {
     let predecessorTitles: string[] = [];
     if (input.predecessorIds) {
       const wanted = [...new Set(input.predecessorIds)];
-      if (!project && wanted.length) throw new ApiError(400, "Börjar efter finns för jobb i ett projekt.");
+      if (!project && wanted.length) throw new ApiError(400, "Börjar efter finns bara för jobb i ett projekt.");
       const can = canFor(ctx);
       const [projectJobs, readable] = project ? await Promise.all([
         prisma.workflowTask.findMany({ where: { organizationId: ctx.organizationId, projectId: project.id }, select: { id: true, title: true, predecessorIds: true }, take: 1000 }),

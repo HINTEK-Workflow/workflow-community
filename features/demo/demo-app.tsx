@@ -36,13 +36,13 @@ function demoWorkProfile(permissions: unknown) {
 type TourStep = { view: View; href: string; title: string; text: string; asAdmin?: boolean };
 // Guided tour (2026-09-26): Översikt, Uppgifter, a project, Planering's Kalender, Tid and the company page (names as the menu, 2026-10-23).
 const tour: TourStep[] = [
-  { view: "stats", href: "/?view=stats", title: "Översikt", text: "Nyckeltalen visar teamets läge den här veckan. Under dem ligger de mest angelägna uppgifterna och projekten – belysningsbytet hos Strömkraft är förfallet. Byt användare med Visa som på sidan Demo för att se samma arbetsyta som medarbetare eller arbetsledare." },
-  { view: "tasks", href: "/?view=tasks", title: "Uppgifter", text: "Här ser varje användare sitt eget arbete: arbetsordrar, riskbedömningar och kontroller före idrifttagning. Öppna en uppgift för att dokumentera, starta tidtagning eller slutföra med signering." },
-  { view: "project", href: "/?view=project&projectId=demo-project-laddplatser", title: "Projekt", text: "Projektet är ramen: tidsram, kund, anläggning, uppgifter av alla tre typerna, planering, tid och beslutslogg. Laddplatserna följer tidsramen – kontrollen stannar på 95 % tills den är slutförd. Revision ställverk S1 ligger efter och Ny elcentral är klar att avsluta." },
-  { view: "planning", href: "/?view=planning", title: "Planering", text: "Kalendern under Planering visar teamets planerade arbete i färg per person. På onsdag är Elis dubbelbokad med byggmötet – krocken varnar men stoppar inte, och syns i kalendern och under Kapacitet. Planering utanför projektets tidsram spärras. Dra en aktivitet till en annan dag för att flytta den." },
-  { view: "time", href: "/?view=time", title: "Tid", text: "Registrera tid direkt eller med start och paus i uppgiften; kontroller får manuell tid. Min vecka jämför rapporterad tid med veckomålet, och en företagsadministratör ser och kan korrigera teamets tid med kommentar och historik." },
-  { view: "customers", href: "/?view=customers&customerId=demo-customer-stromkraft", title: "Kundkort", text: "Kundkortet samlar kundens projekt, alla uppgifter, anläggningar och kontaktuppgifter. Strömkraft har två anläggningar: kontorshuset och ställverket." },
-  { view: "administration", href: "/?view=administration", title: "Användare", text: "Företagsadministratören styr användare och deras rättigheter per modul. Elis och Elon har Utföra arbete och Elna Läsa och rapportera med Teamet. Rundturen är klar – utforska vidare eller avsluta demon.", asAdmin: true },
+  { view: "stats", href: "/?view=stats", title: "Översikt", text: "Nyckeltalen visar hur teamet ligger till den här veckan. Under dem finns de mest brådskande uppgifterna och projekten. Belysningsbytet hos Strömkraft är förfallet. Byt person under Visa som på sidan Demo för att se arbetsytan som medarbetare eller arbetsledare." },
+  { view: "tasks", href: "/?view=tasks", title: "Uppgifter", text: "Här ser var och en sitt eget arbete: arbetsordrar, riskbedömningar och kontroller före idrifttagning. Öppna en uppgift för att dokumentera, ta tid eller signera och slutföra den." },
+  { view: "project", href: "/?view=project&projectId=demo-project-laddplatser", title: "Projekt", text: "Projektet håller ihop allt: tidsram, kund, anläggning, uppgifter av alla tre typer, planering, tid och beslutslogg. Laddplatserna följer tidsramen. Kontrollen står på 95 % tills den är slutförd. Revision ställverk S1 ligger efter, och Ny elcentral är klar att avsluta." },
+  { view: "planning", href: "/?view=planning", title: "Planering", text: "Kalendern under Planering visar teamets planerade arbete, med en färg per person. På onsdag är Elis dubbelbokad med byggmötet. Krocken ger en varning men stoppar inget, och den syns både i kalendern och under Kapacitet. Det går inte att planera utanför projektets tidsram. Dra en aktivitet till en annan dag för att flytta den." },
+  { view: "time", href: "/?view=time", title: "Tid", text: "Registrera tid direkt, eller med start och paus i uppgiften. För kontroller fylls tiden i för hand. Min vecka jämför den rapporterade tiden med veckomålet. En företagsadministratör ser teamets tid och kan rätta den med kommentar och historik." },
+  { view: "customers", href: "/?view=customers&customerId=demo-customer-stromkraft", title: "Kundkort", text: "Kundkortet samlar kundens projekt, uppgifter, anläggningar och kontaktuppgifter. Strömkraft har två anläggningar: kontorshuset och ställverket." },
+  { view: "administration", href: "/?view=administration", title: "Användare", text: "Företagsadministratören styr användarna och deras behörigheter per modul. Elis och Elon har Utföra arbete, och Elna har Läsa och rapportera med Teamet. Rundturen är klar. Utforska vidare eller avsluta demon.", asAdmin: true },
 ];
 
 // One thing at a time (2026-10-07: the demo opened with four layers at once): the tour only when the visitor starts it from
@@ -119,7 +119,7 @@ function NotInDemo({ view }: { view: View }) {
   return <div data-testid="demo-unavailable">
     <PageHeader title={title} />
     <Panel title="Inte i demon">
-      <p className="text-sm leading-6 text-muted-foreground">{title} går inte att prova i demon. Demon har påhittade uppgifter i webbläsaren; den här sidan behöver ett riktigt konto och en server.</p>
+      <p className="text-sm leading-6 text-muted-foreground">{title} går inte att prova i demon. Demon har påhittade uppgifter i webbläsaren, och den här sidan behöver ett riktigt konto och en server.</p>
       <div className="mt-4 flex flex-wrap gap-3"><Button asChild><Link href="/?view=stats">Till Översikt</Link></Button></div>
     </Panel>
   </div>;
@@ -181,7 +181,7 @@ export function DemoApp({ view, unavailable = false, report = false, customerId,
         {view === "demo" ? <><DemoBellFeed resetKey={userId} /><DemoPage userId={userId} touring={tourStep !== null} onUser={switchUser} onTour={startTour} onExit={exitDemo} /></>
           : unavailable && !nativeHidesView(native, content, view, searchParams) ? <NotInDemo view={view} />
           : (view === "administration" || view === "operator_accounts" || view === "company" || view === "company_features") && !admin
-          ? <Panel title="Endast för företagsadministratör"><p className="text-sm text-muted-foreground">Byt till Elin under <Link href={DEMO_PAGE_HREF} className="underline underline-offset-2">Demo</Link> för att se företagssidan.</p></Panel>
+          ? <Panel title="Bara för företagsadministratören"><p className="text-sm text-muted-foreground">Byt till Elin under <Link href={DEMO_PAGE_HREF} className="underline underline-offset-2">Demo</Link> för att se företagssidan.</p></Panel>
           : <Workspace key={userId} demo user={shellUser} view={view} customerId={customerId} projectId={projectId} taskId={taskId} taskType={taskType} timeTaskId={timeTaskId} />}
         <TourCard onGo={go} />
       </AppShell>

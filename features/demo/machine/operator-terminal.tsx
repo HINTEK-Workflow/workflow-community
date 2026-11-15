@@ -68,7 +68,7 @@ function createConnection() {
       return sent;
     },
     async troubleshoot({ machineId, cause }) {
-      if (machineId !== DEMO_CONNECTION_MACHINE_ID) return { suggestions: [{ text: "Den här maskinen är inte beskriven, så inga förslag.", basis: "Bara Fläkt F1 har en beskrivning i demon." }], note: OPERATOR_AI_NOTE };
+      if (machineId !== DEMO_CONNECTION_MACHINE_ID) return { suggestions: [{ text: "Den här maskinen är inte beskriven, så det finns inga förslag.", basis: "Bara Fläkt F1 har en beskrivning i demon." }], note: OPERATOR_AI_NOTE };
       return { suggestions: operatorAdvice({ description, taught, recentAlarms: alarms(), cause }), note: OPERATOR_AI_NOTE };
     },
   };

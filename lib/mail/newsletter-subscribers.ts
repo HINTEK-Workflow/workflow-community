@@ -19,7 +19,7 @@ import { checkFormStamp, issueFormStamp } from "@/lib/security/form-stamp";
  * - No enumeration: new, pending, active and a user's address all get the same answer (NEUTRAL_MESSAGE).
  * - Nothing is stored before the checks pass; the IP address only ever reaches the rate limiter as a hash.
  */
-export const NEUTRAL_MESSAGE = "Om adressen stämmer får du ett mejl för att bekräfta.";
+export const NEUTRAL_MESSAGE = "Om adressen stämmer får du ett e-postmeddelande för att bekräfta.";
 export const TOKEN_HOURS = 48;
 export const RESEND_HOURS = 24;
 export { MIN_FILL_MS, MAX_STAMP_AGE_MS } from "@/lib/security/form-stamp";
@@ -106,7 +106,7 @@ export function buildConfirmationEmail(url: string) {
   const mail = renderBaseTemplate({
     heading: "Bekräfta nyhetsbrevet",
     intro: `Någon, förhoppningsvis du, vill få nyhetsbrevet från ${name} till den här adressen.`,
-    outro: "Tryck på knappen för att bekräfta. Har du inte bett om det kan du strunta i mejlet – då händer ingenting och adressen tas bort.",
+    outro: "Tryck på knappen för att bekräfta. Har du inte bett om det kan du strunta i meddelandet – då händer ingenting och adressen tas bort.",
     actionLabel: "Bekräfta",
     actionUrl: url,
     expiresText: `Länken gäller i ${TOKEN_HOURS} timmar och kan bara användas en gång.`,

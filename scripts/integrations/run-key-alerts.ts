@@ -1,7 +1,7 @@
 // Daily: warns about keys before they stop working (2026-10-03). Each company's admins get one mail per key and
 // stage (14 days, 3 days, expired); the operations address under Produktadministration → E-post och utskick gets a mail when
-// HINTEK's own OpenAI key is no longer accepted (daily while it lasts), SCB's key is on its way out (14 and 3 days, then
-// weekly once gone), Lantmäteriet's map fails (at once, then weekly), and – 2026-10-26 – the servers wait for
+// HINTEK's own OpenAI key is no longer accepted (daily while it lasts), a key card with a Gäller till date is on its way out
+// (2026-11-14: 30, 14, 7 and 1 day(s) before, then weekly once gone; SCB's own Giltig till among them), Lantmäteriet's map fails (at once, then weekly), and – 2026-10-26 – the servers wait for
 // security updates or a restart, have their automatic updates off or no fresh status (lib/ops/host-status.ts
 // serverAlarmLines; daily while it lasts). Facebook och Instagram (2026-11-10): each company's admins a week before its Meta
 // token or data access runs out and when it stops working, once per state and token (lib/meta/alerts-server.ts). Nothing is sent from a loopback QA instance. Prints counts only.
@@ -13,7 +13,8 @@ import { mailConfig } from "../../lib/mail/settings-server";
 import { publicInstance } from "../../lib/instance";
 import { absoluteUrl, env } from "../../lib/env";
 import { keyAlertAction, keyAlertLine, keyAlertStage } from "../../lib/integrations/key-alerts";
-import { centralFieldInfo, centralSecret } from "../../lib/secrets/central-store";
+import { centralFieldInfo, centralSecret, keyExpiry, markKeyExpiryAlarms } from "../../lib/secrets/central-store";
+import { BILLING_EXPIRY_IDS, KEY_EXPIRY_LABELS, OWN_EXPIRY_IDS, dueExpiryAlarms, expiryAlarmText, expiryDateProblem, isKeyExpiryId, type KeyExpiryId } from "../../lib/secrets/key-expiry";
 import { effectiveOpenAiSettings, providerProblem, storedProviderSchema } from "../../lib/ai/provider-settings";
 import { checkMap, mapAlarmDue, mapSettingsView, markMapAlarmSent } from "@/lib/map/topowebb";
 import { readServerViews } from "@/lib/ops/host-status-server";
@@ -92,25 +93,26 @@ async function main() {
       mails++;
     }
   } else if (ai.requested && providerProblem(ai)) openAi = providerProblem(ai)!;
-  // ---------- SCB's key for the company lookup (2026-10-03: valid two years) ----------
+  // ---------- Gäller till (2026-11-14): every key card with a last day, SCB's own date among them ----------
+  // 30, 14, 7 and 1 day(s) before, each stage once, then once a week while expired (lib/secrets/key-expiry.ts); one mail.
+  const expiry = await keyExpiry(true);
   const lookupRow = await prisma.systemSettings.findUnique({ where: { id: "global" }, select: { companyLookup: true } });
-  const lookup = (lookupRow?.companyLookup ?? {}) as { keyCipher?: string; validUntil?: string; alerted?: string[] };
-  let scb = "inget slutdatum";
-  if ((await centralFieldInfo("scb.apiKey")).present && lookup.validUntil) {
-    const end = new Date(`${lookup.validUntil}T23:59:59Z`);
-    const stage = keyAlertStage(end, now) ?? (end.getTime() < now.getTime() ? "expired" : null);
-    scb = stage ? `${stage} (${lookup.validUntil})` : `gäller till ${lookup.validUntil}`;
-    // Gone: once more every week until a new key is in (the mark carries the week since the last day).
-    const weeks = stage === "expired" ? Math.floor((now.getTime() - end.getTime()) / (7 * 86_400_000)) : 0;
-    const mark = `${stage}:${lookup.validUntil}${weeks ? `:${weeks}` : ""}`;
-    if (stage && !(lookup.alerted ?? []).includes(mark) && config.delivery.alerts && config.alertEmail) {
-      const when = stage === "expired" ? `gick ut ${lookup.validUntil}` : `går ut ${lookup.validUntil}`;
-      const text = `SCB-nyckeln för företagsuppslag ${when}. Förnya den hos SCB (registreraafr.scb.se) och lägg in den nya under Produktadministration → Tjänster och nycklar:\n${absoluteUrl("/?view=server_keys&section=scb")}\nUtan nyckel fyller kunderna i företagsnamnet själva.`;
-      await sendSystemEmail({ to: config.alertEmail, subject: `[${name}] SCB-nyckeln ${when}`, text, html: `<pre style="font-family:monospace">${escape(text)}</pre>` });
-      await prisma.systemSettings.update({ where: { id: "global" }, data: { companyLookup: { ...lookup, alerted: [...(lookup.alerted ?? []), mark].slice(-20) } } });
-      mails++;
-    }
+  const lookup = (lookupRow?.companyLookup ?? {}) as { validUntil?: string };
+  const billing = publicInstance().features.billing;
+  const dated = [
+    ...Object.entries(expiry.dates).filter(([id]) => isKeyExpiryId(id) && !OWN_EXPIRY_IDS.includes(id) && (billing || !BILLING_EXPIRY_IDS.includes(id)))
+      .map(([id, date]) => ({ id, label: KEY_EXPIRY_LABELS[id as KeyExpiryId], on: date.on })),
+    ...((await centralFieldInfo("scb.apiKey")).present && lookup.validUntil && !expiryDateProblem(lookup.validUntil) ? [{ id: "scb", label: KEY_EXPIRY_LABELS.scb, on: lookup.validUntil }] : []),
+  ];
+  const expiryDue = dueExpiryAlarms(dated, expiry.alarmed, now);
+  if (expiryDue.length && config.delivery.alerts && config.alertEmail) {
+    const mail = expiryAlarmText(expiryDue);
+    const text = `${mail.text}\n${absoluteUrl("/?view=server_keys")}`;
+    await sendSystemEmail({ to: config.alertEmail, subject: `[${name}] ${mail.subject}`, text, html: `<pre style="font-family:monospace">${escape(text)}</pre>` });
+    await markKeyExpiryAlarms(Object.fromEntries(expiryDue.map((alarm) => [alarm.id, alarm.mark])));
+    mails++;
   }
+  const scb = lookup.validUntil ? `gäller till ${lookup.validUntil}` : "inget slutdatum";
   // ---------- Lantmäteriet's map (2026-10-04): the sign-in is checked every morning, an alarm once per failure ----------
   let map = "ingen inloggning";
   if ((await mapSettingsView()).configured) {
@@ -131,7 +133,7 @@ async function main() {
     await sendSystemEmail({ to: config.alertEmail, subject: `[${name}] Servrarna behöver åtgärd (${serverLines.length})`, text, html: `<pre style="font-family:monospace">${escape(text)}</pre>` });
     mails++;
   }
-  console.log(`keys:alerts klar – ${due.length} nycklar på väg ut, ${mails} mejl skickade, OpenAI: ${openAi}, SCB: ${scb}, karta: ${map}, servrar: ${serverLines.length ? `${serverLines.length} att åtgärda` : "inget att åtgärda"}, Meta: ${meta.checked} kontrollerade, LinkedIn: ${linkedin.checked} kontrollerade.`);
+  console.log(`keys:alerts klar – ${due.length} nycklar på väg ut, ${mails} mejl skickade, OpenAI: ${openAi}, SCB: ${scb}, Gäller till: ${dated.length} med datum och ${expiryDue.length} att larma om, karta: ${map}, servrar: ${serverLines.length ? `${serverLines.length} att åtgärda` : "inget att åtgärda"}, Meta: ${meta.checked} kontrollerade, LinkedIn: ${linkedin.checked} kontrollerade.`);
 }
 
 main().catch((error) => { console.error(error instanceof Error ? error.message : error); process.exitCode = 1; }).finally(() => prisma.$disconnect());

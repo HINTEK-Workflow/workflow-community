@@ -107,7 +107,7 @@ export function NativePlanning<A extends NativePlanningActivity>({ canReadProjec
     : { title: VIEW_LABEL.planning, save: canCreate ? { label: "Ny planering", onClick: () => router.push(href("ny")) } : null });
 
   if (step === "ny" || step === "redigera") {
-    if (!editing) return <NativePage><ListGroup><ListEmpty>Planeringen finns inte längre eller får inte ändras av dig.</ListEmpty></ListGroup></NativePage>;
+    if (!editing) return <NativePage><ListGroup><ListEmpty>Planeringen finns inte längre, eller så får du inte ändra den.</ListEmpty></ListGroup></NativePage>;
     // The form's own buttons give way to Avbryt and Spara in the top bar.
     return <div ref={box} className="native-page native-screen pb-4 [&_.dialog-actions]:hidden" data-testid="native-planning-form">
       <div className="native-group p-4">{form(step === "ny" ? null : open, closeForm)}</div>

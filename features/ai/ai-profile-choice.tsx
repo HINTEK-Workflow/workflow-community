@@ -45,7 +45,7 @@ export function AiProfileChoice({ requireEu, locked, onChoose }: { requireEu: bo
         return <ChoiceCard key={profile.id} name="ai-profile" value={profile.id} checked={data.chosen === profile.id} onChange={(id) => void choose(id)}
           disabled={locked || !data.canManage || blocked || (!profile.ready && data.chosen !== profile.id)}
           title={<span data-testid={`ai-profile-${profile.id}`}>{profile.name} – {profile.provider}</span>}
-          badge={blocked ? "Ej tillgänglig – kräver EU" : profile.euVerified ? "EU verifierad" : profile.id === "standard" ? "Inte EU" : profile.ready ? undefined : "Inte klar"}
+          badge={blocked ? "Inte tillgänglig – kräver EU" : profile.euVerified ? "EU verifierad" : profile.id === "standard" ? "Inte EU" : profile.ready ? undefined : "Inte klar"}
           description={<>
             <span className="block" data-testid={`ai-profile-${profile.id}-price`}>{price}{profile.ready ? "" : " · inte klar på servern"}</span>
             {/* The models are details (kundresa 2026-11-07, L22): folded under one line, also when the profile cannot be used. */}

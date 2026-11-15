@@ -55,7 +55,7 @@ export function renderBaseTemplate(input: MailTemplateInput) {
         <tr>
           <td style="padding:20px 28px 28px;font-size:12px;line-height:1.6;color:#6b7280;">
             <p style="margin:0 0 8px;">${expiresText}</p>
-            <p style="margin:0;">Detta mejl skickades automatiskt från ${escapeHtml(publicInstance().name)}.</p>
+            <p style="margin:0;">Det här meddelandet skickades automatiskt från ${escapeHtml(publicInstance().name)}.</p>
           </td>
         </tr>
       </table>
@@ -129,8 +129,8 @@ export function buildOrganizationInvitationEmail(input: {
 /** A round to do today (2026-09-30): what, where and a link to Driftronder – no answers or customer data beyond the place. */
 export function buildRoundReminderEmail(input: { organizationName: string; roundTitle: string; day: string; place: string; roundsUrl: string }) {
   return renderBaseTemplate({
-    heading: `Rond idag: ${input.roundTitle}`,
-    intro: `${input.organizationName}: ronden ”${input.roundTitle}”${input.place ? ` på ${input.place}` : ""} ska göras idag, ${input.day}.`,
+    heading: `Rond i dag: ${input.roundTitle}`,
+    intro: `${input.organizationName}: ronden ”${input.roundTitle}”${input.place ? ` på ${input.place}` : ""} ska göras i dag, ${input.day}.`,
     outro: `Starta ronden under Driftronder i ${publicInstance().name}. Påminnelsen skickas en gång per tillfälle.`,
     actionLabel: "Öppna Driftronder",
     actionUrl: input.roundsUrl,

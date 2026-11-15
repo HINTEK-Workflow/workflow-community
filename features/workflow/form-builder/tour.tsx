@@ -32,7 +32,7 @@ const STEPS: Step[] = [
   { target: ["builder-properties", "builder-sheet"], title: "3. Mätvärden, enheter och bedömning", text: "Markera ett block för att ställa in enhet, decimaler, intervall, formler, godkänd-villkor och när det visas.", before: (controls) => { controls.setMode("build"); controls.selectMeasured(); } },
   { target: ["form-limit-settings", "builder-meta"], title: "Gränsvärden och larmnivåer", text: "Formuläret säger vad som mäts. Gränsvärdena anges per anläggning i protokollet.", before: (controls) => { controls.clearSelection(); controls.openMeta(); } },
   { target: ["block-attachment", "builder-blocks"], title: "4. Kamera, bilder och bilagor", text: "Foto/bilaga tar bilder eller filer i formuläret. Checklistor och mätrader kan få kamera på varje punkt.", before: (controls) => { controls.setMode("build"); controls.clearSelection(); } },
-  { target: ["block-checklist", "builder-blocks"], title: "5. Kommentarer och avvikelser", text: "Ej OK, värde utanför gränsen eller markerat fält blir en avvikelse som kräver kommentar.", before: (controls) => controls.setMode("build") },
+  { target: ["block-checklist", "builder-blocks"], title: "5. Kommentarer och avvikelser", text: "Ej OK, ett värde utanför gränsen eller ett markerat fält blir en avvikelse som kräver en kommentar.", before: (controls) => controls.setMode("build") },
   { target: ["builder-preview", "builder-mode"], title: "6. Förhandsgranska", text: "Så ser uppgiften ut, med exempeldata. Inget sparas.", before: (controls) => controls.setMode("preview") },
   { target: ["builder-pdf"], title: "PDF-rapporten", text: "PDF öppnar rapporten med exempeldata i en ny flik.", before: (controls) => controls.setMode("preview") },
   { target: ["builder-publish-group", "builder-bar"], title: "7. Spara, publicera och återanvänd", text: "Utkastet sparas automatiskt. Publicera gör formuläret till en uppgiftstyp under Ny uppgift.", before: (controls) => controls.setMode("build") },
@@ -104,16 +104,16 @@ export function useBuilderTour({ seen, markSeen, controls }: { seen: boolean | n
   }, [markSeen]);
 
   const dismiss = useCallback(() => { setAnswered(true); markSeen(); }, [markSeen]);
-  const offerCard = offer ? <div role="region" aria-label="Guide till formulärskaparen" className="flex flex-wrap items-center gap-3 rounded-xl border border-primary/30 bg-secondary px-4 py-3" data-testid="tour-offer">
+  const offerCard = offer ? <div role="region" aria-label="Guide till formulärbyggaren" className="flex flex-wrap items-center gap-3 rounded-xl border border-primary/30 bg-secondary px-4 py-3" data-testid="tour-offer">
     <span className="area-icon panel-icon" data-tone="solid" aria-hidden="true"><Compass className="size-4" /></span>
     {/* On a phone the text takes the row and the buttons go below it (F13, 2026-09-29). */}
-    <p className="min-w-0 flex-1 basis-[14rem] text-sm"><strong className="font-semibold">Ny i formulärskaparen?</strong> Ta en kort rundtur – guiden visar var allt finns på den här sidan.</p>
+    <p className="min-w-0 flex-1 basis-[14rem] text-sm"><strong className="font-semibold">Ny i formulärbyggaren?</strong> Ta en kort rundtur – guiden visar var allt finns på den här sidan.</p>
     <div className="flex w-full justify-end gap-2 sm:w-auto">
       <Button type="button" size="sm" onClick={start} data-testid="tour-start">Starta guiden</Button>
       <Button type="button" size="sm" variant="ghost" onClick={dismiss}><X />Inte nu</Button>
     </div>
   </div> : null;
-  const helpButton = <Button type="button" variant="outline" onClick={start} data-testid="tour-help" data-tour="builder-help" title="Visa guiden till formulärskaparen"><Compass />Guide</Button>;
+  const helpButton = <Button type="button" variant="outline" onClick={start} data-testid="tour-help" data-tour="builder-help" title="Visa guiden till formulärbyggaren"><Compass />Guide</Button>;
   return { start, offerCard, helpButton };
 }
 

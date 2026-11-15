@@ -263,7 +263,7 @@ function ImportGuide({ canBuildForms, canImportArticles }: { canBuildForms: bool
   const kinds: { title: string; text: string; download?: { href: string; file: string; label: string } }[] = [
     ...TEMPLATES.map((template) => ({ title: template.name[0].toUpperCase() + template.name.slice(1), text: TARGET_FIELDS[template.target].map((field) => field.label).join(", "),
       download: { href: templateHref(template.target, template.example), file: `mall-${template.name}.csv`, label: "Mall (CSV)" } })),
-    ...(!canImportArticles ? [] : [{ title: "Artiklar och priser", text: `${CATALOGUE_FIELDS.map((field) => field.label).join(", ")}. Från ditt företags egna prislistor; leverantören namnger du själv.`,
+    ...(!canImportArticles ? [] : [{ title: "Artiklar och priser", text: `${CATALOGUE_FIELDS.map((field) => field.label).join(", ")}. Från ditt företags egna prislistor. Leverantören namnger du själv.`,
       download: { href: templateHref("catalogue", ["12345", "1234567", "", "Installationskabel 3G1,5", "m", "1250,00", "100", "2026-10-01", "12A", ""]), file: "mall-artiklar-och-priser.csv", label: "Mall (CSV)" } }]),
     // Frånvaro (2026-10-29): a file from a time or payroll system; an invented example.
     { title: "Frånvaro", text: "Anställningsnummer eller e-post, frånvarokod, från, till och med, timmar, status. Från ett tid- eller lönesystem.", download: { href: templateHref("absence", ["1001", "", "", "Semester", "2026-11-02", "2026-11-06", "", "", "", "", "Godkänd", ""]), file: "mall-franvaro.csv", label: "Mall (CSV)" } },

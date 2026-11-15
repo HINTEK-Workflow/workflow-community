@@ -116,7 +116,7 @@ function LiveConnectionPanel() {
       {step ? <span role="status" data-testid="plc-generate-step">{STEP_TEXT[step]} …</span> : null}
     </div>
     {result?.ok ? <div className="plc-note" role="status" data-testid="plc-generate-done">
-      <p><span className="font-semibold">Klart.</span> {result.created ? "Källan Simulator är skapad" : "Källan Simulator fanns och återanvänds; den gamla nyckeln gäller inte längre"}. Nyckeln finns bara i det här fönstret.</p>
+      <p><span className="font-semibold">Klart.</span> {result.created ? "Källan Simulator är skapad" : "Källan Simulator fanns redan och återanvänds. Den gamla nyckeln gäller inte längre"}. Nyckeln finns bara i det här fönstret.</p>
       <p className="font-semibold" data-testid="plc-generate-off">Källan står på läge Av och ger inga arbetsordrar. Du väljer själv läge nedan.</p>
       <p data-testid="plc-generate-answer">Intagets svar på ”Simulerat: {TEST_TEXT}”: {result.answer.status} · {result.answer.summary}</p>
     </div> : null}

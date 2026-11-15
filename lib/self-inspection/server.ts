@@ -309,7 +309,7 @@ export async function cloudInstrumentsView(ctx: Context): Promise<InstrumentsVie
  */
 export async function cloudInstrumentProtocols(ctx: Context, instrumentId: string): Promise<InstrumentProtocolsView> {
   const can = (subject: Parameters<typeof hasWorkflowPermission>[1]) => ctx.admin || hasWorkflowPermission(ctx.workflowPermissions, subject, "read");
-  if (!readableTaskScope(can).areas.length) throw new SelfInspectionError(403, "Du saknar rätt att läsa protokoll.");
+  if (!readableTaskScope(can).areas.length) throw new SelfInspectionError(403, "Du saknar behörighet att läsa protokoll.");
   const instrument = await prisma.instrument.findFirst({ where: { id: instrumentId, organizationId: ctx.organizationId }, select: { id: true } });
   if (!instrument) throw new SelfInspectionError(404, "Instrumentet hittades inte.");
   const rows = await prisma.$queryRaw<{ id: string; title: string; status: string; updatedAt: Date; completedAt: Date | null }[]>`

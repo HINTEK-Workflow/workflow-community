@@ -778,15 +778,15 @@ export function validateFormDocument(input: unknown): { document: FormDocument |
     if (block.type === "table") for (const column of block.columns) {
       if (column.limitKey && !limitKeys.has(column.limitKey)) issues.push({ blockId: block.id, message: `${block.label}, ${column.label}: gränsvärdet ${column.limitKey} finns inte.` });
       limitDefaultIssue(block.id, `${block.label}, ${column.label}`, column);
-      if (column.allowedMin !== null && column.allowedMax !== null && column.allowedMin > column.allowedMax) issues.push({ blockId: block.id, message: `${block.label}, ${column.label}: lägsta tillåtna värde är större än högsta.` });
+      if (column.allowedMin !== null && column.allowedMax !== null && column.allowedMin > column.allowedMax) issues.push({ blockId: block.id, message: `${block.label}, ${column.label}: det lägsta tillåtna värdet är större än det högsta.` });
     }
     if (!("key" in block)) continue;
     if (keys.has(block.key)) issues.push({ blockId: block.id, message: `Kortnamnet ${block.key} används redan.` });
     keys.set(block.key, block.id);
     if (block.type === "field" || block.type === "computed") valued.add(block.key);
     if (block.type === "field" && block.input === "choice" && !block.options.length) issues.push({ blockId: block.id, message: `${block.label}: ange minst ett alternativ.` });
-    if (block.type === "field" && block.min !== null && block.max !== null && block.min > block.max) issues.push({ blockId: block.id, message: `${block.label}: min är större än max.` });
-    if (block.type === "field" && block.allowedMin !== null && block.allowedMax !== null && block.allowedMin > block.allowedMax) issues.push({ blockId: block.id, message: `${block.label}: lägsta tillåtna värde är större än högsta.` });
+    if (block.type === "field" && block.min !== null && block.max !== null && block.min > block.max) issues.push({ blockId: block.id, message: `${block.label}: det lägsta värdet är större än det högsta.` });
+    if (block.type === "field" && block.allowedMin !== null && block.allowedMax !== null && block.allowedMin > block.allowedMax) issues.push({ blockId: block.id, message: `${block.label}: det lägsta tillåtna värdet är större än det högsta.` });
     if (block.type === "field" && block.input === "choice" && block.deviationOptions.some((option) => !block.options.includes(option))) issues.push({ blockId: block.id, message: `${block.label}: ett avvikande alternativ finns inte bland alternativen.` });
     if (block.type === "field" && block.defaultValue !== null && block.defaultValue !== "") {
       const value = String(block.defaultValue);
@@ -798,7 +798,7 @@ export function validateFormDocument(input: unknown): { document: FormDocument |
     if (block.type === "table") {
       const columnKeys = new Set<string>();
       if (block.rowMode === "fixed" && !block.fixedRows.length) issues.push({ blockId: block.id, message: `${block.label}: ange minst en fast rad.` });
-      if (block.columns.filter((column) => column.input === "assessment").length > 1) issues.push({ blockId: block.id, message: `${block.label}: en tabell kan ha en Godkänd-kolumn.` });
+      if (block.columns.filter((column) => column.input === "assessment").length > 1) issues.push({ blockId: block.id, message: `${block.label}: en tabell kan bara ha en Godkänd-kolumn.` });
       if (block.columns[0]?.pdf === "join") issues.push({ blockId: block.id, message: `${block.label}: den första kolumnen kan inte slås ihop med en kolumn före.` });
       for (const name of block.cardTitle.matchAll(/\{([^}]*)\}/g)) if (!block.columns.some((column) => column.key === name[1].trim())) issues.push({ blockId: block.id, message: `${block.label}: rubriken i PDF använder {${name[1]}}, som inte är en kolumn.` });
       for (const column of block.columns) {

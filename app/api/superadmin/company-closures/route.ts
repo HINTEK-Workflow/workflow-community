@@ -20,7 +20,7 @@ const input = z.discriminatedUnion("action", [
 
 async function superadmin() {
   const ctx = await context();
-  if (ctx.user.role !== "SUPERADMIN" || ctx.integration) throw new ApiError(403, "Systemadministratör krävs.");
+  if (ctx.user.role !== "SUPERADMIN" || ctx.integration) throw new ApiError(403, "Bara installationens administratör kan göra det.");
   return ctx;
 }
 

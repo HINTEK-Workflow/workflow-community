@@ -88,7 +88,7 @@ export function demoPayroll(ctx: Ctx, request: { method: string; url: URL; body:
     return { people, warnings: [...sources.warnings, ...basisGaps(people)], onlyApproved: input.onlyApproved, fileName: basisFileName(input.from, input.to, "pdf") };
   }
   if (body.action === "basis_file") throw new DemoPayrollError(403, "Filer skapas inte i demon. Visa underlaget visar summorna.");
-  if (!ctx.admin) throw new DemoPayrollError(403, "Företagsadministratör krävs.");
+  if (!ctx.admin) throw new DemoPayrollError(403, "Bara en företagsadministratör kan göra det.");
   if (body.action === "settings") { const input = payrollSettingsSchema.parse(body.settings); settings = { ...settings, ...input, lastError: "" }; return { ok: true }; }
   if (body.action === "template_save") { const template = exportTemplateSchema.parse(body.template); settings = { ...settings, exportTemplates: [template, ...settings.exportTemplates.filter((item) => item.id !== template.id)] }; return { ok: true }; }
   // Ingen fast arbetstid set by the admin (2026-10-30): kept on the demo person, so the overview and planning follow.

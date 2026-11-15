@@ -89,10 +89,10 @@ test("the veckobrev notice is only a choice for the installation's superadmin", 
 test("the notice says in words what is the matter", () => {
   assert.equal(noticeStateText(byId("late"), today), "Förfallen (2026-10-05)");
   assert.equal(noticeStateText(byId("soon"), today), "Klart senast 2026-10-10");
-  assert.equal(noticeStateText({ ...byId("soon"), dueDate: today }, today), "Förfaller idag");
+  assert.equal(noticeStateText({ ...byId("soon"), dueDate: today }, today), "Förfaller i dag");
   assert.equal(noticeStateText(byId("urgent"), today), "Akut arbetsorder");
   assert.equal(noticeStateText(byId("action"), today), "Behöver åtgärdas");
-  assert.equal(noticeStateText(round, today), "Ska göras idag");
+  assert.equal(noticeStateText(round, today), "Ska göras i dag");
   assert.equal(noticeStateText({ ...round, deadline: "OVERDUE" }, today), "Missad rond (2026-10-08)");
   assert.equal(noticeStateText(followUp, today), "Följ upp avvikelsen");
   assert.equal(noticeStateText(draft, today), "Väntar på godkännande");
@@ -106,7 +106,7 @@ test("the e-mail is one valid mail with every new notice, linked, and says how t
   assert.equal(digest.subject, "3 nya påminnelser i Workflow");
   mailingDocumentSchema.parse(digest.document);
   assert.deepEqual(mailingProblems(digest.document), []);
-  for (const part of ["Hej Anna!", "late", "Förfallen (2026-10-05)", "Skyddsrond", "Ska göras idag", "Protokoll X", "Öppna Notiser", "Mina inställningar", "https://workflow.example.test/?view=notifications"])
+  for (const part of ["Hej Anna!", "late", "Förfallen (2026-10-05)", "Skyddsrond", "Ska göras i dag", "Protokoll X", "Öppna Notiser", "Mina inställningar", "https://workflow.example.test/?view=notifications"])
     assert.ok(digest.text.includes(part) || digest.html.includes(part), part);
   assert.ok(digest.html.includes("https://workflow.example.test/?view=workflow_task&amp;taskId=late&amp;taskType=WORK_ORDER") || digest.html.includes("taskId=late"), "each notice links to its own page");
   assert.equal(digest.html.includes("Avböj fler nyhetsbrev"), false, "no newsletter footer");

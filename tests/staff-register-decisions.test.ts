@@ -46,7 +46,7 @@ test("2–3. new rows only when Cloud writing is available or paused for an over
 
 test("3. Personalliggare på begäran: superadmin only, inactive companies only, always with a reason", () => {
   assert.equal(disclosureRefusal({ superadmin: true, companyActive: false }), null);
-  assert.match(disclosureRefusal({ superadmin: false, companyActive: false }) ?? "", /Systemadministratör/);
+  assert.match(disclosureRefusal({ superadmin: false, companyActive: false }) ?? "", /Bara installationens administratör/);
   assert.match(disclosureRefusal({ superadmin: true, companyActive: true }) ?? "", /aktivt/);
   const base = { organizationId: "o", projectId: "p" };
   assert.equal(disclosureInputSchema.safeParse({ ...base, reason: "kort" }).success, false, "a reason is required");

@@ -139,8 +139,8 @@ export function extendFaultPoint(from: FaultPoint, cable: CableImpedanceInput): 
   });
   if (!result.ok) return result;
   const warnings = [...result.warnings];
-  if (cable.returnAreaMm2 === undefined) warnings.push({ code: "returnAssumed", message: "Skyddsledarens area saknas; den antas vara lika stor som fasledarens." });
-  if ((cable.parallel ?? 1) > 1 && cable.returnParallel === undefined) warnings.push({ code: "returnParallelAssumed", message: "Antalet parallella skyddsledare saknas; det antas vara samma som fasledarna." });
+  if (cable.returnAreaMm2 === undefined) warnings.push({ code: "returnAssumed", message: "Skyddsledarens area saknas. Den antas vara lika stor som fasledarens." });
+  if ((cable.parallel ?? 1) > 1 && cable.returnParallel === undefined) warnings.push({ code: "returnParallelAssumed", message: "Antalet parallella skyddsledare saknas. Det antas vara samma som för fasledarna." });
   return { ok: true, warnings, point: { phase: addImpedances(from.phase, result.phase), loop: addImpedances(from.loop, result.loop ?? result.phase) } };
 }
 

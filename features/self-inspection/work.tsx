@@ -163,7 +163,7 @@ export function AssignmentPanel({ work, target, canEdit, inspectorInProtocol, re
         <p className="text-xs font-medium">Kundens särskilda krav</p>
         <p className="mt-1 whitespace-pre-line text-sm">{requirements}</p>
       </div> : null}
-      <p className="text-xs text-muted-foreground">Kompetensvarningarna stoppar aldrig arbetet; nivåerna gör det, och förklarar vad som saknas.</p>
+      <p className="text-xs text-muted-foreground">Kompetensvarningarna stoppar aldrig arbetet. Det gör nivåerna, och de förklarar vad som saknas.</p>
     </div>
   </Panel>;
 }

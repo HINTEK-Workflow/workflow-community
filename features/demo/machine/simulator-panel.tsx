@@ -60,7 +60,7 @@ export function DemoConnectionPanel() {
   const described = describedEnough(snapshot.description);
   if (!link) return <div className="space-y-2 p-3" data-testid="plc-connection-demo"><p>Allt i simulatorn körs här i webbläsaren.</p></div>;
   return <div className="plc-scroll space-y-2 p-2" data-testid="plc-connection-demo">
-    <p data-testid="demo-sim-state"><span className="font-semibold">Demokoppling.</span> {snapshot.bound ? "Ansluten utan nyckel, till demons Workflow-fönster." : "Väntar på demons Workflow-fönster."}</p>
+    <p data-testid="demo-sim-state"><span className="font-semibold">Demokoppling.</span> {snapshot.bound ? "Ansluten till demons Workflow-fönster utan nyckel." : "Väntar på demons Workflow-fönster."}</p>
     {!snapshot.bound ? <p className="plc-note" role="status" data-testid="demo-sim-no-workflow">{snapshot.restarted ? "Workflow-fönstret stängdes eller laddades om, så demon börjar om." : "Inget Workflow-fönster svarar."} <a href={DEMO_MACHINE_HREF} target="_blank" rel="noopener" className="underline"><ExternalLink aria-hidden="true" className="inline size-3" /> Öppna Prova maskinkopplingen</a></p> : null}
     {snapshot.bound && snapshot.restarted ? <p className="plc-note" role="status">Workflow-fönstret laddades om, så demon började om.</p> : null}
     <p className="plc-note" data-testid="demo-sim-mark"><FlaskConical aria-hidden="true" className="inline size-3" /> <span className="font-semibold">{SIMULATION_MARK}.</span> {SIMULATION_TEXT}</p>
@@ -77,7 +77,7 @@ export function DemoConnectionPanel() {
       <span className="plc-help" data-testid="demo-sim-fan">{engine.run ? (engine.outputs.do[0] ? "Fläkten går." : "Fläkten står.") : "PLC:n står i STOP."}</span>
     </div> : <div className="flex flex-wrap items-center gap-1">
       <ChromeButton tone="primary" onClick={() => link.loadDemoMachine()} data-testid="demo-sim-load"><Play aria-hidden="true" />Ladda demomaskinen</ChromeButton>
-      <span className="plc-help">Knapp, fläkt och motorskydd. Sparas inte över din ritning.</span>
+      <span className="plc-help">Knapp, fläkt och motorskydd. Din ritning skrivs inte över.</span>
     </div>}
     {snapshot.demoMachineLoaded && !engine.run ? <ChromeButton onClick={() => link.loadDemoMachine()} data-testid="demo-sim-restart"><RotateCcw aria-hidden="true" />Starta om demomaskinen</ChromeButton> : null}
 

@@ -61,7 +61,7 @@ function Marker({ mark, active }: { mark: SlotMark; active: boolean }) {
 }
 const dragText = (drag: DragState) => {
   const { over } = drag;
-  if (!over) return "Dra till en plats i en rung; Esc avbryter.";
+  if (!over) return "Dra till en plats i en rung. Esc avbryter.";
   if (over.kind === "trash") return "Släpp för att ta bort.";
   if (over.kind === "rung") return "Släpp här: rungen flyttas.";
   if (!over.mark.legal) return over.mark.same ? "Samma plats som nu." : over.mark.reason ?? "Går inte att släppa här.";

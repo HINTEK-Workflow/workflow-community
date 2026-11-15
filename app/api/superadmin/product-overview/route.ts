@@ -11,6 +11,9 @@ import { flushAnalytics } from "@/lib/analytics/record";
 import { readCounters } from "@/lib/analytics/store";
 import { swedishDayKey } from "@/lib/swedish-time";
 import { companyLookupView } from "@/lib/kfid/company-lookup";
+import { keyExpiry } from "@/lib/secrets/central-store";
+import { BILLING_EXPIRY_IDS, KEY_EXPIRY_LABELS, OWN_EXPIRY_IDS, expiryView, isKeyExpiryId } from "@/lib/secrets/key-expiry";
+import { publicInstance } from "@/lib/instance";
 
 export const dynamic = "force-dynamic";
 
@@ -29,14 +32,14 @@ async function recentVisits(now: Date) {
 export async function GET() {
   try {
     const ctx = await context();
-    if (ctx.user.role !== "SUPERADMIN") throw new ApiError(403, "Systemadministratör krävs.");
+    if (ctx.user.role !== "SUPERADMIN") throw new ApiError(403, "Bara installationens administratör kan göra det.");
     const now = new Date();
     const organizations = await prisma.organization.findMany({
       where: { id: { not: ctx.organizationId } }, orderBy: { name: "asc" }, take: 500,
       select: { id: true, name: true, isActive: true, createdAt: true, slug: true },
     });
     const companies = organizations.filter((item) => !item.slug.startsWith("raderat-"));
-    const [payments, keys, servers, flagged, lookup] = await Promise.all([
+    const [payments, keys, servers, flagged, lookup, expiry] = await Promise.all([
       serverExtensions.companyPayments(companies.map((item) => item.id), now),
       prisma.integrationKey.findMany({
         where: { organizationId: ctx.organizationId, revokedAt: null, expiresAt: { not: null, lte: new Date(now.getTime() + KEY_WARNING_DAYS * 86_400_000) } },
@@ -45,7 +48,15 @@ export async function GET() {
       readServerViews(now).catch(() => []),
       pdfTemplatesFlagged().catch(() => 0),
       companyLookupView().catch(() => null),
+      keyExpiry().catch(() => null),
     ]);
+    // Gäller till on the key cards (2026-11-14): the same two weeks as the other keys here.
+    const billing = publicInstance().features.billing;
+    const datedKeys = Object.entries(expiry?.dates ?? {}).flatMap(([id, date]) => {
+      if (!isKeyExpiryId(id) || OWN_EXPIRY_IDS.includes(id) || (!billing && BILLING_EXPIRY_IDS.includes(id))) return [];
+      const view = expiryView(date.on, now);
+      return view.daysLeft <= KEY_WARNING_DAYS ? [{ id: `expiry:${id}`, name: KEY_EXPIRY_LABELS[id], expiresAt: new Date(`${date.on}T23:59:59Z`).toISOString(), expired: view.expired }] : [];
+    });
     // Företagsuppslagets nyckel (SCB) has its end date of its own (kundresa 2026-11-07, M44: it had gone out and the overview said none did).
     const lookupEnd = lookup?.configured && lookup.validUntil ? new Date(`${lookup.validUntil}T23:59:59Z`) : null;
     const lookupKey = lookupEnd && lookupEnd.getTime() <= now.getTime() + KEY_WARNING_DAYS * 86_400_000
@@ -53,7 +64,7 @@ export async function GET() {
     const visits = await recentVisits(now).catch(() => null);
     const overview: ProductOverview = {
       ...summarizeCompanies(companies.map((item) => ({ ...item, payment: payments[item.id] ?? null })), now, serverExtensions.hasPayments),
-      keys: [...lookupKey, ...keys.map((key) => ({ id: key.id, name: key.name, expiresAt: key.expiresAt!.toISOString(), expired: key.expiresAt! <= now }))]
+      keys: [...lookupKey, ...datedKeys, ...keys.map((key) => ({ id: key.id, name: key.name, expiresAt: key.expiresAt!.toISOString(), expired: key.expiresAt! <= now }))]
         .sort((a, b) => a.expiresAt.localeCompare(b.expiresAt)),
       serverAlarms: serverAlarmLines(servers),
       pdfTemplatesFlagged: flagged,

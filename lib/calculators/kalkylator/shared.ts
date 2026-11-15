@@ -104,7 +104,7 @@ export function deviceInputs(group: string): CalcInput[] {
   return [
     { kind: "choice", id: "device", label: "Skyddsapparat", options: DEVICE_CHOICES, initial: "", placeholder: DEVICE_PLACEHOLDER, display: "select", group },
     { kind: "number", id: "rated", label: "Märkström In", dimension: "current", required: true, min: 0, minExclusive: true, usual: [0.5, 5000], group, example: "16" },
-    { kind: "number", id: "time", label: "Kravtid", dimension: "time", required: true, min: 0, minExclusive: true, usual: [0.001, 3600], group, example: "0,4", help: "Tiden som skyddet ska hinna koppla från på." },
+    { kind: "number", id: "time", label: "Kravtid", dimension: "time", required: true, min: 0, minExclusive: true, usual: [0.001, 3600], group, example: "0,4", help: "Den tid som skyddet har på sig att koppla från." },
     {
       kind: "number", id: "trip", label: "Utlösningsström Ia för kravtiden", dimension: "current", required: true, min: 0, minExclusive: true, group, placeholder: "Tillverkarens tabell", showIf: deviceChosen,
       fallback: (choices, ctx, numbers = {}) => {

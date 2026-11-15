@@ -31,7 +31,7 @@ export function demoCheckedTimeTypeId(db: DemoDatabase, chosen: unknown, current
 
 let sequence = 0;
 export function demoTimeTypeAction(db: DemoDatabase, admin: boolean, input: { action?: unknown; type?: unknown; id?: unknown; step?: unknown }) {
-  if (!admin) throw new DemoTimeTypeError(403, "Företagsadministratör krävs.");
+  if (!admin) throw new DemoTimeTypeError(403, "Bara en företagsadministratör kan göra det.");
   const types = demoTimeTypes(db);
   if (input.action === "time_type_save") {
     const value = timeTypeInputSchema.parse(input.type);

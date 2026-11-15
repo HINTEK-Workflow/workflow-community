@@ -177,7 +177,7 @@ function allServerKeyStatuses(source: ServerKeyEnv): ServerKeyStatus[] {
     // Ahlsell, Rexel and Sonepar (2026-10-17): prepared adapters without a documented product API – inactive rows that say so.
     ...(["ahlsell", "rexel", "sonepar"] as const).map((id): ServerKeyStatus => ({
       id, label: `${WHOLESALER_LABELS[id]} – API`, service: WHOLESALER_LABELS[id], variables: [], configured: false, mode: null, formatOk: null, switches: [],
-      note: "Ej ansluten. Prisfiler fungerar ändå: raderna läses in som företagets egna.",
+      note: "Inte ansluten. Prisfiler fungerar ändå: raderna läses in som företagets egna.",
       check: "format", prepared: true,
     })),
     {
@@ -216,7 +216,7 @@ function allServerKeyStatuses(source: ServerKeyEnv): ServerKeyStatus[] {
 
 /** The plain-language result of a format check – the same words whether it passes or not, never a value. */
 export function formatCheckMessage(status: ServerKeyStatus) {
-  if (status.prepared) return { ok: false, message: "Ej ansluten – inget att kontrollera." };
+  if (status.prepared) return { ok: false, message: "Inte ansluten – inget att kontrollera." };
   if (!status.configured && status.formatOk !== false) return { ok: false, message: "Inte inlagd." };
   if (status.formatOk) return { ok: true, message: status.mode === "live" ? "Formen stämmer (livenyckel, inget anrop gjordes)." : "Formen stämmer (inget anrop gjordes)." };
   return { ok: false, message: "Värdet har inte den form tjänsten använder." };

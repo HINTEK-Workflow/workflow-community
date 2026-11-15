@@ -103,7 +103,7 @@ export function planningRounds(schedules: FormSchedule[], tasks: { id: string; s
   return { rounds: rounds.slice(0, limit), truncated };
 }
 
-export const PLANNING_ROUND_STATE_LABEL: Record<PlanningRound["state"], string> = { done: "Utförd", started: "Påbörjad", missed: "Missad", due: "Idag", upcoming: "Kommande", not_done: "Ej utfört", cancelled: "Utgått" };
+export const PLANNING_ROUND_STATE_LABEL: Record<PlanningRound["state"], string> = { done: "Utförd", started: "Påbörjad", missed: "Missad", due: "I dag", upcoming: "Kommande", not_done: "Ej utfört", cancelled: "Utgått" };
 
 /** Planning's status filter applied to a round: done is Slutförd, started Pågår, the rest Planerad; Inställd has none. */
 export function planningRoundMatchesStatus(round: Pick<PlanningRound, "state">, status: "all" | "PLANNED" | "IN_PROGRESS" | "COMPLETED" | "CANCELED") {

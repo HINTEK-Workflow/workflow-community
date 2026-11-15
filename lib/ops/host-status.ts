@@ -191,7 +191,7 @@ export function serverAlarmLines(views: readonly ServerView[]): string[] {
 export type ServerStatusAccess = { ok: true } | { ok: false; status: 401 | 403; message: string };
 export function serverStatusAccess(user: { role?: string | null } | null | undefined): ServerStatusAccess {
   if (!user) return { ok: false, status: 401, message: "Logga in för att fortsätta." };
-  if (user.role !== "SUPERADMIN") return { ok: false, status: 403, message: "Systemadministratör krävs." };
+  if (user.role !== "SUPERADMIN") return { ok: false, status: 403, message: "Bara installationens administratör kan göra det." };
   return { ok: true };
 }
 

@@ -39,7 +39,7 @@ export function ResendVerificationForm({
       {state.status === "error" ? (
         <Alert variant="destructive">
           <AlertCircle className="size-4" />
-          <AlertTitle>Kunde inte skicka mejl</AlertTitle>
+          <AlertTitle>Kunde inte skicka e-post</AlertTitle>
           <AlertDescription>{state.message}</AlertDescription>
         </Alert>
       ) : null}

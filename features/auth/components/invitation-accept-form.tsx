@@ -70,7 +70,7 @@ export function InvitationAcceptForm({ token }: { token: string }) {
       <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm">
         <input type="checkbox" name="newsletter" className="mt-0.5 size-4 shrink-0 accent-[var(--primary)]" />
         <span>
-          <span className="block font-medium">Ja, mejla mig om nyheter i Workflow</span>
+          <span className="block font-medium">Ja, skicka nyheter om Workflow till min e-post</span>
           <span className="block text-xs text-muted-foreground">Ändringar och förbättringar i appen. Du kan ändra det när som helst under Mina inställningar.</span>
         </span>
       </label>

@@ -182,7 +182,7 @@ export function removeTaught(id: string) {
 }
 export function finishMachineOrder(taskId: string) {
   finishDemoOrder(demoDatabase(), taskId, new Date());
-  set({ feed: [...snapshot.feed], history: remember("En arbetsorder färdigställdes. Nästa larm får göra en ny efter vilan.") });
+  set({ feed: [...snapshot.feed], history: remember("En arbetsorder färdigställdes. Efter vilan kan nästa larm skapa en ny.") });
 }
-export function skipMachineRest() { skipDemoRest(demoDatabase(), new Date()); notice("Vilan är hoppad över, bara i demon."); }
+export function skipMachineRest() { skipDemoRest(demoDatabase(), new Date()); notice("Vilan hoppades över (bara i demon)."); }
 

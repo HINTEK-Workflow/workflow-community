@@ -58,7 +58,7 @@ export function planCreditReconciliation(
     if (lotBalance > balance)
       return { action: "manual", reason: "Lotterna har fler krediter än saldot och bokföringen." };
     if (!purchasedMatches)
-      return { action: "manual", reason: "Även de köpta krediterna skiljer sig; stäm av köpen för hand först." };
+      return { action: "manual", reason: "Även de köpta krediterna skiljer sig. Stäm av köpen för hand först." };
     const credits = balance - lotBalance;
     return prefer === "remove" ? { action: "remove-credits", credits } : { action: "add-lot", credits };
   }
@@ -69,7 +69,7 @@ export function planCreditReconciliation(
   }
   if (balance === lotBalance) {
     if (!purchasedMatches)
-      return { action: "manual", reason: "Även de köpta krediterna skiljer sig; stäm av köpen för hand först." };
+      return { action: "manual", reason: "Även de köpta krediterna skiljer sig. Stäm av köpen för hand först." };
     return { action: "add-entry", amount: balance - ledgerBalance };
   }
   return { action: "manual", reason: "Saldot, lotterna och bokföringen skiljer sig alla tre åt." };

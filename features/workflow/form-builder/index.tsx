@@ -423,7 +423,7 @@ export function FormBuilder({ userName, tourSeen, onTourSeen }: { userName?: str
             <h2 className="truncate text-sm font-semibold">{selected ? selectedTitle : "Inställningar"}</h2>
             {selected ? <IconButton label="Stäng inställningarna" onClick={() => setSelectedId(null)}><X /></IconButton> : null}
           </div>
-          {selected ? <div className="p-4">{settings}</div> : <EditorPanelEmpty>Klicka på ett block eller avsnitt för att ändra dess inställningar.</EditorPanelEmpty>}
+          {selected ? <div className="p-4">{settings}</div> : <EditorPanelEmpty>Klicka på ett block eller avsnitt för att ändra inställningarna.</EditorPanelEmpty>}
         </aside>
         {/* The sheet: white like a page and as wide as the bar with the icons above (2026-09-27). A click on the
             sheet beside the blocks clears the selection. */}

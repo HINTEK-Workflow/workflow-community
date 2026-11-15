@@ -119,7 +119,7 @@ export function AddressSearchField({ id, label, value, onChange, onPick, availab
         {(searching || picking || answered !== query) && !error && !shown.length ? <p className="flex items-center gap-2 px-2 py-2 text-xs text-muted-foreground" role="status"><LoaderCircle className="size-3.5 animate-spin" />Söker adresser…</p> : null}
         {picking && shown.length ? <p className="flex items-center gap-2 px-2 py-1.5 text-xs text-muted-foreground" role="status"><LoaderCircle className="size-3.5 animate-spin" />Hämtar adressen…</p> : null}
         {error ? <p role="alert" className="px-2 py-2 text-xs text-destructive">{error} Skriv adressen själv.</p> : null}
-        {!searching && !error && !shown.length && answered === query ? <p className="px-2 py-2 text-xs text-muted-foreground" data-testid={`${testId}-none`}>Inga adresser hittades. Skriv adressen själv, eller fler tecken.</p> : null}
+        {!searching && !error && !shown.length && answered === query ? <p className="px-2 py-2 text-xs text-muted-foreground" data-testid={`${testId}-none`}>Inga adresser hittades. Skriv fler tecken, eller skriv adressen själv.</p> : null}
         {shown.length ? <ul id={listId} role="listbox" aria-label="Adresser" className="overflow-y-auto overscroll-contain" style={{ maxHeight: placement.max }}>
           {shown.map((suggestion, index) => <li key={suggestion.id} id={`${listId}-${index}`} role="option" aria-selected={index === active}
             className={cn("flex min-h-11 cursor-pointer items-center rounded-lg px-2 py-1.5 text-left text-sm", index === active ? "bg-secondary" : "hover:bg-secondary")}

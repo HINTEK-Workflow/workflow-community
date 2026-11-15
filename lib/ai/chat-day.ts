@@ -8,7 +8,7 @@ export function chatDayLabel(at: string | Date, now: Date = new Date()): string 
   const day = (value: Date) => formatSwedish(value, { dateStyle: "short" });
   const date = new Date(at);
   if (Number.isNaN(date.getTime())) return "";
-  if (day(date) === day(now)) return "Idag";
-  if (day(date) === day(new Date(now.getTime() - 86_400_000))) return "Igår";
+  if (day(date) === day(now)) return "I dag";
+  if (day(date) === day(new Date(now.getTime() - 86_400_000))) return "I går";
   return day(date);
 }

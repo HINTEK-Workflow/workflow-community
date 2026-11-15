@@ -172,7 +172,7 @@ export function DemoMachinePage({ canOpenEvents = true }: { canOpenEvents?: bool
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0 flex-1 basis-64">
         <h2 id="demo-machine-title" className="text-lg font-semibold">Prova maskinkopplingen</h2>
-        <p className="mt-1 text-sm text-muted-foreground">En PLC kopplad till Workflow, utan nyckel, och två sätt ett larm kan uppstå på.</p>
+        <p className="mt-1 text-sm text-muted-foreground">En PLC som är kopplad till Workflow utan nyckel. Prova två sätt som ett larm kan uppstå på.</p>
       </div>
       {phone ? <p className="notice basis-full text-sm" role="note" data-testid="demo-machine-phone-note">{PHONE_SIMULATOR_TEXT}</p>
         : <Button asChild><a href={href} target="_blank" rel="noopener" onClick={open} data-testid="demo-machine-open-simulator"><ExternalLink aria-hidden="true" />Öppna simulatorn</a></Button>}
@@ -189,23 +189,23 @@ export function DemoMachinePage({ canOpenEvents = true }: { canOpenEvents?: bool
         <ol className="list-decimal space-y-1 pl-5 text-sm leading-6" data-testid="demo-machine-how-1">
           <li>Öppna simulatorn. Maskinen är laddad och står i RUN.</li>
           <li>Lös ut motorskyddet under Maskinkoppling, eller vippa Motorskydd på ritytan.</li>
-          <li>Larmet kommer hit. Arbetsordern får PLC:ns text, och den ändras aldrig efter vad som hänt.</li>
+          <li>Larmet kommer hit. Arbetsordern får PLC:ns fasta text, som inte ändras efter vad som har hänt.</li>
         </ol>
       </Panel>
       : <>
         <Description />
         <Panel icon={ListChecks} title="Så här gör du" description="Larmtexten byggs av fälten och av det som händer.">
           <ol className="list-decimal space-y-1 pl-5 text-sm leading-6" data-testid="demo-machine-how-2">
-            <li>Tryck Start en gång i simulatorn. Bara det normala noteras.</li>
-            <li>Tryck 10 gånger. Meddelandet säger vad det kan bero på.</li>
-            <li>Starta fläkten och lös ut motorskyddet innan minuten gått. Ändra Förväntad tid eller Funktion, så följer texten med.</li>
+            <li>Tryck på Start en gång i simulatorn. Då noteras bara att allt är normalt.</li>
+            <li>Tryck 10 gånger. Då säger meddelandet vad det kan bero på.</li>
+            <li>Starta fläkten och lös ut motorskyddet innan minuten har gått. Ändra Förväntad tid eller Funktion, så ändras texten också.</li>
             <li>Säg vad felet var. Nästa gång står den orsaken först.</li>
           </ol>
         </Panel>
         <Panel icon={ScrollText} title="Lokal AI (simulerad)" description="Vad den observerar, direkt från simulatorn.">
           <ul className="max-h-64 space-y-1 overflow-auto text-sm" data-testid="demo-machine-log">
             {log.length ? log.map((row) => <li key={row.id} className="flex gap-2"><span className="shrink-0 text-xs leading-5 text-muted-foreground">{clock(row.at)}</span><span className={cn("[overflow-wrap:anywhere]", row.tone === "alarm" && "font-medium text-destructive")}>{logRowText(row)}</span></li>)
-              : <li className="text-muted-foreground">{simulatorOpen ? "Inget har hänt än. Tryck på knappen i simulatorn." : "Öppna simulatorn så börjar den bevaka."}</li>}
+              : <li className="text-muted-foreground">{simulatorOpen ? "Inget har hänt än. Tryck på knappen i simulatorn." : "Öppna simulatorn, så börjar bevakningen."}</li>}
           </ul>
         </Panel>
       </>}
@@ -218,7 +218,7 @@ export function DemoMachinePage({ canOpenEvents = true }: { canOpenEvents?: bool
         {findings.map((finding) => <p key={finding.dedupeKey} className="text-sm">{withoutMark(finding.title)}: {finding.basis}</p>)}
       </div> : null}
     </Panel>
-    {mode === "mapped" ? <Panel icon={BrainCircuit} title="Vad systemet lärt sig" description={`${describedEnough(description) ? `Beskrivning och ${description.rows.filter((row) => row.function.trim()).length} signaler` : "Ingen beskrivning"}, ${taught.length} ${taught.length === 1 ? "lärd orsak" : "lärda orsaker"}. Bara i den här sidans minne.`}>
+    {mode === "mapped" ? <Panel icon={BrainCircuit} title="Vad systemet har lärt sig" description={`${describedEnough(description) ? `Beskrivning och ${description.rows.filter((row) => row.function.trim()).length} signaler` : "Ingen beskrivning"}, ${taught.length} ${taught.length === 1 ? "lärd orsak" : "lärda orsaker"}. Finns bara i den här sidans minne.`}>
       <div className="space-y-4">
         {taught.length ? <ul className="space-y-3" data-testid="demo-machine-learned-list">{taught.map((item) => <TaughtLine key={item.id} id={item.id} cause={item.cause} label={item.patternLabel} times={item.times} at={item.lastAt} />)}</ul>
           : <p className="text-sm text-muted-foreground" data-testid="demo-machine-learned-empty">Inget än. Säg vad felet var på ett larm ovan.</p>}

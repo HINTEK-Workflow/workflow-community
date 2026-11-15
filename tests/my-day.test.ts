@@ -68,7 +68,7 @@ test("the rule order: alarm, timer, late, booked today, round, obstacle, deviati
     { id: "alarm", title: "H", href: "/h", signals: { alarm: true, running: true } },
   ];
   assert.deepEqual(rankNextActions(candidates, 99).map((row) => [row.id, row.chip]), [
-    ["alarm", "Larm"], ["running", "Tiden går"], ["late", "Förfallen"], ["booked", "Bokad idag"], ["round", "Rond idag"], ["obstacle", "Hinder"], ["dev", "Avvikelse"], ["open", "Öppen"],
+    ["alarm", "Larm"], ["running", "Tiden går"], ["late", "Förfallen"], ["booked", "Bokad i dag"], ["round", "Rond i dag"], ["obstacle", "Hinder"], ["dev", "Avvikelse"], ["open", "Öppen"],
   ]);
   assert.equal(rankNextActions(candidates).length, 3, "three rows by default");
   assert.equal(nextReasonOf({}), null);

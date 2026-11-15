@@ -205,7 +205,7 @@ export function UsersAdministration({ notify, personId, log = null, operatorAcco
   }
   // Radera personuppgifter (2026-10-03): the person is anonymised; protocols and history stay without the name.
   async function erasePerson(m: Member) {
-    if (!members || !(await confirmCard({ title: "Radera personuppgifterna?", message: `${m.user.name || m.user.email}: namn och e-post ersätts med ”Borttagen användare”. Inloggning, kopplade Google-konton och appar och egna AI-konversationer raderas. Protokoll och historik behålls utan namnet. Fastställda versioner av egenkontrollprogrammet behåller namnet för spårbarheten. Kompetenskortet sparas i tre månader och raderas sedan; du kan ta bort det tidigare under Egenkontroll. Har personen konto i ett annat företag tas hen bara bort härifrån. Det går inte att ångra.`, confirmLabel: "Radera personuppgifter", tone: "danger" }))) return;
+    if (!members || !(await confirmCard({ title: "Radera personuppgifterna?", message: `${m.user.name || m.user.email}: namn och e-post ersätts med ”Borttagen användare”. Inloggning, kopplade Google-konton och appar och egna AI-konversationer raderas. Protokoll och historik behålls utan namnet. Fastställda versioner av egenkontrollprogrammet behåller namnet för spårbarheten. Kompetenskortet sparas i tre månader och raderas sedan. Du kan ta bort det tidigare under Egenkontroll. Har personen konto i ett annat företag tas hen bara bort härifrån. Det går inte att ångra.`, confirmLabel: "Radera personuppgifter", tone: "danger" }))) return;
     setLeaving(true);
     setBusy(true);
     try {
@@ -260,7 +260,7 @@ export function UsersAdministration({ notify, personId, log = null, operatorAcco
     const step = profileRightsStep({ isNew: !editingMember && !editingInvitation, role: member.role, current: member.workflowPermissions.grants, previous: member.workProfile, next });
     setMember((m) => ({ ...m, workProfile: next, ...(next ? { workView: WORK_PROFILE[next].workView } : {}), ...(step === "fill" ? { workflowPermissions: suggestedRights(next!) } : {}) }));
     if (step !== "ask") return;
-    const yes = await confirmCard({ title: "Vill du använda de föreslagna rättigheterna?", message: `${WORK_PROFILE[next!].label} föreslår: ${WORK_PROFILE[next!].rights.join(", ")}. Behåller du de nuvarande ändras inte vad personen får göra.`, confirmLabel: "Sätt föreslagna", cancelLabel: "Behåll nuvarande" });
+    const yes = await confirmCard({ title: "Vill du använda de föreslagna behörigheterna?", message: `${WORK_PROFILE[next!].label} föreslår: ${WORK_PROFILE[next!].rights.join(", ")}. Behåller du de nuvarande ändras inte vad personen får göra.`, confirmLabel: "Sätt föreslagna", cancelLabel: "Behåll nuvarande" });
     if (yes) setMember((m) => ({ ...m, workflowPermissions: suggestedRights(next!) }));
   }
 
@@ -276,7 +276,7 @@ export function UsersAdministration({ notify, personId, log = null, operatorAcco
     );
 
   const form = data ? <DialogPage pageKey="anvandare" size="page" open={inviteOpen} onOpenChange={setInviteOpen}
-    title={editingMember ? "Redigera användare" : editingInvitation ? "Redigera inbjudan" : "Bjud in"} description={editingMember ? "Roll, yrkesprofil och rättigheter." : "Namn, e-post, roll, yrkesprofil och vad personen får göra."}>
+    title={editingMember ? "Redigera användare" : editingInvitation ? "Redigera inbjudan" : "Bjud in"} description={editingMember ? "Roll, yrkesprofil och behörigheter." : "Namn, e-post, roll, yrkesprofil och vad personen får göra."}>
       <form
         className="space-y-4"
         id="member-form"
@@ -293,7 +293,7 @@ export function UsersAdministration({ notify, personId, log = null, operatorAcco
                 ? "Medlemsrollen är sparad."
                 : data.invitationDeliveryEnabled
                   ? "Inbjudan är skickad."
-                  : "Inbjudan är förberedd. Inget mejl har skickats under det privata testet.",
+                  : "Inbjudan är förberedd. Ingen e-post har skickats under det privata testet.",
             )
           ) {
             setEditingMember(false);
@@ -347,7 +347,7 @@ export function UsersAdministration({ notify, personId, log = null, operatorAcco
           <select id="member-work-profile" className="form-select" value={member.workProfile ?? ""} onChange={(e) => void chooseProfile((e.target.value || null) as WorkProfile | null)}>
             <WorkProfileOptions none="Ingen – personen kan välja själv" areas={normalizeWorkAreas(members?.profile?.workAreas)} />
           </select>
-          <p className="text-xs leading-5 text-muted-foreground">{member.workProfile ? `${workProfileHint(member.workProfile)} ` : ""}Styr bara vad som visas först. Rättigheterna nedan avgör vad personen får göra.</p>
+          <p className="text-xs leading-5 text-muted-foreground">{member.workProfile ? `${workProfileHint(member.workProfile)} ` : ""}Styr bara vad som visas först. Behörigheterna nedan avgör vad personen får göra.</p>
         </div>
         {/* Arbetsvy (2026-10-08): only what is shown first on the person's phone and tablet, never what they may do. Under Anpassa since 2026-11-01: the profile fills it in. */}
         <AdvancedFold title="Anpassa visning" summary="Arbetsvyn följer yrkesprofilen om du inte väljer en annan" testId="member-custom-view"
@@ -359,7 +359,7 @@ export function UsersAdministration({ notify, personId, log = null, operatorAcco
             <option value="">Ingen – standardvisningen</option>
             {WORK_VIEWS.map((view) => <option key={view} value={view}>{WORK_VIEW_LABEL[view]}</option>)}
           </select>
-          <p className="text-xs leading-5 text-muted-foreground">{member.workView ? WORK_VIEW_DESCRIPTION[member.workView] : "Lagom på mobil och surfplatta, Allt på dator."} Arbetsvyn styr bara vad som visas först. Rättigheterna nedan avgör vad personen får göra. Byter du vy återställs personens egna visningsval.</p>
+          <p className="text-xs leading-5 text-muted-foreground">{member.workView ? WORK_VIEW_DESCRIPTION[member.workView] : "Lagom på mobil och surfplatta, Allt på dator."} Arbetsvyn styr bara vad som visas först. Behörigheterna nedan avgör vad personen får göra. Byter du vy återställs personens egna visningsval.</p>
           {editingMember ? <label className="flex items-center gap-3 text-sm">
             <Checkbox checked={member.workViewReset} onCheckedChange={(v) => setMember((m) => ({ ...m, workViewReset: v === true }))} />
             Återställ personens egna visningsval
@@ -369,7 +369,7 @@ export function UsersAdministration({ notify, personId, log = null, operatorAcco
         {member.role === "MEMBER" ? <div className="rounded-xl border bg-muted/25 p-4">
           {/* Rättigheter (UX-granskningen C3, 2026-10-22): one of the four presets first; the whole matrix only under Anpassa
               rättigheter, open from the start when the person's rights match no preset. */}
-          <div><p className="text-sm font-semibold">Rättigheter i Workflow</p><p className="mt-1 text-xs leading-5 text-muted-foreground">En ny inbjudan börjar utan åtkomst. Välj det som passar, till exempel Utföra arbete.</p></div>
+          <div><p className="text-sm font-semibold">Behörigheter i Workflow</p><p className="mt-1 text-xs leading-5 text-muted-foreground">En ny inbjudan börjar utan åtkomst. Välj det som passar, till exempel Utföra arbete.</p></div>
           {member.workProfile ? <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-card p-3" data-testid="member-suggested-rights">
             <p className="min-w-0 text-xs leading-5"><span className="font-medium">Föreslaget för {WORK_PROFILE[member.workProfile].label}:</span> {WORK_PROFILE[member.workProfile].rights.join(", ")}</p>
             {sameGrants(member.workflowPermissions.grants, suggestedRights(member.workProfile).grants) ? <span className="text-xs text-muted-foreground">Används</span>
@@ -379,7 +379,7 @@ export function UsersAdministration({ notify, personId, log = null, operatorAcco
             const selected = preset.profile.grants.length === member.workflowPermissions.grants.length && preset.profile.grants.every((grant) => member.workflowPermissions.grants.includes(grant));
             return <button key={preset.id} type="button" aria-pressed={selected} className={`rounded-lg border p-3 text-left transition-colors ${selected ? "border-primary bg-primary/10" : "bg-card hover:bg-muted"}`} onClick={() => setMember((current) => ({ ...current, workflowPermissions: { version: 1, grants: [...preset.profile.grants] } }))}><span className="block text-xs font-semibold">{preset.label}</span><span className="mt-1 block text-[11px] leading-4 text-muted-foreground">{preset.description}</span></button>;
           })}</div>
-          <div className="mt-4"><AdvancedFold title="Anpassa rättigheter" summary="Välj rättighet för rättighet i varje område" testId="member-custom-rights"
+          <div className="mt-4"><AdvancedFold title="Anpassa behörigheter" summary="Välj behörighet för behörighet i varje område" testId="member-custom-rights"
             open={member.workflowPermissions.grants.length > 0 && !workflowPermissionPresets.some((preset) => preset.profile.grants.length === member.workflowPermissions.grants.length && preset.profile.grants.every((grant) => member.workflowPermissions.grants.includes(grant)))}
             openKey={inviteOpen ? member.email || "ny" : ""}>
           <div className="flex flex-wrap items-start justify-between gap-3"><p className="text-[11px] leading-4 text-muted-foreground">Beroenden sköts automatiskt. Att skapa, redigera och rapportera kräver läsrätt. Att färdigställa och återöppna kräver även redigering.</p><Button type="button" size="sm" variant="outline" onClick={() => setMember((current) => ({ ...current, workflowPermissions: noWorkflowPermissionProfile() }))}>Rensa alla</Button></div>
@@ -392,7 +392,7 @@ export function UsersAdministration({ notify, personId, log = null, operatorAcco
             })}</div></fieldset>;
           })}</div>
           </AdvancedFold></div>
-        </div> : <div className="notice">Företagsadmin har alla rättigheter. Rättigheterna per modul gäller rollen Medarbetare.</div>}
+        </div> : <div className="notice">Företagsadmin har alla behörigheter. Behörigheterna per modul gäller rollen Medarbetare.</div>}
         <label className="flex items-center gap-3 text-sm">
           <Checkbox
             checked={member.canDeleteControls}
@@ -443,7 +443,7 @@ export function UsersAdministration({ notify, personId, log = null, operatorAcco
           {!openMember.isActive ? <Button type="button" variant="outline" className="mt-4" disabled={busy} data-testid="user-activate"
             onClick={() => void perform({ action: "member_status", organizationId: members!.id, email: openMember.user.email, isActive: true }, "Medlemskapet är aktiverat. Inloggning är fortfarande begränsad till testadressen.")}><PlayCircle />Aktivera</Button> : null}
         </Panel>
-        <Panel className="min-w-0" icon={ShieldCheck} title="Rättigheter" actions={<Button type="button" size="sm" variant="ghost" onClick={() => editMembership(openMember)} data-testid="user-edit-rights"><Pencil />Anpassa</Button>}>
+        <Panel className="min-w-0" icon={ShieldCheck} title="Behörigheter" actions={<Button type="button" size="sm" variant="ghost" onClick={() => editMembership(openMember)} data-testid="user-edit-rights"><Pencil />Anpassa</Button>}>
           <RightsSummary role={openMember.role} permissions={openMember.workflowPermissions} canDeleteControls={openMember.canDeleteControls} />
         </Panel>
         </>} />
@@ -451,7 +451,7 @@ export function UsersAdministration({ notify, personId, log = null, operatorAcco
         {openMember.isActive ? <Button type="button" variant="outline" disabled={busy} data-testid="user-pause"
           onClick={() => void perform({ action: "member_status", organizationId: members!.id, email: openMember.user.email, isActive: false }, "Medlemskapet pausat.")}><PauseCircle />Pausa</Button> : null}
         <Button type="button" variant="outline" className="text-destructive" disabled={busy} data-testid="user-remove" onClick={() => void (async () => {
-          if (await confirmCard({ title: "Ta bort medlemskapet?", message: "Personen förlorar åtkomsten till företaget. Kontroller och kunder behålls i företaget. Personens kompetenskort sparas i tre månader och raderas sedan; du kan ta bort det tidigare under Egenkontroll.", confirmLabel: "Ta bort medlem", tone: "danger" }))
+          if (await confirmCard({ title: "Ta bort medlemskapet?", message: "Personen förlorar åtkomsten till företaget. Kontroller och kunder behålls i företaget. Personens kompetenskort sparas i tre månader och raderas sedan. Du kan ta bort det tidigare under Egenkontroll.", confirmLabel: "Ta bort medlem", tone: "danger" }))
             await performAndLeave({ action: "member_remove", organizationId: members!.id, email: openMember.user.email }, "Medlemskapet är borttaget.");
         })()}><Trash2 />Ta bort medlem</Button>
         <Button type="button" variant="outline" className="text-destructive" disabled={busy} data-testid="user-erase" onClick={() => void erasePerson(openMember)}><UserX />Radera personuppgifter</Button>
@@ -486,7 +486,7 @@ export function UsersAdministration({ notify, personId, log = null, operatorAcco
           {data.invitationDeliveryEnabled ? <Button type="button" variant="outline" className="mt-4" disabled={busy} data-testid="invitation-send"
             onClick={() => void perform({ action: "invitation_send", organizationId: members!.id, invitationId: openInvitation.id }, openInvitation.status === "PENDING" ? "En ny inbjudningslänk har skickats." : "Inbjudan har skickats.")}><RotateCw />{openInvitation.status === "PENDING" ? "Skicka igen" : "Skicka"}</Button> : null}
         </Panel>
-        <Panel className="min-w-0" icon={ShieldCheck} title="Rättigheter" actions={<Button type="button" size="sm" variant="ghost" onClick={() => editInvitation(openInvitation)} data-testid="user-edit-rights"><Pencil />Anpassa</Button>}>
+        <Panel className="min-w-0" icon={ShieldCheck} title="Behörigheter" actions={<Button type="button" size="sm" variant="ghost" onClick={() => editInvitation(openInvitation)} data-testid="user-edit-rights"><Pencil />Anpassa</Button>}>
           <RightsSummary role={openInvitation.role} permissions={openInvitation.workflowPermissions} canDeleteControls={openInvitation.canDeleteControls} />
         </Panel>
         </>} />
@@ -514,7 +514,7 @@ export function UsersAdministration({ notify, personId, log = null, operatorAcco
     <div className="min-w-0 space-y-6" data-testid="users-page">
       {confirmElement}
       <div>
-        <PageHeader title="Användare" description={`Medarbetare, inbjudningar och rättigheter${members ? ` i ${members.name}` : ""}.`}
+        <PageHeader title="Användare" description={`Medarbetare, inbjudningar och behörigheter${members ? ` i ${members.name}` : ""}.`}
           actions={<>{operatorAccounts ? <Button asChild variant="outline"><Link href={OPERATOR_ADMIN_HREF} data-testid="users-operator-accounts"><HardHat />Operatörskonton</Link></Button> : null}
             {!data || members ? <Button type="button" disabled={!data} disabledReason={local ? "Kollegor kräver Cloud." : null} onClick={startInvite} data-testid="invite-open"><UserPlus />Bjud in</Button> : null}</>} />
         <ListFilterBar testId="users"
@@ -566,7 +566,7 @@ function WorkViewFact({ permissions }: { permissions: unknown }) {
 /** What the person may do, read from the same matrix as Anpassa rättigheter. */
 function RightsSummary({ role, permissions, canDeleteControls }: { role: string; permissions: unknown; canDeleteControls: boolean }) {
   const deleting = <p className="mt-3 text-xs text-muted-foreground" data-testid="user-can-delete">{canDeleteControls ? "Får radera kontroller." : "Får inte radera kontroller."}</p>;
-  if (role !== "MEMBER") return <><p className="text-sm">Företagsadmin har alla rättigheter.</p>{deleting}</>;
+  if (role !== "MEMBER") return <><p className="text-sm">Företagsadmin har alla behörigheter.</p>{deleting}</>;
   const grants = normalizeWorkflowPermissionProfile(permissions).grants;
   const preset = workflowPermissionPresets.find((item) => sameGrants(item.profile.grants, grants));
   const lines = (Object.entries(workflowPermissionMatrix) as [WorkflowPermissionSubject, readonly string[]][]).flatMap(([subject, actions]) => {
@@ -574,7 +574,7 @@ function RightsSummary({ role, permissions, canDeleteControls }: { role: string;
     return held.length ? [{ subject, text: held.map((action) => actionLabel(subject, action)).join(", ") }] : [];
   });
   return <>
-    <p className="text-sm font-medium" data-testid="user-rights-preset">{preset?.label ?? (grants.length ? "Anpassade rättigheter" : "Ingen åtkomst")}</p>
+    <p className="text-sm font-medium" data-testid="user-rights-preset">{preset?.label ?? (grants.length ? "Anpassade behörigheter" : "Ingen åtkomst")}</p>
     {lines.length ? <dl className="mt-3 grid gap-2" data-testid="user-rights">{lines.map((line) => <Fact key={line.subject} label={subjectLabel(line.subject)}>{line.text}</Fact>)}</dl> : null}
     {deleting}
   </>;

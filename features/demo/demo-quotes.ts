@@ -334,7 +334,7 @@ function write(ctx: DemoQuoteContext, store: Store, body: Body) {
   const now = ctx.now.toISOString();
   const day = today(ctx);
   if (body.action === "settings") {
-    if (!ctx.admin) throw new DemoQuoteError(403, "Företagsadministratör krävs.");
+    if (!ctx.admin) throw new DemoQuoteError(403, "Bara en företagsadministratör kan göra det.");
     store.settings = priceSettingsSchema.parse(body.settings);
     return { settings: store.settings };
   }

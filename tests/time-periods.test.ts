@@ -110,3 +110,9 @@ test("the texts: clear Swedish, own or someone else's time; the audit line carri
   assert.equal(timePeriodAuditText("return", "RETURNED", "Elin", "2026-10"), "Skickade tillbaka tiden för Elin, oktober 2026.");
   assert.match(timePeriodAuditText("submit", "APPROVED", "Elin", "2026-10"), /ingen annan kan godkänna/);
 });
+
+test("reopening names the person in Swedish genitive: no extra s after s, x or z", () => {
+  assert.equal(timePeriodAuditText("reopen", "RETURNED", "Elin", "2026-10"), "Öppnade Elins tid för oktober 2026 igen.");
+  assert.equal(timePeriodAuditText("reopen", "RETURNED", "Elis Hammarström", "2026-10"), "Öppnade Elis Hammarströms tid för oktober 2026 igen.");
+  for (const name of ["Klas", "Max", "Inez"]) assert.equal(timePeriodAuditText("reopen", "RETURNED", name, "2026-10"), `Öppnade ${name} tid för oktober 2026 igen.`);
+});

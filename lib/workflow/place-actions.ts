@@ -59,7 +59,7 @@ export function placeActions({ selected, canEdit, canManage, maxDepth }: PlaceAc
   const newChild = canEdit ? {
     label: selected && selected.depth >= 1 ? "Nytt underobjekt" as const : "Nytt objekt" as const,
     ...onChosen(() => !selected!.isActive ? { enabled: false, reason: `${selected!.name} är pausad. Aktivera den först.` }
-      : selected!.depth + 1 >= maxDepth ? { enabled: false, reason: `Högst ${maxDepth} nivåer – här kan inget läggas till under.` }
+      : selected!.depth + 1 >= maxDepth ? { enabled: false, reason: `Högst ${maxDepth} nivåer. Här går det inte att lägga till något under.` }
       : { enabled: true }),
   } : null;
   const remove = canEdit ? onChosen(() => selected!.hasChildren ? { enabled: false, reason: "Ta först bort det som ligger under." }

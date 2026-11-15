@@ -66,7 +66,7 @@ export async function POST(request: Request) {
           removedFiles.push(...await removeMemberDataTx(tx, ctx.organizationId, command.userId));
           await tx.organizationMember.delete({ where: { id: membership.id } });
           await tx.user.updateMany({ where: { id: command.userId, activeOrganizationId: ctx.organizationId }, data: { activeOrganizationId: null } });
-          await tx.administrationEvent.create({ data: { actorId: ctx.user.id, organizationId: ctx.organizationId, action: "person_erased", detail: "En medarbetare togs bort ur företaget; personen har konto i ett annat företag, där uppgifterna finns kvar." } });
+          await tx.administrationEvent.create({ data: { actorId: ctx.user.id, organizationId: ctx.organizationId, action: "person_erased", detail: "En medarbetare togs bort ur företaget. Personen har konto i ett annat företag, där uppgifterna finns kvar." } });
           return { anonymised: false };
         }
         // The card is kept three months, like that of a member who is removed; the admin can delete it earlier under Egenkontroll.
@@ -78,7 +78,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true, ...result });
     }
 
-    if (ctx.user.role !== "SUPERADMIN") throw new ApiError(403, "Systemadministratör krävs.");
+    if (ctx.user.role !== "SUPERADMIN") throw new ApiError(403, "Bara installationens administratör kan göra det.");
     const company = await prisma.organization.findUnique({ where: { id: command.organizationId }, select: { id: true, name: true, slug: true, domain: true, isActive: true } });
     if (!company) throw new ApiError(404, "Företaget finns inte.");
     if (company.id === ctx.organizationId || isHintekOrganization(company)) throw new ApiError(403, "Installationens eget företag kan inte raderas här.");

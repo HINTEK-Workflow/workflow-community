@@ -608,7 +608,7 @@ function StatusCard({ status }: { status: AssistantStatus }) {
       {row("Direkta svar", status.chatAvailable, status.chatAvailable ? "Klara" : "Kräver Cloud")}
       {row("AI-modell", status.conditions.provider.ready, status.conditions.provider.ready ? "Klar" : "Av")}
       {row("Delningspolicy", status.conditions.sharingPolicy.ready, status.conditions.sharingPolicy.ready ? "Klar" : "Inte godkänd av företaget")}
-      {row("Kreditledger", status.conditions.creditLedger.healthy, status.conditions.creditLedger.healthy ? "Stämd" : "Avvikelse")}
+      {row("Kreditledger", status.conditions.creditLedger.healthy, status.conditions.creditLedger.healthy ? "Stämmer" : "Avvikelse")}
       {row("Tillgängliga krediter", status.conditions.availableCredits.available, status.conditions.availableCredits.available ? `${status.conditions.availableCredits.balance} kvar` : "Saknas")}
     </dl>
   </section>;
@@ -648,12 +648,12 @@ function AssistantMemory() {
     <summary className="cursor-pointer text-xs font-semibold">Minne – hur du vill ha svar</summary>
     <p className="mt-2 text-xs leading-5 text-muted-foreground">Korta anteckningar om hur du vill ha svar. Töm rutan och spara för att radera.</p>
     <label className="mt-3 grid gap-1 text-xs font-medium">Mitt minne
-      <textarea className="form-textarea min-h-20 text-sm" maxLength={memory.max} value={user} onChange={(event) => setUser(event.target.value)} placeholder="T.ex. Jag vill ha korta punktlistor och datum först." data-testid="memory-user" />
+      <textarea className="form-textarea min-h-20 text-sm" maxLength={memory.max} value={user} onChange={(event) => setUser(event.target.value)} placeholder="Till exempel: Jag vill ha korta punktlistor och datum först." data-testid="memory-user" />
     </label>
     <Button type="button" size="sm" variant="outline" className="mt-2" disabled={busy || user === memory.user} onClick={() => void save("USER", user)}>Spara mitt minne</Button>
     {memory.canEditCompany ? <>
       <label className="mt-3 grid gap-1 text-xs font-medium">Företagets minne
-        <textarea className="form-textarea min-h-20 text-sm" maxLength={memory.max} value={company} onChange={(event) => setCompany(event.target.value)} placeholder="T.ex. Vi arbetar med elinstallationer i Småland; projekt namnges efter gatuadress." data-testid="memory-company" />
+        <textarea className="form-textarea min-h-20 text-sm" maxLength={memory.max} value={company} onChange={(event) => setCompany(event.target.value)} placeholder="Till exempel: Vi arbetar med elinstallationer i Småland. Projekten namnges efter gatuadress." data-testid="memory-company" />
       </label>
       <Button type="button" size="sm" variant="outline" className="mt-2" disabled={busy || company === memory.company} onClick={() => void save("COMPANY", company)}>Spara företagets minne</Button>
     </> : memory.company ? <p className="mt-3 text-xs text-muted-foreground"><span className="font-medium text-foreground">Företagets minne:</span> {memory.company}</p> : null}

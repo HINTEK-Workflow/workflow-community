@@ -235,7 +235,7 @@ export function LegalPanel({
                     onClick={() => void acceptDocuments([document])}
                   >
                     {document.type === "PRIVACY"
-                      ? "Bekräfta att jag tagit del"
+                      ? "Bekräfta att jag har tagit del"
                       : document.scope === "ORGANIZATION"
                         ? "Godkänn för företaget"
                         : "Godkänn versionen"}

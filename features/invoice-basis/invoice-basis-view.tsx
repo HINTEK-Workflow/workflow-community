@@ -96,7 +96,7 @@ const invoiceLineHasContent = (line: InvoiceBasisLine, defaults: InvoicePriceDef
  */
 const workNote = (proposal: boolean) => proposal ? "Arbetet bakom den räknas ändå som fakturerat." : "Arbetet bakom den kan inte tas med i ett annat underlag.";
 function removeLineNote(proposal: boolean) {
-  return proposal ? `Raden tas inte med. ${workNote(proposal)}` : `Raden tas bort. ${workNote(proposal)} Vill du börja om, ta bort hela underlaget.`;
+  return proposal ? `Raden tas inte med. ${workNote(proposal)}` : `Raden tas bort. ${workNote(proposal)} Vill du börja om kan du ta bort hela underlaget.`;
 }
 
 function useInvoiceBasis(target: InvoiceBasisTarget | null, onChanged: () => void) {

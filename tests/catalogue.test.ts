@@ -93,7 +93,7 @@ test("rows that cannot be imported are listed with their row number; warnings do
     { line: 6, message: "negativt pris" },
     { line: 7, message: "prisenheten ”noll” kan inte läsas (ange t.ex. 1, 100 eller 1000)" },
     // Prisfiler etapp 1 (2026-10-12): two products under one number are reported as such, with the other name.
-    { line: 9, kind: "conflict", message: "samma artikelnummer som rad 8 men en annan produkt (”Dubblett”) – bara rad 8 importeras; kontrollera numret med leverantören" },
+    { line: 9, kind: "conflict", message: "samma artikelnummer som rad 8 men en annan produkt (”Dubblett”) – bara rad 8 importeras. Kontrollera numret med leverantören" },
   ]);
   assert.equal(parsed.total, 9, "the empty row is not counted");
   const odd = parsed.rows.find((row) => row.articleNo === "A-7")!;

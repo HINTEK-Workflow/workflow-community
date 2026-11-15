@@ -98,9 +98,9 @@ export function maxBranchLength(input: BranchLengthInput): EngineResult<BranchLe
   if (sourceOhm < 0.0001) issues.warn("sourceTiny", `Källans impedans är bara ${(sourceOhm * 1000).toPrecision(2)} mΩ. Kontrollera enheten (mΩ eller Ω).`);
   if (sourceOhm > 2) issues.warn("sourceLarge", `Källans impedans är ${sourceOhm.toPrecision(3)} Ω, vilket är högt för en matning. Kontrollera enheten (mΩ eller Ω).`);
   if (input.tripCurrentA < 1) issues.warn("tripSmall", "Utlösningsströmmen är under 1 A. Kontrollera värdet.");
-  if (input.requiredTimeS === undefined) issues.warn("noTime", "Kravtiden är inte angiven; kontrollera att Ia gäller den tid som krävs.");
-  if (input.returnAreaMm2 === undefined) issues.warn("returnAssumed", "Skyddsledarens area saknas; den antas vara lika stor som fasledarens.");
-  if ((input.parallel ?? 1) > 1 && input.returnParallel === undefined) issues.warn("returnParallelAssumed", "Antalet parallella skyddsledare saknas; det antas vara samma som fasledarna.");
+  if (input.requiredTimeS === undefined) issues.warn("noTime", "Kravtiden är inte angiven. Kontrollera att Ia gäller den tid som krävs.");
+  if (input.returnAreaMm2 === undefined) issues.warn("returnAssumed", "Skyddsledarens area saknas. Den antas vara lika stor som fasledarens.");
+  if ((input.parallel ?? 1) > 1 && input.returnParallel === undefined) issues.warn("returnParallelAssumed", "Antalet parallella skyddsledare saknas. Det antas vara samma som för fasledarna.");
   if (input.reactancePerM === undefined) issues.warn("reactanceSuggested", "Reaktans per meter är ett förslag (0,08 Ω/km). Ange kabelns eget värde.");
 
   const rPhase = resistancePerMeter(input, input.areaMm2);

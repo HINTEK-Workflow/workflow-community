@@ -133,7 +133,7 @@ function NewSeries({ connection, linkedin, logos, onChanged }: { connection: Met
   return <div className="space-y-4" data-testid="series-new">
     {confirmElement}
     <RhythmDialog open={editingRhythm} rhythm={rhythm} onClose={() => setEditingRhythm(false)} onSaved={(next) => { setEditingRhythm(false); setPlan((current) => ({ rhythm: next, taken: current?.taken ?? [] })); }} />
-    <PageHeader title="Ny serie" description="Flera inlägg med samma mall, logga, hashtaggar och kanaler. Tiderna följer er rytm. Inget publiceras förrän du schemalägger."
+    <PageHeader title="Ny serie" description="Flera inlägg med samma mall, logotyp, hashtaggar och kanaler. Tiderna följer er rytm. Inget publiceras förrän du schemalägger."
       actions={<>
         <PageBackButton href={POSTS_VIEW} label="Inlägg" testId="series-back" />
         <Button type="button" disabled={busy || Boolean(reason)} disabledReason={busy ? null : reason} onClick={() => void schedule()} data-testid="series-create"><CalendarCheck />{busy ? "Schemalägger…" : `Schemalägg ${count}`}</Button>

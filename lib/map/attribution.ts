@@ -12,7 +12,7 @@ export type MapStatus = { enabled: boolean; layer: MapLayer; minZoom: number; ma
 export const MAP_SOURCE_NAME = "Topografisk webbkarta Nedladdning, raster";
 export const MAP_LICENSE = "CC BY 4.0";
 export const MAP_LICENSE_URL = "https://creativecommons.org/licenses/by/4.0/";
-export const MAP_ATTRIBUTION_TEXT = `${MAP_SOURCE_NAME} ©Lantmäteriet, ${MAP_LICENSE}. Kartbilderna visas oförändrade; kartnålarna är tillagda i Workflow.`;
+export const MAP_ATTRIBUTION_TEXT = `${MAP_SOURCE_NAME} ©Lantmäteriet, ${MAP_LICENSE}. Kartbilderna visas oförändrade. Kartnålarna är tillagda i Workflow.`;
 
 /**
  * Källangivelse for the address lookup (2026-10-08): Belägenhetsadress Direkt is a separate product from the map,

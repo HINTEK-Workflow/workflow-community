@@ -63,7 +63,7 @@ export function publishBlock(connection: MetaView | null): string | null {
 /** Why nothing can be published to LinkedIn now, or null. */
 export function linkedInBlock(linkedin: LinkedInView | null): string | null {
   if (!linkedin || linkedin.status === "missing" || !linkedin.connected) return "Koppla LinkedIn under Kopplingar först.";
-  if (linkedin.status === "choose" || !linkedin.author) return "Välj var LinkedIn-inläggen ska under Kopplingar först.";
+  if (linkedin.status === "choose" || !linkedin.author) return "Välj var LinkedIn-inläggen ska publiceras under Kopplingar först.";
   if (linkedin.status === "invalid") return linkedin.statusMessage ?? "Kopplingen till LinkedIn fungerar inte. Koppla igen under Kopplingar.";
   if (!linkedin.publishingApproved) return "Publicering till LinkedIn är avstängd. Slå på den under Kopplingar.";
   return null;
@@ -190,7 +190,7 @@ function PostEditor({ post, connection, linkedin, newsletter, logos, metaBlock, 
     const ok = mode === "test"
       ? await confirm({ title: "Testpublicera?", message: `${testSteps} Inget syns för andra.`, confirmLabel: "Testa" })
       : await confirm({ title: "Publicera nu?", message: `Inlägget publiceras på ${where} och syns för alla.${story ? " Även som story." : ""} Det kan inte ångras härifrån.${mailing ? ` Skickas även som nyhetsbrev till ${mailing.recipients} mottagare.` : ""}`, confirmLabel: "Publicera",
-        checkbox: { label: mailing ? "Jag har läst texten, tittat på bilden och läst mejlet." : "Jag har läst texten och tittat på bilden.", required: true, testId: "post-publish-check" } });
+        checkbox: { label: mailing ? "Jag har läst texten, tittat på bilden och läst nyhetsbrevet." : "Jag har läst texten och tittat på bilden.", required: true, testId: "post-publish-check" } });
     if (!ok) return;
     if (dirty && !(await save())) return;
     setBusy(true); setMessage(null); setResult(null);

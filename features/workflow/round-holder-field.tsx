@@ -80,7 +80,7 @@ export function RoundHolderField({ value, period, onChange, onPeriod, onRound, r
         </div>
         <span className="block font-normal" data-testid="round-holder-period">{period.from && period.to ? `${period.from} – ${period.to}` : "Välj start och slut."}{periodError ? <span className="block text-destructive">{periodError}</span> : null}</span>
       </div>
-      <p className="text-xs text-muted-foreground md:col-span-2">Under perioden samlar arbetsordern alla rondtillfällen. Riskbedömningen görs här och gäller varje tillfälle; före varje tillfälle görs en kort säkerhetsavstämning.</p>
+      <p className="text-xs text-muted-foreground md:col-span-2">Under perioden samlar arbetsordern alla rondtillfällen. Riskbedömningen görs här och gäller varje tillfälle. Före varje tillfälle görs en kort säkerhetsavstämning.</p>
     </div> : null}
   </fieldset>;
 }

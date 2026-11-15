@@ -168,7 +168,7 @@ function NoticeCard({ item, today, reload, onOpen, onRead }: { item: TaskNotific
     <div className="flex flex-wrap items-center gap-1.5 text-xs">
       <span className="text-muted-foreground">{item.label ?? kindLabel[item.kind]}</span>
       {item.urgent ? <span data-testid="task-notification-urgent" className={cn("rounded-md border px-2 py-1 font-semibold", indicatorBadge("danger"))}>Akut</span> : null}
-      {item.deadline && <span className="rounded-md bg-amber-100 px-2 py-1 text-amber-950 dark:bg-amber-950 dark:text-amber-100">{item.kind === "ROUND" ? item.deadline === "OVERDUE" ? "Missad eller ej klar" : "Ska göras idag" : item.deadline === "OVERDUE" ? "Förfallen" : item.dueDate === today ? "Förfaller idag" : "Snart förfallande"}</span>}
+      {item.deadline && <span className="rounded-md bg-amber-100 px-2 py-1 text-amber-950 dark:bg-amber-950 dark:text-amber-100">{item.kind === "ROUND" ? item.deadline === "OVERDUE" ? "Missad eller inte klar" : "Ska göras i dag" : item.deadline === "OVERDUE" ? "Förfallen" : item.dueDate === today ? "Förfaller i dag" : "Snart förfallande"}</span>}
       {unreadKinds && !item.read ? <span data-testid="task-notification-unread" title="Oläst" className="size-2 rounded-full bg-primary"><span className="sr-only">Oläst</span></span>
         : item.kind === "FOLLOW_UP" ? <span className="rounded-md bg-primary/10 px-2 py-1 text-primary">Följ upp</span>
         : item.needsAction && <span className="rounded-md bg-muted px-2 py-1">Behöver åtgärdas</span>}
@@ -312,7 +312,7 @@ export function noticeDot(item: Pick<TaskNotification, "urgent" | "deadline" | "
 }
 /** What the notification is, in a few words ("Förfallen", "Tilldelad dig"), for the row's small line. */
 function noticeState(item: TaskNotification, today: string) {
-  if (item.deadline) return item.kind === "ROUND" ? item.deadline === "OVERDUE" ? "Missad eller ej klar" : "Ska göras i dag" : item.deadline === "OVERDUE" ? "Förfallen" : item.dueDate === today ? "Förfaller i dag" : "Snart förfallande";
+  if (item.deadline) return item.kind === "ROUND" ? item.deadline === "OVERDUE" ? "Missad eller inte klar" : "Ska göras i dag" : item.deadline === "OVERDUE" ? "Förfallen" : item.dueDate === today ? "Förfaller i dag" : "Snart förfallande";
   if (item.kind === "FOLLOW_UP") return "Följ upp";
   return item.needsAction ? "Behöver åtgärdas" : "";
 }

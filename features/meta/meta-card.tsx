@@ -42,7 +42,7 @@ export function MetaConnectSteps() {
         ett Facebookkonto som är administratör för företagets sida och registrera dig som utvecklare.</li>
       <li>Skapa en app av typen Företag (Business) och lägg till Facebook Login for Business.</li>
       <li>Ska inläggen även till Instagram: koppla företagets professionella Instagramkonto till Facebooksidan.</li>
-      <li>Fyll i Appinställningar → Grundläggande: namn, kontaktmejl, kategori, ikon och adresser till företagets integritetspolicy och användarvillkor.</li>
+      <li>Fyll i Appinställningar → Grundläggande: namn, e-postadress för kontakt, kategori, ikon och adresser till företagets integritetspolicy och användarvillkor.</li>
       <li>Ställ appläget på Live. I utvecklingsläge syns inläggen bara för appens egna användare.</li>
       <li>Öppna Graph API Explorer, välj appen och User Token, och kryssa i de sex behörigheterna: {SCOPE_LIST}. Tryck Generate Access Token och välj företagets Facebooksida och Instagramkonto.</li>
       <li>Klistra in appens id, appens hemlighet (Appinställningar → Grundläggande) och token här och tryck Spara. Workflow byter token mot en som gäller längre och hämtar sidans egen token.</li>

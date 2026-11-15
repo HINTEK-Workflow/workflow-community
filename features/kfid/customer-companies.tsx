@@ -203,12 +203,12 @@ export function CustomerCompanies() {
   const usersText = (company: CustomerCompany) => `${company.memberCount} användare${company.invitationCount ? ` · ${company.invitationCount} inbjudna` : ""}`;
   /** Återkalla: a sent invitation's link stops working at once, and a new one can then be prepared with the right address. */
   async function revokeOwnerInvitation(company: CustomerCompany, sent: boolean) {
-    if (!(await confirmCard({ title: "Återkalla admininbjudan?", message: sent ? `Länken i mejlet till ${company.preparedOwnerEmail ?? ""} slutar gälla direkt. Sedan kan du förbereda en ny inbjudan.` : `Den förberedda admininbjudan för ${company.name} återkallas. Inget mejl skickas.`, confirmLabel: "Återkalla", tone: "danger" }))) return;
+    if (!(await confirmCard({ title: "Återkalla admininbjudan?", message: sent ? `Länken i e-postmeddelandet till ${company.preparedOwnerEmail ?? ""} slutar gälla direkt. Sedan kan du förbereda en ny inbjudan.` : `Den förberedda admininbjudan för ${company.name} återkallas. Ingen e-post skickas.`, confirmLabel: "Återkalla", tone: "danger" }))) return;
     setBusy(true);
     setError("");
     try {
       await api("/api/superadmin/customer-companies", { method: "PATCH", body: JSON.stringify({ action: "revoke_owner", organizationId: company.id }) });
-      setNotice(sent ? "Inbjudan är återkallad. Länken i mejlet gäller inte längre." : "Den vilande admininbjudan har återkallats. Inget mejl skickades.");
+      setNotice(sent ? "Inbjudan är återkallad. Länken i e-postmeddelandet gäller inte längre." : "Den vilande admininbjudan har återkallats. Ingen e-post skickades.");
       setRevision((value) => value + 1);
     } catch (cause) { setError((cause as Error).message); }
     finally { setBusy(false); }
@@ -216,7 +216,7 @@ export function CustomerCompanies() {
   /** Skicka admininbjudan: the server decides again whether it may go out, inside the invitation's row lock. */
   async function sendOwnerInvitation(company: CustomerCompany, resend: boolean) {
     const email = company.preparedOwnerEmail ?? "";
-    if (!(await confirmCard({ title: resend ? "Skicka inbjudan igen?" : "Skicka inbjudan?", message: resend ? `Ett nytt mejl går till ${email}. Den tidigare länken slutar gälla.` : `Ett mejl går till ${email} med en länk för att bli administratör i ${company.name}.`, confirmLabel: resend ? "Skicka igen" : "Skicka" }))) return;
+    if (!(await confirmCard({ title: resend ? "Skicka inbjudan igen?" : "Skicka inbjudan?", message: resend ? `En ny inbjudan skickas till ${email}. Den tidigare länken slutar gälla.` : `En inbjudan skickas till ${email} med en länk för att bli administratör i ${company.name}.`, confirmLabel: resend ? "Skicka igen" : "Skicka" }))) return;
     setBusy(true);
     setError("");
     try {
@@ -285,9 +285,9 @@ export function CustomerCompanies() {
               <Button type="button" variant="outline" className="w-full sm:w-auto" disabled={busy || !invitationDelivery} data-testid="company-owner-resend" onClick={() => void sendOwnerInvitation(item, true)}>Skicka igen</Button>
               <Button type="button" variant="destructive" className="w-full sm:w-auto" disabled={busy} data-testid="company-owner-revoke" onClick={() => void revokeOwnerInvitation(item, true)}>Återkalla inbjudan</Button>
             </div>
-            {invitationDelivery ? null : <p className="mt-2 text-xs text-muted-foreground" data-testid="company-owner-delivery-off">Inbjudningsmejl är avstängda under Installation → E-post.</p>}
+            {invitationDelivery ? null : <p className="mt-2 text-xs text-muted-foreground" data-testid="company-owner-delivery-off">Inbjudningar via e-post är avstängda under Installation → E-post.</p>}
           </Panel> : null}
-          {!item.owner && item.ownerInvitationStatus !== "PENDING" ? <Panel icon={ShieldCheck} title="Admininbjudan" description={item.preparedOwnerEmail ? "Förberedd. Inget mejl har skickats." : "Sparas utan mejl."}><div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+          {!item.owner && item.ownerInvitationStatus !== "PENDING" ? <Panel icon={ShieldCheck} title="Admininbjudan" description={item.preparedOwnerEmail ? "Förberedd. Ingen e-post har skickats." : "Sparas utan att skickas."}><div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                 {item.preparedOwnerEmail ? <Button type="button" className="w-full sm:w-auto" disabled={busy || !invitationDelivery} data-testid="company-owner-send" onClick={() => void sendOwnerInvitation(item, false)}>Skicka inbjudan</Button> : null}
                 <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => {
                   setOwnerCompany(item);
@@ -296,7 +296,7 @@ export function CustomerCompanies() {
                   setOwnerOpen(true);
                 }}>{item.preparedOwnerEmail ? "Ändra admininbjudan" : "Förbered admininbjudan"}</Button>
                 {item.preparedOwnerEmail ? <Button type="button" variant="destructive" className="w-full sm:w-auto" disabled={busy} onClick={() => void revokeOwnerInvitation(item, false)}>Återkalla inbjudan</Button> : null}
-          </div>{item.preparedOwnerEmail && !invitationDelivery ? <p className="mt-2 text-xs text-muted-foreground" data-testid="company-owner-delivery-off">Inbjudningsmejl är avstängda under Installation → E-post.</p> : null}</Panel> : null}
+          </div>{item.preparedOwnerEmail && !invitationDelivery ? <p className="mt-2 text-xs text-muted-foreground" data-testid="company-owner-delivery-off">Inbjudningar via e-post är avstängda under Installation → E-post.</p> : null}</Panel> : null}
         </div>
         <div className="rounded-lg border border-destructive/40 p-3" data-testid="company-danger-zone">
                 <p className="text-xs font-semibold uppercase tracking-wide text-destructive">Farozon</p>
@@ -396,7 +396,7 @@ export function CustomerCompanies() {
         {/* Radera ett helt kundföretag (2026-10-03, GDPR): work data, files and personal data go; accounting stays. */}
         <ul className="mb-4 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
           <li>Kunder, projekt, uppgifter, kontroller, filer, formulär, AI-konversationer, inställningar och historik raderas.</li>
-          <li>Medlemmar som inte finns i något annat företag anonymiseras; övriga förlorar bara medlemskapet.</li>
+          <li>Medlemmar som inte finns i något annat företag anonymiseras. Övriga förlorar bara medlemskapet.</li>
           <li>{features.billing ? "Fakturor, betalningar, krediter och AI-användning sparas som bokföringsunderlag så länge lagen kräver." : "Uppgifter om AI-användning och godkända villkor sparas."}</li>
           <li>Backuper på servern innehåller företaget tills de har roterats bort.</li>
         </ul>
@@ -417,7 +417,7 @@ export function CustomerCompanies() {
       </Modal>
       {/* A page like Ny kund (the form's size decides: a popup on a computer, a page on a tablet, a screen on a phone). 2026-11-04. */}
       <DialogPage open={createOpen} onOpenChange={setCreateOpen} pageKey="nytt-kundforetag" title="Förbered kundföretag" panelTitle="Kundföretag" size="form"
-        description={`Företaget får ${features.billing ? "lokal lagring" : "lagring på servern"} från start. Inbjudan sparas utan mejl. Du blir inte medlem i företaget.`}>
+        description={`Företaget får ${features.billing ? "lokal lagring" : "lagring på servern"} från start. Inbjudan sparas utan att skickas. Du blir inte medlem i företaget.`}>
         <form className="space-y-4" noValidate onSubmit={async (event) => {
           event.preventDefault();
           setBusy(true);
@@ -428,7 +428,7 @@ export function CustomerCompanies() {
               ...(details.address.trim() ? { address: details.address } : {}), ...(details.postalCode.trim() ? { postalCode: details.postalCode } : {}), ...(details.city.trim() ? { city: details.city } : {}) }) });
             setCreateOpen(false);
             setForm({ details: blankCompanyDetails, ownerName: "", ownerEmail: "" });
-            setNotice("Kundföretaget och admininbjudan är förberedda. Inget mejl har skickats.");
+            setNotice("Kundföretaget och admininbjudan är förberedda. Ingen e-post har skickats.");
             setRevision((value) => value + 1);
           } catch (cause) {
             setFormError((cause as Error).message);
@@ -445,7 +445,7 @@ export function CustomerCompanies() {
         </form>
       </DialogPage>
       <Modal open={ownerOpen} onOpenChange={setOwnerOpen} title="Förbered admininbjudan" size="form">
-        <p className="mb-5 text-sm text-muted-foreground">{ownerCompany?.name}. Inbjudan sparas utan mejl och kan ändras eller återkallas. Du skickar den från företagets sida.</p>
+        <p className="mb-5 text-sm text-muted-foreground">{ownerCompany?.name}. Inbjudan sparas utan att skickas och kan ändras eller återkallas. Du skickar den från företagets sida.</p>
         <form className="space-y-4" onSubmit={async (event) => {
           event.preventDefault();
           if (!ownerCompany) return;
@@ -454,7 +454,7 @@ export function CustomerCompanies() {
           try {
             await api("/api/superadmin/customer-companies", { method: "PATCH", body: JSON.stringify({ action: "prepare_owner", organizationId: ownerCompany.id, ...ownerForm }) });
             setOwnerOpen(false);
-            setNotice("Admininbjudan är förberedd. Inget mejl har skickats.");
+            setNotice("Admininbjudan är förberedd. Ingen e-post har skickats.");
             setRevision((value) => value + 1);
           } catch (cause) { setFormError((cause as Error).message); }
           finally { setBusy(false); }

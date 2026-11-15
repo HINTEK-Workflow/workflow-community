@@ -42,7 +42,7 @@ export type SeriesPlan = { startDay: string; endDay: string; weekdays: readonly 
 export function seriesPlanProblem(plan: SeriesPlan): string | null {
   const start = utcDay(plan.startDay), end = utcDay(plan.endDay);
   if (!start || keyOf(start) !== plan.startDay || !end || keyOf(end) !== plan.endDay) return "Välj en giltig startdag.";
-  if (end.getTime() < start.getTime()) return "Perioden slutar före den börjar.";
+  if (end.getTime() < start.getTime()) return "Perioden slutar innan den börjar.";
   if (end.getTime() - start.getTime() > 100 * 86_400_000) return "En serie kan vara högst tre månader.";
   if (!plan.weekdays.length || plan.weekdays.some((day) => !Number.isInteger(day) || day < 0 || day > 6)) return "Välj minst en veckodag.";
   if (!TIME.test(plan.time)) return "Välj ett klockslag.";

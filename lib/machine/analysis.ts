@@ -93,7 +93,7 @@ export function analyse(events: readonly AnalysisEvent[], now: Date, tuningInput
     if (silence >= limit) findings.push({
       kind: "silent", dedupeKey: options.silent ? `silent:${options.silent.id}:${swedishDayKey(new Date(last))}` : `silent:${swedishDayKey(new Date(last))}`,
       title: options.silent ? `${options.silent.label} har tystnat`.slice(0, 200) : "Maskinen har tystnat",
-      basis: `Inget har hörts på ${Math.round(silence / HOUR)} timmar; den brukar höra av sig med ${minutes(median(gaps))} minuters mellanrum (gräns ${Math.round(limit / HOUR)} timmar).`,
+      basis: `Inget har hörts på ${Math.round(silence / HOUR)} timmar. Den brukar höra av sig med ${minutes(median(gaps))} minuters mellanrum (gräns ${Math.round(limit / HOUR)} timmar).`,
       stats: { silentHours: Math.round(silence / HOUR), typicalGapMinutes: minutes(median(gaps)), limitHours: Math.round(limit / HOUR) },
     });
   }

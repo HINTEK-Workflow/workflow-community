@@ -225,7 +225,7 @@ export async function GET(request: Request) {
     }
     // Older credit history for admins, one bounded page at a time (2026-09-26).
     if (action === "creditEntries") {
-      if (!ctx.admin) throw new ApiError(403, "Företagsadministratör krävs.");
+      if (!ctx.admin) throw new ApiError(403, "Bara en företagsadministratör kan göra det.");
       const before = new Date(url.searchParams.get("before") ?? "");
       const older = !ctx.wallet ? [] : await prisma.creditEntry.findMany({
         where: { walletId: ctx.wallet.id, ...(Number.isNaN(before.getTime()) ? {} : { createdAt: { lt: before } }) },

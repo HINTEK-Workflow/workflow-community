@@ -146,7 +146,7 @@ test("archiving a project: the admin and the responsible member by default, othe
 
 test("the preset Utföra arbete has no right to archive, and only Full åtkomst has", () => {
   for (const preset of workflowPermissionPresets) assert.equal(hasWorkflowPermission(preset.profile as never, "projects", "archive"), preset.id === "full", preset.id);
-  assert.match(workflowPermissionPresets.find((preset) => preset.id === "field")!.description, /arkiverar bara projekt där personen är ansvarig/);
+  assert.match(workflowPermissionPresets.find((preset) => preset.id === "field")!.description, /Arkiverar bara projekt som personen ansvarar för/);
   const route = read("app/api/projects/route.ts");
   assert.ok(route.includes("if (!canArchiveProject({ admin: ctx.admin"), "the server decides");
 });

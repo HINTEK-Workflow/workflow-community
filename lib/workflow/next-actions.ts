@@ -20,8 +20,8 @@ export const NEXT_REASONS = [
 export type NextReason = (typeof NEXT_REASONS)[number];
 
 export const NEXT_REASON_CHIP: Record<NextReason, string> = {
-  alarm: "Larm", urgent: "Akut", running: "Tiden går", overdue: "Förfallen", booked_today: "Bokad idag",
-  round_late: "Förfallen rond", round_today: "Rond idag", obstacle: "Hinder", needs_action: "Åtgärda",
+  alarm: "Larm", urgent: "Akut", running: "Tiden går", overdue: "Förfallen", booked_today: "Bokad i dag",
+  round_late: "Förfallen rond", round_today: "Rond i dag", obstacle: "Hinder", needs_action: "Åtgärda",
   immediate_deviation: "Avvikelse", in_progress: "Pågår", open: "Öppen",
 };
 

@@ -1688,6 +1688,15 @@ html[data-column] :is([data-testid="cookie-notice"], .cookie-corner) { display: 
 :is(.place-pane-panel, .place-tree-panel) > .panel-header > .panel-actions { flex-shrink: 1; min-width: 0; max-width: 100%; }
 /* A key card's status and buttons wrap inside the card on the narrowest phones instead of widening the page. */
 .panel-header > .panel-actions:has(> [data-testid="key-card-actions"]) { flex-shrink: 1; min-width: 0; max-width: 100%; }
+/* Mer längst ner (2026-11-14): key cards side by side in a KeyCardGrid are as tall as the row, and each card's foot –
+   Spara and the line with Mer – stands at its bottom, so they line up across the cards; the free room goes above the foot.
+   The grid's item and every wrapper between it and the card (SettingsPart, a card's own test wrapper) stretch with it. A card
+   alone is as tall as its content, so nothing changes there (features/integrations/key-card.tsx, its foot has mt-auto). */
+[data-key-card-grid] > li, [data-key-card-grid] > li div:has(.key-card) { display: flex; flex-direction: column; }
+[data-key-card-grid] > li > :has(.key-card), [data-key-card-grid] > li div:has(.key-card) > :has(.key-card) { flex: 1 1 auto; }
+[data-key-card-grid] .key-card { flex: 1 1 auto; height: auto; }
+.key-card { display: flex; flex-direction: column; }
+.key-card > .panel-content { display: flex; flex: 1 1 auto; flex-direction: column; }
 .place-tree-panel > .panel-header > .panel-heading { flex-basis: auto; }
 .place-loading { display: grid; min-height: 4rem; align-content: start; }
 /* The information card's overview (2026-10-24): the chosen level, how much lies under it and the jobs registered there –

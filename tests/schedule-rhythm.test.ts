@@ -98,17 +98,17 @@ test("the dialog refuses a time that has passed, a time that does not exist and 
   assert.equal(scheduleTimeProblem("2026-11-17T", now), "Välj dag och klockslag.");
 });
 
-test("the choice in words: Idag, Imorgon and the day's name", () => {
+test("the choice in words: I dag, I morgon and the day's name", () => {
   const now = new Date("2026-11-17T10:00:00Z"); // Tuesday
-  assert.equal(scheduleSentence(new Date("2026-11-18T07:00:00Z"), now), "Publiceras imorgon, onsdag 18 november kl. 08:00");
+  assert.equal(scheduleSentence(new Date("2026-11-18T07:00:00Z"), now), "Publiceras i morgon, onsdag 18 november kl. 08:00");
   assert.equal(scheduleSentence(new Date("2026-11-20T11:00:00Z"), now), "Publiceras fredag 20 november kl. 12:00");
   assert.equal(scheduleSentence(new Date("2027-01-04T07:00:00Z"), now), "Publiceras måndag 4 januari 2027 kl. 08:00");
-  assert.equal(dayHeading(new Date("2026-11-17T23:30:00Z"), now), "Imorgon", "23:30 UTC is already Wednesday in Sweden");
-  assert.equal(dayHeading(new Date("2026-11-17T15:00:00Z"), now), "Idag");
+  assert.equal(dayHeading(new Date("2026-11-17T23:30:00Z"), now), "I morgon", "23:30 UTC is already Wednesday in Sweden");
+  assert.equal(dayHeading(new Date("2026-11-17T15:00:00Z"), now), "I dag");
   assert.equal(dayHeading(new Date("2026-11-19T07:00:00Z"), now), "Torsdag 19 november");
   const days = quickDays(now, 7);
   assert.equal(days.length, 7);
-  assert.deepEqual(days.slice(0, 2), [{ day: "2026-11-17", label: "Idag" }, { day: "2026-11-18", label: "Imorgon" }]);
+  assert.deepEqual(days.slice(0, 2), [{ day: "2026-11-17", label: "I dag" }, { day: "2026-11-18", label: "I morgon" }]);
   assert.equal(days[2].day, "2026-11-19");
   assert.match(days[2].label, /^Tor 19$/);
 });

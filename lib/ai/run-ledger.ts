@@ -351,7 +351,7 @@ export async function markAiRunStarted(
   assertDate(now, "Starttiden");
   return prisma.$transaction(async (tx) => {
     const run = await lockedRun(tx, organizationId, runId);
-    if (run.actorId !== actorId) throw new Error("Endast körningens användare får starta den.");
+    if (run.actorId !== actorId) throw new Error("Bara körningens användare får starta den.");
     if (run.status === "RUNNING") return { run, started: false };
     if (run.status !== "RESERVED") throw new Error("AI-körningen kan inte startas i sitt nuvarande läge.");
     const updated = await tx.aiRun.update({
@@ -384,7 +384,7 @@ export async function settleAiRun(input: {
   return prisma.$transaction(async (tx) => {
     await lockedWallet(input.organizationId, tx);
     const run = await lockedRun(tx, input.organizationId, input.runId);
-    if (run.actorId !== input.actorId) throw new Error("Endast körningens användare får slutreglera den.");
+    if (run.actorId !== input.actorId) throw new Error("Bara körningens användare får slutreglera den.");
     if (run.status === "COMPLETED") {
       if (run.providerResponseId !== input.providerResponseId ||
           run.inputTokens !== input.usage.inputTokens ||
@@ -496,7 +496,7 @@ export async function compensateFailedAiRun(input: {
   return prisma.$transaction(async (tx) => {
     await lockedWallet(input.organizationId, tx);
     const run = await lockedRun(tx, input.organizationId, input.runId);
-    if (run.actorId !== input.actorId) throw new Error("Endast körningens användare får avsluta den.");
+    if (run.actorId !== input.actorId) throw new Error("Bara körningens användare får avsluta den.");
     if (run.status === "FAILED") {
       if (run.failureCode !== input.failureCode)
         throw new Error("AI-körningen är redan avslutad med en annan felkod.");

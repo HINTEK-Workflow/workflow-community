@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
  */
 async function superadmin() {
   const ctx = await context();
-  if (ctx.user.role !== "SUPERADMIN") throw new ApiError(403, "Systemadministratör krävs.");
+  if (ctx.user.role !== "SUPERADMIN") throw new ApiError(403, "Bara installationens administratör kan göra det.");
   return ctx;
 }
 

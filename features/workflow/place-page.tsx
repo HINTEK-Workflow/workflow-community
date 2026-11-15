@@ -296,7 +296,7 @@ export function PlacePage({ placeId, scanned }: { placeId: string; scanned: bool
         </ListGroup>
         {maintenance && place.attributes.length ? <ListGroup title="Tekniska värden" testId="place-attributes">{place.attributes.map((item, index) => <ListRow key={index} title={item.label} value={item.value || "–"} />)}</ListGroup> : null}
         {mapStatus && (place.position || data.pins?.length) ? <div className="mt-4 overflow-hidden rounded-[.875rem]" data-testid="place-page-map">
-          <PlaceMap status={mapStatus} label={`Karta: ${placeName(place)}`} hint={data.pins?.length ? "Nålarna för platserna under öppnar dem." : null}
+          <PlaceMap status={mapStatus} label={`Karta: ${placeName(place)}`} hint={data.pins?.length ? "Klicka på en nål för att öppna platsen under." : null}
             points={[
               ...(place.position ? [{ id: place.id, latitude: place.position.latitude, longitude: place.position.longitude, label: place.position.own ? place.path : `${place.positionFrom?.name ?? "Platsen ovanför"} (ärvd position)`, muted: !place.position.own }] : []),
               ...(data.pins ?? []).map((pin) => ({ ...pin, href: `/?view=place&placeId=${encodeURIComponent(pin.id)}` })),
@@ -356,7 +356,7 @@ export function PlacePage({ placeId, scanned }: { placeId: string; scanned: bool
     {due.length ? <Panel title={scanned && due.length > 1 ? "Vilken rond gör du?" : "Påbörjade ronder här"} description="Ronden öppnas vid den här platsens punkt, och skanningen noteras i protokollet." icon={Repeat}>
       <ul className="grid gap-2 sm:grid-cols-2" data-testid="place-rounds-due">
         {due.map((round) => <li key={round.id}><Button asChild variant="outline" className="h-auto w-full justify-start py-3 text-left"><Link href={roundHref(round, round.current!, place.id)}>
-          <CircleDashed className="shrink-0" /><span className="min-w-0"><span className="block truncate font-medium">{round.title}</span><span className="block truncate text-xs text-muted-foreground">{round.current!.state === "started" ? "Påbörjad" : occurrenceOverdue(round.current!) ? "Missad" : "Idag"} · {listPlaceLabel(round.facilityName, round.tempPlace)}</span></span>
+          <CircleDashed className="shrink-0" /><span className="min-w-0"><span className="block truncate font-medium">{round.title}</span><span className="block truncate text-xs text-muted-foreground">{round.current!.state === "started" ? "Påbörjad" : occurrenceOverdue(round.current!) ? "Missad" : "I dag"} · {listPlaceLabel(round.facilityName, round.tempPlace)}</span></span>
         </Link></Button></li>)}
       </ul>
     </Panel> : null}
@@ -387,7 +387,7 @@ export function PlacePage({ placeId, scanned }: { placeId: string; scanned: bool
         {maintenance && !placeHasObjectData(place) && editable ? <p className="mt-4 text-xs text-muted-foreground">Ingen objektdata ännu. Lägg till med Redigera.</p> : null}
       </Panel>
       {mapStatus && (place.position || data.pins?.length) ? <div data-testid="place-page-map">
-        <PlaceMap status={mapStatus} label={`Karta: ${placeName(place)}`} hint={data.pins?.length ? "Nålarna för platserna under öppnar dem." : null}
+        <PlaceMap status={mapStatus} label={`Karta: ${placeName(place)}`} hint={data.pins?.length ? "Klicka på en nål för att öppna platsen under." : null}
           points={[
             ...(place.position ? [{ id: place.id, latitude: place.position.latitude, longitude: place.position.longitude, label: place.position.own ? place.path : `${place.positionFrom?.name ?? "Platsen ovanför"} (ärvd position)`, muted: !place.position.own }] : []),
             ...(data.pins ?? []).map((pin) => ({ ...pin, href: `/?view=place&placeId=${encodeURIComponent(pin.id)}` })),

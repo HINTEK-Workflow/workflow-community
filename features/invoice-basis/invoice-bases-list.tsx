@@ -72,7 +72,7 @@ export function InvoiceBasesList({ personId = "", projects = [] }: { personId?: 
   };
   if (read.data?.denied) return <div className="space-y-5" data-testid="invoice-bases-list"><PageHeader title="Fakturaunderlag" /><NoAccess /></div>;
   return <div className="space-y-5" data-testid="invoice-bases-list" data-view={prefs.view} data-scope={scope}>
-    <PageHeader title="Fakturaunderlag" description="Belopp exkl. moms. Fakturerat är fakturerat i Workflow eller markerat fakturerat utanför." actions={CustomerInvoicesLink ? <CustomerInvoicesLink onNew={(start) => setTarget({ blank: start })} /> : undefined} />
+    <PageHeader title="Fakturaunderlag" description="Belopp exkl. moms. Fakturerat betyder fakturerat i Workflow eller markerat som fakturerat utanför." actions={CustomerInvoicesLink ? <CustomerInvoicesLink onNew={(start) => setTarget({ blank: start })} /> : undefined} />
     {error ? <p role="alert" className="notice text-destructive">{error}</p> : null}
     <ListFilterBar testId="invoice-bases"
       scope={{ value: scope, scopes: SCOPES, onChange: prefs.setScope }}

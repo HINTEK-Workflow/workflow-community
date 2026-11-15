@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     const ctx = await context();
     requireCloudStorage(ctx);
     await requireCloudWriteAccess(ctx);
-    if (Number(request.headers.get("content-length")) > 12_000_000) throw new ApiError(413, "Maximal filstorlek är 10 MB.");
+    if (Number(request.headers.get("content-length")) > 12_000_000) throw new ApiError(413, "Filen får vara högst 10 MB.");
     const form = await readLimitedFormData(request, 12_000_000);
     const deviationId = String(form.get("deviationId") || "").slice(0, 120);
     const phase = form.get("phase") === "AFTER" ? "AFTER" as const : "BEFORE" as const;

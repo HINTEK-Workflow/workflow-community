@@ -10,7 +10,7 @@ import type { WorkListScope } from "./work-list";
 // Alla last (Lika är rätt, 2026-11-13), as on Arbetsordrar and Inköp: right after Mina | Alla the word stood twice.
 export const ROUND_FILTERS = ["attention", "today", "missed", "paused", "all"] as const;
 export type RoundFilter = (typeof ROUND_FILTERS)[number];
-export const ROUND_FILTER_LABEL: Record<RoundFilter, string> = { all: "Alla", attention: "Behöver åtgärd", today: "Idag", missed: "Missade", paused: "Pausade" };
+export const ROUND_FILTER_LABEL: Record<RoundFilter, string> = { all: "Alla", attention: "Behöver åtgärd", today: "I dag", missed: "Missade", paused: "Pausade" };
 export const ROUND_SORTS = ["due", "title", "updated"] as const satisfies readonly ListSortKey[];
 export type RoundSort = (typeof ROUND_SORTS)[number];
 

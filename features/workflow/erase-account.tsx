@@ -33,7 +33,7 @@ export function EraseAccount() {
       <li>Inloggning, kopplade Google-konton och appar, dina egna AI-konversationer och dina inställningar raderas.</li>
       <li>Ditt kompetenskort i egenkontrollen sparas i tre månader som företagets dokumentation och raderas sedan. Fastställda versioner av egenkontrollprogrammet behåller ditt namn och din roll för spårbarheten.</li>
       <li>Är du ensam i ditt företag raderas företagets data också. Bokföringsunderlag sparas så länge lagen kräver.</li>
-      <li>Är du ensam ägare i ett företag med fler medlemmar: gör någon annan till ägare först.</li>
+      <li>Är du ensam ägare i ett företag med fler medlemmar måste du först göra någon annan till ägare.</li>
     </ul>
     <Button type="button" variant="destructive" className="mt-4" onClick={() => { setOpen(true); setError(""); }} data-testid="erase-account">Radera mitt konto</Button>
     <Modal open={open} onOpenChange={(next) => { if (!busy) setOpen(next); }} title="Radera ditt konto?" size="compact">

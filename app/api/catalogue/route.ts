@@ -176,7 +176,7 @@ export async function POST(request: Request) {
       const options = importSchema.parse(raw);
       if (options.kind === "rebate") {
         const read = await readRebateFile(file, todayInSweden());
-        if (!read) throw new ApiError(400, "Fel fil – det här är inget rabattbrev eller avtalsfil som kan läsas.");
+        if (!read) throw new ApiError(400, "Fel fil – det här är varken ett rabattbrev eller en avtalsfil som kan läsas.");
         return NextResponse.json(await importRebateFile(who, { supplier: options.supplier, fileName: file.name, text: await uploadedText(file), read }));
       }
       const format = formJson(form, "format", priceFormatSchema);

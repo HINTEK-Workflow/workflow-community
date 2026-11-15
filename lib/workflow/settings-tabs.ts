@@ -54,14 +54,14 @@ export function settingsTabDefs(options: SettingsTabOptions): SettingsTabDef[] {
       : "Företagsuppgifter, avtal, logotyp och rapporter.",
       { company_settings: null, ...(options.cloud ? { history_retention: "history" } : {}), ...(options.credits ? { credits: "billing" } : {}) }),
     // Användare (2026-11-02): the list, the person's own page and Bjud in; Säkerhet and Administrationshistorik under it.
-    tab("administration", "Användare", "Medarbetare, inbjudningar och rättigheter."),
+    tab("administration", "Användare", "Medarbetare, inbjudningar och behörigheter."),
     // Arbetssätt: the company's functions, prices and quotes (Cloud), Workflow AI (Cloud with AI) and the way to the values.
     tab("company_features", "Arbetssätt", [
       "Vilka funktioner företaget använder", pricesHere ? "priser och offert" : null, aiHere ? "Workflow AI" : null, "företagets värden",
     ].filter(Boolean).join(", ").replace(/, ([^,]+)$/, " och $1") + ".",
       { ...(aiHere ? { ai_settings: "ai" } : {}), ...(pricesHere ? { quote_settings: "prices" } : {}), company_values: null }),
     // Kopplingar (formerly Kopplingar och nycklar, before that Avancerat): the company's connections, each with its keys. Cloud.
-    ...(options.cloud && options.integrations ? [tab("advanced", "Kopplingar", "Bokföring, lön, maskiner, API och MCP samt webb och sociala medier – ett område i taget, med sina nycklar.",
+    ...(options.cloud && options.integrations ? [tab("advanced", "Kopplingar", "Bokföring, lön, maskiner, API och MCP, webb och sociala medier – ett område i taget, med sina nycklar.",
       { integrations: null })] : []),
     // Min webbsida (2026-11-10): the company's own WordPress pages, edited here; every company's admin, Cloud.
     ...(options.cloud ? [tab("company_website", "Min webbsida", "Företagets egen WordPress-webbplats: sidorna redigeras här.", { website_editor: null })] : []),
@@ -101,7 +101,7 @@ export function productTabDefs(options: ProductTabOptions): SettingsTabDef[] {
     tab("server_keys", "Tjänster och nycklar", options.pricing ? "Tjänster som Workflow använder och deras nycklar: betalning, AI, inloggning, grossister, e-post och kartor." : "Tjänster som Workflow använder och deras nycklar: AI, inloggning, grossister, e-post och kartor.", { services: null, mail_settings: "keys-email" }),
     // Drift och säkerhet: who may sign in and how, which mails are sent, web push, the superadmin's two steps and Visa som
     // (2026-10-15: here, not on Kundföretag); the installation's security log under Avancerat.
-    tab("login_settings", "Drift och säkerhet", "Vem som får logga in, automatiska mejl, webbpush, superadmins säkerhet, Visa som och servrarna.", { view_as: "view-as" }),
+    tab("login_settings", "Drift och säkerhet", "Vem som får logga in, automatisk e-post, webbpush, superadmins säkerhet, Visa som och servrarna.", { view_as: "view-as" }),
     // PDF-mallar (2026-11-03): the documents' texts, what is shown and in which order; the layout stays with the design.
     tab("pdf_templates", "PDF-mallar", "Klicka på en text i dokumentet och skriv."),
     // PLC-apparater (2026-11-06): the simulator's devices – picture, terminals and function from a fixed list.

@@ -96,7 +96,7 @@ export async function fulfillPaidCreditPurchase(
       where: { id: purchaseId, organizationId },
     });
     if (!purchase || purchase.status !== "PAID" || !purchase.paidAt || purchase.credits <= 0)
-      throw new Error("Endast verifierade, betalda kreditköp får tilldelas.");
+      throw new Error("Bara verifierade och betalda kreditköp får tilldelas.");
     const existing = await tx.creditLot.findUnique({ where: { purchaseId } });
     if (existing) {
       if (existing.walletId !== wallet.id || !purchase.creditEntryId)

@@ -250,13 +250,13 @@ export async function runRegisterSync(kind: RegisterRunKind, options: { maxPages
     const seen = new Set<string>();
     for (;;) {
       const page = await use.page({ limit: 1000, nextPage: nextPage || null, lastChanged, ignoreObsolete: kind === "full" });
-      if (!page.ok) return await finish(result(false, `${page.message} Hämtningen stoppades på sida ${count(pages + 1)}; inget av det som gäller ändrades.`, { pages, written, skipped }));
+      if (!page.ok) return await finish(result(false, `${page.message} Hämtningen stoppades på sida ${count(pages + 1)}. Inget av det som gäller ändrades.`, { pages, written, skipped }));
       pages += 1;
       written += await writePage(wholesaler, page.articles, runId, kind === "full" && !trial);
       skipped += page.skipped;
       // The heartbeat carries the counters for the card's progress line, and answers whether Avbryt was pressed.
       const beat = await prisma.wholesaleRegisterSync.update({ where: { wholesaler }, data: { runHeartbeatAt: use.now(), runPages: pages, runWritten: written }, select: { cancelRequestedAt: true } });
-      if (beat.cancelRequestedAt) return await finish(result(false, "Avbruten av produktägaren. Det som den här körningen lade till är borttaget; tidigare artiklar är orörda.", { pages, written, skipped, cancelled: true }));
+      if (beat.cancelRequestedAt) return await finish(result(false, "Avbruten av produktägaren. Det som den här körningen lade till är borttaget. Tidigare artiklar är orörda.", { pages, written, skipped, cancelled: true }));
       if (!page.nextPage || (trial && pages >= options.maxPages!)) break;
       if (seen.has(page.nextPage)) return await finish(result(false, "Solar gav samma sida två gånger – hämtningen avbröts.", { pages, written, skipped }));
       seen.add(page.nextPage);
@@ -281,6 +281,6 @@ export async function runRegisterSync(kind: RegisterRunKind, options: { maxPages
     return await finish(result(true, `${count(written)} artiklar hämtade (${count(pages)} sidor)${removed ? `, ${count(removed)} som Solar inte längre har togs bort` : ""}.${kept}`, { pages, written, removed, skipped, ...(retired ? { retired } : {}) }), { lastFullAt: startedAt, syncedFrom: startedAt });
   } catch (error) {
     const message = error instanceof Error ? error.message.slice(0, 200) : "okänt fel";
-    return finish(result(false, `Hämtningen stoppades av ett fel (${message}); inget av det som gäller ändrades.`, { pages, written, skipped }));
+    return finish(result(false, `Hämtningen stoppades av ett fel (${message}). Inget av det som gäller ändrades.`, { pages, written, skipped }));
   }
 }

@@ -74,10 +74,10 @@ function ProviderServicePart() {
         <dt className="text-muted-foreground">Adapter</dt><dd>{status.provider.adapter}</dd>
         <dt className="text-muted-foreground">Arkitektur</dt><dd>{status.provider.architecture}</dd>
         <dt className="text-muted-foreground">Behandlingsläge</dt><dd>{status.provider.processingMode}</dd>
-        <dt className="text-muted-foreground">DPA/rättslig grund</dt><dd>{status.provider.dpaApproved ? "Bekräftad" : "Ej bekräftad"}</dd>
+        <dt className="text-muted-foreground">DPA/rättslig grund</dt><dd>{status.provider.dpaApproved ? "Bekräftad" : "Inte bekräftad"}</dd>
         <dt className="text-muted-foreground">Nyckel</dt><dd>{status.provider.configured ? "Finns" : "Saknas"}</dd>
         <dt className="text-muted-foreground">Normalt leverantörsläge</dt><dd>{status.provider.enabled ? "Aktivt" : "Avstängt"}</dd>
-        <dt className="text-muted-foreground">Provider-eval</dt><dd>{status.provider.providerEvalApproved ? "Godkänd" : "Ej godkänd"}</dd>
+        <dt className="text-muted-foreground">Provider-eval</dt><dd>{status.provider.providerEvalApproved ? "Godkänd" : "Inte godkänd"}</dd>
         <dt className="text-muted-foreground">Providerlagring</dt><dd>{status.provider.providerStateStored ? "På" : "store:false"}</dd>
       </dl>
       <div className="rounded-xl border p-4">

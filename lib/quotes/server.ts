@@ -45,7 +45,7 @@ export async function readPriceSettings(organizationId: string): Promise<PriceSe
 
 /** Only the company's admin changes the settings (Inställningar → Priser och offert). */
 export async function writePriceSettings(caller: Pick<QuoteCaller, "organizationId" | "admin">, input: unknown): Promise<PriceSettings> {
-  if (!caller.admin) throw new ApiError(403, "Företagsadministratör krävs.");
+  if (!caller.admin) throw new ApiError(403, "Bara en företagsadministratör kan göra det.");
   const settings = priceSettingsSchema.parse(input);
   // What the company has decided per type of time lives in the same column (beslut 8) and is changed under Tid: it stays.
   const row = await prisma.workspaceSettings.findUnique({ where: { organizationId: caller.organizationId }, select: { priceSettings: true } });

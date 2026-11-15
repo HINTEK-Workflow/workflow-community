@@ -38,7 +38,7 @@ export function QuoteExportMenu({ quote, disabled }: { quote: { id: string; labe
   const accepted = quote.status === "ACCEPTED";
   return <>
     <ExportMenu testId="quote-export" title={`Exportera offert ${quote.label}`} disabled={disabled}
-      description={FORTNOX_CONNECTION_READY ? `CSV ger en rad per offertrad. Fortnox gäller en accepterad offert; konton anges under ${ACCOUNTS_PLACE}. Till bokföringen går det godkända fakturaunderlaget.` : "CSV ger en rad per offertrad. Till bokföringen går det godkända fakturaunderlaget."}
+      description={FORTNOX_CONNECTION_READY ? `CSV ger en rad per offertrad. Fortnox gäller en accepterad offert, och kontona anges under ${ACCOUNTS_PLACE}. Till bokföringen går det godkända fakturaunderlaget.` : "CSV ger en rad per offertrad. Till bokföringen går det godkända fakturaunderlaget."}
       formats={[csvFormat(() => [quote.id]),
         ...(FORTNOX_CONNECTION_READY ? [{ id: "quote-fortnox", label: "Fortnox …", icon: Send, disabled: !accepted, hint: accepted ? undefined : "Fortnox tar emot en accepterad offert.", run: () => setFortnox(true) }] : [])]} />
     {FORTNOX_CONNECTION_READY && fortnox ? <FortnoxDialog endpoint="/api/quotes/export" id={quote.id} onClose={() => setFortnox(false)}

@@ -45,7 +45,7 @@ const view = (settings: AiCreditSettings, creditFloorValueOre: number) => {
 export async function GET() {
   try {
     const ctx = await context();
-    if (ctx.user.role !== "SUPERADMIN") throw new ApiError(403, "Systemadministratör krävs.");
+    if (ctx.user.role !== "SUPERADMIN") throw new ApiError(403, "Bara installationens administratör kan göra det.");
     return NextResponse.json(view(await readAiCreditSettings(), await aiCreditValueOre()));
   } catch (error) {
     return failure(error);
@@ -65,7 +65,7 @@ export async function POST(request: Request) {
   try {
     checkOrigin(request);
     const ctx = await context();
-    if (ctx.user.role !== "SUPERADMIN") throw new ApiError(403, "Systemadministratör krävs.");
+    if (ctx.user.role !== "SUPERADMIN") throw new ApiError(403, "Bara installationens administratör kan göra det.");
     const input = inputSchema.parse(await body(request));
     const before = await readAiCreditSettings();
     const usdSek = Math.round(input.usdSek * 100) / 100;

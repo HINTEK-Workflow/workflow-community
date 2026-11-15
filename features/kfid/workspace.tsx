@@ -747,7 +747,7 @@ export function Workspace({
         {localMode ? <div className="space-y-6"><UpgradeToCloud admin={shownAdmin} />{shownAdmin && BillingRead ? <BillingRead /> : null}</div> : <div>
           {/* Saldot och Köp krediter är två vanliga kort i sidans rutnät (2026-11-12: inga kort i kort, ingen färgad ruta). */}
           <KeyCardGrid label="Krediter" testId="credit-grid">
-            <li className="min-w-0"><Panel className="h-full" icon={Sparkles} title="Kreditsaldo" description="Krediter används endast för aktiverade AI-funktioner.">
+            <li className="min-w-0"><Panel className="h-full" icon={Sparkles} title="Kreditsaldo" description="Krediter används bara för AI-funktioner som är påslagna.">
               {/* Verkligt saldo (2026-10-28): expired lots are left out at once, not only after the nightly sweep. */}
               <p className="text-4xl font-semibold tracking-tight" data-testid="credit-balance">
                 {creditTile.balance}
@@ -865,7 +865,7 @@ export function Workspace({
   // Avancerat, and the site map as a part of its own above it (2026-10-24; ?section=sitemap scrolls to it). The keys are under Tjänster och nycklar.
   else if (view === "login_settings" || view === "view_as")
     content = user?.role === "SUPERADMIN" ? <div className="space-y-6">
-      {heading("Drift och säkerhet", "Vem som får logga in, automatiska mejl, webbpush, superadmins säkerhet, Visa som och servrarna.")}
+      {heading("Drift och säkerhet", "Vem som får logga in, automatisk e-post, webbpush, superadmins säkerhet, Visa som och servrarna.")}
       <LoginSettings notify={notify} />
       <SettingsPart id="mail"><MailSettings notify={notify} part="delivery" /></SettingsPart>
       <SettingsPart id="push"><PushSettings notify={notify} /></SettingsPart>
@@ -950,7 +950,7 @@ export function Workspace({
   }
   else if (view === "landing_editor")
     // The landing editor lives in ee/ (Fas 2); without it page.tsx never opens this view.
-    content = user?.role === "SUPERADMIN" && LandingEditor ? <LandingEditor /> : <Panel title="Inte i den här installationen"><p className="text-sm text-muted-foreground">Landningssidan redigeras av installationens superadmin.</p></Panel>;
+    content = user?.role === "SUPERADMIN" && LandingEditor ? <LandingEditor /> : <Panel title="Bara för Workflow"><p className="text-sm text-muted-foreground">Landningssidan redigeras av installationens superadmin.</p></Panel>;
   else if (view === "company_website")
     // Min webbsida (2026-11-10): every company's admin edits its own WordPress pages; Cloud. The server checks the role on every call.
     content = localMode ? <ViewRequirement text="Min webbsida finns bara med serverlagring." cloudLink={shownAdmin} /> : <WebsiteEditor />;
@@ -966,7 +966,7 @@ export function Workspace({
     content = ImportPage && overview?.organization.storageMode !== "LOCAL" ? <ImportPage canBuildForms={Boolean(overview?.admin)}
       // Prisfilerna bara för den som får importera artiklar (2026-10-24); servern nekar de andra.
       canImportArticles={Boolean(overview?.admin) || hasWorkflowPermission(normalizeWorkflowPermissionProfile(user?.workflowPermissions), "catalogue", "edit")} />
-      : <Panel icon={Upload} title="Import"><p className="text-sm text-muted-foreground">Import finns i serverlagring. I Local ligger dina data i den egna filen; använd Lagring för att öppna eller läsa in en fil.</p></Panel>;
+      : <Panel icon={Upload} title="Import"><p className="text-sm text-muted-foreground">Import finns i serverlagring. I Local ligger dina data i den egna filen. Använd Lagring för att öppna eller läsa in en fil.</p></Panel>;
   // Platser etapp 3 (2026-10-04): a place with its history (what a QR label opens) and the label sheet; Cloud.
   else if (view === "place" && overview?.organization.storageMode !== "LOCAL")
     content = <PlaceFromAddress />;
@@ -987,7 +987,7 @@ export function Workspace({
     && !overview.admin && !hasWorkflowPermission(normalizeWorkflowPermissionProfile(user?.workflowPermissions), taskType === "RISK_ASSESSMENT" ? "risk-assessment" : "work-order", "create"))
     content = <div className="space-y-4">
       <PageHeader title={taskType === "RISK_ASSESSMENT" ? "Ny riskbedömning" : "Ny arbetsorder"} />
-      <p className="notice" role="status">Du saknar behörighet att skapa {taskType === "RISK_ASSESSMENT" ? "riskbedömningar" : "arbetsorder"}. En företagsadministratör kan ändra dina modulrättigheter.</p>
+      <p className="notice" role="status">Du saknar behörighet att skapa {taskType === "RISK_ASSESSMENT" ? "riskbedömningar" : "arbetsorder"}. En företagsadministratör kan ändra dina behörigheter.</p>
     </div>;
   else if (view === "workflow_task" && overview?.organization.storageMode !== "LOCAL" && overview)
     content = <WorkflowTaskEditor
@@ -1188,7 +1188,7 @@ export function Workspace({
                 {!localMode && !user?.viewAs && (!native || workView?.view) ? <div className="flex flex-wrap items-center justify-between gap-3" data-testid="work-view-settings">
                   <div className="min-w-0">
                     <p className="text-sm font-medium">Arbetsvy: {workView?.view ? WORK_VIEW_LABEL[workView.view] : "ingen vald"}</p>
-                    <p className="text-xs leading-5 text-muted-foreground">{workView?.view ? `${profileInForce.own ? "Följer din yrkesprofil." : "Vald av administratören."} ${WORK_VIEW_DESCRIPTION[workView.view]} Du kan visa mer eller mindre här; det ändrar aldrig vad du får göra.` : "Administratören har inte valt någon arbetsvy åt dig. Standard är appvyn på mobil, Lagom på surfplatta och Allt på dator."}</p>
+                    <p className="text-xs leading-5 text-muted-foreground">{workView?.view ? `${profileInForce.own ? "Följer din yrkesprofil." : "Vald av administratören."} ${WORK_VIEW_DESCRIPTION[workView.view]} Du kan visa mer eller mindre här. Det ändrar aldrig vad du får göra.` : "Administratören har inte valt någon arbetsvy åt dig. Standard är appvyn på mobil, Lagom på surfplatta och Allt på dator."}</p>
                   </div>
                   <Button type="button" variant="outline" data-testid="work-view-reset" onClick={() => {
                     forgetWorkListScopes(user?.id ?? "");
@@ -1239,7 +1239,7 @@ export function Workspace({
                 {/* Beslutsstöd (2026-10-01): how often tips appear under the progress line; saved at once. */}
                 {/* No inner heading with a grey line (UX-punkt 6, 2026-10-22): the card says Tips och förslag already. */}
                 <NativeScreen show={["advisor"]}><div className="space-y-3" role="group" aria-label="Tips i arbetsflödet" data-testid="advisor-settings">
-                  <p className="text-xs text-muted-foreground">Under progressionslinjen visas ibland ett tips om nästa steg. Tipsen bygger på regler i Workflow och kostar inga krediter; bara knappen Fråga Workflow AI använder AI.</p>
+                  <p className="text-xs text-muted-foreground">Under progressionslinjen visas ibland ett tips om nästa steg. Tipsen bygger på regler i Workflow och kostar inga krediter. Bara knappen Fråga Workflow AI använder AI.</p>
                   <AdvisorLevelPicker level={preferences.advisor.level} name="advisor-level-settings" onChange={(level) => void saveAdvisor({ ...preferences.advisor, level })} />
                   {preferences.advisor.muted.length ? <Button type="button" size="sm" variant="outline" onClick={() => void saveAdvisor({ ...preferences.advisor, muted: [] })}>Visa avstängda tips igen ({preferences.advisor.muted.length})</Button> : null}
                 </div></NativeScreen>
@@ -1396,7 +1396,7 @@ export function Workspace({
             : <p>Workflow körs helt från den här installationen och hämtar inga skript, typsnitt eller bilder från andra webbplatser. Produktbilder hämtas av vår server, inte av din webbläsare.</p>}
           {/* Beteendeanalys (2026-10-07): what is counted, said plainly. */}
           <p>Installationen kan räkna vilka sidor och funktioner som används, anonymt per dag: ingen person, inget företag, ingen IP-adress och ingen webbläsare kopplas till en räkning, och inga kakor sätts i appen. På publika sidor (startsidan, Skapa konto) mäts bara besökare som själva har valt Tillåt statistik i kakrutan, och valet ändras när som helst med kakknappen.</p>
-          <p>Kartan (när installationen har den): {MAP_SOURCE_NAME}, ©Lantmäteriet. Licens <a className="underline" href={MAP_LICENSE_URL} target="_blank" rel="noopener noreferrer">{MAP_LICENSE}</a>. Kartbilderna hämtas och lagras av installationens server och visas oförändrade; kartnålarna är tillagda i Workflow. Kartvisaren är Leaflet (BSD-2).</p>
+          <p>Kartan (när installationen har den): {MAP_SOURCE_NAME}, ©Lantmäteriet. Licens <a className="underline" href={MAP_LICENSE_URL} target="_blank" rel="noopener noreferrer">{MAP_LICENSE}</a>. Kartbilderna hämtas och lagras av installationens server och visas oförändrade. Kartnålarna läggs till av Workflow. Kartvisaren är Leaflet (BSD-2).</p>
           {/* Copyright precaution (2026-10-06): every package's licence beside the map's credit. */}
           <p>Workflow bygger på programvara med öppen källkod. <a className="underline" href="/third-party-licenses.txt" target="_blank" rel="noopener noreferrer" data-testid="third-party-licenses">Tredjepartslicenser</a> listar paketen och typsnitten med licenser och licenstexter.</p>
         </div>

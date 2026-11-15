@@ -30,7 +30,7 @@ export function MyAppConnections({ notify }: { notify: NotifyFn }) {
     catch (cause) { notify((cause as Error).message, true); } finally { setBusy(false); }
   };
   const origin = typeof window === "undefined" ? "" : window.location.origin;
-  return <Panel title="Anslutna appar" description="AI-appar som ChatGPT som du har gett åtkomst till Workflow. De arbetar med dina rättigheter och bara med det du godkände."
+  return <Panel title="Anslutna appar" description="AI-appar, till exempel ChatGPT, som du har gett åtkomst till Workflow. De arbetar med din behörighet och bara med det du har godkänt."
     icon={Bot}>
     <div className="space-y-3 text-sm" data-testid="my-app-connections">
       {connections?.length ? <ul className="divide-y rounded-lg border">

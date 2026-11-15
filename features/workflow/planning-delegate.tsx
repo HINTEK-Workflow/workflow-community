@@ -50,7 +50,7 @@ export function PlanningDelegateRow({ project, members, canHandOver, onChanged }
     {problem && !open ? <p role="alert" className="text-sm text-destructive">{problem}</p> : null}
     <Modal open={open} onOpenChange={(next) => { if (!busy) setOpen(next); }} title="Lämna över bokningsrätten" size="compact">
       <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); if (choice) void save(choice); }}>
-        <p className="text-sm leading-6 text-muted-foreground">Ställföreträdaren får ändra andras bokningar i projektet, till exempel när projektansvarig är sjuk. Kan tas tillbaka när som helst.</p>
+        <p className="text-sm leading-6 text-muted-foreground">Ställföreträdaren får ändra andras bokningar i projektet, till exempel när projektansvarig är sjuk. Rätten kan tas tillbaka när som helst.</p>
         <label className="field-stack text-xs font-medium text-muted-foreground">Ställföreträdare
           <select className="form-select" data-testid="project-planning-delegate-select" value={choice} onChange={(event) => setChoice(event.target.value)}>
             <option value="">Välj person</option>

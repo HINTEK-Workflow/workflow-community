@@ -29,7 +29,7 @@ import { companyProfileSchema as profile } from "@/lib/kfid/company";
 import { formatOrgNumber, looksLikePersonalNumber, normalizeOrgNumber, normalizePersonalNumber } from "@/lib/kfid/org-number";
 async function administrator() {
   const ctx = await context();
-  if (!ctx.admin) throw new ApiError(403, "Företagsadministratör krävs.");
+  if (!ctx.admin) throw new ApiError(403, "Bara en företagsadministratör kan göra det.");
   return ctx.user;
 }
 async function access(
@@ -48,7 +48,7 @@ async function access(
     where: { organizationId_userId: { organizationId, userId } },
   });
   if (!m || !m.isActive || m.role === "MEMBER")
-    throw new ApiError(403, "Företagsadministratör krävs.");
+    throw new ApiError(403, "Bara en företagsadministratör kan göra det.");
 }
 export async function GET(request: Request) {
   try {
@@ -217,7 +217,7 @@ export async function POST(request: Request) {
         if (user.role !== "SUPERADMIN" && old?.isActive !== isActive)
           throw new ApiError(
             403,
-            "Endast systemadministratören kan pausa företag.",
+            "Bara systemadministratören kan pausa företag.",
           );
         if (
           user.role !== "SUPERADMIN" &&
@@ -226,7 +226,7 @@ export async function POST(request: Request) {
         )
           throw new ApiError(
             403,
-            "Endast systemadministratören kan ändra lagringsmodell.",
+            "Bara systemadministratören kan ändra lagringsmodell.",
           );
         if (
           old?.storageMode === "HINTEK_CLOUD" &&
@@ -429,7 +429,7 @@ export async function POST(request: Request) {
             },
           });
           if (!revoked.count)
-            throw new ApiError(409, "Inbjudan har redan ändrat status.");
+            throw new ApiError(409, "Inbjudans status har redan ändrats.");
           await tx.administrationEvent.create({
             data: {
               actorId: user.id,

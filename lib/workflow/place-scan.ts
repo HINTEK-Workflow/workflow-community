@@ -85,7 +85,7 @@ export function scanStarts(rounds: readonly ScanRound[], placeId: string, today:
 
 /** The question for one round to start: planned today, or an extra round. */
 export function scanStartQuestion(start: Pick<ScanStart, "title" | "today">): string {
-  return start.today ? `${start.title} ska göras i dag – Starta ronden?` : "Starta en extra rond?";
+  return start.today ? `${start.title} ska göras i dag. Starta ronden?` : "Starta en extra rond?";
 }
 
 /**

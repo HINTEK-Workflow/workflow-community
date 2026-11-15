@@ -101,10 +101,10 @@ export function sizeCable(input: CableSizingInput): EngineResult<CableSizingResu
     issues.positive(row.izA, "ratingIz", "Strömvärdet Iz i tabellen");
   }
   if (issues.errors.length) return issues.fail();
-  if (input.protectiveRatedA !== undefined && input.protectiveRatedA < input.loadCurrentA) issues.warn("ratedBelowLoad", "Skyddets märkström är lägre än belastningsströmmen; det löser ut i normal drift.");
-  if (!input.ratings?.length) issues.warn("noRatings", "Ingen strömvärdestabell angiven; kabelarean utifrån strömvärde kan inte väljas. Ange Iz per area.");
-  if (input.maxDropPercent === undefined) issues.warn("noDropLimit", "Tillåtet spänningsfall är inte angivet; spänningsfallet kontrolleras inte.");
-  if (!input.shortCircuit) issues.warn("noShortCircuit", "Kortslutningsdata saknas; kortslutningsståligheten kontrolleras inte.");
+  if (input.protectiveRatedA !== undefined && input.protectiveRatedA < input.loadCurrentA) issues.warn("ratedBelowLoad", "Skyddets märkström är lägre än belastningsströmmen. Skyddet löser ut i normal drift.");
+  if (!input.ratings?.length) issues.warn("noRatings", "Ingen tabell med strömvärden är angiven, så kabelarean kan inte väljas efter strömvärdet. Ange Iz per area.");
+  if (input.maxDropPercent === undefined) issues.warn("noDropLimit", "Tillåtet spänningsfall är inte angivet, så spänningsfallet kontrolleras inte.");
+  if (!input.shortCircuit) issues.warn("noShortCircuit", "Kortslutningsdata saknas, så kortslutningsståligheten kontrolleras inte.");
 
   const factor = input.deratingFactor ?? 1;
   if (factor > 1) issues.warn("factorAboveOne", "Korrektionsfaktorn är över 1, vilket höjer strömvärdet. Kontrollera värdet.");

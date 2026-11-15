@@ -83,7 +83,7 @@ export function spreadQueue(postIds: readonly string[], rhythm: Rhythm, options:
   const problem = rhythmProblem(rhythm);
   if (problem) return { error: problem };
   const slots = rhythmSlots(rhythm, { count: postIds.length, ...options });
-  if (slots.length < postIds.length) return { error: "Det finns inte tider nog inom ett år. Välj fler veckodagar." };
+  if (slots.length < postIds.length) return { error: "Det finns inte tillräckligt många tider inom ett år. Välj fler veckodagar." };
   return postIds.map((postId, index) => ({ postId, at: slots[index] }));
 }
 
@@ -131,16 +131,16 @@ export function dayText(at: Date, now = new Date()) {
 /** "Idag", "Imorgon" or "Onsdag 19 november" – a day's heading in the list. */
 export function dayHeading(at: Date, now = new Date()) {
   const day = swedishDayKey(at);
-  if (day === dayAfter(now, 0)) return "Idag";
-  if (day === dayAfter(now, 1)) return "Imorgon";
-  if (day === dayAfter(now, -1)) return "Igår";
+  if (day === dayAfter(now, 0)) return "I dag";
+  if (day === dayAfter(now, 1)) return "I morgon";
+  if (day === dayAfter(now, -1)) return "I går";
   return capital(dayText(at, now));
 }
 
 /** "Publiceras onsdag 12 november kl. 08:00" (idag/imorgon by name). */
 export function scheduleSentence(at: Date, now = new Date()) {
   const heading = dayHeading(at, now);
-  const day = heading === "Idag" || heading === "Imorgon" ? `${heading.toLowerCase()}, ${dayText(at, now)}` : dayText(at, now);
+  const day = heading === "I dag" || heading === "I morgon" ? `${heading.toLowerCase()}, ${dayText(at, now)}` : dayText(at, now);
   return `Publiceras ${day} kl. ${clock(at)}`;
 }
 
@@ -149,7 +149,7 @@ export function quickDays(now = new Date(), count = 7): { day: string; label: st
   return Array.from({ length: count }, (_, offset) => {
     const at = addSwedishDays(startOfSwedishDay(now), offset);
     const day = swedishDayKey(at);
-    const label = offset === 0 ? "Idag" : offset === 1 ? "Imorgon" : `${capital(WEEKDAY_TEXT[weekdayOf(day)])} ${Number(day.slice(8))}`;
+    const label = offset === 0 ? "I dag" : offset === 1 ? "I morgon" : `${capital(WEEKDAY_TEXT[weekdayOf(day)])} ${Number(day.slice(8))}`;
     return { day, label };
   });
 }

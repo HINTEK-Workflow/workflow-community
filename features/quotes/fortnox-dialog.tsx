@@ -78,8 +78,8 @@ export function FortnoxDialog({ endpoint, id, intro, notes, onSent, onClose, tes
   const customerProblem = fortnoxCustomerNumberProblem(customerNumber);
   const blockers = status?.blockers ?? [];
   const previewIssues = preview ? preview.issues.filter((issue) => !blockers.includes(issue)) : [];
-  const previewReason = !status ? "Kontrollerar vad som behövs …" : customerProblem;
-  const sendReason = !status ? "Kontrollerar vad som behövs …" : blockers[0] || customerProblem || previewIssues[0] || (!preview?.payload ? "Tryck på Visa vad som skickas först." : "");
+  const previewReason = !status ? "Kontrollerar vad som behövs…" : customerProblem;
+  const sendReason = !status ? "Kontrollerar vad som behövs…" : blockers[0] || customerProblem || previewIssues[0] || (!preview?.payload ? "Tryck på Visa vad som skickas först." : "");
   const sendReasonShown = !sendReason ? "" : blockers.includes(sendReason) ? "blockers" : sendReason === previewReason ? "preview" : previewIssues.includes(sendReason) ? "issues" : "here";
   const invoice = preview?.payload?.Invoice;
   // The invoice to be sent can be long: larger than the popup ceiling (Popupstorlek, 2026-10-13), so a page on
@@ -89,7 +89,7 @@ export function FortnoxDialog({ endpoint, id, intro, notes, onSent, onClose, tes
       <p className="text-sm leading-6 text-muted-foreground">{intro}</p>
       <CompanyGapsWarning />
       {notes?.map((note) => <p key={note.text} className="text-xs leading-5 text-muted-foreground" data-testid={note.testId}>{note.text}</p>)}
-      {!status ? <p role="status" className="flex items-center gap-2 text-xs text-muted-foreground"><LoaderCircle className="size-3.5 animate-spin" />Kontrollerar vad som behövs …</p>
+      {!status ? <p role="status" className="flex items-center gap-2 text-xs text-muted-foreground"><LoaderCircle className="size-3.5 animate-spin" />Kontrollerar vad som behövs…</p>
         : blockers.length ? <div id={blockersId} className="notice text-sm" data-testid={`${testId}-blockers`}>
           <p className="font-medium">Det här behövs innan något kan skickas:</p>
           <ul className="mt-1 list-disc space-y-1 pl-5">{blockers.map((issue) => <li key={issue}>{issue}</li>)}</ul>

@@ -72,7 +72,7 @@ function ProposalCard({ proposal, onNavigate }: { proposal: ChatProposal; onNavi
   return <div className={cn("rounded-xl border bg-background p-3 text-sm", !pending && state.status !== "APPLIED" && "opacity-70")} data-testid="chat-proposal" data-kind={proposal.kind}>
     <p className="flex items-center gap-1.5 text-xs font-semibold text-primary"><Sparkles className="size-3.5" />Förslag: {TITLES[proposal.kind] ?? "Ändring"}</p>
     <ul className="mt-1.5 space-y-1 break-words text-[0.8125rem] leading-5">{lines(proposal.kind, payload).filter(Boolean).map((line, index) => <li key={index} className={index === 0 && !line.startsWith("•") ? "font-medium" : "text-muted-foreground"}>{line}</li>)}</ul>
-    {pending ? <p className="mt-1.5 text-[0.6875rem] text-muted-foreground">Inget sparas förrän du klickar Använd.</p> : null}
+    {pending ? <p className="mt-1.5 text-[0.6875rem] text-muted-foreground">Inget sparas förrän du klickar på Använd.</p> : null}
     <div className="mt-2 flex flex-wrap items-center gap-2">
       {pending ? <>
         <Button type="button" size="sm" disabled={busy} onClick={() => void run("apply")} data-testid="chat-proposal-apply"><Check className={busy ? "animate-pulse" : undefined} />Använd</Button>

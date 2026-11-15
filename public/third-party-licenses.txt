@@ -1,6 +1,6 @@
 Tredjepartslicenser i Workflow
 
-Paketen som följer med Workflow 0.63.0 i servern och webbläsaren, med version och licens, typsnitten och
+Paketen som följer med Workflow 0.64.0 i servern och webbläsaren, med version och licens, typsnitten och
 licenstexterna som paketen själva levererar. Skapad av scripts/licenses/collect.mjs från package-lock.json.
 Kartans källangivelse (Lantmäteriet, CC BY 4.0) står under Hjälp och verktyg › Om Workflow.
 
@@ -330,7 +330,7 @@ fast-csv@4.3.6 – MIT
 fast-decode-uri-component@1.0.1 – MIT
 fast-deep-equal@3.1.3 – MIT
 fast-querystring@1.1.2 – MIT
-fast-uri@3.1.8 – BSD-3-Clause
+fast-uri@3.1.9 – BSD-3-Clause
 find-my-way@9.7.0 – MIT
 find-up@4.1.0 – MIT
 foreground-child@3.3.1 – ISC
@@ -394,7 +394,7 @@ named-placeholders@1.1.6 – MIT
 nanoid@3.3.19 – MIT
 next@16.4.2 – MIT
 next-auth@4.24.15 – ISC
-nodemailer@10.0.15 – MIT-0
+nodemailer@10.5.0 – MIT-0
 normalize-path@3.0.0 – MIT
 oauth@0.9.15 – MIT
 object-hash@2.2.0 – MIT
@@ -502,7 +502,7 @@ tsx@4.23.15 – MIT
 tsyringe@4.10.0 – MIT
 tw-animate-css@1.4.0 – MIT
 typescript@6.0.3 – Apache-2.0
-undici@7.30.0 – MIT
+undici@7.30.2 – MIT
 undici-types@6.21.0 – MIT
 unzipper@0.10.14 – MIT
 use-callback-ref@1.3.3 – MIT
@@ -524,7 +524,7 @@ yargs@15.4.1 – MIT
 yargs-parser@18.1.3 – ISC
 zeptomatch@2.1.0 – MIT
 zip-stream@4.1.1 – MIT
-zod@4.6.5 – MIT
+zod@4.6.7 – MIT
 
 == Ingår i färdigbyggda webbläsarfiler ==
 
@@ -4887,7 +4887,7 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
 IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 
---- fast-uri@3.1.8 ---
+--- fast-uri@3.1.9 ---
 
 Copyright (c) 2011-2021, Gary Court until https://github.com/garycourt/uri-js/commit/a1acf730b4bba3f1097c9f52e7d9d3aba8cdcaae
 Copyright (c) 2021-present The Fastify team <https://github.com/fastify/fastify#team>
@@ -6675,7 +6675,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
---- nodemailer@10.0.15 ---
+--- nodemailer@10.5.0 ---
 
 Copyright (c) 2011-2023 Andris Reinman
 
@@ -8731,7 +8731,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
---- undici@7.30.0, undici-types@6.21.0 ---
+--- undici@7.30.2, undici-types@6.21.0 ---
 
 MIT License
 
@@ -8934,7 +8934,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
---- zod@4.6.5 ---
+--- zod@4.6.7 ---
 
 MIT License
 

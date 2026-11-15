@@ -84,16 +84,16 @@ function NowCard({ data, absence, onChanged }: { data: NonNullable<TeamTabData["
             {person.running && (person.running.status || typeof person.running.progress === "number")
               ? <Progression kind={person.running.kind ?? undefined} status={person.running.status ?? undefined} progress={person.running.progress} />
               : <>
-                <Pill tone="neutral" className="min-w-[5.5rem] shrink-0 justify-center">Idag</Pill>
+                <Pill tone="neutral" className="min-w-[5.5rem] shrink-0 justify-center">I dag</Pill>
                 {person.dayMinutes !== 0 ? <GrowBar value={person.todayMinutes} max={Math.max(1, person.dayMinutes ?? 480)} className="hidden h-1.5 min-w-8 max-w-28 grow basis-8 @[13rem]/meta:block" fill={person.todayMinutes >= (person.dayMinutes ?? 480) ? "bg-[var(--type-round)]" : "bg-primary"} /> : null}
-                <span className="shrink-0 whitespace-nowrap text-[11px] font-medium tabular-nums text-muted-foreground">{person.dayMinutes === 0 ? `${hours(person.todayMinutes)} h idag` : `${hours(person.todayMinutes)} av ${hours(person.dayMinutes ?? 480)}`}</span>
+                <span className="shrink-0 whitespace-nowrap text-[11px] font-medium tabular-nums text-muted-foreground">{person.dayMinutes === 0 ? `${hours(person.todayMinutes)} h i dag` : `${hours(person.todayMinutes)} av ${hours(person.dayMinutes ?? 480)}`}</span>
               </>}
           </div> : null}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1 self-start text-right">
           {person.running ? <Pill tone="info" className="whitespace-nowrap"><Play className="size-3" aria-hidden="true" />{elapsed(person.running.since)}</Pill>
             : person.absent ? <Pill tone="warning" className="whitespace-nowrap">{person.absent.label}</Pill> : null}
-          {person.running ? <span className="whitespace-nowrap text-[11px] tabular-nums text-muted-foreground">idag {hours(person.todayMinutes)}</span> : null}
+          {person.running ? <span className="whitespace-nowrap text-[11px] tabular-nums text-muted-foreground">i dag {hours(person.todayMinutes)}</span> : null}
         </div>
       </li>)}
     </ul> : <Calm text="Teamet har inga aktiva medlemmar" />}

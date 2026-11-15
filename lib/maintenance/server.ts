@@ -378,11 +378,13 @@ async function names(ids: string[]) {
 async function itemView(caller: MaintenanceCaller, row: ItemPayload, access: ReturnType<typeof maintenanceAccess>): Promise<ItemView> {
   const [all, moves, spares, workOrders] = await Promise.all([
     prisma.machinePart.findMany({ where: { organizationId: caller.organizationId }, select: { id: true, parentId: true, name: true }, take: PART_LIMIT }),
-    prisma.storeTransaction.findMany({ where: { organizationId: caller.organizationId, maintenanceItemId: row.id }, orderBy: { createdAt: "asc" }, take: 100,
+    // The newest 100 moves (bounded list): read newest first, shown in time order below.
+    prisma.storeTransaction.findMany({ where: { organizationId: caller.organizationId, maintenanceItemId: row.id }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 100,
       select: { id: true, kind: true, change: true, note: true, createdAt: true, userId: true, item: { select: { name: true, unit: true } }, location: { select: { name: true } } } }),
     sparesOf(prisma, caller.organizationId, row.partId),
     openWorkOrdersOf(prisma, caller.organizationId, [row.partId]),
   ]);
+  moves.reverse();
   const who = await names(moves.map((move) => move.userId));
   const returned = new Set(moves.filter((move) => move.kind === "RETURN").map((move) => move.note.replace(/^ret:/, "")));
   return {

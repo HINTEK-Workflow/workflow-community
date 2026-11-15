@@ -133,7 +133,7 @@ async function* archiveChunks(source: { organizationId: string; organizationName
       "Här finns det som Cloud-kopian (.hwf) inte kan rymma än: inköp, frånvaro, tidperioder, lönesystemets inställningar, underhåll, lager,",
       "maskinkällor med händelser och signaler, operatörssidan, personalliggaren, formulär, kontroller, rapportarkivet och administrationshistoriken.",
       "innehall.json listar varje tabell med antal, delar och kolumner, och vilka tabeller som ligger med serverlagring-kopian, i offertfilen eller inte exporteras.",
-      "Varje del är JSON. Personer står med id; mappen personer kopplar id till namn och e-post.",
+      "Varje del är JSON. Personer står med id. Mappen personer kopplar id till namn och e-post.",
       "Personnummer i personalliggaren och fakturorna står bara maskerade. Nycklar, lösenord och hemliga värden exporteras aldrig.",
       "Bilder och filer ligger i mapparna filer. Filen kan inte läsas in i Local ännu.",
       "",

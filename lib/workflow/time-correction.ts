@@ -31,7 +31,7 @@ export function assertTimeCorrection(input: TimeCorrectionInput, reason: string)
   if ([source, target].some((task) => task?.status === "CANCELLED") && !actorIsAdmin)
     throw new TimeCorrectionError("Jobbet har utgått. Be en administratör korrigera tiden.", 409);
   if ([source, target].some((task) => task?.status === "COMPLETED") && !actorIsAdmin)
-    throw new TimeCorrectionError("Uppgiften är slutförd. Be en administratör korrigera tiden.", 409);
+    throw new TimeCorrectionError("Uppgiften är färdigställd. Be en administratör korrigera tiden.", 409);
   const normalized = timeCorrectionReasonSchema.parse(reason);
   if (timeCorrectionRequiresReason(input) && !normalized) throw new TimeCorrectionError("Ange en kommentar som förklarar korrigeringen.", 422);
   return normalized;

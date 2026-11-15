@@ -73,7 +73,7 @@ function seed(now: Date): Store {
   return { sources, events, signals, sequence: 10 };
 }
 const storeOf = (ctx: Ctx) => { let store = stores.get(ctx.db); if (!store) { store = seed(ctx.now); stores.set(ctx.db, store); } return store; };
-const admin = (ctx: Ctx) => { if (!ctx.admin) throw new DemoConnectionsError(403, "Företagsadministratör krävs."); };
+const admin = (ctx: Ctx) => { if (!ctx.admin) throw new DemoConnectionsError(403, "Bara en företagsadministratör kan göra det."); };
 const input = (body: unknown) => (body && typeof body === "object" ? body as Record<string, unknown> : {});
 
 /** API och MCP: the company's keys and connected apps. One example key, masked; nothing can be issued here. */

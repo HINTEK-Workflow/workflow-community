@@ -94,7 +94,7 @@ export function checkDrawing(layout: Layout, solved: Solved, outputs: PlcOutputs
     const others = plcKeysOf(net).filter((other) => other !== terminal && nameIo(other)?.kind === "DO");
     for (const other of others) if (other > terminal) add("error", "do-joined", `${terminal} och ${other} är hopkopplade. Två utgångar får inte kopplas ihop.`, { net, stops: outputs.do[index] === true || outputs.do[nameIo(other)!.index] === true });
     const external = net.plus.filter((pole) => !(pole.source === PLC_DEVICE_ID && nameIo(pole.key.slice(PLC_DEVICE_ID.length + 1))?.kind === "DO"));
-    if (external.length) add("warning", "do-on-plus", `${terminal} ligger på ett +-nät; en utgång matar själv och ska gå till lasten.`, { net });
+    if (external.length) add("warning", "do-on-plus", `${terminal} ligger på ett +-nät. En utgång matar själv och ska gå till lasten.`, { net });
   }
   for (let index = 0; index < PLC_IO.ao; index += 1) {
     const terminal = ioName({ kind: "AO", index });
@@ -112,7 +112,7 @@ export function checkDrawing(layout: Layout, solved: Solved, outputs: PlcOutputs
       if (pole.volts > PLC_MAX_VOLTS) add("error", "di-over", `${terminal} får ${voltsText(pole.volts)}; PLC:n tål högst ${PLC_MAX_VOLTS} V.`, { net, devices: pole.source === PLC_DEVICE_ID ? [] : [pole.source], stops: true });
       else if (pole.volts > 0.5 && pole.volts < ON_VOLTS) add("warning", "di-low", `${terminal} får ${voltsText(pole.volts)}: för lågt för en säker etta (gräns ${ON_VOLTS} V), räknas som 0.`, { net, devices: pole.source === PLC_DEVICE_ID ? [] : [pole.source] });
     }
-    for (const pole of net.signals) if (pole.volts > 0.5) add("warning", "di-analog", `${terminal} får en analog signal (${voltsText(pole.volts)}); under ${ON_VOLTS} V räknas som 0.`, { net, devices: pole.source === PLC_DEVICE_ID ? [] : [pole.source] });
+    for (const pole of net.signals) if (pole.volts > 0.5) add("warning", "di-analog", `${terminal} får en analog signal (${voltsText(pole.volts)}). Under ${ON_VOLTS} V räknas som 0.`, { net, devices: pole.source === PLC_DEVICE_ID ? [] : [pole.source] });
   }
   for (let index = 0; index < PLC_IO.ai; index += 1) {
     const terminal = ioName({ kind: "AI", index });
@@ -141,7 +141,7 @@ export function checkDrawing(layout: Layout, solved: Solved, outputs: PlcOutputs
         const volts = voltageBetween(solved, key(element.a), key(element.b));
         if (volts === null) {
           const dead = (fed: Net, other: Net) => hasAnyPole(fed) && !hasAnyPole(other) && !hasContactTerminal(other) && !hasOutputTerminal(other);
-          if (dead(netA, netB) || dead(netB, netA)) add("warning", "no-return", `${name} har bara en sida matad; ingen väg tillbaka till källans andra pol.`, { devices: [device.id], wires: [...(wiresOnNet.get(netA.id) ?? []), ...(wiresOnNet.get(netB.id) ?? [])] });
+          if (dead(netA, netB) || dead(netB, netA)) add("warning", "no-return", `${name} har bara en sida matad. Det finns ingen väg tillbaka till källans andra pol.`, { devices: [device.id], wires: [...(wiresOnNet.get(netA.id) ?? []), ...(wiresOnNet.get(netB.id) ?? [])] });
           else if ((netA.plus.length || netA.signals.length) && netB.minus.length) add("warning", "no-common", `${name} sitter mellan ${label(netA.plus[0]?.source ?? netA.signals[0].source)} och ett 0 V som inte hör ihop med den källan.`, { devices: [device.id] });
           else if ((netB.plus.length || netB.signals.length) && netA.minus.length) add("warning", "no-common", `${name} sitter mellan ${label(netB.plus[0]?.source ?? netB.signals[0].source)} och ett 0 V som inte hör ihop med den källan.`, { devices: [device.id] });
         } else if (Math.abs(volts) > 0.5 && Math.abs(volts) < ON_VOLTS) add("warning", "low-volts", `${name} får ${voltsText(Math.abs(volts))}, för lite för en 24 V-apparat (gräns ${ON_VOLTS} V).`, { devices: [device.id] });

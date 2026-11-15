@@ -296,7 +296,7 @@ export async function removeLinkedInConnection(actor: Actor) {
 export async function setLinkedInPublishing(actor: Actor, on: boolean) {
   const found = await row(actor.organizationId);
   if (!found?.accessTokenCipher) throw new ApiError(409, "Koppla LinkedIn först.");
-  if (on && (!found.authorId || found.status === "invalid" || found.status === "choose")) throw new ApiError(409, "Kopplingen måste fungera och det vara valt var inläggen ska innan publicering kan slås på.");
+  if (on && (!found.authorId || found.status === "invalid" || found.status === "choose")) throw new ApiError(409, "Innan publicering kan slås på måste kopplingen fungera och det måste vara valt var inläggen ska publiceras.");
   if (found.publishingApproved === on) return linkedInView(actor.organizationId);
   await prisma.linkedInConnection.update({ where: { id: found.id }, data: on
     ? { publishingApproved: true, publishingApprovedAt: new Date(), publishingApprovedById: actor.userId }
@@ -319,7 +319,7 @@ export type LinkedInOutcome = { ok: boolean; id?: string | null; message: string
 export async function linkedInPublishBlock(organizationId: string): Promise<{ status: number; message: string } | null> {
   const found = await row(organizationId);
   if (!found?.publishingApproved) return { status: 403, message: "Publicering till LinkedIn är avstängd. Slå på den under Kopplingar → Webb och sociala medier." };
-  if (!found.accessTokenCipher || !found.authorId) return { status: 409, message: "Välj var inläggen ska under Kopplingar → LinkedIn först." };
+  if (!found.accessTokenCipher || !found.authorId) return { status: 409, message: "Välj först var inläggen ska publiceras under Kopplingar → LinkedIn." };
   if (found.status === "invalid") return { status: 409, message: found.statusMessage ?? "Kopplingen till LinkedIn fungerar inte. Tryck Koppla LinkedIn igen." };
   return null;
 }
@@ -331,7 +331,7 @@ export const linkedInPublishingOn = async (organizationId: string) => Boolean((a
  */
 export async function publishToLinkedIn(organizationId: string, input: { commentary: string; image: Uint8Array; altText: string }, mode: "test" | "live"): Promise<LinkedInOutcome> {
   const found = await row(organizationId);
-  if (!found?.accessTokenCipher || !found.authorId) return { ok: false, message: "Välj var inläggen ska under Kopplingar först." };
+  if (!found?.accessTokenCipher || !found.authorId) return { ok: false, message: "Välj först var inläggen ska publiceras under Kopplingar." };
   try {
     const token = await accessToken(organizationId, found);
     if (!token) return { ok: false, message: "Nycklarna kan inte läsas längre. Tryck Koppla LinkedIn igen." };

@@ -41,7 +41,7 @@ export function formJson<T extends z.ZodTypeAny>(form: FormData, name: string, s
 /** An uploaded price file opened for reading, or a 400/413 with what is wrong. */
 export async function openUploadedPriceFile(file: File, format: PriceFileFormat = {}): Promise<PriceFile> {
   if (!file.size) throw new ApiError(400, `${file.name} är tom.`);
-  if (file.size > MAX_PRICE_FILE_BYTES) throw new ApiError(413, `${file.name} är för stor (högst ${MAX_PRICE_FILE_BYTES / 1_000_000} MB för en prisfil). Packa inte filen; dela upp den i flera filer.`);
+  if (file.size > MAX_PRICE_FILE_BYTES) throw new ApiError(413, `${file.name} är för stor (högst ${MAX_PRICE_FILE_BYTES / 1_000_000} MB för en prisfil). Packa inte filen, utan dela upp den i flera filer.`);
   try { return await openPriceFile(new Uint8Array(await file.arrayBuffer()), file.name.slice(0, 200), format); }
   catch (error) { if (error instanceof PriceFileError) throw new ApiError(400, error.message); throw error; }
 }

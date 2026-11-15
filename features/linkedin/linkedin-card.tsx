@@ -112,7 +112,7 @@ export function LinkedInCard({ notify, onChanged }: { notify: (text: string, err
     }
     if (current?.connected && authorChoice && authorChoice !== authorOf(current)) {
       if (!(await post({ action: "choose", author: authorChoice }))) return false;
-      notify("Valt var inläggen ska publiceras.");
+      notify("Du har valt var inläggen ska publiceras.");
       return true;
     }
     notify(current?.status === "unchecked" ? "Sparat. Tryck Koppla LinkedIn." : current?.statusMessage ?? "Sparat.");

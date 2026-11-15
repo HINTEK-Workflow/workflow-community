@@ -173,7 +173,7 @@ export function PlacePicker({ customers, customerId, value, onChange, savePlace,
         </ul>
         {errorBlock}
         {savePlace ? <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs text-muted-foreground">{customerId ? (value ? "En ny plats hamnar under den valda platsen; det går att ändra." : "En ny plats hamnar på översta nivån; det går att ändra.") : "Välj kund för att lägga till en plats."}</p>
+          <p className="text-xs text-muted-foreground">{customerId ? (value ? "En ny plats hamnar under den valda platsen. Det går att ändra." : "En ny plats hamnar på översta nivån. Det går att ändra.") : "Välj kund för att lägga till en plats."}</p>
           <Button type="button" variant="outline" onClick={startAdding} disabled={!customerId} data-testid="place-add"><Plus />Ny plats{query.trim() ? ` ”${query.trim()}”` : ""}</Button>
         </div> : null}
       </div>}

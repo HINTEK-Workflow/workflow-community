@@ -81,7 +81,7 @@ export const SERIES_THEMES: readonly SeriesTheme[] = [
   ] },
   { id: "modules", title: "Välj vad ni använder", facts: [
     "Guiden Kom igång tar företaget steg för steg genom villkor, yrkesprofil, visning, företag, säkerhet och AI.",
-    "Det företaget inte behöver stänger det av, och inget raderas.",
+    "Det som företaget inte behöver stängs av, och inget raderas.",
     "Varje person väljer en yrkesprofil som styr vad som visas först, inte vad man får göra.",
   ] },
   // The operator's own website's themes, last (none in the community edition).

@@ -294,7 +294,7 @@ export class CatalogueRowParser {
       // The same article twice is a duplicate; two different names under one number are two products the supplier
       // gave the same number – both reported, the first one imported, until the supplier has settled which is right.
       if (earlier.name === folded) return this.fail(line, `samma artikel som rad ${earlier.line} (dubblett) – raden hoppas över`, "duplicate");
-      return this.fail(line, `samma artikelnummer som rad ${earlier.line} men en annan produkt (”${name.slice(0, 60)}”) – bara rad ${earlier.line} importeras; kontrollera numret med leverantören`, "conflict");
+      return this.fail(line, `samma artikelnummer som rad ${earlier.line} men en annan produkt (”${name.slice(0, 60)}”) – bara rad ${earlier.line} importeras. Kontrollera numret med leverantören`, "conflict");
     }
     this.seen.set(key, { line, name: folded });
 

@@ -1118,7 +1118,7 @@ export function AppShell({
       {/* The demo explains its invented data. */}
       {demo ? <div className="workspace-sidebar-note mx-4 mb-4 rounded-lg border border-primary/15 bg-secondary p-3">
         <div className="flex items-center gap-2 text-xs font-medium"><span className="size-1.5 rounded-full bg-amber-500" />Demo</div>
-        <p className="mt-1.5 text-xs leading-5 text-muted-foreground">Påhittat företag och påhittade användare. Inget sparas och allt nollställs när sidan laddas om.</p>
+        <p className="mt-1.5 text-xs leading-5 text-muted-foreground">Påhittat företag och påhittade användare. Inget sparas, och allt nollställs när sidan laddas om.</p>
       </div> : null}
     </div>
   );
@@ -1372,7 +1372,7 @@ function ViewAsBanner({ viewAs }: { viewAs: ViewAs }) {
   const [busy, setBusy] = useState(false);
   return <div role="status" data-testid="view-as-banner" className="mb-6 flex flex-wrap items-center gap-3 rounded-xl border border-primary/20 bg-secondary p-3 text-sm text-foreground">
     <Eye className="size-4 shrink-0 text-primary" aria-hidden="true" />
-    <p className="min-w-0 flex-1"><span className="font-medium">Visar som {VIEW_AS_LABELS[viewAs].label}.</span> <span className="text-muted-foreground">Bara menyer och sidor ändras – dina egna rättigheter och data är desamma.</span></p>
+    <p className="min-w-0 flex-1"><span className="font-medium">Visar som {VIEW_AS_LABELS[viewAs].label}.</span> <span className="text-muted-foreground">Bara menyer och sidor ändras. Dina egna behörigheter och data är desamma.</span></p>
     <Button type="button" size="sm" variant="outline" disabled={busy} onClick={async () => {
       setBusy(true);
       try {

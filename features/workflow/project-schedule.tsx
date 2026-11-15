@@ -57,7 +57,7 @@ function dependencyNotes(jobs: readonly Job[], today: string) {
   for (const conflict of dependencyConflicts(jobs)) conflicts.set(conflict.jobId, [...(conflicts.get(conflict.jobId) ?? []), conflict]);
   return { conflicts, delayed: delayedByPredecessor(jobs, today) };
 }
-const conflictText = (conflict: DependencyConflict) => `Börjar före ${conflict.predecessorTitle || "föregångaren"} är klar (${shortDay(conflict.predecessorEnd)})`;
+const conflictText = (conflict: DependencyConflict) => `Börjar innan ${conflict.predecessorTitle || "föregångaren"} är klar (${shortDay(conflict.predecessorEnd)})`;
 const kindLabel = (kind: string) => kind === "WORK_ORDER" ? "Arbetsorder" : kind === "RISK_ASSESSMENT" ? "Riskbedömning" : "Formulär";
 const periodText = (period: SchedulePeriod) => {
   const drawn = jobPeriod(period);
@@ -485,7 +485,7 @@ function ScheduleDialog({ draft, data, saving, error, onChange, onCancel, onSave
     ...(moving ? [`${ownBookings.length === 1 ? "Bokningen" : `${ownBookings.length} bokningar`} flyttas ${days(shift)} med jobbet.`] : consequences.bookingsOutside.map((booking) => `Bokningen ${bookingText(booking)} hamnar utanför jobbets period och flyttas inte.`)),
     ...(movingFollowers ? [`${followers.length === 1 ? "Efterföljande jobb" : `${followers.length} efterföljande jobb`} (${followers.map((move) => move.job.title || "Utan rubrik").join(", ")}) flyttas ${days(followerShift)} med jobbet.`] : []),
     ...conflicts.filter((conflict) => conflict.jobId === job.id).map((conflict) => `${conflictText(conflict)}.`),
-    ...conflicts.filter((conflict) => conflict.predecessorId === job.id).map((conflict) => `Efterföljande jobb ${titleOf(conflict.jobId)} börjar före det här jobbet är klart.`),
+    ...conflicts.filter((conflict) => conflict.predecessorId === job.id).map((conflict) => `Efterföljande jobb ${titleOf(conflict.jobId)} börjar innan det här jobbet är klart.`),
     ...consequences.milestonesPassed.map((booking) => `Milstolpen ${booking.title} (${shortDay(booking.startDay)}) passeras.`),
     ...(consequences.passesProjectEnd ? [`Jobbet slutar efter projektets slutdatum ${shortDay(frame.dueDate)}.`] : []),
     ...(consequences.beforeProjectStart ? [`Jobbet börjar före projektets start ${shortDay(frame.startDate)}.`] : []),
@@ -534,7 +534,7 @@ function ScheduleDialog({ draft, data, saving, error, onChange, onCancel, onSave
       {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
       <DisabledReason id={`${id}-blocked`} reason={blocked} />
       <DialogActions cancel={{ onClick: onCancel }} primary={{ label: moving ? "Flytta jobb och bokningar" : draft.dragged ? "Flytta jobbet" : "Spara tidplan", onClick: onSave, disabled: Boolean(blocked), busy: saving, busyLabel: "Sparar…", testId: "schedule-save" }}>
-        <span className="mr-auto inline-flex items-center gap-1.5 self-center text-xs text-muted-foreground"><CalendarClock className="size-3.5" />Hela arbetsdagar; helger räknas inte.</span>
+        <span className="mr-auto inline-flex items-center gap-1.5 self-center text-xs text-muted-foreground"><CalendarClock className="size-3.5" />Hela arbetsdagar. Helger räknas inte.</span>
       </DialogActions>
     </div>
   </Modal>;

@@ -172,7 +172,7 @@ export function CapacityPage() {
 export function CapacityFoldedPanel({ read }: { read: CapacityRead }) {
   const state = useCapacityWeek(read);
   const row = state.rows[0];
-  const summary = row ? `${formatCapacityHours(row.plannedMinutes)} av ${formatCapacityHours(row.availableMinutes)} denna vecka · ${count(state.conflicts.length, "tidskrock", "tidskrockar")}` : "Ingen fast arbetstid att visa.";
+  const summary = row ? `${formatCapacityHours(row.plannedMinutes)} av ${formatCapacityHours(row.availableMinutes)} den här veckan · ${count(state.conflicts.length, "tidskrock", "tidskrockar")}` : "Ingen fast arbetstid att visa.";
   return <div id="planning-part-capacity"><Panel icon={Gauge} collapsible defaultCollapsed foldKey="planning-capacity" title="Kapacitet" description={summary}>
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-sm font-semibold">Vecka {isoWeek(state.from)}<span className="ml-2 font-normal text-muted-foreground">{[`${shortDay(state.from)}–${shortDay(state.to)}`, ...state.holidays].join(" · ")}</span></p><WeekStepper state={state} /></div>

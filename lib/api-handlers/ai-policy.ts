@@ -23,7 +23,7 @@ export async function POST(request: Request) {
   try {
     checkOrigin(request);
     const ctx = await context();
-    if (!ctx.admin) throw new ApiError(403, "Företagsadministratör krävs.");
+    if (!ctx.admin) throw new ApiError(403, "Bara en företagsadministratör kan göra det.");
     const policy = aiSharingPolicySchema.parse(await body(request));
     if (policy.enabled && !policy.shareChatContent)
       throw new ApiError(400, "Chattinnehåll måste vara godkänt för att AI ska kunna aktiveras.");

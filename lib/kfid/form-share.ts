@@ -81,5 +81,5 @@ export type ImportedFrom = z.infer<typeof importedFromSchema>;
 export function publisherLabel(publisherName: string, importedFrom: unknown) {
   const origin = importedFromSchema.safeParse(importedFrom);
   if (!origin.success || origin.data.publisherName === publisherName) return publisherName;
-  return `${publisherName} · från ${origin.data.publisherName}${origin.data.verified ? "" : " (ej verifierad)"}`;
+  return `${publisherName} · från ${origin.data.publisherName}${origin.data.verified ? "" : " (inte verifierad)"}`;
 }

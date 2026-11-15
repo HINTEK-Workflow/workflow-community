@@ -98,7 +98,7 @@ export function ScheduledPanel({ items, error, onChanged, filter, rhythm, onRhyt
   // Även som nyhetsbrev (2026-11-12): the channels went out, the newsletter did not – send that part alone, once.
   const newsletterNow = async (item: ScheduledView) => {
     if (await confirm({ title: "Skicka nyhetsbrevet?", message: "Inlägget är redan publicerat. Nu skickas bara nyhetsbrevet, en gång, till dem som får nyhetsbrevet.", confirmLabel: "Skicka nyhetsbrevet",
-      checkbox: { label: "Jag har läst mejlet.", required: true, testId: "scheduled-newsletter-check" } }))
+      checkbox: { label: "Jag har läst nyhetsbrevet.", required: true, testId: "scheduled-newsletter-check" } }))
       await act(item, { action: "publish-now", confirm: true }, "Nyhetsbrevet skickas.");
   };
   // Ta bort ur listan (2026-11-13): a cancelled or failed item leaves the list; the draft stays.

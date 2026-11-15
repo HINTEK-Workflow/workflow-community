@@ -23,7 +23,7 @@ export function DemoPage({ userId, touring, onUser, onTour, onExit }: { userId: 
         <Button type="button" variant="outline" onClick={onExit} data-testid="demo-exit"><LogOut />Avsluta demon</Button>
       </>} />
     {/* Under the heading instead of as its description: a phone hides a page's description, and this has to be read there too. */}
-    <p className="text-sm leading-6 text-muted-foreground" data-testid="demo-info">{DEMO_COMPANY}. {/* The side menu says the rest from 1024 px (resa 5, 2026-11-06: the same text three times); a phone has no side menu. */}<span className="lg:hidden">Påhittade uppgifter. Inget sparas och allt nollställs när sidan laddas om. </span>Inga mejl skickas. <span data-testid="demo-version">{demoVersionText(currentAppVersion())}.</span></p>
+    <p className="text-sm leading-6 text-muted-foreground" data-testid="demo-info">{DEMO_COMPANY}. {/* The side menu says the rest from 1024 px (resa 5, 2026-11-06: the same text three times); a phone has no side menu. */}<span className="lg:hidden">Påhittade uppgifter. Inget sparas, och allt nollställs när sidan laddas om. </span>Ingen e-post skickas. <span data-testid="demo-version">{demoVersionText(currentAppVersion())}.</span></p>
     <Panel icon={Users} title="Visa som" description="Byt person för att se vad varje roll ser.">
       <div className="flex flex-wrap gap-2" role="group" aria-label="Visa som" data-testid="demo-users">
         {demoDatabase().users.map((user) => <Button key={user.id} type="button" variant={userId === user.id ? "default" : "outline"} className="h-auto min-h-11 justify-start gap-2 py-1.5 text-left" aria-pressed={userId === user.id} onClick={() => onUser(user.id)}>
@@ -32,7 +32,7 @@ export function DemoPage({ userId, touring, onUser, onTour, onExit }: { userId: 
         </Button>)}
       </div>
     </Panel>
-    <Panel icon={Compass} title="Börja här" description="Tre fönster som hör ihop, i den här ordningen.">
+    <Panel icon={Compass} title="Börja här" description="Tre fönster som hör ihop. Följ stegen i ordning.">
       <DemoStartCard />
     </Panel>
     {/* A phone or tablet opened through an ad (2026-11-08): the way to put the demo on the home screen, said for that device. */}

@@ -14,7 +14,7 @@ test("members correct only their own time on open tasks without a comment", () =
   assert.equal(assertTimeCorrection({ actorIsAdmin: false, actorOwnsEntry: true, source: open, target: open }, ""), "");
   rejects(() => assertTimeCorrection({ actorIsAdmin: false, actorOwnsEntry: false, source: open }, "fel"), 403, /egen/);
   rejects(() => assertTimeCorrection({ actorIsAdmin: false, actorOwnsEntry: true, source: completed }, "fel"), 409, /administratör/);
-  rejects(() => assertTimeCorrection({ actorIsAdmin: false, actorOwnsEntry: true, source: open, target: completed }, "fel"), 409, /slutförd/);
+  rejects(() => assertTimeCorrection({ actorIsAdmin: false, actorOwnsEntry: true, source: open, target: completed }, "fel"), 409, /färdigställd/);
 });
 
 test("a job that has utgått is named as utgått, never as slutförd (2026-10-09)", () => {

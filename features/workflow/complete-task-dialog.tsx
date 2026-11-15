@@ -116,7 +116,7 @@ export function CompleteTaskDialog({ open, onOpenChange, title, lockText, totalD
       </div>
       {canReportTime ? <fieldset className="space-y-3">
         <legend className="text-sm font-semibold">Vill du skriva tid?</legend>
-        {totalDurationSec === 0 && !timerRunning ? <p className="text-xs text-muted-foreground">Ingen tid är rapporterad ännu. Har du jobbat utan klockan, välj Ja.</p> : null}
+        {totalDurationSec === 0 && !timerRunning ? <p className="text-xs text-muted-foreground">Ingen tid är rapporterad än. Välj Ja om du har jobbat utan klockan.</p> : null}
         <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Vill du skriva tid?">
           <Button type="button" role="radio" aria-checked={writeTime} variant={writeTime ? "secondary" : "outline"} onClick={() => setWriteTime(true)}>Ja, skriv tid</Button>
           <Button type="button" role="radio" aria-checked={!writeTime} variant={!writeTime ? "secondary" : "outline"} onClick={() => setWriteTime(false)}>Nej, färdigställ utan ny tid</Button>

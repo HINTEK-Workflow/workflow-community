@@ -18,7 +18,7 @@ export default async function RegisterPage({ searchParams }: { searchParams: Sea
   const error = Array.isArray(params.error) ? params.error[0] : params.error;
   if (!(await registrationOpen()))
     return <AuthShell title="Skapa konto" description="Nya konton kan inte skapas just nu.">
-      <p className="text-sm text-muted-foreground">Har du fått en inbjudan? Följ länken i mejlet. Annars kan du <Link href="/login" className="font-medium text-primary underline underline-offset-4">logga in</Link>.</p>
+      <p className="text-sm text-muted-foreground">Har du fått en inbjudan? Följ länken i inbjudan. Annars kan du <Link href="/login" className="font-medium text-primary underline underline-offset-4">logga in</Link>.</p>
     </AuthShell>;
   const googleEnabled = publicInstance().features.googleSignIn && await googleSignInAllowed() && await googleKeysConfigured();
   const known: Record<string, string> = { google_unverified_email: "Google-kontot måste ha en verifierad e-postadress." };

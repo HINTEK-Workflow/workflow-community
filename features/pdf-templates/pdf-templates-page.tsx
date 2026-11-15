@@ -285,7 +285,7 @@ function PdfEditor({ view, section, contentLinks, notify, onSaved, onReload }: {
   useEffect(() => { saveRef.current = save; });
 
   const discard = async () => {
-    if (!dirty || !(await confirm({ title: "Kasta ändringarna?", message: "Allt du ändrat sedan senaste sparning tas bort.", confirmLabel: "Kasta", tone: "danger" }))) return;
+    if (!dirty || !(await confirm({ title: "Kasta ändringarna?", message: "Allt du har ändrat sedan du sparade senast tas bort.", confirmLabel: "Kasta", tone: "danger" }))) return;
     change(() => saved);
     setEditing(false);
   };

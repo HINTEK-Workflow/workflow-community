@@ -76,7 +76,7 @@ export default async function VerifyEmailPage({
           <>
             <Alert>
               <Mail className="size-4" />
-              <AlertTitle>Behövs ett nytt mejl?</AlertTitle>
+              <AlertTitle>Behöver du en ny länk?</AlertTitle>
               <AlertDescription>
                 Skicka en ny verifieringslänk till din adress, till exempel om mejlet inte har kommit fram.
               </AlertDescription>

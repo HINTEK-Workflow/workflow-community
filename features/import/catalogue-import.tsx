@@ -237,7 +237,7 @@ export function CatalogueImportCard({ file, headers, mapping, preview, options, 
 
   if (supplierError) return <p role="alert" className={cn("rounded-lg border p-3 text-sm", indicatorBadge("warning"))} data-testid="catalogue-import-denied">{supplierError}</p>;
   if (!suppliers) return <p className="flex items-center gap-2 text-sm text-muted-foreground" role="status"><LoaderCircle className="size-4 animate-spin" />Hämtar leverantörer…</p>;
-  if (!canEdit) return <p role="alert" className={cn("rounded-lg border p-3 text-sm", indicatorBadge("warning"))} data-testid="catalogue-import-denied">Du saknar behörighet att importera artiklar och priser. Företagets administratör kan ge rättigheten Artiklar och priser → Redigera.</p>;
+  if (!canEdit) return <p role="alert" className={cn("rounded-lg border p-3 text-sm", indicatorBadge("warning"))} data-testid="catalogue-import-denied">Du saknar behörighet att importera artiklar och priser. Företagets administratör kan ge behörigheten Artiklar och priser → Redigera.</p>;
   const count = (value: number) => value.toLocaleString("sv-SE");
   // Kolumnförslag (2026-10-12): a column taken from the content (not its heading) is the person's to confirm.
   const guessed = (preview?.columns?.suggestions ?? []).filter((item) => item.source === "content" && mapping[item.field] === item.column);

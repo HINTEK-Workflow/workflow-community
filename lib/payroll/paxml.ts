@@ -84,7 +84,7 @@ export function paxmlTransactions(input: {
     for (const day of absenceWorkdays(absence, person, input.from, input.to)) add(person, { date: day.day, minutes: day.minutes, kind: "absence", label }, code, `Frånvarotypen ${label} saknar exportkod`, label.toLowerCase());
   }
 
-  const order = (a: PaxmlTransaction, b: PaxmlTransaction) => a.name.localeCompare(b.name, "sv") || a.date.localeCompare(b.date) || (a.kind === b.kind ? 0 : a.kind === "worked" ? -1 : 1) || a.code.localeCompare(b.code);
+  const order = (a: PaxmlTransaction, b: PaxmlTransaction) => a.name.localeCompare(b.name, "sv") || a.date.localeCompare(b.date) || (a.kind === b.kind ? 0 : a.kind === "worked" ? -1 : 1) || a.code.localeCompare(b.code, "sv");
   const errors = [...problems.entries()].map(([text, count]) => `${text} – ${count} ${count === 1 ? "rad är" : "rader är"} inte med.`).sort((a, b) => a.localeCompare(b, "sv"));
   const warnings = [...longNumbers].sort((a, b) => a.localeCompare(b, "sv")).map((name) => `${name}s anställningsnummer är längre än ${PAXML_EMPLOYEE_NUMBER_LENGTH} tecken – kontrollera att lönesystemet tar emot det.`);
   // The problems themselves without the counts: what keeps the file from being made (exportBlockers in ./export).

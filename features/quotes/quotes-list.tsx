@@ -89,7 +89,7 @@ export function QuotesList({ personId, canEditHint }: { personId: string; canEdi
     scope={scope} onScope={prefs.setScope} filter={filter} onFilter={setFilter} query={query} onQuery={setQuery} onMore={() => void more()}
     exportMenu={reduced ? undefined : <QuotesBulkExport items={items} />} />;
   return <div className="space-y-5" data-testid="quotes-list" data-view={prefs.view} data-scope={scope}>
-    <PageHeader title="Offerter" description="Företagets offerter. Belopp exkl. moms. En skickad offert är låst; ändra som ny version."
+    <PageHeader title="Offerter" description="Företagets offerter. Belopp exkl. moms. En skickad offert är låst. Ändra den genom att göra en ny version."
       actions={<>{invoicingOn ? <Button asChild variant="outline"><Link href="/?view=invoice_bases" data-testid="quotes-invoice-bases"><Receipt />Fakturaunderlag</Link></Button> : null}
         <QuotesBulkExport items={items} />
         {meta.canEdit ? <Button asChild><Link href="/?view=quote" data-testid="quote-new"><Plus />Ny offert</Link></Button> : null}</>} />

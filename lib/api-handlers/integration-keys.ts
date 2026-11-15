@@ -34,7 +34,10 @@ import { mailConfig } from "@/lib/mail/settings-server";
 import { requireFreshAuth } from "@/lib/auth/fresh-auth";
 import { recordSecurityEvent } from "@/lib/security/security-log";
 import { SERVER_SECRET_CENTRAL, ServerSecretError, saveServerSecret, saveServerSetting, serverKeysWithChanges, serverSecrets, storedServerKeys } from "@/lib/integrations/server-secrets";
-import { CentralStoreError, centralFieldInfo, centralStoreStatus } from "@/lib/secrets/central-store";
+import { CentralStoreError, centralFieldInfo, centralStoreStatus, keyExpiry, saveKeyExpiry } from "@/lib/secrets/central-store";
+import { centralActor, requireCentralKeyViewer } from "@/lib/secrets/central-access";
+import { BILLING_EXPIRY_IDS, KEY_EXPIRY_IDS, OWN_EXPIRY_IDS, KEY_EXPIRY_LABELS, expiryDateProblem, type KeyExpiryId } from "@/lib/secrets/key-expiry";
+import { companyLookupView } from "@/lib/kfid/company-lookup";
 import { keyRingStatus, unreadableValues } from "@/lib/security/key-ring";
 import { inventory } from "@/lib/secrets/reseal";
 import { publicInstance } from "@/lib/instance";
@@ -149,6 +152,25 @@ async function serverKeys(organizationId: string) {
   });
 }
 
+/**
+ * Gäller till (2026-11-14): each card's optional last day, as the page shows it. Without billing the payment cards and
+ * the commercial part's GitHub card are not there, so neither are their dates.
+ */
+const expiryIdsShown = (): KeyExpiryId[] => KEY_EXPIRY_IDS.filter((id) => publicInstance().features.billing || !BILLING_EXPIRY_IDS.includes(id));
+async function keyExpiryOverview(central?: { store?: unknown }) {
+  const [{ dates }, lookup] = await Promise.all([keyExpiry(), companyLookupView()]);
+  // The days known in another way, for the page's count: SCB's own Giltig till, and the key vault's access token (ee/).
+  const token = (central?.store as { tokenExpiresOn?: unknown } | undefined)?.tokenExpiresOn;
+  const known: Record<string, string> = {
+    ...(lookup.configured && lookup.validUntil ? { scb: lookup.validUntil } : {}),
+    ...(typeof token === "string" && token ? { vault: token } : {}),
+  };
+  return {
+    dates: Object.fromEntries(expiryIdsShown().filter((id) => !OWN_EXPIRY_IDS.includes(id)).flatMap((id) => (dates[id] ? [[id, { on: dates[id].on, updatedAt: dates[id].updatedAt ?? null, updatedBy: dates[id].updatedBy ?? null }]] : []))),
+    known,
+  };
+}
+
 /** Workflow's own routines around the central keys (the key vault's copy, Kontrollera och synka, the emergency copy); null without ee/. */
 const centralKeys = async () => (serverExtensions.centralKeys ? serverExtensions.centralKeys() : null);
 
@@ -228,6 +250,8 @@ const input = z.discriminatedUnion("action", [
   // Central lagring (2026-10-25): Kontrollera counts every sealed value and whether it can be opened (and, with ee/, compares
   // the key vault). The key vault's own commands (copy, restore, Kontrollera och synka) are ee/'s (ee/secrets/central-keys.ts).
   z.object({ action: z.literal("check_central_store") }),
+  // Gäller till (2026-11-14): a card's optional last day, ÅÅÅÅ-MM-DD; "" removes it. Not a secret.
+  z.object({ action: z.literal("save_key_expiry"), id: z.enum(KEY_EXPIRY_IDS), on: z.string().trim().max(10) }),
 ]);
 
 const listSelect = { id: true, kind: true, name: true, provider: true, scopes: true, displayHint: true, expiresAt: true, lastUsedAt: true, revokedAt: true, createdAt: true, updatedAt: true, createdById: true, actingUserId: true } as const;
@@ -240,7 +264,8 @@ export async function GET(request: Request) {
       if (!seesServerKeys(ctx)) throw new ApiError(403, "Servernycklarna visas bara för installationens superadmin.");
       const server = await serverKeys(ctx.organizationId);
       const alerts = await mailConfig().then((mail) => ({ on: mail.delivery.alerts, email: mail.alertEmail || null, blocked: mail.blockedReason }));
-      return NextResponse.json({ server, alerts, central: await centralOverview() }, { headers: { "Cache-Control": "private, no-store" } });
+      const central = await centralOverview();
+      return NextResponse.json({ server, alerts, central, expiry: await keyExpiryOverview(central) }, { headers: { "Cache-Control": "private, no-store" } });
     }
     // Förloppet för registerhämtningen (2026-10-18): a small read the card repeats every few seconds while something runs.
     if (new URL(request.url).searchParams.get("scope") === "register") {
@@ -326,6 +351,18 @@ export async function POST(request: Request) {
         detail: command.value ? `Satte ${SERVER_SETTING_LABELS[command.field]} till ${command.value} under Servernycklar.` : `Tog bort ${SERVER_SETTING_LABELS[command.field]} under Servernycklar.` } });
       return NextResponse.json({ server: await serverKeys(ctx.organizationId) }, { headers: { "Cache-Control": "no-store" } });
     }
+    if (command.action === "save_key_expiry") {
+      // The date changes no key: Workflow's superadmin (as every central key), Origin checked above, no fresh sign-in.
+      requireCentralKeyViewer(ctx);
+      if (!expiryIdsShown().includes(command.id) || OWN_EXPIRY_IDS.includes(command.id)) throw new ApiError(404, "Nyckeln finns inte i den här installationen.");
+      const problem = expiryDateProblem(command.on);
+      if (problem) throw new ApiError(400, problem);
+      await saveKeyExpiry(command.id, command.on || null, centralActor(ctx));
+      // The history tells which card and the date – there is no value here.
+      await prisma.administrationEvent.create({ data: { actorId: ctx.user.id, organizationId: ctx.organizationId, action: "server_key",
+        detail: command.on ? `Satte Gäller till ${command.on} för ${KEY_EXPIRY_LABELS[command.id]} under Tjänster och nycklar.` : `Tog bort Gäller till för ${KEY_EXPIRY_LABELS[command.id]} under Tjänster och nycklar.` } });
+      return NextResponse.json({ expiry: await keyExpiryOverview(await centralOverview()) }, { headers: { "Cache-Control": "no-store" } });
+    }
     if (command.action === "sync_solar_categories") {
       if (!seesServerKeys(ctx)) throw new ApiError(403, "Servernycklarna visas bara för installationens superadmin.");
       const result = await syncSolarCategories(ctx.user.name || ctx.user.email);
@@ -379,7 +416,7 @@ export async function POST(request: Request) {
     if (command.action === "disconnect_app") {
       const app = await disconnect(ctx.organizationId, command.id, ctx.user.id);
       if (!app) throw new ApiError(404, "Anslutningen finns inte.");
-      await prisma.administrationEvent.create({ data: { actorId: ctx.user.id, organizationId: ctx.organizationId, action: "oauth_disconnect", detail: `Kopplade från appen ”${app}” från MCP-servern.` } });
+      await prisma.administrationEvent.create({ data: { actorId: ctx.user.id, organizationId: ctx.organizationId, action: "oauth_disconnect", detail: `Kopplade bort appen ”${app}” från MCP-servern.` } });
       return NextResponse.json({ ok: true });
     }
     // Färsk inloggning (2026-10-10): a new key or a new key value needs a password or code within ten minutes.

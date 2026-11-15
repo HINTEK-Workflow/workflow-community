@@ -72,7 +72,7 @@ export function ReportArchive({ notify, cloud, personId = "" }: { notify: (text:
   useLoadEffect(load, cloud);
 
   const remove = async (entry: Entry) => {
-    if (!(await confirm({ title: "Ta bort rapporten?", message: `”${entry.title}” (${entry.format === "XLSX" ? "Excel" : "PDF"}) tas bort ur Rapportarkivet. Uppgiften och dess uppgifter påverkas inte. Det går inte att ångra.`, confirmLabel: "Ta bort", tone: "danger" }))) return;
+    if (!(await confirm({ title: "Ta bort rapporten?", message: `”${entry.title}” (${entry.format === "XLSX" ? "Excel" : "PDF"}) tas bort ur Rapportarkivet. Uppgiften och dess innehåll påverkas inte. Det går inte att ångra.`, confirmLabel: "Ta bort", tone: "danger" }))) return;
     try { await api(`/api/report-archive/${encodeURIComponent(entry.id)}`, { method: "DELETE" }); notify("Rapporten är borttagen ur arkivet."); await load(); }
     catch (cause) { notify((cause as Error).message, true); }
   };

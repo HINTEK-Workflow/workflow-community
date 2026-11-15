@@ -33,11 +33,11 @@ export function OpenAiModelsPanel() {
     try {
       const result = await api<{ models: AzureModelInfo[] }>("/api/superadmin/ai-provider", { method: "POST", body: JSON.stringify({ action: "save_models", models }) });
       setCards(result.models.map(toModelForm));
-      setMessage({ ok: true, text: "Sparat. Gäller nya AI-svar; tidigare körningar behåller sitt pris." });
+      setMessage({ ok: true, text: "Sparat. Gäller nya AI-svar. Tidigare körningar behåller sitt pris." });
     } catch (cause) { setMessage({ ok: false, text: (cause as Error).message }); }
     finally { setBusy(false); }
   };
-  return <Panel icon={Coins} title="OpenAI-modeller och priser" description="Profilen Standard. Priserna ändras här utan kod; startvärdena kommer från koden.">
+  return <Panel icon={Coins} title="OpenAI-modeller och priser" description="Profilen Standard. Priserna ändras här utan kod. Startvärdena kommer från koden.">
     <div className="space-y-4" data-testid="openai-models-panel">
       <AzureModelCards provider="OpenAI" testId="openai-models" neverEu cards={cards} onChange={(next) => setCards(cards.map((card) => card.deployment === next.deployment ? next : card))} />
       {message ? <p role={message.ok ? "status" : "alert"} className={cn("text-sm", message.ok ? "text-emerald-700 dark:text-emerald-300" : "text-destructive")}>{message.text}</p> : null}

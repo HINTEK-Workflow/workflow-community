@@ -36,13 +36,13 @@ const reads: { key: ShareKey; title: string; help: string }[] = [
   { key: "shareWork", title: "Uppgifter och projekt", help: "Rubrik, status, datum och antal – för den som frågar." },
   { key: "shareCustomers", title: "Kunder och anläggningar", help: "Det sökningen hittar, som källor till svaret." },
   { key: "shareDocuments", title: "Dokument och bilagor", help: "Filnamn, och filer någon själv låter AI analysera i Import." },
-  { key: "shareConversationHistory", title: "Tidigare frågor i samma konversation", help: "Gör att följdfrågor förstås; bara personens egen." },
+  { key: "shareConversationHistory", title: "Tidigare frågor i samma konversation", help: "Gör att följdfrågor förstås. Bara personens egna frågor." },
 ];
 
 // Vad Workflow AI får göra (2026-10-09: "Vad AI får göra är en admin-inställning, men ju mer den kan desto
 // bättre"): one switch per capability, all on from the start. The server checks each one at every call.
 const abilities: { key: AbilityKey; title: string; help: string }[] = [
-  { key: "chatProposals", title: "Förslag från chatten", help: "Arbetsordrar, material, tid, planering och offerter; inget sparas utan Använd." },
+  { key: "chatProposals", title: "Förslag från chatten", help: "Arbetsordrar, material, tid, planering och offerter. Inget sparas förrän någon trycker på Använd." },
   { key: "moreToolCalls", title: "Fler steg när någon ber om arbete", help: "Upp till 5 saker i stället för 3 per svar, ungefär 2 öre mer." },
   { key: "teamOverview", title: "Lagöversikt", help: "Lagets förfallna och väntande arbetsordrar – bara det personen får se." },
   { key: "riskTogether", title: "Riskbedömning tillsammans", help: "Föreslår faror och skyddsåtgärder i den utökade riskbedömningen." },
@@ -101,8 +101,8 @@ export function AiSharingPolicyPanel({ embedded = false }: { embedded?: boolean 
   const modelOn = Boolean(status?.conditions.provider.ready);
   const locked = !canManage || busy;
   return <div className="space-y-6" data-testid="ai-permissions">
-    {embedded ? null : <PageHeader title="Workflow AI" description={<>Vad AI får läsa och göra i företaget. {canManage ? "Du är företagsadmin och bestämmer valen." : "Företagets admin bestämmer valen; här ser du vad som gäller."}</>} />}
-    {embedded && policy && !canManage ? <p className="text-sm text-muted-foreground">Företagets admin bestämmer valen; här ser du vad som gäller.</p> : null}
+    {embedded ? null : <PageHeader title="Workflow AI" description={<>Vad AI får läsa och göra i företaget. {canManage ? "Du är företagsadmin och bestämmer valen." : "Företagets admin bestämmer valen. Här ser du vad som gäller."}</>} />}
+    {embedded && policy && !canManage ? <p className="text-sm text-muted-foreground">Företagets admin bestämmer valen. Här ser du vad som gäller.</p> : null}
     {!policy ? <p className="flex items-center gap-2 text-sm text-muted-foreground" role="status"><LoaderCircle className="size-4 animate-spin" /> Hämtar AI-inställningar…</p> : <>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" data-testid="ai-permissions-status">
         <StatusTile label="Direkta svar ur Workflow" ok text="Alltid på – kostar inget" />
@@ -115,7 +115,7 @@ export function AiSharingPolicyPanel({ embedded = false }: { embedded?: boolean 
         <div className="divide-y">
           <SwitchRow id="ai-enabled" testId="ai-enabled" title="Slå på Workflow AI för företaget" text="Frågor som kräver tolkning besvaras av AI-modellen och dras från krediterna."
             checked={policy.enabled} disabled={locked} onCheckedChange={(on) => void change({ enabled: on, ...(on ? { shareChatContent: true } : {}) })} />
-          <SwitchRow id="ai-requireEu" testId="ai-requireEu" title="Datan måste bearbetas inom EU" text="Då körs AI bara via Azure, med behandling i EU. Är Azure inte klar är AI avstängd."
+          <SwitchRow id="ai-requireEu" testId="ai-requireEu" title="Uppgifterna måste behandlas inom EU" text="Då körs AI bara via Azure, med behandling i EU. Är Azure inte klar är AI avstängd."
             checked={Boolean(policy.requireEu)} disabled={locked} onCheckedChange={(on) => void change({ requireEu: on })} />
         </div>
       </Panel>

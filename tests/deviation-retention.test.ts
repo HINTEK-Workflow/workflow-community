@@ -84,10 +84,10 @@ test("the night's history line holds counts, nothing else", () => {
   assert.equal(deviationRetentionDetail({ removed: 3, personalData: 1, files: 0 }), "Avvikelser rensades efter lagringstiden: 3 poster togs bort, 1 tillbud eller olycksfall utan namn och text, 0 filer.");
 });
 
-test("the log, the PDF and the policies say the same times", { skip: !existsSync("docs/legal/final/privacy-2026-11-12.1.md") && "docs/ is not part of the Community edition" }, () => {
+test("the log, the PDF and the policies say the same times", { skip: !existsSync("docs/legal/final/privacy-2026-11-15.1.md") && "docs/ is not part of the Community edition" }, () => {
   assert.equal(pdfTexts("deviation").text("retention.note"), DEVIATION_RETENTION_TEXT);
   assert.match(DEVIATION_RETENTION_TEXT, /5 år.*10 år.*3 år/);
-  const privacy = readFileSync("docs/legal/final/privacy-2026-11-12.1.md", "utf8");
+  const privacy = readFileSync("docs/legal/final/privacy-2026-11-15.1.md", "utf8");
   assert.match(privacy, /\*\*Avvikelser, tillbud och olycksfall:\*\*[^\n]*5 år[^\n]*10 år[^\n]*3 år/);
   const dpa = readFileSync("docs/legal/final/dpa-2026-11-06.1.md", "utf8");
   assert.match(dpa, /Avvikelser, tillbud och olycksfall[^\n]*5 år[^\n]*10 år[^\n]*3 år/);

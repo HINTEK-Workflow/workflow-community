@@ -45,7 +45,7 @@ export async function runRuleCommand(organizationId: string, actorId: string, in
     const signal = await prisma.machineSignal.findFirst({ where: { id: input.signalId, organizationId }, select: { id: true, key: true, name: true, kind: true, status: true, sourceId: true, source: { select: { name: true } } } });
     if (!signal) throw new ApiError(404, "Signalen finns inte.");
     if (signal.status === "ignored") throw new ApiError(409, "Signalen är ignorerad. Gör den aktiv först.");
-    if (signal.kind === "code" && rule.operator !== "stale") throw new ApiError(400, "En kod har inget värde att jämföra; för en kod går bara Har inte hörts av.");
+    if (signal.kind === "code" && rule.operator !== "stale") throw new ApiError(400, "En kod har inget värde att jämföra. För en kod fungerar bara Har inte hörts av.");
     if (await prisma.machineSignalRule.count({ where: { organizationId, signal: { sourceId: signal.sourceId } } }) >= MAX_RULES_PER_SOURCE) throw new ApiError(409, `Källan har redan ${MAX_RULES_PER_SOURCE} regler. Ta bort en först.`);
     const created = await prisma.$transaction(async (tx) => {
       // A rule on a found signal makes it active: that is the admin's choice that it matters.
@@ -61,7 +61,7 @@ export async function runRuleCommand(organizationId: string, actorId: string, in
     return { answer: { ok: true }, audit: `Tog bort en regel på signalen ”${signalLabel(row.signal)}” (${row.signal.source.name}).` };
   }
   const rule = ruleOf(input.rule);
-  if (row.signal.kind === "code" && rule.operator !== "stale") throw new ApiError(400, "En kod har inget värde att jämföra; för en kod går bara Har inte hörts av.");
+  if (row.signal.kind === "code" && rule.operator !== "stale") throw new ApiError(400, "En kod har inget värde att jämföra. För en kod fungerar bara Har inte hörts av.");
   // A changed rule starts over: its old state belonged to the old condition.
   await prisma.$transaction([
     prisma.machineSignalRule.updateMany({ where: { id: row.id, organizationId }, data: data(rule) }),

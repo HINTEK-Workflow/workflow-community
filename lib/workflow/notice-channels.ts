@@ -20,7 +20,7 @@ export const NOTICE_KINDS = [
   // Kommentarer (beslut 14, 2026-11-01): a new kind, off for everyone until they choose it.
   { key: "COMMENTS", label: "Kommentarer", description: "När någon nämner dig med @namn, eller skriver på ett jobb du följer." },
   { key: "URGENT", label: "Akuta arbetsordrar", description: "Öppna arbetsordrar som är markerade Akut." },
-  { key: "ROUNDS", label: "Driftronder", description: "Ronder som ska göras idag eller har missats." },
+  { key: "ROUNDS", label: "Driftronder", description: "Ronder som ska göras i dag eller har missats." },
   { key: "FOLLOW_UP", label: "Uppföljning av avvikelser", description: "När en arbetsorder som skapats från en avvikelse är färdigställd och protokollet ska följas upp." },
   // Offert per e-post, steg E (2026-10-09): a new kind, off for everyone until they choose it.
   { key: "QUOTES", label: "Svar på offerter", description: "När en kund accepterar eller avböjer en offert via länken i e-posten." },
@@ -137,10 +137,10 @@ export function noticeStateText(item: Pick<TaskNotification, "kind" | "urgent" |
   if (item.kind === "FOLLOW_UP") return "Följ upp avvikelsen";
   // Ej utfört (2026-10-28): someone recorded that a round's occurrence will not be done (lib/workflow/round-outcome.ts).
   if (item.kind === "ROUND" && item.id?.startsWith("ROUND_NOT_DONE:")) return `Ej utfört (${item.dueDate})${item.assignedBy ? ` – markerat av ${item.assignedBy}` : ""}`;
-  if (item.kind === "ROUND") return item.deadline === "OVERDUE" ? `Missad rond (${item.dueDate})` : "Ska göras idag";
+  if (item.kind === "ROUND") return item.deadline === "OVERDUE" ? `Missad rond (${item.dueDate})` : "Ska göras i dag";
   if (item.urgent) return "Akut arbetsorder";
   if (item.deadline === "OVERDUE") return `Förfallen (${item.dueDate})`;
-  if (item.deadline === "DUE_SOON") return item.dueDate === today ? "Förfaller idag" : `Klart senast ${item.dueDate}`;
+  if (item.deadline === "DUE_SOON") return item.dueDate === today ? "Förfaller i dag" : `Klart senast ${item.dueDate}`;
   if (item.needsAction) return "Behöver åtgärdas";
   return "";
 }

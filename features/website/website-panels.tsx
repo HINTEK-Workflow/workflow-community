@@ -271,7 +271,7 @@ export function ConnectionCard({ connection, onChanged, notify, after }: { conne
       <p>Inget installeras på webbplatsen.</p>
       {extras?.status ? <p>{extras.status}</p> : null}
       {extras?.error ? <p className="text-red-700 dark:text-red-300">{extras.error}</p> : null}
-      <KeyTextField id="site-base-url" label="REST-adress" value={baseUrl} maxLength={300} onChange={setBaseUrl} placeholder="https://example.se/wp-json/" hint="Hittas själv från adressen. Fyll bara i om den inte hittas." removeLabel="Töm REST-adressen" />
+      <KeyTextField id="site-base-url" label="REST-adress" value={baseUrl} maxLength={300} onChange={setBaseUrl} placeholder="https://example.se/wp-json/" hint="Hittas automatiskt från adressen. Fyll bara i om den inte hittas." removeLabel="Töm REST-adressen" />
       {connection.updatedAt ? <Button type="button" variant="ghost" size="sm" className="text-destructive" disabled={busy} onClick={() => void disconnect()} data-testid="site-disconnect"><Unplug />Ta bort kopplingen</Button> : null}
     </>} moreOpenWhen={Boolean(extras?.error) || !connection.configured} moreTestId="site-connection-more">
     <KeyFields>

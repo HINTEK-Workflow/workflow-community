@@ -64,7 +64,7 @@ export async function requestPasswordResetAction(
   if (!parsed.success) {
     return {
       status: "error",
-      message: parsed.error.issues[0]?.message ?? "Kunde inte tolka formuläret.",
+      message: parsed.error.issues[0]?.message ?? "Formuläret kunde inte läsas.",
     } satisfies AuthFormState;
   }
 
@@ -73,7 +73,7 @@ export async function requestPasswordResetAction(
   } catch {
     return {
       status: "error",
-      message: "Kunde inte skicka återställningsmejl just nu.",
+      message: "Kunde inte skicka återställningslänken just nu.",
     } satisfies AuthFormState;
   }
 
@@ -133,7 +133,7 @@ export async function resendVerificationAction(
   } catch {
     return {
       status: "error",
-      message: "Kunde inte skicka verifieringsmejl just nu.",
+      message: "Kunde inte skicka verifieringslänken just nu.",
     } satisfies AuthFormState;
   }
 
@@ -156,7 +156,7 @@ export async function acceptInvitationAction(
   if (!parsed.success)
     return {
       status: "error",
-      message: parsed.error.issues[0]?.message ?? "Kunde inte tolka formuläret.",
+      message: parsed.error.issues[0]?.message ?? "Formuläret kunde inte läsas.",
     } satisfies AuthFormState;
 
   const result = await acceptInvitationWithToken(

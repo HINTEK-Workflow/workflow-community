@@ -84,7 +84,7 @@ export async function GET(request: Request) {
   try {
     const ctx = await context();
     if (ctx.user.role !== "SUPERADMIN")
-      throw new ApiError(403, "Systemadministratör krävs.");
+      throw new ApiError(403, "Bara installationens administratör kan göra det.");
     const days = windowSchema.parse(new URL(request.url).searchParams.get("days") ?? "30");
     const to = new Date();
     const from = new Date(to);

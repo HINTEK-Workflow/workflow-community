@@ -292,7 +292,7 @@ async function analyze(ctx: Context, request: Request) {
     if (letter) {
       results.push({ id: `${Date.now().toString(36)}-${results.length}`, file: tableOfRebate(file, letter),
         detection: { target: "catalogue" as const, confidence: 1, reasons: [letter.format.label], mapping: {}, candidates: [{ target: "catalogue" as const, confidence: 1 }], questions: [], rowCount: letter.rows.length },
-        plan: await rebatePlan(letter, ctx), ai: { used: false, reason: wantAi ? "Filer med priser skickas aldrig till Workflow AI; reglerna gör analysen." : "" }, saved: null, saveError: "" });
+        plan: await rebatePlan(letter, ctx), ai: { used: false, reason: wantAi ? "Filer med priser skickas aldrig till Workflow AI. Reglerna gör analysen." : "" }, saved: null, saveError: "" });
       continue;
     }
     // A price list (any CSV or text table, a large Excel file) is read as a stream (prisfiler etapp 1, 2026-10-12);
@@ -332,11 +332,11 @@ async function analyze(ctx: Context, request: Request) {
     // file the rules already call an attachment (2026-10-02: a reference manual cost credits for that alone).
     // A price list is never sent to the AI, not even to ask what it is (grossistimport 2026-10-08).
     const priceFile = detection.target === "catalogue" || looksLikePriceFile(extracted) || Boolean(columns?.mapping.price);
-    if (wantAi && priceFile) ai = { used: false, reason: "Filer med priser skickas aldrig till Workflow AI; reglerna gör analysen." };
+    if (wantAi && priceFile) ai = { used: false, reason: "Filer med priser skickas aldrig till Workflow AI. Reglerna gör analysen." };
     // Kompetens (2026-10-08): people's trainings are personal data and never go to the AI either.
-    else if (wantAi && detection.target === "competence") ai = { used: false, reason: "Kompetensuppgifter skickas aldrig till Workflow AI; reglerna gör analysen." };
+    else if (wantAi && detection.target === "competence") ai = { used: false, reason: "Kompetensuppgifter skickas aldrig till Workflow AI. Reglerna gör analysen." };
     // Frånvaro and staff numbers are personal data (sick leave may be health data): never to the AI either.
-    else if (wantAi && (detection.target === "absence" || detection.target === "employee_numbers")) ai = { used: false, reason: "Frånvaro och personaluppgifter skickas aldrig till Workflow AI; reglerna gör analysen." };
+    else if (wantAi && (detection.target === "absence" || detection.target === "employee_numbers")) ai = { used: false, reason: "Frånvaro och personaluppgifter skickas aldrig till Workflow AI. Reglerna gör analysen." };
     else if (wantAi && aiAvailable.ok && detection.target !== "attachment" && (detection.target === "unknown" || detection.confidence < 0.9)) {
       const outcome = await analyzeWithAi(ctx, extracted, detection);
       if (outcome.used) {

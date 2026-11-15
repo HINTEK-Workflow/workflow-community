@@ -19,6 +19,19 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "0.64.0",
+    date: "2026-11-14",
+    summary: "Texterna i hela Workflow är lättare att läsa, och korten under Kopplingar står i linje.",
+    items: [
+      "Texterna i hela appen och i demon är genomgångna: kortare meningar, rätt ordföljd och samma ord för samma sak överallt.",
+      "Vad en användare får göra heter nu Behörigheter överallt, och ett meddelande säger tydligt vem som får göra något.",
+      "När kort står bredvid varandra ligger Spara och Mer på samma höjd längst ner.",
+      "Lönefilen till lönesystemet får alltid samma ordning på raderna.",
+      "Integritetspolicyn beskriver nu felrapporterna och nyhetsbrevet.",
+      "Säkerhetsuppdateringar av programdelar som Workflow bygger på.",
+    ],
+  },
+  {
     version: "0.63.0",
     date: "2026-11-14",
     summary: "Offert, inköp och faktura ser ut som arbetsordern, varje funktion har en egen sida och Workflow Community är öppet.",

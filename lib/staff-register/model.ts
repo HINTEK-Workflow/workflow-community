@@ -188,7 +188,7 @@ export const disclosureInputSchema = z.object({
   reason: z.string().trim().min(DISCLOSURE_REASON_MIN, `Skriv varför liggaren lämnas ut (minst ${DISCLOSURE_REASON_MIN} tecken), t.ex. vem som begärde den.`).max(REASON_MAX, `Skälet får vara högst ${REASON_MAX} tecken.`),
 });
 export function disclosureRefusal(input: { superadmin: boolean; companyActive: boolean }) {
-  if (!input.superadmin) return "Systemadministratör krävs.";
+  if (!input.superadmin) return "Bara installationens administratör kan göra det.";
   if (input.companyActive) return "Företaget är aktivt. Dess egen administratör hämtar liggaren i Kontrollvyn.";
   return null;
 }

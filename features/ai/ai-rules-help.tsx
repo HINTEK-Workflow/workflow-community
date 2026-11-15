@@ -9,14 +9,14 @@ import { cn } from "@/lib/utils";
  */
 export function AiRulesHelp() {
   return <div className="space-y-6" id="hjalp-ai" data-testid="help-ai">
-    <Panel icon={ShieldCheck} title="Vad Workflow AI gör – och aldrig gör" description="Detta gäller alltid och kan inte ändras.">
+    <Panel icon={ShieldCheck} title="Vad Workflow AI gör – och aldrig gör" description="Det här gäller alltid och kan inte ändras.">
       <div className="grid gap-4 md:grid-cols-2">
         <ul className="space-y-2 text-sm">
           <Rule ok text="Svarar på frågor i Workflow AI-chatten." />
           <Rule ok text="Analyserar en fil på sidan Import, när personen själv bockar i AI-analys." />
-          <Rule ok text="Resonerar kring nästa steg när någon trycker Fråga Workflow AI på ett tips i arbetsflödet." />
+          <Rule ok text="Resonerar kring nästa steg när någon trycker på Fråga Workflow AI vid ett tips i arbetsflödet." />
           <Rule ok text="Föreslår arbetsordrar, materialrader, tid, planering, offerter, skyddsåtgärder och sammanfattningar när någon ber om det – även i chatten. Inget skapas förrän personen har bekräftat, och det går att ångra." />
-          <Rule ok text="Granskar ett sparat protokoll när någon trycker Granska med AI, och pekar på det som bör kontrolleras." />
+          <Rule ok text="Granskar ett sparat protokoll när någon trycker på Granska med AI, och pekar på det som bör kontrolleras." />
           <Rule ok text="Tipsen under progressionslinjen bygger på regler i Workflow och använder ingen AI." />
         </ul>
         <ul className="space-y-2 text-sm">

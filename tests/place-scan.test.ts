@@ -66,7 +66,7 @@ test("a round due today without a protocol asks to start it; one not planned tod
   const [start] = outcome.starts;
   assert.equal(start!.today, true);
   assert.equal(start!.date, today);
-  assert.equal(scanStartQuestion(start!), "Pumprond ska göras i dag – Starta ronden?");
+  assert.equal(scanStartQuestion(start!), "Pumprond ska göras i dag. Starta ronden?");
   // The same new-protocol address as Starta under Driftronder, with the scanned place and the start marked.
   const href = new URL(start!.href, "http://x");
   assert.equal(href.searchParams.get("scheduleId"), "r1");

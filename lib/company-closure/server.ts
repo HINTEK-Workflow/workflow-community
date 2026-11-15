@@ -132,8 +132,8 @@ async function mailNotice(organizationId: string, kind: "start" | ReminderStage,
 }
 
 const mailLine = (mail: { recipients: number; sent: number; skipped: string | null }) =>
-  mail.recipients === 0 ? "Ingen ägare eller administratör att mejla; notisen visas i klockan."
-    : mail.skipped && mail.sent === 0 ? `E-post skickades inte (${mail.skipped}); notisen visas i klockan.`
+  mail.recipients === 0 ? "Ingen ägare eller administratör att skicka e-post till. Notisen visas i klockan."
+    : mail.skipped && mail.sent === 0 ? `E-post skickades inte (${mail.skipped}). Notisen visas i klockan.`
       : `E-post till ${mail.sent} av ${mail.recipients} ägare och administratörer${mail.skipped ? ` (${mail.skipped})` : ""}.`;
 
 export type ErasurePreview = { members: number; anonymised: number; customers: number; projects: number; tasks: number; quotes: number; files: number; keptRegisterRows: number; keptInvoices: number };

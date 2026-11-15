@@ -94,7 +94,7 @@ export function adviseFlow(context: AdvisorContext): Advice[] {
   if (context.rowsWithoutOrder)
     tips.push({ id: "rows-without-order", priority: 2, title: `${plural(context.rowsWithoutOrder, "avvikelse saknar", "avvikelser saknar")} arbetsorder`, text: "Skapa arbetsorder direkt på raderna, så följs de upp och syns i projektet." });
   if (context.failedPoints && step === "summary")
-    tips.push({ id: "failed-points", priority: 2, title: `${plural(context.failedPoints, "kontrollpunkt är", "kontrollpunkter är")} inte godkända`, text: "Beskriv avvikelserna och vad som ska åtgärdas i sammanfattningen; det kommer med i protokollet.", action: { label: "Till sammanfattningen", do: { kind: "focus", target: "summary-comment" } } });
+    tips.push({ id: "failed-points", priority: 2, title: plural(context.failedPoints, "kontrollpunkt är inte godkänd", "kontrollpunkter är inte godkända"), text: "Beskriv avvikelserna och vad som ska åtgärdas i sammanfattningen. Det kommer med i protokollet.", action: { label: "Till sammanfattningen", do: { kind: "focus", target: "summary-comment" } } });
   // Riskbedömning som steg (2026-10-08): the time starts and the task completes only once it is done.
   if (step === "risk")
     tips.push({ id: "risk-step", priority: 2, title: "Gör riskbedömningen först", text: `${context.flow.current?.hint ?? ""} Tiden kan startas och uppgiften färdigställas när riskbedömningen är klar.`.trim(), action: { label: "Gör riskbedömningen", do: { kind: "focus", target: "task-risk-step" } } });

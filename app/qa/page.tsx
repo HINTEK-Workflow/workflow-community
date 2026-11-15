@@ -12,7 +12,7 @@ export default function RoleQaPage() {
       <div>
         <p className="text-xs font-medium uppercase tracking-widest text-primary">Endast lokal QA</p>
         <h1 className="page-title mt-2">{role === "owner" ? "Kundföretagets admin" : role === "worker" ? "Kundföretagets medarbetare" : "Workflow superadmin (QA)"}</h1>
-        <p className="page-description mt-3">Fiktiv testinloggning mot den isolerade testdatabasen. Ingen kund får åtkomst via denna sida.</p>
+        <p className="page-description mt-3">Fiktiv testinloggning mot den isolerade testdatabasen. Ingen kund får åtkomst via den här sidan.</p>
       </div>
       <form action="/api/qa/session" method="post">
         <button className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground">

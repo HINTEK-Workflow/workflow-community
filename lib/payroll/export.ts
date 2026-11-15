@@ -216,7 +216,7 @@ export function exportRows(input: {
     }
   }
   const nameOf = (userId: string) => people.get(userId)?.name ?? "";
-  rows.sort((a, b) => nameOf(a.userId).localeCompare(nameOf(b.userId), "sv") || a.sort.localeCompare(b.sort));
+  rows.sort((a, b) => nameOf(a.userId).localeCompare(nameOf(b.userId), "sv") || a.sort.localeCompare(b.sort, "sv"));
   return rows.map((row) => template.columns.map((column) => column.field === "fixed" ? column.value : row.values[column.field] ?? ""));
 }
 

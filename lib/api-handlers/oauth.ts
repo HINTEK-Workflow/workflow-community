@@ -130,7 +130,7 @@ export const connections: RouteHandlers = {
       const input = z.object({ id: z.string().min(1).max(60) }).parse(await body(request));
       const app = await disconnectOwn(ctx.organizationId, ctx.user.id, input.id);
       if (!app) throw new ApiError(404, "Anslutningen finns inte.");
-      await prisma.administrationEvent.create({ data: { actorId: ctx.user.id, organizationId: ctx.organizationId, action: "oauth_disconnect", detail: `Kopplade från appen ”${app}” från MCP-servern.` } });
+      await prisma.administrationEvent.create({ data: { actorId: ctx.user.id, organizationId: ctx.organizationId, action: "oauth_disconnect", detail: `Kopplade bort appen ”${app}” från MCP-servern.` } });
       return NextResponse.json({ ok: true });
     } catch (error) { return failure(error); }
   },

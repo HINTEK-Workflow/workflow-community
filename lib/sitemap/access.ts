@@ -7,7 +7,7 @@ export type SitemapAccess = { ok: true } | { ok: false; status: 401 | 403; messa
 
 export function sitemapAccess(user: { role?: string | null } | null | undefined): SitemapAccess {
   if (!user) return { ok: false, status: 401, message: "Logga in för att fortsätta." };
-  if (user.role !== "SUPERADMIN") return { ok: false, status: 403, message: "Systemadministratör krävs." };
+  if (user.role !== "SUPERADMIN") return { ok: false, status: 403, message: "Bara installationens administratör kan göra det." };
   return { ok: true };
 }
 

@@ -4,7 +4,8 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import { Save, Stethoscope, Trash2 } from "lucide-react";
-import type { IndicatorTone } from "@/features/workflow/indicator-tone";
+import { indicatorText, type IndicatorTone } from "@/features/workflow/indicator-tone";
+import { expiryDateProblem, expiryView } from "@/lib/secrets/key-expiry";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,6 +30,8 @@ import { StatusPill } from "./status-pill";
  *   5. Mer: folded, with the explanations, instructions and technical details; a destructive action (Ta bort kopplingen) only
  *      there, at its foot to the left.
  * One thin line on every card (2026-11-12): the one right above Mer; everything else is kept apart by space.
+ * Mer längst ner (2026-11-14): side by side in a KeyCardGrid the cards are as tall as their row and the foot (4 and 5)
+ * stands at the bottom of each, so Spara and Mer line up; the free room goes above the foot (app/globals.css .key-card).
  * A part a card does not need is not drawn. Parts inside the card that save on their own endpoint (the OpenAI key, the e-mail
  * server) join the card's Spara through `useKeyCardPart`.
  */
@@ -160,9 +163,12 @@ export function KeyCard({ icon, title, description, status, statusTestId, proble
   useEffect(() => { report?.(cardId, dirty); }, [report, cardId, dirty]);
   useEffect(() => () => report?.(cardId, false), [report, cardId]);
 
+  // Gäller till (2026-11-14): the card's own last day where the page keeps dates and the card is in a scope.
+  const expiryId = useContext(KeyExpiryScopeContext);
+  const expiry = useContext(KeyExpiryContext);
   const problem = status?.problem;
   // The status and Kontrollera stay on the title's row from a tablet up, so the headers of two cards side by side line up.
-  return <Panel icon={icon} title={title} description={description} className={cn("h-full", className)} headerClassName="sm:flex-nowrap"
+  return <Panel icon={icon} title={title} description={description} className={cn("key-card h-full", className)} headerClassName="sm:flex-nowrap"
     actions={status || check ? <span className="flex flex-wrap items-center justify-end gap-2" data-testid="key-card-actions">
       {status ? <StatusPill tone={status.tone} testId={statusTestId}>{status.label}</StatusPill> : null}
       {check ? <Button type="button" variant="outline" size="sm" disabled={check.disabled || saving} disabledReason={check.disabledReason} onClick={check.onClick} aria-label={check.label ?? `Kontrollera ${title}`}
@@ -170,10 +176,16 @@ export function KeyCard({ icon, title, description, status, statusTestId, proble
     </span> : undefined}>
     {confirmElement}
     <KeyCardParts.Provider value={registry}><KeyCardActionSlot.Provider value={actionSlot}>
-      <div className="@container min-w-0 space-y-3 text-sm" data-key-card="" data-dirty={dirty || undefined}>
+      <div className="@container flex min-w-0 flex-1 flex-col gap-3 text-sm" data-key-card="" data-dirty={dirty || undefined}>
         {problem ? <p className={`break-words text-xs ${status?.tone === "danger" ? "text-red-700 dark:text-red-300" : "text-muted-foreground"}`} data-testid={problemTestId ?? "key-card-problem"}>{problem}</p> : null}
-        {children}
+        {/* A card inside this one never takes this card's date. */}
+        <KeyExpiryScopeContext.Provider value={null}>{children}</KeyExpiryScopeContext.Provider>
+        {expiryId && expiry ? <KeyExpiryField id={expiryId} registry={expiry} /> : null}
         {settings ? <KeySection>{settings}</KeySection> : null}
+        {/* The card's foot (Mer längst ner, 2026-11-14): the action row and Mer at the card's bottom – mt-auto puts the free
+            room above them when the card is as tall as its row in a KeyCardGrid (app/globals.css .key-card), so Spara and Mer line
+            up across the cards; alone the card is as tall as its content. Shown only when it holds a button or a link. */}
+        <div className="mt-auto hidden flex-col gap-3 has-[button,a]:flex" data-key-card-foot="">
         {/* The one action row (2026-11-12): Spara, the card's actions, then the parts' (KeyCardActions); shown only when it
             holds a button or a link. */}
         <div className="hidden flex-wrap items-center gap-x-3 gap-y-2 pt-2 has-[button,a]:flex" data-testid="key-card-save-row" data-key-card-actions-row="">
@@ -188,6 +200,7 @@ export function KeyCard({ icon, title, description, status, statusTestId, proble
         {more ? <CollapsibleSection title="Mer" open={open} onOpenChange={setOpen} testId={moreTestId ?? "key-card-more"} divided={false}>
           <div className="space-y-2 text-xs text-muted-foreground">{typeof more === "function" ? more(open) : more}</div>
         </CollapsibleSection> : null}
+        </div>
       </div>
     </KeyCardActionSlot.Provider></KeyCardParts.Provider>
   </Panel>;
@@ -228,4 +241,46 @@ export function KeyTextField({ id, label, value, onChange, placeholder, hint, ty
     </div>
     {hint ? <p id={`${id}-hint`} className="text-xs leading-5 text-muted-foreground">{hint}</p> : null}
   </div>;
+}
+
+/**
+ * Gäller till (2026-11-14: "Vissa nycklar har utgångdatum och vissa vilka vet jag inte"): an optional last day on every
+ * key card of Tjänster och nycklar. The page holds the dates (`KeyExpiryProvider`) and names each card (`KeyExpiryScope` around
+ * it); the card then draws the field under its own fields, saved by the card's one Spara. Rules and words:
+ * lib/secrets/key-expiry.ts. A card that knows its day in another way (SCB's own date, the key vault's token) has no scope and
+ * shows its day with `KeyExpiryLine`.
+ */
+export type KeyExpiryDates = Partial<Record<string, { on: string; updatedAt?: string | null; updatedBy?: string | null }>>;
+type KeyExpiryRegistry = { dates: KeyExpiryDates; save: (id: string, on: string) => Promise<boolean> };
+const KeyExpiryContext = createContext<KeyExpiryRegistry | null>(null);
+const KeyExpiryScopeContext = createContext<string | null>(null);
+
+export function KeyExpiryProvider({ dates, save, children }: { dates: KeyExpiryDates; save: KeyExpiryRegistry["save"]; children: React.ReactNode }) {
+  const value = useMemo(() => ({ dates, save }), [dates, save]);
+  return <KeyExpiryContext.Provider value={value}>{children}</KeyExpiryContext.Provider>;
+}
+/** The card inside takes the date of `id` (a server key's row id or a part's id, lib/secrets/key-expiry.ts KEY_EXPIRY_IDS). */
+export function KeyExpiryScope({ id, children }: { id: string; children: React.ReactNode }) {
+  return <KeyExpiryScopeContext.Provider value={id}>{children}</KeyExpiryScopeContext.Provider>;
+}
+
+/** "Gäller till 2027-11-14 (365 dagar kvar)": amber at 30 days or fewer, red once the day has passed. */
+export function KeyExpiryLine({ on, className, testId = "key-expiry" }: { on: string; className?: string; testId?: string }) {
+  const view = expiryView(on);
+  return <span className={cn("text-xs", view.tone !== "neutral" && "font-medium", indicatorText(view.tone), className)} data-testid={testId} data-tone={view.tone}>{view.text}</span>;
+}
+
+function KeyExpiryField({ id, registry }: { id: string; registry: KeyExpiryRegistry }) {
+  const saved = registry.dates[id]?.on ?? "";
+  const [value, setValue] = useState(saved);
+  // A save elsewhere brings a new date: the field follows while nothing is changed in it.
+  const [savedFor, setSavedFor] = useState(saved);
+  if (savedFor !== saved) { setSavedFor(saved); setValue(saved); }
+  const typed = value.trim();
+  const problem = expiryDateProblem(typed);
+  useKeyCardPart(typed !== saved, () => registry.save(id, typed), problem);
+  return <KeyFields testId="key-expiry-fields">
+    <KeyTextField id={`key-expiry-${id}`} label="Gäller till (valfritt)" type="date" value={value} onChange={setValue} removeLabel="Ta bort slutdatumet" testId="key-expiry-input" invalid={Boolean(problem)}
+      hint={problem ? <span className={indicatorText("danger")}>{problem}</span> : typed ? <KeyExpiryLine on={typed} /> : "Om nyckeln har ett slutdatum. Du får ett mejl 30, 14, 7 och 1 dag innan."} />
+  </KeyFields>;
 }

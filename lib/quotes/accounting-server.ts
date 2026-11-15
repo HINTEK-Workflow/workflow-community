@@ -28,7 +28,7 @@ export async function readAccountingSettings(organizationId: string): Promise<Ac
 }
 
 export async function writeAccountingSettings(caller: Pick<QuoteCaller, "organizationId" | "admin">, input: unknown): Promise<AccountingSettings> {
-  if (!caller.admin) throw new ApiError(403, "Företagsadministratör krävs.");
+  if (!caller.admin) throw new ApiError(403, "Bara en företagsadministratör kan göra det.");
   const settings = accountingSettingsSchema.parse(input);
   await prisma.workspaceSettings.upsert({
     where: { organizationId: caller.organizationId },

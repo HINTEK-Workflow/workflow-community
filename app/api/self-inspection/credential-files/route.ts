@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     await requireCloudWriteAccess(ctx);
     requireModule(ctx, "self_inspection");
     requireAdmin(ctx);
-    if (Number(request.headers.get("content-length")) > 12_000_000) throw new ApiError(413, "Maximal filstorlek är 10 MB.");
+    if (Number(request.headers.get("content-length")) > 12_000_000) throw new ApiError(413, "Filen får vara högst 10 MB.");
     const form = await readLimitedFormData(request, 12_000_000);
     const credentialId = String(form.get("credentialId") || "");
     const file = form.get("file");
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     if (!line) throw new ApiError(404, "Utbildningen hittades inte.");
     // The card of a person who left is kept as it was until it is deleted.
     if (line.leftAt) throw new ApiError(409, "Personen har lämnat företaget. Kompetenskortet kan inte ändras, bara tas bort.");
-    if (await prisma.selfInspectionCredentialFile.count({ where: { credentialId: line.id, organizationId } }) >= CREDENTIAL_FILE_LIMIT) throw new ApiError(400, `Max ${CREDENTIAL_FILE_LIMIT} filer per utbildning eller intyg.`);
+    if (await prisma.selfInspectionCredentialFile.count({ where: { credentialId: line.id, organizationId } }) >= CREDENTIAL_FILE_LIMIT) throw new ApiError(400, `Högst ${CREDENTIAL_FILE_LIMIT} filer per utbildning eller intyg.`);
     const { buffer, mimeType, extension } = await prepareAttachmentFile(file);
     storagePath = await store(buffer, extension);
     const path = storagePath;

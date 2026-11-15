@@ -76,7 +76,7 @@ const solarAdapter: WholesaleApiAdapter = {
 /** A wholesaler without a documented product API: prepared, inactive, never importing. */
 const prepared = (wholesaler: Exclude<WholesalerId, "solar">): WholesaleApiAdapter => ({
   wholesaler, label: WHOLESALER_LABELS[wholesaler], available: false,
-  note: "Ej ansluten. Prisfiler fungerar ändå: raderna läses in som företagets egna.",
+  note: "Inte ansluten. Prisfiler fungerar ändå: raderna läses in som företagets egna.",
   enabled: async () => false,
   preflight: async () => ({ ok: false, reason: "unavailable", message: `${WHOLESALER_LABELS[wholesaler]} har ingen ansluten API-tjänst – katalogen kan inte hämtas.` }),
   page: async () => ({ ok: false, status: 0, message: `${WHOLESALER_LABELS[wholesaler]} har ingen ansluten API-tjänst.` }),

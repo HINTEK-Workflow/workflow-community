@@ -47,7 +47,7 @@ export function PostScheduleButton({ postId, reason, busy, where, current, plan,
   const text = `Inlägget publiceras på ${where || "de valda kanalerna"} vid den tid du väljer, precis som det ser ut nu. Ändrar du det efteråt måste ändringen godkännas igen.${current ? ` Det ersätter tiden ${formatSwedish(current.runAt, { dateStyle: "medium", timeStyle: "short" })}.` : ""}${newsletter ? ` Skickas även som nyhetsbrev till ${newsletter.recipients} mottagare vid samma tid.` : ""}`;
   return <>
     <Button type="button" variant="outline" {...disabledReasonProps({ reason: busy ? null : reason, describedBy: "post-publish-reason", onClick: () => { setError(null); setOpen(true); } })} disabled={busy || working} data-testid={testId}><CalendarClock />Schemalägg</Button>
-    <ScheduleDialog open={open} title="Schemalägg inlägget" text={text} check={newsletter ? "Jag har läst texten, tittat på bilden och läst mejlet." : "Jag har läst texten och tittat på bilden."} busy={working} error={error} plan={plan}
+    <ScheduleDialog open={open} title="Schemalägg inlägget" text={text} check={newsletter ? "Jag har läst texten, tittat på bilden och läst nyhetsbrevet." : "Jag har läst texten och tittat på bilden."} busy={working} error={error} plan={plan}
       initial={current ? toSwedishDateTimeInput(current.runAt) : null} onCancel={() => setOpen(false)} onConfirm={(at) => void confirm(at)} testId={`${testId}-dialog`} />
   </>;
 }

@@ -26,7 +26,8 @@ import { StatusPill } from "./status-pill";
 import { CentralStorePanel, centralStoreState, type CentralOverview } from "./central-store-panel";
 import type { CentralKeysUi } from "@/lib/extensions/types";
 import { clientExtensions } from "@ee/client";
-import { KEY_STATUS, KeyCard, KeyCardActions, KeyCardGrid, KeyCardsGuard, KeyFields, KeyTextField, type KeyCardStatus } from "./key-card";
+import { KEY_STATUS, KeyCard, KeyCardActions, KeyCardGrid, KeyCardsGuard, KeyExpiryProvider, KeyExpiryScope, KeyFields, KeyTextField, type KeyCardStatus, type KeyExpiryDates } from "./key-card";
+import { expiryCounts } from "@/lib/secrets/key-expiry";
 
 type KeyRow = {
   id: string; kind: "API" | "MCP" | "EXTERNAL"; name: string; provider: string | null; scopes: string[]; displayHint: string;
@@ -170,7 +171,7 @@ export function IntegrationKeys({ notify, part = "api", providers, title = "Nyck
   return <div className="space-y-6">
     {confirmElement}
     {part === "api" ? <>
-    <div className="notice flex gap-3 text-sm"><ShieldCheck className="mt-0.5 size-5 shrink-0" /><p>En ny nyckel visas bara en gång. Den har personens rättigheter, begränsade av de valda behörigheterna.</p></div>
+    <div className="notice flex gap-3 text-sm"><ShieldCheck className="mt-0.5 size-5 shrink-0" /><p>En ny nyckel visas bara en gång. Den får personens behörigheter, men bara inom det du har valt för nyckeln.</p></div>
 
     <Panel title="API-nycklar" description="För egna system och integrationer som läser eller skriver data i Workflow."
       icon={KeyRound}
@@ -186,7 +187,7 @@ export function IntegrationKeys({ notify, part = "api", providers, title = "Nyck
       {issuedList("MCP")}
       <div className="mt-4" data-testid="oauth-connections">
         <p className="text-sm font-medium">Anslutna appar (OAuth)</p>
-        <p className="mt-1 text-xs text-muted-foreground">Appar som ChatGPT ansluter med inloggning i stället för nyckel. Appen får personens rättigheter.</p>
+        <p className="mt-1 text-xs text-muted-foreground">Appar som ChatGPT ansluter med inloggning i stället för nyckel. Appen får personens behörigheter.</p>
         {connections.some((item) => !item.revokedAt) ? <ul className="mt-2 divide-y rounded-lg border" aria-label="Anslutna appar">
           {connections.filter((item) => !item.revokedAt).map((connection) => <li key={connection.id} className="grid gap-2 p-3 text-sm sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center" data-testid="oauth-connection">
             <div className="min-w-0">
@@ -258,6 +259,8 @@ export function IntegrationKeys({ notify, part = "api", providers, title = "Nyck
  * file. Stripe's and Google's keys are entered here (dots, a bin, a new value replaces). Never a value.
  */
 type KeyAlerts = { on: boolean; email: string | null; blocked: string | null };
+/** Gäller till (2026-11-14): the cards' own dates, and the days known in another way (SCB's own date, the key vault's token). */
+type KeyExpiry = { dates: KeyExpiryDates; known: Record<string, string> };
 
 // Sidans grupper i ordning (2026-10-18: "nycklarna ligger lite huller om buller"): kort av samma slag under en kort
 // rubrik; översiktens rutor följer samma grupper och hoppar dit. `keys` är servernycklarnas id, `parts` de andra korten.
@@ -300,7 +303,7 @@ const listed = (names: string[]) => names.length > 1 ? `${names.slice(0, -1).joi
  * the service; a key only its form can be checked for is Ej provad, never approved. A wrong form or a failed check is Fel.
  */
 function serverKeyState(key: ServerKeyRow): KeyCardStatus {
-  if (key.prepared) return { label: "Ej ansluten", tone: "neutral" };
+  if (key.prepared) return { label: "Inte ansluten", tone: "neutral" };
   if (key.formatOk === false) return { ...KEY_STATUS.failed, problem: key.fields && /saknas/.test(key.note) ? key.note : "Värdet har fel form." };
   if (!key.configured) return KEY_STATUS.missing;
   if (key.check === "format" || !key.lastCheck) return KEY_STATUS.untested;
@@ -328,6 +331,8 @@ export function ServerKeysAdministration({ notify, parts, payments, extras, afte
   const [keys, setKeys] = useState<ServerKeyRow[] | null>(null);
   const [alerts, setAlerts] = useState<KeyAlerts | null>(null);
   const [central, setCentral] = useState<CentralOverview | null>(null);
+  // Gäller till (2026-11-14): each card's optional last day, and the days known in another way (SCB, the vault's token).
+  const [expiry, setExpiry] = useState<KeyExpiry>({ dates: {}, known: {} });
   // Workflow's key vault on Central lagring (ee/, 2026-11-10): loaded together with the data, so nothing changes once shown.
   const [vaultUi, setVaultUi] = useState<CentralKeysUi | null>(null);
   const [error, setError] = useState("");
@@ -340,11 +345,19 @@ export function ServerKeysAdministration({ notify, parts, payments, extras, afte
   const bindCheck = useCallback((id: string, handler: CardCheck | null) => { if (handler) ownChecks.set(id, handler); else ownChecks.delete(id); }, [ownChecks]);
   const report = useCallback((id: ServerKeySectionId, status: ServerKeySectionStatus) => setReported((current) => sameSectionStatus(current[id], status) ? current : { ...current, [id]: status }), []);
   const refresh = useCallback(() => {
-    Promise.all([api<{ server: ServerKeyRow[]; alerts: KeyAlerts; central?: CentralOverview }>("/api/integration-keys?scope=server"), clientExtensions.loadCentralKeysUi?.() ?? null])
-      .then(([result, ui]) => { setVaultUi(ui); setKeys(result.server); setAlerts(result.alerts); setCentral(result.central ?? null); })
+    Promise.all([api<{ server: ServerKeyRow[]; alerts: KeyAlerts; central?: CentralOverview; expiry?: KeyExpiry }>("/api/integration-keys?scope=server"), clientExtensions.loadCentralKeysUi?.() ?? null])
+      .then(([result, ui]) => { setVaultUi(ui); setKeys(result.server); setAlerts(result.alerts); setCentral(result.central ?? null); setExpiry(result.expiry ?? { dates: {}, known: {} }); })
       .catch((cause: Error) => setError(cause.message));
   }, []);
   useEffect(refresh, [refresh]);
+  const saveExpiry = useCallback(async (id: string, on: string) => {
+    try {
+      const result = await api<{ expiry: KeyExpiry }>("/api/integration-keys", { method: "POST", body: JSON.stringify({ action: "save_key_expiry", id, on }) });
+      setExpiry(result.expiry);
+      notify(on ? `Gäller till ${on} är sparat.` : "Slutdatumet är borttaget.");
+      return true;
+    } catch (cause) { notify((cause as Error).message, true); return false; }
+  }, [notify]);
   const check = async (key: ServerKeyRow) => {
     setChecking(key.id);
     const own = ownChecks.get(key.id);
@@ -391,13 +404,21 @@ export function ServerKeysAdministration({ notify, parts, payments, extras, afte
     ],
   }));
   const backup = storeState(central);
+  // The page's count of dated keys (2026-11-14): the cards' own dates and the days known in another way.
+  const dated = expiryCounts([...Object.values(expiry.dates).map((date) => date?.on), ...Object.values(expiry.known)]);
   return <ServerKeyStatusReport.Provider value={report}>
-    <KeyCardsGuard>
+    <KeyCardsGuard><KeyExpiryProvider dates={expiry.dates} save={saveExpiry}>
     {confirmElement}
     <div className="space-y-6" data-testid="server-keys">
       <PageHeader title="Tjänster och nycklar" />
       <KeyOverview categories={categories} testId="server-keys-overview"
-        top={backup ? <p className="flex flex-wrap items-center gap-2 text-sm" data-testid="server-keys-backup"><span className="font-medium">Säkerhetskopia</span><Pill tone={backup.tone}>{backup.label}</Pill></p> : null}
+        top={backup || dated.expired || dated.soon ? <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+          {backup ? <p className="flex flex-wrap items-center gap-2" data-testid="server-keys-backup"><span className="font-medium">Säkerhetskopia</span><Pill tone={backup.tone}>{backup.label}</Pill></p> : null}
+          {dated.expired || dated.soon ? <p className="flex flex-wrap items-center gap-2" data-testid="server-keys-expiry"><span className="font-medium">Gäller till</span>
+            {dated.expired ? <Pill tone="danger" testId="server-keys-expired">{dated.expired === 1 ? "1 har gått ut" : `${dated.expired} har gått ut`}</Pill> : null}
+            {dated.soon ? <Pill tone="warning" testId="server-keys-expiring">{`${dated.soon} går ut inom 30 dagar`}</Pill> : null}
+          </p> : null}
+        </div> : null}
         actions={vaultUi && vaultUi.syncAvailable(central) ? <vaultUi.SyncButton notify={notify} onDone={(nextCentral, nextServer) => { setCentral(nextCentral as CentralOverview); setKeys(nextServer as ServerKeyRow[]); }} /> : undefined} />
       {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : !keys ? <p className="text-sm text-muted-foreground">Hämtar…</p> : null}
       {shown.map((group) => <div key={group.id} id={serverKeySectionAnchor(group.id)} className="scroll-mt-24" data-testid="server-keys-group" data-group={group.id}>
@@ -411,21 +432,22 @@ export function ServerKeysAdministration({ notify, parts, payments, extras, afte
             {group.id === "security" ? vaultUi
               ? <vaultUi.Panel central={central} notify={notify} onChanged={(next) => { setCentral(next as CentralOverview); refresh(); }} />
               : <CentralStorePanel central={central} notify={notify} onChanged={(next) => { setCentral(next); refresh(); }} /> : null}
-            {keysOfGroup(group, keys ?? []).map((key) => <ServerKeyCard key={key.id} row={key} checking={checking} onCheck={check} notify={notify} onReplaced={setKeys} extra={extras?.[key.id]?.(refresh, key, (handler) => bindCheck(key.id, handler))}
-              inMore={key.id === "stripe_secret" ? payments : key.id === "solar" && preparedOfGroup(group, keys ?? []).length ? <p data-testid="server-keys-more-wholesalers">Fler grossister kommer: {listed(preparedOfGroup(group, keys ?? []).map((item) => item.service))}.</p> : null} />)}
-            {group.parts.map((part) => <li key={part} className="min-w-0" data-testid="server-key-part">{parts?.[part]}</li>)}
+            {keysOfGroup(group, keys ?? []).map((key) => <KeyExpiryScope key={key.id} id={key.id}><ServerKeyCard row={key} checking={checking} onCheck={check} notify={notify} onReplaced={setKeys} extra={extras?.[key.id]?.(refresh, key, (handler) => bindCheck(key.id, handler))}
+              inMore={key.id === "stripe_secret" ? payments : key.id === "solar" && preparedOfGroup(group, keys ?? []).length ? <p data-testid="server-keys-more-wholesalers">Fler grossister kommer: {listed(preparedOfGroup(group, keys ?? []).map((item) => item.service))}.</p> : null} /></KeyExpiryScope>)}
+            {/* SCB keeps its own Giltig till on its card, so it is not asked twice. */}
+            {group.parts.map((part) => <li key={part} className="min-w-0" data-testid="server-key-part">{part === "scb" ? parts?.[part] : <KeyExpiryScope id={part}>{parts?.[part]}</KeyExpiryScope>}</li>)}
           </KeyCardGrid>
           {after?.[group.id]}
         </SettingsGroup>
       </div>)}
     </div>
-    </KeyCardsGuard>
+    </KeyExpiryProvider></KeyCardsGuard>
   </ServerKeyStatusReport.Provider>;
 }
 
 const SOURCE_LABEL = { app: "Inlagd i appen", server: "Från serverns inställningsfil" } as const;
 /** Where a value entered in the app is kept (2026-10-25), told only when it is not where it should be. */
-const STORAGE_LABEL = { local: "Förseglad här, ej kopierad", legacy: "Gammal plats, ej flyttad" } as const;
+const STORAGE_LABEL = { local: "Förseglad här, inte kopierad", legacy: "Gammal plats, inte flyttad" } as const;
 
 /**
  * Solars kategorier (2026-10-15): the country code Kontrollera found and the categories kept once for every

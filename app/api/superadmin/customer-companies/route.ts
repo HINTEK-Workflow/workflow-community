@@ -61,7 +61,7 @@ export async function GET(request: Request) {
   try {
     const ctx = await context();
     if (ctx.user.role !== "SUPERADMIN")
-      throw new ApiError(403, "Systemadministratör krävs.");
+      throw new ApiError(403, "Bara installationens administratör kan göra det.");
 
     const historyFor = new URL(request.url).searchParams.get("historyFor");
     if (historyFor !== null) {
@@ -256,7 +256,7 @@ export async function PATCH(request: Request) {
     checkOrigin(request);
     const ctx = await context();
     if (ctx.user.role !== "SUPERADMIN")
-      throw new ApiError(403, "Systemadministratör krävs.");
+      throw new ApiError(403, "Bara installationens administratör kan göra det.");
     const input = ownerInvitationSchema.parse(await body(request));
     if (input.action === "grant_credits") {
       const organizationId = input.organizationId === "self" ? ctx.organizationId : input.organizationId;
@@ -378,7 +378,7 @@ export async function PATCH(request: Request) {
       // Skicka admininbjudan: a new company has no member who could reach the administration route, so its first admin is
       // invited from here. The refusal is decided again inside the send's row lock, so two sends never both get through.
       if (input.organizationId === ctx.organizationId) throw new ApiError(403, "Bjud in till ditt eget företag under Inställningar → Företag och användare.");
-      if (!(await invitationDeliveryEnabled())) throw new ApiError(409, "Inbjudningsmejl är avstängda. Slå på dem under Installation → E-post.");
+      if (!(await invitationDeliveryEnabled())) throw new ApiError(409, "Inbjudningar via e-post är avstängda. Slå på dem under Installation → E-post.");
       const organization = await prisma.organization.findUnique({ where: { id: input.organizationId }, select: { isActive: true } });
       if (!organization) throw new ApiError(404, "Kundföretaget hittades inte.");
       const invitation = await prisma.organizationInvitation.findFirst({
@@ -399,7 +399,7 @@ export async function PATCH(request: Request) {
         });
       } catch (error) {
         if (error instanceof ApiError) throw error;
-        throw new ApiError(502, "Mejlet kunde inte skickas. Försök igen om en stund.");
+        throw new ApiError(502, "E-postmeddelandet kunde inte skickas. Försök igen om en stund.");
       }
       await prisma.administrationEvent.create({
         data: { actorId: ctx.user.id, organizationId: input.organizationId, action: "customer_owner_invitation_send", detail: input.resend ? "Skickade admininbjudan igen." : "Skickade admininbjudan." },
@@ -478,7 +478,7 @@ export async function POST(request: Request) {
     checkOrigin(request);
     const ctx = await context();
     if (ctx.user.role !== "SUPERADMIN")
-      throw new ApiError(403, "Systemadministratör krävs.");
+      throw new ApiError(403, "Bara installationens administratör kan göra det.");
     const input = preparedCompanySchema.parse(await body(request));
     if (input.ownerEmail === ctx.user.email.toLowerCase())
       throw new ApiError(400, "Välj kundföretagets egen admin, inte systemadministratören.");

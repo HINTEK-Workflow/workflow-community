@@ -48,7 +48,7 @@ export function projectCustomerChange(input: {
   if (!other.length && !quotes) return null;
   const fromName = input.fromName.trim() || "en annan kund";
   const toName = input.toName.trim() || "den nya kunden";
-  const quoteNote = quotes ? `${plural(quotes, "offert", "offerter")} i projektet har kunden ${fromName}. Offerter flyttas inte; en skickad offert behåller alltid sin kund.` : "";
+  const quoteNote = quotes ? `${plural(quotes, "offert", "offerter")} i projektet har kunden ${fromName}. Offerter flyttas inte. En skickad offert behåller alltid sin kund.` : "";
   if (completed) return {
     fromName, toName, open, completed, quotes, blocked: true,
     message: `Kunden kan inte bytas. ${plural(completed, "färdigställt jobb", "färdigställda jobb")} i projektet har kunden ${fromName}, och färdigställt arbete byter inte kund. Behåll kunden, eller skapa ett nytt projekt för ${toName}.`,

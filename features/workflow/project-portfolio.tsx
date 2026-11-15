@@ -234,7 +234,7 @@ export function PortfolioGantt({ portfolio, error, expectedRows = 0 }: { portfol
   const zoomControl = <span className="max-sm:hidden"><Segmented label="Skala" value={zoom} onChange={setZoom} testId="portfolio-zoom" options={[{ value: "week", label: "Vecka" }, { value: "month", label: "Månad" }]} /></span>;
   const todayOffset = today ? daysBetween(range.from, today) : -1;
   const width = range.days * dayWidth;
-  return <Panel icon={GanttChart} title="Tidplan över projekten" description="Ett projekt per rad, från start till slut. Stapeln visar hur mycket som är klart; romben är en milstolpe." actions={drawn.length ? zoomControl : undefined}>
+  return <Panel icon={GanttChart} title="Tidplan över projekten" description="Ett projekt per rad, från start till slut. Stapeln visar hur mycket som är klart, och romben är en milstolpe." actions={drawn.length ? zoomControl : undefined}>
     <div className="space-y-4" data-testid="portfolio-gantt">
       {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
       {!portfolio && !error ? <DelayedSkeleton>{expectedRows > 0 ? <GanttSkeleton rows={expectedRows} /> : <RowsSkeleton rows={4} dense label="Hämtar projekten…" />}</DelayedSkeleton> : null}

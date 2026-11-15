@@ -89,7 +89,7 @@ export async function applyCreditReconciliation(db: PrismaClient, input: {
     }
 
     const after = await readCreditWalletInvariant(tx, input.organizationId);
-    if (!after.healthy) throw new CreditReconcileError("Plånboken stämmer inte efter justeringen; inget har ändrats.");
+    if (!after.healthy) throw new CreditReconcileError("Plånboken stämmer inte efter justeringen. Inget har ändrats.");
     const numbers = (value: typeof before) => ({ balance: value.balance, lotBalance: value.lotBalance, ledgerBalance: value.ledgerBalance,
       purchasedBalance: value.purchasedBalance, purchasedLotBalance: value.purchasedLotBalance });
     await tx.billingAuditEvent.create({

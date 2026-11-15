@@ -117,7 +117,7 @@ export function DayTimeline({ day, today, items, className, selectedId = null, o
       <Button asChild size="sm" variant="ghost"><Link href={PLANNING_HREF}>Min kalender</Link></Button>
     </span>}>
     <div data-testid="overview-timeline" data-day={day} data-whole={whole || undefined}>
-      <p className="mb-3 text-sm font-semibold" aria-live="polite">{dayTitle(day)} <span className="font-normal text-muted-foreground">· vecka {isoWeek(day)}{isToday ? " · idag" : ""}</span></p>
+      <p className="mb-3 text-sm font-semibold" aria-live="polite">{dayTitle(day)} <span className="font-normal text-muted-foreground">· vecka {isoWeek(day)}{isToday ? " · i dag" : ""}</span></p>
       {items === null ? <div className="native-skeleton rounded-md" style={{ height: TIMELINE_HOURS * HOUR + PAD * 2 }} aria-busy="true" /> : <>
         {!items.length ? <div className="mb-3"><EmptyNote compact icon={CalendarDays} title="Inget planerat den här dagen" /></div> : null}
         {untimed.length ? <section aria-label="Under dagen" className="mb-3">

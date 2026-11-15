@@ -56,7 +56,7 @@ export function MailSettings({ notify, part, bare = false }: { notify: (text: st
   const dirty = Boolean(settings && form && JSON.stringify(form) !== JSON.stringify(toForm(settings)));
   const inCard = useKeyCardPart(part === "server" && dirty, () => save());
 
-  const waiting = (text: React.ReactNode) => bare ? <div className="sm:col-span-2">{text}</div> : <Panel icon={part === "server" ? Mail : MailCheck} title={part === "server" ? "Utgående e-post (SMTP)" : "Automatiska mejl"}>{text}</Panel>;
+  const waiting = (text: React.ReactNode) => bare ? <div className="sm:col-span-2">{text}</div> : <Panel icon={part === "server" ? Mail : MailCheck} title={part === "server" ? "Utgående e-post (SMTP)" : "Automatisk e-post"}>{text}</Panel>;
   if (error) return waiting(<p role="alert" className="text-sm text-destructive">{error}</p>);
   if (!settings || !form) return waiting(<p className="text-sm text-muted-foreground">Hämtar inställningarna…</p>);
   const set = <K extends keyof Form>(key: K, value: Form[K]) => setForm((current) => current && { ...current, [key]: value });
@@ -83,14 +83,14 @@ export function MailSettings({ notify, part, bare = false }: { notify: (text: st
   };
 
   const saveButton = <Button onClick={() => void save()} disabled={Boolean(busy)} data-testid="mail-settings-save" busy={busy === "save"} busyLabel="Sparar…"><Save />Spara</Button>;
-  if (part === "delivery") return <Panel icon={MailCheck} title="Automatiska mejl" description="Lösenordsåterställning och verifiering skickas alltid. Det här styr övriga mejl.">
+  if (part === "delivery") return <Panel icon={MailCheck} title="Automatisk e-post" description="Lösenordsåterställning och verifiering skickas alltid. Det här styr övrig e-post.">
     <div className="space-y-3" data-testid="mail-delivery">
       <label className="flex items-start gap-3 text-sm"><Checkbox className="mt-0.5" checked={form.invitations} onCheckedChange={(value) => set("invitations", value === true)} />
         <span><span className="font-medium">Inbjudningar</span><span className="block text-muted-foreground">Nya medlemmar får en inbjudan med länk.</span></span></label>
       <label className="flex items-start gap-3 text-sm"><Checkbox className="mt-0.5" checked={form.roundReminders} onCheckedChange={(value) => set("roundReminders", value === true)} />
         <span><span className="font-medium">Påminnelser om driftronder</span><span className="block text-muted-foreground">Skickas på morgonen den dag en rond ska göras.</span></span></label>
       <label className="flex items-start gap-3 text-sm"><Checkbox className="mt-0.5" checked={form.notices} onCheckedChange={(value) => set("notices", value === true)} data-testid="notices-switch" />
-        <span><span className="font-medium">Notiser till dem som valt det</span><span className="block text-muted-foreground">Klockans påminnelser som e-post, bara till dem som själva slagit på det under Mina inställningar → Notiser. Ett samlat mejl, aldrig mer än en gång per notis.</span></span></label>
+        <span><span className="font-medium">Notiser till dem som valt det</span><span className="block text-muted-foreground">Klockans påminnelser som e-post, bara till dem som själva slagit på det under Mina inställningar → Notiser. Ett samlat meddelande, aldrig mer än en gång per notis.</span></span></label>
       <label className="flex items-start gap-3 text-sm"><Checkbox className="mt-0.5" checked={form.alerts} onCheckedChange={(value) => set("alerts", value === true)} />
         <span><span className="font-medium">Driftlarm</span><span className="block text-muted-foreground">Drift, backup, servrar och nycklar som behöver åtgärd.</span></span></label>
       {form.alerts ? <label className={`${field} max-w-md`}>Mottagare av driftlarm<Input type="email" value={form.alertEmail} onChange={(event) => set("alertEmail", event.target.value)} /></label> : null}

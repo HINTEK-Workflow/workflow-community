@@ -26,7 +26,7 @@ export function ViewAsPanel({ current, notify }: { current: ViewAs | null; notif
       router.refresh();
     } catch (cause) { notify((cause as Error).message, true); } finally { setBusy(false); }
   };
-  return <Panel title="Visa som" description="Välj hur Workflow ska visas. Valet gäller bara dig. Som kund eller medarbetare ändras bara menyer och sidor, inte dina rättigheter."
+  return <Panel title="Visa som" description="Välj hur Workflow ska visas. Valet gäller bara dig. Som kund eller medarbetare ändras bara menyer och sidor, inte dina behörigheter."
     icon={Eye}>
     <div className="@container"><div className="grid gap-3 @lg:grid-cols-2 @5xl:grid-cols-4" data-testid="view-as-choices">
       <ChoiceCard name="view-as" value="superadmin" checked={!current} disabled={busy} onChange={() => void choose(null)} title={SUPERADMIN_VIEW.label} description={SUPERADMIN_VIEW.description} />

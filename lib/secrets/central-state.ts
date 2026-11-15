@@ -73,3 +73,19 @@ export function unreadableAlarmedAt(state: CentralState): string | null {
   const value = typeof own === "string" ? own : typeof older === "string" ? older : null;
   return value && value.length <= 40 ? value : null;
 }
+
+/**
+ * Gäller till (2026-11-14, lib/secrets/key-expiry.ts): the core's own part `keyExpiry` beside the entries – one
+ * optional last day per key card (not a secret) and the mark of the latest expiry alarm per card. Kept as a part, not in an
+ * entry, so a new value saved, removed or restored never takes the date with it, and a card without a central key (the
+ * server's own secrets) has one too.
+ */
+const expiryStateSchema = z.object({
+  dates: z.record(z.string().max(40), z.object({ on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), updatedAt: stamp.optional(), updatedBy: z.string().max(200).optional() })).default({}),
+  alarmed: z.record(z.string().max(40), z.string().max(60)).default({}),
+});
+export type KeyExpiryState = z.infer<typeof expiryStateSchema>;
+
+export function keyExpiryState(state: CentralState): KeyExpiryState {
+  return expiryStateSchema.catch({ dates: {}, alarmed: {} }).parse(state.parts.keyExpiry ?? {});
+}

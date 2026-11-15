@@ -284,7 +284,7 @@ export const SURFACE_EXAMPLES: readonly SurfaceExample[] = [
   },
   {
     id: "varmekurva", title: "Värmekurva och shuntreglering med PID", group: "fastighet",
-    line: "Utetemperaturen ger ett börvärde på framledningen genom kurvan; PID styr shunten. För kall rum larmar.",
+    line: "Utetemperaturen ger ett börvärde på framledningen genom kurvan, och PID styr shunten. Ett för kallt rum ger larm.",
     layout: {
       version: 3, junctions: [], language: "st", ladder: null, outdoorC: -5,
       devices: [SUPPLY, 
@@ -341,7 +341,7 @@ export const SURFACE_EXAMPLES: readonly SurfaceExample[] = [
   },
   {
     id: "filtervakt", title: "Fläkt med filtervakt som larmar", group: "fastighet",
-    line: "Vippan startar fläkten, vredet sätter varvtalet. Filtret sätts igen med tiden; över 250 Pa i 10 s larmar.",
+    line: "Vippan startar fläkten, vredet sätter varvtalet. Filtret sätts igen med tiden. Över 250 Pa i 10 s ger larm.",
     layout: {
       version: 3, junctions: [], language: "st", ladder: null, outdoorC: 5,
       devices: [SUPPLY, device("vippa-1", "vippa", 120, 60, "Fläkt till"), device("vred-1", "vred", 240, 50, "Varvtal"), device("tryckgivare-1", "tryckgivare", 380, 60, "Filtervakt"), device("franluftsflakt-1", "franluftsflakt", 1040, 420, "FF1"), device("lampa-1", "lampa", 860, 560, "Byt filter", { color: "yellow" }), device("larm-1", "larm", 1020, 100, "Filtervakt: byt filter", { severity: "warning" })],

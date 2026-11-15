@@ -37,8 +37,8 @@ export async function aiImportAvailability(ctx: Context) {
   const agent = getWorkflowAgent("document-import");
   const policy = await getAiSharingPolicy(ctx.organizationId);
   if (!policy.enabled || !policy.shareDocuments) return { ok: false as const, reason: "Företagets admin har inte slagit på delning av dokument med Workflow AI (Inställningar → Arbetssätt → Workflow AI)." };
-  if (!provider.enabled || !provider.configured || agent?.lifecycle !== "ENABLED") return { ok: false as const, reason: "AI-modellen är inte påslagen på servern ännu; reglerna gör analysen." };
-  if (aiCreditsCharged() && (ctx.wallet?.balance ?? 0) <= 0) return { ok: false as const, reason: "Företaget saknar AI-krediter; reglerna gör analysen." };
+  if (!provider.enabled || !provider.configured || agent?.lifecycle !== "ENABLED") return { ok: false as const, reason: "AI-modellen är inte påslagen på servern ännu. Reglerna gör analysen." };
+  if (aiCreditsCharged() && (ctx.wallet?.balance ?? 0) <= 0) return { ok: false as const, reason: "Företaget saknar AI-krediter. Reglerna gör analysen." };
   return { ok: true as const, reason: "" };
 }
 
@@ -104,7 +104,7 @@ export async function analyzeWithAi(ctx: Context, file: ExtractedFile, detection
   const inputTokenLimit = Math.max(limits.minimumInputTokens, Math.min(200_000, estimatedInputTokens * 2));
   const { minimumCredits, fx, free, creditValueOre, policy: pricing } = await aiRunPricing(taskKind, ctx.organizationId);
   const quote = quoteAiRun({ taskKind, policy: pricing, inputTokenLimit, maxOutputTokens: limits.maxOutputTokens, usdSekRateMicros: fx.usdSekRateMicros, minimumCredits, free, creditValueOre });
-  if ((ctx.wallet?.balance ?? 0) < quote.reservedCredits) return { used: false, reason: `Minst ${quote.reservedCredits} krediter krävs för AI-analysen; reglerna gör analysen.` };
+  if ((ctx.wallet?.balance ?? 0) < quote.reservedCredits) return { used: false, reason: `Minst ${quote.reservedCredits} krediter krävs för AI-analysen. Reglerna gör analysen.` };
   const digest = createHash("sha256").update(`${ctx.user.id}:${file.name}:${file.size}:${JSON.stringify(described).slice(0, 20_000)}`).digest("hex").slice(0, 40);
   const requestKey = `import:${digest}`;
   const reserved = await reserveAiRun({
@@ -136,7 +136,7 @@ export async function analyzeWithAi(ctx: Context, file: ExtractedFile, detection
     usage = response.usage;
   } catch {
     await compensateFailedAiRun({ organizationId: ctx.organizationId, runId: reserved.run.id, actorId: ctx.user.id, failureCode: "PROVIDER_FAILED" });
-    return { used: false, reason: "AI-leverantören kunde inte analysera filen. Reservationen är återförd; reglerna gör analysen." };
+    return { used: false, reason: "AI-leverantören kunde inte analysera filen. Reservationen är återförd. Reglerna gör analysen." };
   }
   try {
     const settled = await settleAiRun({ organizationId: ctx.organizationId, runId: reserved.run.id, actorId: ctx.user.id, providerResponseId: responseId, usage });
@@ -145,7 +145,7 @@ export async function analyzeWithAi(ctx: Context, file: ExtractedFile, detection
     return { used: true, result: parsed, chargedCredits, model: policy.model };
   } catch {
     await compensateFailedAiRun({ organizationId: ctx.organizationId, runId: reserved.run.id, actorId: ctx.user.id, failureCode: "SETTLEMENT_FAILED" });
-    return { used: false, reason: "AI-analysen kunde inte slutregleras. Reservationen är återförd; reglerna gör analysen." };
+    return { used: false, reason: "AI-analysen kunde inte slutregleras. Reservationen är återförd. Reglerna gör analysen." };
   }
 }
 

@@ -15,7 +15,7 @@ export async function GET(request: Request) {
   try {
     const user = await getCurrentUser();
     if (!user) throw new ApiError(401, "Logga in för att fortsätta.");
-    if (user.role !== "SUPERADMIN") throw new ApiError(403, "Systemadministratör krävs.");
+    if (user.role !== "SUPERADMIN") throw new ApiError(403, "Bara installationens administratör kan göra det.");
     const where = { newsletterOptInAt: { not: null }, isActive: true };
     if (new URL(request.url).searchParams.get("format") !== "csv")
       return NextResponse.json({ count: await prisma.user.count({ where }) }, { headers: { "Cache-Control": "private, no-store" } });

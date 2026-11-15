@@ -5,8 +5,8 @@
 export type DemoMode = "traditional" | "mapped";
 export const SIMULATION_MARK = "Simulering av framtida AI";
 // Short (2026-11-05: a short "simulerad" mark, no long "finns inte i dag" texts); the mark itself says it is the future.
-export const SIMULATION_TEXT = "Regler i webbläsaren, ingen AI anropas.";
-export const HUMAN_DECIDES_TEXT = "Förslag är bara förslag. En människa beslutar, särskilt om säkerhet.";
+export const SIMULATION_TEXT = "Regler i webbläsaren. Ingen AI anropas.";
+export const HUMAN_DECIDES_TEXT = "Förslagen är bara förslag. En människa beslutar, särskilt om säkerhet.";
 export const SIMULATED_ON_CALL_TEXT = "Jouren kontaktas (simulerat: inget meddelande lämnar webbläsaren).";
 export const NO_DESCRIPTION_TEXT = "Ingen beskrivning, inga förslag. Systemet vet inte vad maskinen gör förrän någon har sagt det.";
 
@@ -178,7 +178,7 @@ export function observe(state: Observer, description: MachineDescription, taught
 }
 
 /** What the operator page says before sending: only the machine's signals, what they have done and what has been taught; never the text the operator writes. */
-export const OPERATOR_AI_NOTE = `${SIMULATION_MARK}. ${HUMAN_DECIDES_TEXT} Det du skriver visas men tolkas inte: bara maskinen, signalerna och det systemet lärt sig används.`;
+export const OPERATOR_AI_NOTE = `${SIMULATION_MARK}. ${HUMAN_DECIDES_TEXT} Det du skriver visas men tolkas inte. Bara maskinen, signalerna och det som systemet har lärt sig används.`;
 export type OperatorAdvice = { text: string; basis: string };
 const words = (text: string) => text.toLocaleLowerCase("sv-SE").split(/[^\p{L}\p{N}]+/u).filter((word) => word.length > 3);
 
@@ -195,7 +195,7 @@ export function operatorAdvice(input: { description: MachineDescription; taught:
   const seen = recentAlarms.slice(0, 1).map((text): OperatorAdvice => ({ text: `Senast observerat: ${text}`, basis: "Från PLC:ns signaler" }));
   const timed = description.rows.find((row) => row.behaviour === "timed" && row.function.trim());
   const question = timed ? [{ text: `Stannade ${timed.function.trim().toLocaleLowerCase("sv-SE")} innan de ${timed.expectedS} sekunderna gått?`, basis: `En fråga från beskrivningen: ${mappingLine(timed)}` }] : [];
-  const checks = description.rows.filter((row) => row.behaviour === "fault" && row.function.trim()).map((row): OperatorAdvice => ({ text: `Se efter ${row.function.trim().toLocaleLowerCase("sv-SE")} (${row.signal})`, basis: `Från beskrivningen: ${mappingLine(row)}` }));
+  const checks = description.rows.filter((row) => row.behaviour === "fault" && row.function.trim()).map((row): OperatorAdvice => ({ text: `Kontrollera ${row.function.trim().toLocaleLowerCase("sv-SE")} (${row.signal})`, basis: `Från beskrivningen: ${mappingLine(row)}` }));
   return [...learned, ...seen, ...question, ...checks].slice(0, 5);
 }
 /** The suggestions a report's work order gets, in the same order as an alarm's. */

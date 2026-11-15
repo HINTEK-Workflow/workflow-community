@@ -117,7 +117,7 @@ export function AzureProviderPanel({ notify }: { notify?: (text: string, error?:
       {choice("dpaApproved", "Microsofts avtal är godkänt", "Personuppgiftsbiträdesavtalet och rättslig grund.")}
     </div>}
     more={<>
-      <p>Används bara för företag som kräver behandling inom EU. Utan den är AI avstängd för dem; ingen annan leverantör används i stället.</p>
+      <p>Används bara för företag som kräver behandling inom EU. Utan den är AI avstängd för dem, och ingen annan leverantör används i stället.</p>
       {view.updatedAt ? <p>Senast ändrat {when(view.updatedAt)} av {view.updatedBy}.</p> : null}
       <section className="grid gap-3 pt-2" aria-labelledby="azure-probe-title" data-testid="azure-probe">
         <h4 id="azure-probe-title" className="text-xs font-semibold text-foreground">Provfråga</h4>
