@@ -70,12 +70,12 @@ irm https://raw.githubusercontent.com/HINTEK-Workflow/workflow-community/main/in
 
 Det här gör skriptet:
 
-- frågar efter er e-postadress och ett lösenord
-- skapar `.env` med nya slumpade hemligheter
+- frågar efter er e-postadress, ett namn på installationen och ett lösenord
+- skapar `.env` med nya slumpade hemligheter och lediga portar (från 3000 för appen och 5432 för databasen)
 - startar Workflow och skapar ert konto som superadmin.
 
 Första starten tar 5–10 minuter. Workflow hamnar i mappen `workflow-community` i hemmappen. Vill ni installera för hand,
-se *Manual installation* i README.md.
+se *Manuell installation (för utvecklare)* i [README.sv.md](README.sv.md).
 
 ## 3. Ställ in efter första inloggningen
 
@@ -84,7 +84,7 @@ se *Manual installation* i README.md.
    säkerhet**.
 2. **Inställningar → Användare:** bjud in medarbetarna. Den som accepterar en inbjudan kan logga in direkt.
 3. **Fler företag i samma installation** (valfritt): välj **Installation → Översikt → Kundföretag → Alla företag →
-   Förbered kundföretag**, och skicka sedan admininbjudan därifrån.
+   Förbered företag**, och skicka sedan admininbjudan därifrån.
    - Varje företag är skilt från de andra.
    - Fliken Kundföretag visas när installationen har fler företag än sitt eget.
 4. **Installation → Drift och säkerhet:** bestäm om besökare själva får skapa konton (*Tillåt nya konton*, av från
@@ -102,7 +102,7 @@ se *Manual installation* i README.md.
      utåt.
    - Källangivelse enligt villkoren: *Topografisk webbkarta Nedladdning, raster ©Lantmäteriet*, licens CC BY 4.0
      (creativecommons.org/licenses/by/4.0/). Kartbilderna visas oförändrade, och kartnålarna är tillagda i Workflow.
-     Workflow visar detta vid varje karta och under Inställningar → Hjälp.
+     Workflow visar detta vid varje karta och under Hjälp → Om Workflow.
 
 ### Namn och ikon
 
@@ -124,6 +124,7 @@ se *Manual installation* i README.md.
 - Länkar i inbjudningar och mejl byggs av `APP_URL`, så den ska vara adressen som medarbetarna faktiskt använder.
 - Med en omvänd proxy framför: sätt också `TRUSTED_PROXY_HOPS=1` i `.env`. Då ser gränserna per IP-adress besökarens
   adress och inte proxyns.
+- Exemplen nedan använder port 3000. Har installationsskriptet valt en annan port står den som `APP_PORT` i `.env`.
 
 ### Lokal server i företagets nätverk
 
@@ -164,8 +165,8 @@ historik, övervakning, backup, nyckellarm, dagsammanställning, utskick och int
 - **Utan jobben händer inget när en dag kommer.** Arbetsordrar från underhållsplaner skapas inte, larm eskaleras inte,
   och övervakningen märker inte ett jobb som aldrig körs.
 - Kör dem med cron på servern som root.
-- Byt `/opt/workflow` mot mappen där Workflow ligger, och sätt `COMPOSE_PROJECT` till projektets namn (mappnamnet, eller
-  värdet i `.env`).
+- Byt `/opt/workflow` mot mappen där Workflow ligger, och sätt `COMPOSE_PROJECT` till Docker Compose-projektets namn. Det
+  är mappnamnet med små bokstäver (`docker compose ls` visar det).
 - Inget jobb kräver en nyckel: en tjänst som inte är påslagen hoppas över.
 
 ```
@@ -212,15 +213,29 @@ Det här gör jobben:
   något schemalagt gör det ingenting.
 - Jobb för betalning och krediter finns inte i den här utgåvan.
 
-Spara som `/etc/cron.d/workflow` och kör `mkdir -p /var/log/workflow` och `chmod 644 /etc/cron.d/workflow`. Efter fem
-minuter ska `tail /var/log/workflow/monitor.log` visa `OK`.
+Spara som `/etc/cron.d/workflow` och kör `mkdir -p /var/log/workflow` och `chmod 644 /etc/cron.d/workflow`.
+Övervakningen larmar tills det finns en lyckad backup, så kör backupen en gång för hand som root:
+
+```bash
+cd /opt/workflow && COMPOSE_PROJECT=workflow-community SOURCE_STORAGE=/opt/workflow/storage scripts/ops/nightly-backup.sh
+```
+
+Inom fem minuter efter det ska `tail /var/log/workflow/monitor.log` visa `OK`.
 
 ## 6. Backup och återställning
 
 - `scripts/ops/nightly-backup.sh` tar en kopia av databasen och filerna och kontrollerar att den går att läsa.
 - Sätt `OFFSITE_TARGET` för att också skicka kopian till en annan server.
 - Öva en återställning med `scripts/ops/backup-restore-drill.sh` innan ni är beroende av den. Den skriver aldrig till den
-  riktiga databasen.
+  riktiga databasen. Kör den som root med samma projektnamn och lagringsmapp som backupen:
+
+  ```bash
+  cd /opt/workflow && COMPOSE_PROJECT=workflow-community SOURCE_STORAGE=/opt/workflow/storage \
+    BACKUP_ROOT=/opt/backups/workflow-restore-drills scripts/ops/backup-restore-drill.sh
+  ```
+
+  Övningen återställer till en tillfällig databas och mapp under `BACKUP_ROOT/work` (en annan mapp: `DRILL_WORK_ROOT`)
+  och tar bort dem när den är klar. Rapporten ligger i övningens mapp under `BACKUP_ROOT`.
 - Kopian är **inte krypterad**. Den innehåller hela databasen och alla filer, så förvara den lika skyddat som servern.
 - Skickas kopian till en annan plats bör den krypteras först, till exempel med `age` eller `gpg` och en nyckel som inte
   ligger på servern.
@@ -235,9 +250,10 @@ minuter ska `tail /var/log/workflow/monitor.log` visa `OK`.
 
 **Vad ändras, och måste ni göra något?**
 
-- Läs versionsanteckningarna för den nya versionen innan ni uppdaterar. De står under *Releases* på arkivets sida på
-  GitHub, och en kort sammanfattning visas på Översikt efter uppdateringen.
-- Där står det om en ny inställning i `.env` eller ett nytt schemalagt jobb behövs.
+- Läs versionsanteckningarna för den nya versionen innan ni uppdaterar. De står i `lib/release-notes.ts` i arkivet, och
+  en kort sammanfattning visas på Översikt efter uppdateringen.
+- Jämför er `.env` med den nya `.env.example` och er cron-fil med avsnitt 5, så att nya inställningar och jobb kommer
+  med.
 - Databasen ändras bara med tillägg, så en uppdatering behåller allt som finns.
 - Gå aldrig tillbaka till en äldre version utan att först återställa backupen från före uppdateringen.
 
@@ -270,7 +286,7 @@ minuter ska `tail /var/log/workflow/monitor.log` visa `OK`.
 
 ## 10. Kontrollera att allt fungerar
 
-- `https://<er adress>/api/health/ready` svarar `{"status":"ok"}` när databasen och fillagringen fungerar.
+- `https://<er adress>/api/health/ready` svarar med `"status":"ok"` när databasen och fillagringen fungerar.
 - Testmejlet under Installation → Tjänster och nycklar → E-post kommer fram.
 - Installation → Tjänster och nycklar visar *Klar* för det ni har lagt in.
 - Efter en dag visar `/var/log/workflow/` och *Drift och säkerhet* inga misslyckade jobb.

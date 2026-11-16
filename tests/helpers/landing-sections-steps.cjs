@@ -90,7 +90,9 @@ async function runLandingSections(page, { marker }) {
   await topic.locator("#landing-topic-image-library").selectOption("/landing/operator-terminal.webp");
   await page.waitForFunction(() => document.querySelector("#t-ai img")?.getAttribute("src") === "/landing/operator-terminal.webp");
   await topic.getByTestId("landing-topic-image-file").setInputFiles({ name: "egen.png", mimeType: "image/png", buffer: PNG });
-  await page.waitForFunction(() => /^\/landing(-images)?\/[A-Za-z0-9._-]+\.webp$/.test(document.querySelector("#t-ai img")?.getAttribute("src") ?? ""), null, { timeout: 15000 });
+  // The upload's own address (/landing-images/…), not the library picture chosen just before: removing it before the upload
+  // has answered would let the late answer put the picture back.
+  await page.waitForFunction(() => /^\/landing-images\/[A-Za-z0-9._-]+\.webp$/.test(document.querySelector("#t-ai img")?.getAttribute("src") ?? ""), null, { timeout: 15000 });
   await topic.getByTestId("landing-topic-image-remove").click();
   await canvas.locator("#t-ai").getByTestId("landing-image-empty").waitFor();
   await topic.getByTestId("landing-topic-image-remove").waitFor();

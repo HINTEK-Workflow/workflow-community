@@ -274,6 +274,10 @@ export function NativeHome({ name, admin, permissions, projects, notifications, 
   const noticesRef = useRef<HTMLDivElement | null>(null);
   const [noticeRows, setNoticeRows] = useState(3);
   const total = notifications?.length ?? 0;
+  // Fortsätt comes with the first answer and stands above the notices (64 px and the gap on a phone): on the first load of the
+  // page, before the workspace's memory has the answer, the notices wait for it, so the tile is added where nothing stands below
+  // it instead of pushing a drawn list down (phone-first-frame, 0.65.0: layout shift 0.032–0.046). A failed read does not wait.
+  const continueSettled = local || !shown.includes("continue") || homeRead.data !== undefined || Boolean(homeRead.error);
   useLayoutEffect(() => {
     const group = noticesRef.current;
     if (!group || editMode) return;
@@ -298,7 +302,7 @@ export function NativeHome({ name, admin, permissions, projects, notifications, 
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
-  }, [total, editMode, current, shown.length, kpis, todaySec, release, myDay]);
+  }, [total, editMode, current, shown.length, kpis, todaySec, release, myDay, continueSettled]);
   const items = (notifications ?? []).slice(0, noticeRows);
   // The figure is the bell's, so the bell, the list and Hem say the same (kundresa 2026-11-07, M2: 6 in the bell, 44 here).
   const bell = useNotificationCount();
@@ -363,7 +367,7 @@ export function NativeHome({ name, admin, permissions, projects, notifications, 
         }
       })}
     </div>
-    {notifications && noticesShown ? <div ref={noticesRef}><ListGroup title="Notiser" testId="native-home-notifications">
+    {notifications && noticesShown && continueSettled ? <div ref={noticesRef}><ListGroup title="Notiser" testId="native-home-notifications">
       {/* The update (2026-10-06) as a row of Notiser: a tap opens Nytt i version …, × closes it; both mark it seen. */}
       {release ? <ListRow dot="notice" title={`Nytt i version ${release.version}`} subtitle="Workflow är uppdaterat" href="/?view=help&step=nytt" onClick={release.onSeen} testId="release-notice"
         accessory={<button type="button" className="native-home-row-action" aria-label="Stäng" onClick={release.onSeen}><X className="size-4" aria-hidden="true" /></button>} /> : null}

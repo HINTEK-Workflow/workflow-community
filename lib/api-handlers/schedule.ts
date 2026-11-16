@@ -78,7 +78,7 @@ const requestSchema = z.discriminatedUnion("action", [
   // Återkommande och kö (2026-11-12).
   z.object({ action: z.literal("rhythm-set"), weekdays: z.array(z.number().int().min(0).max(6)).min(1).max(7), time: z.string().max(5) }),
   // Ny serie (2026-11-13): ordinary posts with shared look and channels, each part scheduled at its time.
-  z.object({ action: z.literal("series-posts"), name: z.string().max(120), template: z.string().max(20), logoVariant: z.string().max(20), logoSize: z.string().max(20),
+  z.object({ action: z.literal("series-posts"), name: z.string().max(120), template: z.string().max(20), logoVariant: z.string().max(20), logoSize: z.string().max(20), logoPlate: z.string().max(20).nullable().optional(),
     hashtags: z.string().max(HASHTAG_STORE_MAX + 500), toFacebook: z.boolean(), toInstagram: z.boolean(), toLinkedIn: z.boolean(),
     parts: z.array(z.object({ heading: z.string().max(HEADING_MAX + 50), body: z.string().max(BODY_MAX + 50), caption: z.string().max(CAPTION_STORE_MAX + 100), at })).min(SERIES_PARTS_MIN).max(SERIES_PARTS_MAX),
     confirm: z.literal(true) }),

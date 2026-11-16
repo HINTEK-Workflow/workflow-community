@@ -141,12 +141,12 @@ export function OverviewPage({ access, level, notifications = [], canCreateWorkO
   };
 
   return <div data-testid="overview-page" data-level={level}>
-    {/* The same two buttons on Jag and Teamet, in the same place (användartest 2026-10-31, N10). Ny arbetsorder only for whoever
-        may; the server decides every save anyway. */}
-    <PageHeader title="Översikt" description={DESCRIPTION[shown]} actions={shown === "me" || shown === "team" ? <>
+    {/* The same two buttons on every tab, in the same place (användartest 2026-10-31, N10; sidans huvudåtgärder byter aldrig
+        med fliken, 2026-11-15). Ny arbetsorder only for whoever may; the server decides every save anyway. */}
+    <PageHeader title="Översikt" description={DESCRIPTION[shown]} actions={<>
       <Button asChild variant="outline"><Link href={subPage("/?view=deviations&new=1")} data-testid="overview-report-deviation"><OctagonAlert />Rapportera avvikelse</Link></Button>
       {canCreateWorkOrder ? <Button asChild><Link href={subPage("/?view=workflow_task&taskType=WORK_ORDER")} data-testid="overview-new-work-order"><Plus />Ny arbetsorder</Link></Button> : null}
-    </> : undefined} />
+    </>} />
     {/* Dagsammanställningen (2026-10-02): the night's short digest, where the company has chosen it, as on the old Översikt. */}
     {DailyDigestCard ? <div className="mb-6" data-detail-min="2"><DailyDigestCard /></div> : null}
     {/* The settings pages' tab row (SectionTabs' pills) as real tabs with arrow keys, each with its figure when it has one. */}

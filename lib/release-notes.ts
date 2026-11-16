@@ -19,6 +19,20 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "0.65.0",
+    date: "2026-11-15",
+    summary: "Knapparna står på samma plats på alla sidor, och allt på den publika sidan går att ändra i redigeraren.",
+    items: [
+      "Sidans knappar för att skapa något nytt står alltid uppe till höger, också när något är öppet. Knapparna för det du har öppet står vid det.",
+      "Logotypen i inläggsbilderna kan visas utan ruta bakom.",
+      "Märket på varje plan och fler texter på den publika sidan går att ändra i redigeraren. Community visar nu Gratis.",
+      "Hämtningen av artikelregistret försöker igen om den nekas en gång, så att ett tillfälligt fel inte ger larm.",
+      "Listan över serverns jobb visar det som faktiskt körs.",
+      "Community: tydligare installationsguide och övningen i att återställa en backup fungerar på alla installationer.",
+      "Installationen av Community visar kommandot för både Windows och Linux eller macOS.",
+    ],
+  },
+  {
     version: "0.64.0",
     date: "2026-11-14",
     summary: "Texterna i hela Workflow är lättare att läsa, och korten under Kopplingar står i linje.",

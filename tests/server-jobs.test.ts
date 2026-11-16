@@ -5,7 +5,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { test } from "node:test";
 import { BUSY_LINE, PAUSED_LINE, runControlledJob, type ClaimResult, type JobStore } from "../lib/ops/job-control";
 import {
-  CONTROLLED_JOB_KEYS, cronFileJobs, durationText, jobMessage, MONITOR_THRESHOLDS, nextCronRun, parseCron, runRequestAllowed, scheduleText, serverJobAccess, SERVER_JOBS,
+  CONTROLLED_JOB_KEYS, cronFileJobs, durationText, jobMessage, MONITOR_THRESHOLDS, monitorThresholdsFor, nextCronRun, parseCron, runRequestAllowed, scheduleText, serverJobAccess, SERVER_JOBS, serverJobsFor,
 } from "../lib/ops/server-jobs";
 
 const read = (file: string) => readFileSync(file, "utf8");
@@ -13,7 +13,7 @@ const hasCron = existsSync("ops/cron/hintek-workflow");
 
 test("the list names every job of the cron file with exactly its schedule, and nothing the cron file does not have", { skip: !hasCron && "needs ops/ (not in the Community export)" }, () => {
   const cron = cronFileJobs(read("ops/cron/hintek-workflow"));
-  const listed = new Map(SERVER_JOBS.filter((job) => job.place !== "db").map((job) => [job.key, job.cron]));
+  const listed = new Map(serverJobsFor(true).filter((job) => job.place !== "db").map((job) => [job.key, job.cron]));
   assert.deepEqual([...listed.keys()].sort(), [...cron.keys()].sort(), "the same jobs");
   for (const [key, fields] of cron) assert.equal(listed.get(key), fields, `${key}: the cron file's schedule`);
   assert.equal(cron.get("monitor"), "*/5 * * * *");
@@ -29,6 +29,42 @@ test("every job the app runs goes through the control, with the cron file's allo
   const job = read("scripts/ops/job.ts");
   assert.match(job, /args\.includes\("--dry-run"\)/, "a dry run is passed straight through");
   assert.match(read("scripts/ops/monitor.sh"), /\[\[ "\$failure" -nt "\$success" \]\]/, "the monitor alarms only on a failure newer than the success");
+});
+
+// The Community edition (2026-11-15): only its own jobs, exactly the cron block of its installation guide, with its schedule.
+const communityGuide = ["community/overlay/INSTALLATION.md", "INSTALLATION.md"].find((file) => existsSync(file) && /run-job\.sh register:sync/.test(read(file)));
+test("the Community edition lists exactly the jobs its installation guide puts in cron, with the guide's schedule", { skip: !communityGuide && "needs the installation guide" }, () => {
+  const guide = read(communityGuide!);
+  const block = /\x60{3}\r?\nSHELL=\/bin\/bash[\s\S]*?\x60{3}/.exec(guide)?.[0] ?? "";
+  const cron = cronFileJobs(block);
+  const community = serverJobsFor(false);
+  assert.deepEqual(community.map((job) => job.key).sort(), [...cron.keys()].sort(), "the same jobs as the guide");
+  for (const [key, fields] of cron) assert.equal(community.find((job) => job.key === key)?.cron, fields, key + ": the guide's schedule");
+  for (const key of ["billing:email", "billing:delinquency", "billing:card-retries", "credits:check", "companies:closure", "offsite", "db-backup", "files-backup", "predeploy", "db-host-status", "backup-list", "host-status"])
+    assert.equal(community.some((job) => job.key === key), false, key + " is Workflow's own");
+  const secrets = community.find((job) => job.key === "secrets:sync")!;
+  assert.doesNotMatch(secrets.description, /valv/, "no key vault in the Community edition");
+  assert.equal(secrets.cron, "10 4 * * *");
+  assert.ok(community.every((job) => !job.edition || job.edition === "community"));
+  assert.equal(monitorThresholdsFor(false).some((limit) => limit.key === "DB_CERT_MIN_DAYS"), false, "no database server");
+  assert.equal(monitorThresholdsFor(true).length, MONITOR_THRESHOLDS.length);
+});
+
+test("Workflow's list keeps its own texts and has no Community-only job", () => {
+  const cloud = serverJobsFor(true);
+  assert.equal(cloud.some((job) => job.key === "nightly-backup"), false);
+  assert.match(cloud.find((job) => job.key === "secrets:sync")!.description, /nyckelvalvet/);
+  assert.equal(cloud.find((job) => job.key === "secrets:sync")!.cron, "*/10 * * * *");
+  assert.ok(cloud.some((job) => job.key === "backup-list" && job.cron === "25 * * * *" && job.alsoCron === "50 3 * * *"));
+});
+
+test("the page: Senast says Inte inställd for a copy to another place that is not set up, and the database server only in Workflow's edition", () => {
+  const server = read("lib/ops/server-jobs-server.ts");
+  assert.match(server, /const offsiteOff = job\.key === "offsite" && backups !== null && !backups\.offsite\.configured;/);
+  assert.match(server, /lastNote: offsiteOff \? OFFSITE_NOT_SET_UP/);
+  assert.match(server, /backups: EE_PRESENT \? backups : null, databaseServer: EE_PRESENT/);
+  assert.match(server, /const editionJob = \(key: string\)/);
+  assert.match(read("features/workflow/server-jobs.tsx"), /if \(!last\) return job\.lastNote \?\? "Inte kört än";/);
 });
 
 test("the monitor's limits are the script's own defaults", () => {

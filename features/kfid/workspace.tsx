@@ -856,8 +856,7 @@ export function Workspace({
   // Utskick (C6, 2026-10-21): the mailings to the users are a tool, not a setting – a page of Webbplats och utskick.
   else if (view === "mailings")
     content = user?.role === "SUPERADMIN" ? <div className="space-y-6">
-      {heading("Utskick", "Nyhetsbrev och viktig information till användarna.")}
-      <Mailings notify={notify} embedded />
+      <Mailings notify={notify} embedded header={(actions) => heading("Utskick", "Nyhetsbrev och viktig information till användarna.", actions)} />
     </div> : null;
   // Drift och säkerhet (C6, 2026-10-21; Inloggning och säkerhet 2026-10-15): who may sign in and how, which mails
   // are sent and web push, the superadmin's two-step verification and Visa som – the product owner's preview of a

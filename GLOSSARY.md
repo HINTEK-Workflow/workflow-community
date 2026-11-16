@@ -60,7 +60,7 @@ i alla filer.
 | Webbplats och utskick | Website and mailings |
 | Kundföretag | Customer companies |
 | Alla företag | All companies |
-| Förbered kundföretag | Prepare customer company |
+| Förbered företag | Prepare company |
 | Tillåt nya konton | Allow new accounts |
 | Vem får logga in | Who may sign in |
 | Alla | Everyone |
@@ -152,7 +152,7 @@ terms are used in every file.
 | Website and mailings | Webbplats och utskick |
 | Customer companies | Kundföretag |
 | All companies | Alla företag |
-| Prepare customer company | Förbered kundföretag |
+| Prepare company | Förbered företag |
 | Allow new accounts | Tillåt nya konton |
 | Who may sign in | Vem får logga in |
 | Everyone | Alla |

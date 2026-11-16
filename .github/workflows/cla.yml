@@ -1,4 +1,4 @@
-# Contributor License Agreement (CLA.md): the bot asks every contributor to sign once in the pull request; signatures
+# Contributor License Agreement (CLA.sv.md, the governing Swedish version; CLA.md is its translation): the bot asks every contributor to sign once in the pull request; signatures
 # are stored in signatures/cla.json on the cla-signatures branch of this repository.
 name: CLA
 on:
@@ -21,6 +21,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           path-to-signatures: signatures/cla.json
-          path-to-document: https://github.com/${{ github.repository }}/blob/main/CLA.md
+          path-to-document: https://github.com/${{ github.repository }}/blob/main/CLA.sv.md
           branch: cla-signatures
           allowlist: HINTEK-Workflow,dependabot[bot]

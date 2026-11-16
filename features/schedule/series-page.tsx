@@ -54,7 +54,7 @@ const blankPart: PartText = { heading: "", body: "", caption: "" };
 function usePartPicture(input: { heading: string; body: string } & PostLook) {
   const [url, setUrl] = useState<string | null>(null);
   const current = useRef<string | null>(null);
-  const key = JSON.stringify({ heading: input.heading, body: input.body, template: input.template, logoVariant: input.logoVariant, logoSize: input.logoSize });
+  const key = JSON.stringify({ heading: input.heading, body: input.body, template: input.template, logoVariant: input.logoVariant, logoSize: input.logoSize, logoPlate: input.logoPlate });
   useEffect(() => {
     let stopped = false;
     const timer = window.setTimeout(async () => {
@@ -78,7 +78,7 @@ function NewSeries({ connection, linkedin, logos, onChanged }: { connection: Met
   const [name, setName] = useState(() => `Serie ${formatSwedish(new Date(), { month: "long" })}`);
   const [countText, setCountText] = useState(String(SERIES_PARTS_DEFAULT));
   const count = seriesCount(countText);
-  const [look, setLook] = useState<PostLook>({ template: "color", logoVariant: "auto", logoSize: "medium" });
+  const [look, setLook] = useState<PostLook>({ template: "color", logoVariant: "auto", logoSize: "medium", logoPlate: "box" });
   const [hashtags, setHashtags] = useState("");
   const [channels, setChannels] = useState(() => ({ toFacebook: true, toInstagram: Boolean(connection?.instagram), toLinkedIn: false }));
   // Every possible part is kept, so a smaller count and then a larger one gives the texts back; the first `count` are the series.

@@ -14,7 +14,7 @@ import {
 import sharp from "sharp";
 import { brandColour, IMAGE_HEIGHT, IMAGE_WIDTH, renderPostImage, type PostBrand, type PostFormat, type PostImageInput } from "./image";
 import { facebookLoginInstagram, waitForContainer, type InstagramPublisher } from "./instagram";
-import { BODY_MAX, CAPTION_STORE_MAX, draftFromWebsitePage, facebookCaption, HEADING_MAX, instagramCaption, isLogoSize, isLogoVariant, isTemplate, LINK_MAX, linkedInCommentary, normalizeHashtags, postProblem, safeLink, type PostText } from "./text";
+import { BODY_MAX, CAPTION_STORE_MAX, draftFromWebsitePage, facebookCaption, HEADING_MAX, instagramCaption, isLogoPlate, isLogoSize, isLogoVariant, isTemplate, LINK_MAX, linkedInCommentary, normalizeHashtags, postProblem, safeLink, type PostText } from "./text";
 
 /**
  * Facebook och Instagram (2026-11-10) on the server: a company's own Meta app, the page and Instagram account it posts to, and
@@ -273,7 +273,7 @@ export async function metaStatusLine(organizationId: string) {
 
 const postSelect = {
   id: true, source: true, sourceRef: true, status: true, heading: true, body: true, caption: true, hashtags: true, link: true, template: true, toFacebook: true, toInstagram: true, toLinkedIn: true, toNewsletter: true, newsletterMail: true,
-  toStory: true, storyFacebookId: true, storyInstagramId: true, logoVariant: true, logoSize: true,
+  toStory: true, storyFacebookId: true, storyInstagramId: true, logoVariant: true, logoSize: true, logoPlate: true,
   backgroundSource: true, facebookPostId: true, instagramMediaId: true, linkedInPostId: true, publishedAt: true, lastError: true, testedAt: true, testResult: true, createdAt: true, updatedAt: true,
 } satisfies Prisma.SocialPostSelect;
 type PostRow = Prisma.SocialPostGetPayload<{ select: typeof postSelect }>;
@@ -300,6 +300,8 @@ export type PostInput = Partial<PostText> & { template?: string; toFacebook?: bo
   toStory?: boolean;
   /** Logga (2026-11-13): the logo's variant (auto, main, onDark, onLight, black) and size (small, medium, large). */
   logoVariant?: string; logoSize?: string;
+  /** Bakgrund bakom logotypen (2026-11-15): box (Ruta) or none (Ingen). */
+  logoPlate?: string | null;
   /** The newsletter's own fields (lib/mail/post-newsletter-mail.ts); null: everything follows the post again. */
   newsletterMail?: NewsletterMail | null };
 
@@ -322,6 +324,7 @@ function cleanInput(input: PostInput) {
   if (input.toStory !== undefined) data.toStory = input.toStory;
   if (input.logoVariant !== undefined) { if (!isLogoVariant(input.logoVariant)) throw new ApiError(400, "Okänd logga."); data.logoVariant = input.logoVariant; }
   if (input.logoSize !== undefined) { if (!isLogoSize(input.logoSize)) throw new ApiError(400, "Okänd storlek på loggan."); data.logoSize = input.logoSize; }
+  if (input.logoPlate !== undefined) { if (input.logoPlate !== null && !isLogoPlate(input.logoPlate)) throw new ApiError(400, "Okänd bakgrund bakom loggan."); data.logoPlate = input.logoPlate; }
   if (input.newsletterMail !== undefined) {
     if (input.newsletterMail === null) data.newsletterMail = Prisma.DbNull;
     else {
@@ -472,7 +475,7 @@ const IMAGE_KEY = /^[A-Za-z0-9_-]{43}$/;
 export async function publicPostImage(key: string) {
   if (!IMAGE_KEY.test(key)) return null;
   const hash = keyHash(key);
-  const post = await prisma.socialPost.findFirst({ where: { OR: [{ imageKeyHash: hash }, { storyImageKeyHash: hash }] }, select: { id: true, organizationId: true, heading: true, body: true, template: true, logoVariant: true, logoSize: true, imageKeyHash: true, imageKeyExpiresAt: true, storyImageKeyExpiresAt: true } });
+  const post = await prisma.socialPost.findFirst({ where: { OR: [{ imageKeyHash: hash }, { storyImageKeyHash: hash }] }, select: { id: true, organizationId: true, heading: true, body: true, template: true, logoVariant: true, logoSize: true, logoPlate: true, imageKeyHash: true, imageKeyExpiresAt: true, storyImageKeyExpiresAt: true } });
   if (!post) return null;
   const story = post.imageKeyHash !== hash;
   const expires = story ? post.storyImageKeyExpiresAt : post.imageKeyExpiresAt;

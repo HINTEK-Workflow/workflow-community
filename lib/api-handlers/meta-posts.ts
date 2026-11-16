@@ -53,7 +53,7 @@ const fields = {
   heading: z.string().max(HEADING_MAX + 50).optional(), body: z.string().max(BODY_MAX + 50).optional(), caption: z.string().max(CAPTION_STORE_MAX + 100).optional(), hashtags: z.string().max(HASHTAG_STORE_MAX + 500).optional(),
   link: z.string().max(LINK_MAX).nullable().optional(), template: z.string().max(20).optional(), toFacebook: z.boolean().optional(), toInstagram: z.boolean().optional(), toLinkedIn: z.boolean().optional(),
   toNewsletter: z.boolean().optional(), newsletterMail: newsletterMailSchema.nullable().optional(), toStory: z.boolean().optional(),
-  logoVariant: z.string().max(20).optional(), logoSize: z.string().max(20).optional(),
+  logoVariant: z.string().max(20).optional(), logoSize: z.string().max(20).optional(), logoPlate: z.string().max(20).nullable().optional(),
 };
 const requestSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("create"), ...fields }),
@@ -61,7 +61,7 @@ const requestSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("delete"), id }),
   // format story (2026-11-13): the 9:16 story picture.
   z.object({ action: z.literal("preview"), heading: z.string().max(HEADING_MAX + 50), body: z.string().max(BODY_MAX + 50), template: z.string().max(20), id: id.optional(), format: z.enum(["feed", "story"]).optional(),
-    logoVariant: z.string().max(20).optional(), logoSize: z.string().max(20).optional() }),
+    logoVariant: z.string().max(20).optional(), logoSize: z.string().max(20).optional(), logoPlate: z.string().max(20).nullable().optional() }),
   z.object({ action: z.literal("background"), id, url: z.string().trim().min(8).max(2000).nullable() }),
   z.object({ action: z.literal("publish"), id, mode: z.enum(["test", "live"]), confirm: z.literal(true) }),
   // Visa mejlet: the newsletter exactly as Publicera or the schedule would send it, and the recipients now.

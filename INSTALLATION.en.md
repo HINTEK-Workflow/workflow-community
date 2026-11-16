@@ -73,12 +73,12 @@ irm https://raw.githubusercontent.com/HINTEK-Workflow/workflow-community/main/in
 
 What the script does:
 
-- asks for your e-mail address and a password
-- creates `.env` with new random secrets
+- asks for your e-mail address, a name for the installation and a password
+- creates `.env` with new random secrets and free ports (from 3000 for the app and 5432 for the database)
 - starts Workflow and creates your account as superadmin.
 
 The first start takes 5-10 minutes. Workflow is placed in the folder `workflow-community` in your home folder. To
-install by hand, see *Manual installation* in README.md.
+install by hand, see *Manual installation (for developers)* in [README.md](README.md).
 
 ## 3. Set up after the first sign-in
 
@@ -88,8 +88,8 @@ install by hand, see *Manual installation* in README.md.
 2. **Settings → Users** (*Inställningar → Användare*): invite your staff. Whoever accepts an invitation can sign in
    at once.
 3. **More companies in one installation** (optional): choose **Installation → Overview → Customer companies → All
-   companies → Prepare customer company** (*Installation → Översikt → Kundföretag → Alla företag → Förbered
-   kundföretag*), then send the admin invitation from there.
+   companies → Prepare company** (*Installation → Översikt → Kundföretag → Alla företag → Förbered
+   företag*), then send the admin invitation from there.
    - Each company is kept apart from the others.
    - The Customer companies tab is shown once the installation has more companies than its own.
 4. **Installation → Operations and security:** decide whether visitors may create accounts themselves (**Allow new
@@ -110,7 +110,7 @@ install by hand, see *Manual installation* in README.md.
    - The browser never contacts Lantmäteriet. The server must reach `api.lantmateriet.se` and `dl1.lantmateriet.se`.
    - Attribution required by the terms: *Topografisk webbkarta Nedladdning, raster ©Lantmäteriet*, licence CC BY 4.0
      (creativecommons.org/licenses/by/4.0/). The map images are shown unchanged, and the pins are added by Workflow.
-     Workflow shows this at every map and under **Settings → Help** (*Inställningar → Hjälp*).
+     Workflow shows this at every map and under **Help → About Workflow** (*Hjälp → Om Workflow*).
 
 ### Name and icon
 
@@ -132,6 +132,7 @@ install by hand, see *Manual installation* in README.md.
 - Links in invitations and mails are built from `APP_URL`, so it must be the address your staff actually use.
 - With a reverse proxy in front, also set `TRUSTED_PROXY_HOPS=1` in `.env`. Then the per-IP limits see the visitor's
   address and not the proxy's.
+- The examples below use port 3000. If the installer chose another port, it is `APP_PORT` in `.env`.
 
 ### Local server in the company network
 
@@ -173,8 +174,8 @@ monitoring, backup, key alerts, the daily digest, mailings and the integrity che
 - **Without the jobs nothing happens when a day comes.** Work orders from maintenance plans are not created, alarms are
   not escalated, and the monitoring does not notice a job that never runs.
 - Run them with cron on the server as root.
-- Replace `/opt/workflow` with the folder where Workflow is, and set `COMPOSE_PROJECT` to the project name (the folder
-  name, or the value in `.env`).
+- Replace `/opt/workflow` with the folder where Workflow is, and set `COMPOSE_PROJECT` to the Docker Compose project's
+  name. It is the folder name in lower case (`docker compose ls` shows it).
 - No job needs a key: a service that is not switched on is skipped.
 
 ```
@@ -222,15 +223,29 @@ What the jobs do:
   nothing without scheduled items.
 - There are no jobs for payment and credits in this edition.
 
-Save as `/etc/cron.d/workflow` and run `mkdir -p /var/log/workflow` and `chmod 644 /etc/cron.d/workflow`. After five
-minutes `tail /var/log/workflow/monitor.log` should show `OK`.
+Save as `/etc/cron.d/workflow` and run `mkdir -p /var/log/workflow` and `chmod 644 /etc/cron.d/workflow`.
+The monitoring alerts until there is a successful backup, so run the backup once by hand as root:
+
+```bash
+cd /opt/workflow && COMPOSE_PROJECT=workflow-community SOURCE_STORAGE=/opt/workflow/storage scripts/ops/nightly-backup.sh
+```
+
+Within five minutes after that, `tail /var/log/workflow/monitor.log` should show `OK`.
 
 ## 6. Backup and restore
 
 - `scripts/ops/nightly-backup.sh` copies the database and the files and checks that the copy can be read.
 - Set `OFFSITE_TARGET` to also send the copy to another server.
 - Practise a restore with `scripts/ops/backup-restore-drill.sh` before you depend on it. It never writes to the real
-  database.
+  database. Run it as root with the same project name and storage folder as the backup:
+
+  ```bash
+  cd /opt/workflow && COMPOSE_PROJECT=workflow-community SOURCE_STORAGE=/opt/workflow/storage \
+    BACKUP_ROOT=/opt/backups/workflow-restore-drills scripts/ops/backup-restore-drill.sh
+  ```
+
+  The drill restores into a temporary database and folder under `BACKUP_ROOT/work` (another folder: `DRILL_WORK_ROOT`)
+  and removes them when it is done. The report is in the drill's folder under `BACKUP_ROOT`.
 - The copy is **not encrypted**. It holds the whole database and every file, so keep it as well protected as the server.
 - Before sending the copy elsewhere, encrypt it, for example with `age` or `gpg` and a key that is not on the server.
 - The secrets in `.env` are not in the copy. Keep `.env` separately and safely, or the sealed keys cannot be opened
@@ -244,9 +259,10 @@ minutes `tail /var/log/workflow/monitor.log` should show `OK`.
 
 **What changes, and do you need to do anything?**
 
-- Read the release notes of the new version before updating. They are under *Releases* on the repository's GitHub
-  page, and a short summary is shown on **Overview** (*Översikt*) after the update.
-- They say when a new setting in `.env` or a new scheduled job is needed.
+- Read the release notes of the new version before updating. They are in `lib/release-notes.ts` in the repository,
+  and a short summary is shown on **Overview** (*Översikt*) after the update.
+- Compare your `.env` with the new `.env.example`, and your cron file with section 5, so that new settings and jobs
+  are added.
 - The database only ever gets additions, so an update keeps everything.
 - Never go back to an older version without first restoring the backup from before the update.
 
@@ -279,7 +295,7 @@ minutes `tail /var/log/workflow/monitor.log` should show `OK`.
 
 ## 10. Check that everything works
 
-- `https://<your address>/api/health/ready` answers `{"status":"ok"}` when the database and file storage work.
+- `https://<your address>/api/health/ready` answers with `"status":"ok"` when the database and file storage work.
 - The test mail under Installation → Services and keys → E-mail arrives.
 - Installation → Services and keys shows Ready for everything you have added.
 - After a day, `/var/log/workflow/` and Operations and security show no failed jobs.

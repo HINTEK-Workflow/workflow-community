@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils";
  * restored or downloaded from the app, and the monitor's limits are changed on the server. Read from
  * /api/superadmin/server-jobs (the superadmin only).
  */
-type Answer = { jobs: ServerJobView[]; backups: BackupList | null; thresholds: typeof MONITOR_THRESHOLDS; readAt: string };
+type Answer = { jobs: ServerJobView[]; backups: BackupList | null; databaseServer: boolean; thresholds: (typeof MONITOR_THRESHOLDS)[number][]; readAt: string };
 
 const when = (iso: string | null | undefined) => (iso ? formatSwedish(iso) : "–");
 const POLL_MS = 5_000;
@@ -43,7 +43,7 @@ function Fact({ label, children, testId }: { label: string; children: React.Reac
 
 function lastText(job: ServerJobView) {
   const last = job.last;
-  if (!last) return "Inte kört än";
+  if (!last) return job.lastNote ?? "Inte kört än";
   const parts = [when(last.finishedAt ?? last.startedAt), durationText(last.durationMs), last.trigger === "manual" ? "Kör nu" : null].filter(Boolean);
   return parts.join(" · ");
 }
@@ -115,7 +115,7 @@ function Backups({ list }: { list: BackupList | null }) {
     <dl className="grid gap-2 sm:grid-cols-3">
       <Fact label="Listan lästes">{when(list.generatedAt)}</Fact>
       <Fact label="Disken med backuperna" testId="backup-disk">{list.disk.usedPercent !== null ? `${list.disk.usedPercent} % använd` : "–"}{list.disk.freeBytes !== null ? ` · ${bytesText(list.disk.freeBytes)} ledigt` : ""}</Fact>
-      <Fact label="Kopia på annan plats" testId="backup-offsite">{offsite ? `${offsite.result === "ok" ? "Lyckades" : "Misslyckades"} ${when(offsite.time)}` : "Ingen kopia än"}</Fact>
+      <Fact label="Kopia på annan plats" testId="backup-offsite">{offsite ? `${offsite.result === "ok" ? "Lyckades" : "Misslyckades"} ${when(offsite.time)}` : list.offsite.configured ? "Ingen kopia än" : "Inte inställd"}</Fact>
     </dl>
     <p className="text-xs text-muted-foreground" data-testid="backup-offsite-keep">{offsiteKeepText(list.offsite)}</p>
     <div className="grid gap-3 lg:grid-cols-2">{BACKUP_PARTS.map((part) => <BackupPartView key={part} part={part} list={list} />)}</div>
@@ -173,7 +173,9 @@ export function ServerJobs({ notify }: { notify?: (text: string, error?: boolean
 
   const appJobs = data?.jobs.filter((job) => job.place === "app") ?? [];
   const serverJobs = data?.jobs.filter((job) => job.place !== "app") ?? [];
-  return <Panel icon={Clock} title="Serverjobb" description="Schemalagda jobb, senaste och nästa körning, och backuperna på databasservern."
+  // The Community edition has no database server: its backup is the server's own nightly job, listed among the jobs.
+  const withDatabaseServer = data ? data.databaseServer : true;
+  return <Panel icon={Clock} title="Serverjobb" description={withDatabaseServer ? "Schemalagda jobb, senaste och nästa körning, och backuperna på databasservern." : "Schemalagda jobb med senaste och nästa körning."}
     actions={<Button type="button" size="sm" variant="outline" onClick={() => void load()} disabled={state === "loading"} data-testid="server-jobs-reload"><RefreshCw />Läs igen</Button>}>
     <div className="space-y-5" data-testid="server-jobs" data-state={state}>
       {state === "error" ? <p className="text-sm text-destructive" role="alert">{message}</p> : null}
@@ -189,10 +191,10 @@ export function ServerJobs({ notify }: { notify?: (text: string, error?: boolean
           <p className="text-xs text-muted-foreground">Körs av servrarna själva och kan bara läsas här.</p>
           <ul className="grid gap-3 lg:grid-cols-2">{serverJobs.map((job) => <JobRow key={job.key} job={job} busy onPause={() => undefined} onRun={() => undefined} />)}</ul>
         </section>
-        <section className="space-y-2">
+        {data.databaseServer ? <section className="space-y-2">
           <h3 className="text-sm font-semibold">Backuper på databasservern</h3>
           <Backups list={data.backups} />
-        </section>
+        </section> : null}
         <section className="space-y-2">
           <h3 className="text-sm font-semibold">Bevakningens gränser</h3>
           <dl className="grid gap-2 sm:grid-cols-2" data-testid="server-job-thresholds">

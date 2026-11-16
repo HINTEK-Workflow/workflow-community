@@ -65,7 +65,7 @@ const newsletter: PostPublisher = {
   channels: (post) => (post.toNewsletter === true ? ["newsletter"] : []),
   async publish(actor, postId) {
     const [{ sendPostAsNewsletter }, { renderImage }, { prisma }] = await Promise.all([import("@/lib/mail/post-newsletter"), import("@/lib/meta/server"), import("@/lib/db")]);
-    const post = await prisma.socialPost.findFirst({ where: { id: postId, organizationId: actor.organizationId, toNewsletter: true }, select: { id: true, heading: true, body: true, caption: true, link: true, template: true, logoVariant: true, logoSize: true, newsletterMail: true } });
+    const post = await prisma.socialPost.findFirst({ where: { id: postId, organizationId: actor.organizationId, toNewsletter: true }, select: { id: true, heading: true, body: true, caption: true, link: true, template: true, logoVariant: true, logoSize: true, logoPlate: true, newsletterMail: true } });
     if (!post) return { kind: "skip", message: "" };
     try {
       const outcome = await sendPostAsNewsletter(actor, post, () => renderImage(actor.organizationId, post, post.id));

@@ -2,7 +2,7 @@
 
 Svenska | [English](README.md)
 
-> **Status: under aktiv utveckling.** Texten beskriver vad utgåvan innehåller i version 0.64.0. Ärenden och pull
+> **Status: under aktiv utveckling.** Texten beskriver vad utgåvan innehåller i version 0.65.0. Ärenden och pull
 > requests är välkomna: se [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Workflow är en webbapp för el- och installationsföretag. Den samlar arbetsordrar, offerter, fakturaunderlag, artiklar
@@ -17,13 +17,13 @@ Namnen i appen och deras engelska motsvarigheter står i [ordlistan](GLOSSARY.md
 
 Det här behöver du:
 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop), igång
+- [Docker Desktop](https://www.docker.com/products/docker-desktop), igång (på Linux går det också med Docker Engine och Docker Compose)
 - [Git](https://git-scm.com)
 
 Så går det till:
 
 - Kopiera en av raderna nedan till en terminal.
-- Svara på två frågor: din e-postadress och ett lösenord.
+- Svara på tre frågor: din e-postadress, ett namn på installationen och ett lösenord.
 - Installationen hämtar Workflow, skapar inställningarna med nya slumpade hemligheter, startar allt, skapar ditt konto
   och öppnar webbläsaren.
 - Första starten tar 5–10 minuter.

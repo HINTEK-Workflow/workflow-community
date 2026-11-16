@@ -4,10 +4,23 @@ set -Eeuo pipefail
 
 umask 077
 
+# Restore drill: backs up the database and the file storage, restores both into an isolated container and folders, and
+# compares them exactly. Only reads the real database and storage.
+# Environment (defaults are HINTEK's server): COMPOSE_PROJECT (workflow) · POSTGRES_SERVICE (postgres)
+#   SOURCE_STORAGE (/opt/workflow/storage) · BACKUP_ROOT (/opt/backups/kfid-restore-drills)
+#   DRILL_WORK_ROOT (/opt/kfid-v3 when it exists, otherwise $BACKUP_ROOT/work)
+
 readonly COMPOSE_PROJECT="${COMPOSE_PROJECT:-workflow}"
 readonly POSTGRES_SERVICE="${POSTGRES_SERVICE:-postgres}"
 readonly SOURCE_STORAGE="${SOURCE_STORAGE:-/opt/workflow/storage}"
 readonly BACKUP_ROOT="${BACKUP_ROOT:-/opt/backups/kfid-restore-drills}"
+# Temporary restore targets (database folder and files), removed after the drill. HINTEK's server keeps its old place
+# /opt/kfid-v3 when it exists; any other installation uses a folder beside the drill backups (2026-11-15).
+if [[ -z "${DRILL_WORK_ROOT:-}" ]]; then
+  if [[ -d /opt/kfid-v3 ]]; then DRILL_WORK_ROOT=/opt/kfid-v3; else DRILL_WORK_ROOT="${BACKUP_ROOT}/work"; fi
+fi
+DRILL_WORK_ROOT="${DRILL_WORK_ROOT%/}"
+readonly DRILL_WORK_ROOT
 readonly RUN_ID="$(date -u +%Y%m%d_%H%M%S)_$$"
 readonly DRILL_DIR="${BACKUP_ROOT}/${RUN_ID}"
 readonly DATABASE_BACKUP="${DRILL_DIR}/database.dump"
@@ -39,7 +52,7 @@ require_command() {
 safe_remove_tree() {
   local target="$1"
   case "$target" in
-    /opt/kfid-v3/db-restore-drill.*|/opt/kfid-v3/storage-restore-drill.*)
+    "$DRILL_WORK_ROOT"/db-restore-drill.*|"$DRILL_WORK_ROOT"/storage-restore-drill.*)
       if [[ -d "$target" ]]; then
         find "$target" -depth -delete
       fi
@@ -149,11 +162,14 @@ done
 [[ -d "$SOURCE_STORAGE" ]] || fail "Production storage directory does not exist: $SOURCE_STORAGE"
 source_db_ready || fail "The production PostgreSQL database is not reachable"
 
+[[ "$DRILL_WORK_ROOT" == /?* ]] || fail "DRILL_WORK_ROOT must be an absolute folder other than /: ${DRILL_WORK_ROOT:-/}"
+
 mkdir -p "$DRILL_DIR"
 chmod 700 "$DRILL_DIR"
+mkdir -p "$DRILL_WORK_ROOT"
 
-RESTORE_DB_ROOT="$(mktemp -d /opt/kfid-v3/db-restore-drill.XXXXXX)"
-RESTORE_STORAGE="$(mktemp -d /opt/kfid-v3/storage-restore-drill.XXXXXX)"
+RESTORE_DB_ROOT="$(mktemp -d "$DRILL_WORK_ROOT/db-restore-drill.XXXXXX")"
+RESTORE_STORAGE="$(mktemp -d "$DRILL_WORK_ROOT/storage-restore-drill.XXXXXX")"
 
 printf 'Creating protected database and storage backups in %s\n' "$DRILL_DIR"
 

@@ -219,7 +219,9 @@ function MachinesView({ partId, placeParam }: { partId: string | null; placePara
     verdict: (target) => { const plan = dropOn(target); return plan.act === "same" ? "same" : plan.act === "refuse" ? "refused" : "ok"; },
     drop: (target) => { const row = dragged.current; dragged.current = null; if (row) void moveTo(row, target); },
   } : undefined;
+  // While a chosen part is read, Redigera and Ta bort wait for it: they must never fall back to the place it stands on.
   const noEdit = canEdit ? null : "Du får inte ändra i Underhåll.";
+  const partPending = chosen && !part ? "Hämtar delen…" : null;
   const newLabel = part ? `Ny ${childLevelName(part.part.depth).toLowerCase()}` : "Ny maskin";
 
   // Level 1 (the phone): a part is a screen of its own, pushed on top of the trees (as the customer card's place); the shell's
@@ -248,8 +250,8 @@ function MachinesView({ partId, placeParam }: { partId: string | null; placePara
       ],
       [
         { key: "move", label: "Flytta", icon: Move, testId: "maintenance-move", disabledReason: noEdit ?? (part ? null : "Välj en maskin eller del först."), onClick: () => setEditing({ mode: "move" }) },
-        { key: "edit", label: "Redigera", icon: Pencil, testId: "maintenance-edit", disabledReason: noEdit ?? (part || realPlace ? null : "Välj en plats, maskin eller del först."), onClick: () => setEditing(part ? { mode: "edit" } : { mode: "edit-place" }) },
-        { key: "delete", label: "Ta bort", icon: Trash2, tone: "danger", testId: "maintenance-delete", disabledReason: noEdit ?? (part || realPlace ? null : "Välj en plats, maskin eller del först."), onClick: () => void (part ? removePart() : removePlace()) },
+        { key: "edit", label: "Redigera", icon: Pencil, testId: "maintenance-edit", disabledReason: noEdit ?? partPending ?? (part || realPlace ? null : "Välj en plats, maskin eller del först."), onClick: () => setEditing(part ? { mode: "edit" } : { mode: "edit-place" }) },
+        { key: "delete", label: "Ta bort", icon: Trash2, tone: "danger", testId: "maintenance-delete", disabledReason: noEdit ?? partPending ?? (part || realPlace ? null : "Välj en plats, maskin eller del först."), onClick: () => void (part ? removePart() : removePlace()) },
       ],
     ]}
     end={[

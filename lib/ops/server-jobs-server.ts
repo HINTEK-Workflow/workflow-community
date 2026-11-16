@@ -1,3 +1,4 @@
+import { EE_PRESENT } from "@ee/present";
 import { spawn } from "node:child_process";
 import { lstat, readFile } from "node:fs/promises";
 import path from "node:path";
@@ -7,8 +8,8 @@ import { ApiError } from "@/lib/kfid/server";
 import { BACKUP_LIST_FILE, BACKUP_LIST_MAX_BYTES, parseBackupList, type BackupList } from "@/lib/ops/backup-list";
 import { HOST_STATUS_STORAGE_FOLDER, hostStatusFolders, readHostStatusFolder } from "@/lib/ops/host-status-server";
 import {
-  isControlledJob, MONITOR_THRESHOLDS, nextCronRun, runRequestAllowed, scheduleText, serverJob, SERVER_JOBS,
-  type ServerJobPlace, type ServerJobStatus,
+  isControlledJob, monitorThresholdsFor, nextCronRun, runRequestAllowed, scheduleText, serverJobsFor,
+  type ServerJobDefinition, type ServerJobPlace, type ServerJobStatus,
 } from "@/lib/ops/server-jobs";
 
 /**
@@ -16,15 +17,26 @@ import {
  * Pausa/Starta and Kör nu only for the jobs that run in the app (lib/ops/server-jobs.ts); the host's and the database
  * server's jobs are read from the status files their root writes, read-only. Kör nu starts the job's own npm script from the
  * fixed list – never a command from the request – detached in the app server, and returns at once; the job's control
- * (scripts/ops/job.ts) records the run.
+ * (scripts/ops/job.ts) records the run. The Community edition (no ee/) shows and controls only its own jobs (serverJobsFor).
  */
 export type ServerJobView = {
   key: string; name: string; description: string; place: ServerJobPlace; schedule: string; confirm: boolean; controllable: boolean;
+  /** Senast when there is no result to show: "Inte inställd" (no copy to another place is set up) or the job's own note. */
+  lastNote: string | null;
   nextRunAt: string | null; paused: boolean; pausedAt: string | null; running: boolean; requestedAt: string | null;
   last: { status: ServerJobStatus | null; startedAt: string | null; finishedAt: string | null; message: string | null; durationMs: number | null; trigger: string | null } | null;
 };
 
 const iso = (value: Date | null | undefined) => (value ? value.toISOString() : null);
+
+/** This installation's jobs: Workflow's with ee/, the Community edition's own without it. */
+const editionJobs = () => serverJobsFor(EE_PRESENT);
+const editionJob = (key: string): ServerJobDefinition | null => editionJobs().find((job) => job.key === key) ?? null;
+/** The schedule in words and the next run, over both schedules when the job has two. */
+const scheduleOf = (job: ServerJobDefinition) => job.alsoCron ? `${scheduleText(job.cron)} och ${scheduleText(job.alsoCron)}` : scheduleText(job.cron, job.scheduleNote);
+const nextRunOf = (job: ServerJobDefinition, now: Date) => [nextCronRun(job.cron, now), job.alsoCron ? nextCronRun(job.alsoCron, now) : null]
+  .filter((at): at is Date => Boolean(at)).sort((a, b) => a.getTime() - b.getTime())[0] ?? null;
+export const OFFSITE_NOT_SET_UP = "Inte inställd";
 
 /** The backup list in the storage's .host-status/, or null when there is none (not installed yet) or it is not a list. */
 export async function readBackupList(): Promise<BackupList | null> {
@@ -51,7 +63,7 @@ export async function readServerJobs(now = new Date()) {
     message: status.result === "ok" ? null : `Misslyckades${status.step ? ` vid ${status.step}` : ""}.`, durationMs: null, trigger: null,
   } : null);
   const newestOf = (...items: (ServerJobView["last"])[]) => items.filter(Boolean).sort((a, b) => (b!.finishedAt ?? "").localeCompare(a!.finishedAt ?? ""))[0] ?? null;
-  const jobs: ServerJobView[] = SERVER_JOBS.map((job) => {
+  const jobs: ServerJobView[] = editionJobs().map((job) => {
     const row = byKey.get(job.key);
     const controllable = job.place === "app";
     let last: ServerJobView["last"] = null;
@@ -60,22 +72,27 @@ export async function readServerJobs(now = new Date()) {
     else if (job.key === "db-host-status") last = fileRun(newest(dbHost));
     else if (job.key === "db-backup") last = statusRun(backups?.status["db.daily"] ?? null);
     else if (job.key === "files-backup") last = statusRun(backups?.status["files.daily"] ?? null);
-    else if (job.key === "offsite") last = statusRun(backups?.status.offsite ?? null);
+    else if (job.key === "offsite") last = backups?.offsite.configured ? statusRun(backups.status.offsite) : null;
+    else if (job.key === "backup-list") last = fileRun(backups?.generatedAt ?? null);
     else if (job.key === "predeploy") last = newestOf(statusRun(backups?.status["db.predeploy"] ?? null), statusRun(backups?.status["files.predeploy"] ?? null));
     const running = Boolean(controllable && row?.lockedUntil && row.lockedUntil.getTime() > now.getTime());
+    // The list says offsite.configured=0 when no other place is set up: then the copy is not set up, not just "not run yet".
+    const offsiteOff = job.key === "offsite" && backups !== null && !backups.offsite.configured;
     return {
-      key: job.key, name: job.name, description: job.description, place: job.place, schedule: scheduleText(job.cron, job.scheduleNote),
-      confirm: Boolean(job.confirm), controllable, nextRunAt: controllable && row?.paused ? null : iso(nextCronRun(job.cron, now)),
+      key: job.key, name: job.name, description: job.description, place: job.place, schedule: scheduleOf(job),
+      confirm: Boolean(job.confirm), controllable, lastNote: offsiteOff ? OFFSITE_NOT_SET_UP : last ? null : job.lastNote ?? null,
+      nextRunAt: (controllable && row?.paused) || offsiteOff ? null : iso(nextRunOf(job, now)),
       paused: Boolean(controllable && row?.paused), pausedAt: controllable ? iso(row?.pausedAt) : null, running,
       requestedAt: controllable ? iso(row?.runRequestedAt) : null,
       last: running && last ? { ...last, status: "running" } : last,
     };
   });
-  return { jobs, backups, thresholds: MONITOR_THRESHOLDS, readAt: now.toISOString() };
+  // The database server's backups are Workflow's alone: the Community edition's backup is the server's own (nightly-backup.sh).
+  return { jobs, backups: EE_PRESENT ? backups : null, databaseServer: EE_PRESENT, thresholds: monitorThresholdsFor(EE_PRESENT), readAt: now.toISOString() };
 }
 
 export async function setJobPaused(input: { key: string; paused: boolean; actorId: string; organizationId: string }) {
-  const job = serverJob(input.key);
+  const job = editionJob(input.key);
   if (!job || !isControlledJob(job.key)) throw new ApiError(400, "Jobbet kan inte pausas från appen.");
   await prisma.serverJob.upsert({
     where: { key: job.key },
@@ -90,7 +107,7 @@ export async function setJobPaused(input: { key: string; paused: boolean; actorI
 
 /** Starts the job's npm script from the fixed list, detached; the job's own control takes the lease and records the run. */
 export function startJobProcess(key: string) {
-  if (!isControlledJob(key)) throw new ApiError(400, "Jobbet kan inte startas från appen.");
+  if (!isControlledJob(key) || !editionJob(key)) throw new ApiError(400, "Jobbet kan inte startas från appen.");
   const child = spawn("npm", ["run", "--silent", key], {
     cwd: process.cwd(), detached: true, stdio: "ignore", shell: process.platform === "win32",
     env: { ...process.env, WORKFLOW_JOB_TRIGGER: "manual" },
@@ -100,7 +117,7 @@ export function startJobProcess(key: string) {
 }
 
 export async function requestJobRun(input: { key: string; actorId: string; organizationId: string }, start: (key: string) => void = startJobProcess, now = new Date()) {
-  const job = serverJob(input.key);
+  const job = editionJob(input.key);
   if (!job) throw new ApiError(400, "Okänt jobb.");
   const row = await prisma.serverJob.findUnique({ where: { key: job.key } });
   const check = runRequestAllowed(job.key, row, now);

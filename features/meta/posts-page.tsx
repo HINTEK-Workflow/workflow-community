@@ -47,8 +47,8 @@ const STATUS: Record<string, { label: string; tone: "neutral" | "info" | "succes
 };
 const SOURCE: Record<string, string> = { website: "Från Min webbsida", release: "Ny version", manual: "" };
 
-type Draft = Pick<PostView, "heading" | "body" | "caption" | "hashtags" | "link" | "template" | "logoVariant" | "logoSize" | "toFacebook" | "toInstagram" | "toLinkedIn" | "toNewsletter" | "newsletterMail" | "toStory">;
-const draftOf = (post: PostView): Draft => ({ heading: post.heading, body: post.body, caption: post.caption, hashtags: post.hashtags, link: post.link, template: post.template, logoVariant: post.logoVariant, logoSize: post.logoSize, toFacebook: post.toFacebook, toInstagram: post.toInstagram, toLinkedIn: post.toLinkedIn, toNewsletter: post.toNewsletter, newsletterMail: post.newsletterMail, toStory: post.toStory });
+type Draft = Pick<PostView, "heading" | "body" | "caption" | "hashtags" | "link" | "template" | "logoVariant" | "logoSize" | "logoPlate" | "toFacebook" | "toInstagram" | "toLinkedIn" | "toNewsletter" | "newsletterMail" | "toStory">;
+const draftOf = (post: PostView): Draft => ({ heading: post.heading, body: post.body, caption: post.caption, hashtags: post.hashtags, link: post.link, template: post.template, logoVariant: post.logoVariant, logoSize: post.logoSize, logoPlate: post.logoPlate, toFacebook: post.toFacebook, toInstagram: post.toInstagram, toLinkedIn: post.toLinkedIn, toNewsletter: post.toNewsletter, newsletterMail: post.newsletterMail, toStory: post.toStory });
 const same = (left: Draft, right: Draft) => JSON.stringify(left) === JSON.stringify(right);
 
 /** Why nothing can be published now, or null. */
@@ -114,11 +114,14 @@ export function PostsPage({ post: chosen, series, queue }: { post: string | null
   const queueButton = <Button type="button" variant="outline" asChild><Link href={`${POSTS_VIEW}&queue=new`} data-testid="post-queue-new"><ListOrdered />I tur och ordning</Link></Button>;
   if (queue) return <QueuePage onChanged={async () => { await load(); await scheduled.reload(); }} />;
   if (series) return <SeriesPage id={series} connection={connection} linkedin={linkedin} logos={logos} onChanged={async () => { await load(); await scheduled.reload(); }} />;
-  if (error && !posts) return <div className="space-y-4"><PageHeader title="Inlägg" /><p className="notice text-destructive" role="alert">{error}</p></div>;
+  // Sidans huvudåtgärder (2026-11-15): Ny serie, I tur och ordning och Nytt inlägg står alltid uppe till höger, också
+  // medan ett inlägg är öppet; det öppna inläggets egna knappar (Ta bort, Spara, Schemalägg, Publicera) står i dess rad.
+  const mainActions = <>{seriesButton}{queueButton}{newButton}</>;
+  if (error && !posts) return <div className="space-y-4"><PageHeader title="Inlägg" actions={mainActions} /><p className="notice text-destructive" role="alert">{error}</p></div>;
   // The page's notice: only when no channel can be used (LinkedIn's reason once LinkedIn is connected, else Meta's).
   const block = metaBlock && liBlock ? (linkedin?.connected ? liBlock : metaBlock) : null;
   return <div className="space-y-4" data-testid="posts-page">
-    <PageHeader title="Inlägg" description="Inlägg till Facebook, Instagram och LinkedIn. Inget publiceras förrän du trycker Publicera eller Schemalägg." actions={open ? null : <>{seriesButton}{queueButton}{newButton}</>} />
+    <PageHeader title="Inlägg" description="Inlägg till Facebook, Instagram och LinkedIn. Inget publiceras förrän du trycker Publicera eller Schemalägg." actions={mainActions} />
     {block && connection ? <div className="notice flex flex-wrap items-center gap-3" data-testid="posts-guard">
       <p className="min-w-0 flex-1">{block}</p>
       <Button type="button" variant="outline" size="sm" asChild><Link href={CONNECTIONS} data-testid="posts-open-connections"><Plug />Öppna Kopplingar</Link></Button>
@@ -134,7 +137,7 @@ export function PostsPage({ post: chosen, series, queue }: { post: string | null
         status: { label: STATUS[item.status]?.label ?? item.status, tone: STATUS[item.status]?.tone ?? "neutral", detail: [SOURCE[item.source], formatSwedish(item.publishedAt ?? item.createdAt, { dateStyle: "medium" })].filter(Boolean).join(" · ") },
       }))} />
       : <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground" data-testid="posts-empty">Inga inlägg ännu. Tryck Nytt inlägg, eller kryssa i Dela även på Facebook och Instagram när du publicerar en sida i Min webbsida.</div>}>
-      {open ? <PostEditor key={open.id} post={open} connection={connection} linkedin={linkedin} newsletter={newsletter} logos={logos} metaBlock={metaBlock} linkedInBlock={liBlock} newButton={newButton} onSaved={replace} onRemoved={remove}
+      {open ? <PostEditor key={open.id} post={open} connection={connection} linkedin={linkedin} newsletter={newsletter} logos={logos} metaBlock={metaBlock} linkedInBlock={liBlock} onSaved={replace} onRemoved={remove}
         scheduled={scheduled.items?.find((item) => item.kind === "post" && item.targetId === open.id && ["scheduled", "needs_approval", "running"].includes(item.status)) ?? null}
         plan={postPlan(scheduled.items, scheduled.rhythm, open.id)}
         onScheduleChanged={async () => { await scheduled.reload(); }} />
@@ -147,8 +150,8 @@ function Counter({ value, max }: { value: string; max: number }) {
   return <span className={cn("text-xs tabular-nums", value.length > max ? "text-destructive" : "text-muted-foreground")}>{value.length}/{max}</span>;
 }
 
-function PostEditor({ post, connection, linkedin, newsletter, logos, metaBlock, linkedInBlock: liBlock, newButton, onSaved, onRemoved, scheduled, plan, onScheduleChanged }: {
-  post: PostView; connection: MetaView | null; linkedin: LinkedInView | null; newsletter: PostNewsletterInfo; logos: LogoAvailability | null; metaBlock: string | null; linkedInBlock: string | null; newButton: React.ReactNode;
+function PostEditor({ post, connection, linkedin, newsletter, logos, metaBlock, linkedInBlock: liBlock, onSaved, onRemoved, scheduled, plan, onScheduleChanged }: {
+  post: PostView; connection: MetaView | null; linkedin: LinkedInView | null; newsletter: PostNewsletterInfo; logos: LogoAvailability | null; metaBlock: string | null; linkedInBlock: string | null;
   onSaved: (post: PostView) => void; onRemoved: (id: string) => void;
   scheduled: ScheduledView | null; plan: SchedulePlan; onScheduleChanged: () => Promise<void>;
 }) {
@@ -213,7 +216,6 @@ function PostEditor({ post, connection, linkedin, newsletter, logos, metaBlock, 
     {confirmElement}
     <div className="flex flex-wrap items-center justify-end gap-2" data-testid="post-actions">
       <Button type="button" variant="ghost" className="text-destructive" disabled={busy || post.status === "publishing"} onClick={() => void remove()} data-testid="post-delete"><Trash2 />Ta bort</Button>
-      {newButton}
       <Button type="button" variant="outline" {...disabledReasonProps({ reason: busy ? null : testReason, describedBy: "post-publish-reason", onClick: () => void publish("test") })} disabled={busy} data-testid="post-test"><ShieldCheck />Testpublicering</Button>
       <Button type="button" variant="outline" disabled={busy || locked || !dirty} onClick={() => void save()} data-testid="post-save"><Save />Spara</Button>
       <PostScheduleButton postId={post.id} reason={publishReason} busy={busy} where={where} current={scheduled} plan={plan} newsletter={mailing} beforeSchedule={async () => !dirty || Boolean(await save())} onScheduled={onScheduleChanged} />
@@ -244,7 +246,7 @@ function PostEditor({ post, connection, linkedin, newsletter, logos, metaBlock, 
             <div className="field-stack"><div className="flex items-center justify-between gap-2"><label htmlFor="post-body" className="text-xs font-medium">Kort text</label><Counter value={draft.body} max={BODY_MAX} /></div>
               <textarea id="post-body" className="form-textarea min-h-20" value={draft.body} maxLength={BODY_MAX} onChange={(event) => set("body", event.target.value)} data-testid="post-body" /></div>
             {/* Fler mallar (2026-11-12) and the logo's variant and size (2026-11-13). */}
-            <PostLookFields prefix="post" logos={logos} value={{ template: draft.template, logoVariant: draft.logoVariant, logoSize: draft.logoSize }} onChange={(look) => setDraft((current) => ({ ...current, ...look }))} />
+            <PostLookFields prefix="post" logos={logos} value={{ template: draft.template, logoVariant: draft.logoVariant, logoSize: draft.logoSize, logoPlate: draft.logoPlate }} onChange={(look) => setDraft((current) => ({ ...current, ...look }))} />
           </fieldset>
           <BackgroundField post={post} disabled={locked} onSaved={onSaved} />
         </Panel>
@@ -293,7 +295,7 @@ function PostEditor({ post, connection, linkedin, newsletter, logos, metaBlock, 
 function usePicture(draft: Draft, postId: string, backgroundVersion: string, format: "feed" | "story" = "feed", enabled = true) {
   const [url, setUrl] = useState<string | null>(null);
   const current = useRef<string | null>(null);
-  const key = useMemo(() => JSON.stringify({ heading: draft.heading, body: draft.body, template: draft.template, logoVariant: draft.logoVariant, logoSize: draft.logoSize, id: postId, format, v: backgroundVersion }), [draft.heading, draft.body, draft.template, draft.logoVariant, draft.logoSize, postId, format, backgroundVersion]);
+  const key = useMemo(() => JSON.stringify({ heading: draft.heading, body: draft.body, template: draft.template, logoVariant: draft.logoVariant, logoSize: draft.logoSize, logoPlate: draft.logoPlate, id: postId, format, v: backgroundVersion }), [draft.heading, draft.body, draft.template, draft.logoVariant, draft.logoSize, draft.logoPlate, postId, format, backgroundVersion]);
   useEffect(() => {
     if (!enabled) return;
     let stopped = false;

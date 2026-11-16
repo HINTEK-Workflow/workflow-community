@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { ApiError } from "@/lib/kfid/errors";
 import { formatSwedish, fromSwedishDateTimeInput, swedishDayKey } from "@/lib/swedish-time";
 import { createPost } from "@/lib/meta/server";
-import { isLogoSize, isLogoVariant, isTemplate, normalizeHashtags } from "@/lib/meta/text";
+import { isLogoPlate, isLogoSize, isLogoVariant, isTemplate, normalizeHashtags } from "@/lib/meta/text";
 import { seriesProblem, type SeriesPart, type SeriesShared } from "./post-series";
 import { getRhythm } from "./queue-server";
 import { postScheduleProblem, schedulePost, type Actor } from "./server";
@@ -25,6 +25,7 @@ export async function createPostSeries(actor: Actor, input: PostSeriesInput) {
   if (!isTemplate(input.template)) throw new ApiError(400, "Okänd mall.");
   if (!isLogoVariant(input.logoVariant)) throw new ApiError(400, "Okänd logga.");
   if (!isLogoSize(input.logoSize)) throw new ApiError(400, "Okänd storlek på loggan.");
+  if (input.logoPlate != null && !isLogoPlate(input.logoPlate)) throw new ApiError(400, "Okänd bakgrund bakom loggan.");
   const shared: SeriesShared = { ...input, hashtags: normalizeHashtags(input.hashtags) };
   const problem = seriesProblem(shared, input.parts);
   if (problem) throw new ApiError(400, problem.message);
@@ -32,7 +33,7 @@ export async function createPostSeries(actor: Actor, input: PostSeriesInput) {
   const first = input.parts[0];
   const connection = await postScheduleProblem(actor.organizationId, {
     id: "", status: "draft", heading: first.heading, body: first.body, caption: first.caption, hashtags: shared.hashtags, link: null, template: shared.template,
-    logoVariant: shared.logoVariant, logoSize: shared.logoSize, toFacebook: shared.toFacebook, toInstagram: shared.toInstagram, toNewsletter: false, newsletterMail: null,
+    logoVariant: shared.logoVariant, logoSize: shared.logoSize, logoPlate: shared.logoPlate ?? null, toFacebook: shared.toFacebook, toInstagram: shared.toInstagram, toNewsletter: false, newsletterMail: null,
     toStory: false, backgroundSource: null, background: null, ...({ toLinkedIn: shared.toLinkedIn } as object),
   });
   if (connection) throw new ApiError(409, connection);
@@ -50,7 +51,7 @@ export async function createPostSeries(actor: Actor, input: PostSeriesInput) {
   for (const [position, part] of input.parts.entries()) {
     try {
       const post = await createPost(actor, { heading: part.heading, body: part.body, caption: part.caption, hashtags: shared.hashtags, link: null, template: shared.template,
-        logoVariant: shared.logoVariant, logoSize: shared.logoSize, toFacebook: shared.toFacebook, toInstagram: shared.toInstagram, toLinkedIn: shared.toLinkedIn });
+        logoVariant: shared.logoVariant, logoSize: shared.logoSize, logoPlate: shared.logoPlate, toFacebook: shared.toFacebook, toInstagram: shared.toInstagram, toLinkedIn: shared.toLinkedIn });
       await prisma.contentSeriesItem.create({ data: { seriesId: series.id, postId: post.id, slotAt: times[position], theme: "egen", position, textSource: "own" } });
       await schedulePost(actor, post.id, part.at, { seriesId: series.id });
       scheduled += 1;

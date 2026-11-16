@@ -172,6 +172,11 @@ export function PageHeader({ title, description, icon: Icon, actions, actionsSlo
   title: ReactNode;
   description?: ReactNode;
   icon?: LucideIcon;
+  /**
+   * The page's main actions (2026-11-15, docs/ui-system.md 2): what creates or starts something new on the page, always
+   * here – on an empty page, while an item is open on the page and on every tab. Only permission hides one; the open item's own
+   * actions (Spara, Publicera, Ta bort) stand with the item. On a page that is the item (an editor, a form page) they are the item's.
+   */
   actions?: ReactNode;
   /** Where a form's Avbryt and main action are drawn (see StandardPage); they follow `actions`. */
   actionsSlotRef?: (element: HTMLElement | null) => void;

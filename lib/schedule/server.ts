@@ -78,7 +78,7 @@ function timeOf(value: string) {
 
 // ---------- posts ----------
 
-const postContentSelect = { id: true, status: true, heading: true, body: true, caption: true, hashtags: true, link: true, template: true, toFacebook: true, toInstagram: true, toNewsletter: true, newsletterMail: true, toStory: true, logoVariant: true, logoSize: true, backgroundSource: true, background: true } satisfies Prisma.SocialPostSelect;
+const postContentSelect = { id: true, status: true, heading: true, body: true, caption: true, hashtags: true, link: true, template: true, toFacebook: true, toInstagram: true, toNewsletter: true, newsletterMail: true, toStory: true, logoVariant: true, logoSize: true, logoPlate: true, backgroundSource: true, background: true } satisfies Prisma.SocialPostSelect;
 // A channel that adds a field (POST_CONTENT_FIELDS) is read with the rest.
 const postSelectWithChannels = () => ({ ...postContentSelect, ...Object.fromEntries(POST_CONTENT_FIELDS.map((key) => [key, true])) }) as typeof postContentSelect;
 type PostRow = Prisma.SocialPostGetPayload<{ select: typeof postContentSelect }>;

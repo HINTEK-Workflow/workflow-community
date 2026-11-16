@@ -66,6 +66,16 @@ export const LOGO_SIZES = [
 ] as const;
 export type LogoSize = (typeof LOGO_SIZES)[number]["key"];
 export const isLogoSize = (value: string): value is LogoSize => LOGO_SIZES.some((size) => size.key === value);
+/**
+ * Bakgrund bakom logotypen (2026-11-15): Ruta keeps the plate the template gives the logo (a white box on a dark template);
+ * Ingen draws every variant directly on the template. Missing is Ruta, so earlier posts look the same.
+ */
+export const LOGO_PLATES = [
+  { key: "box", label: "Ruta" },
+  { key: "none", label: "Ingen" },
+] as const;
+export type LogoPlate = (typeof LOGO_PLATES)[number]["key"];
+export const isLogoPlate = (value: string): value is LogoPlate => LOGO_PLATES.some((plate) => plate.key === value);
 
 /**
  * The checklist template's rows: the text's lines, or its sentences when it is one line; list marks (-, •, *, ✓) are taken

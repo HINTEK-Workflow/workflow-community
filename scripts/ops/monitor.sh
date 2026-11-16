@@ -159,7 +159,7 @@ now="$(date -u +%s)"
 if (( ${#problems[@]} )); then
   summary="$(printf '%s\n' "${problems[@]}")"
   if [[ "$summary" != "$previous" ]] || (( now - last_alert >= 21600 )); then
-    send "Driftproblem (${#problems[@]})" "$(printf 'Problem upptäckta %s:\n\n%s\n\nKontrollera enligt docs/drift/INCIDENTRUTIN.md.' "$(date -u +%FT%TZ)" "$summary")"
+    send "Driftproblem (${#problems[@]})" "$(printf 'Problem upptäckta %s:\n\n%s' "$(date -u +%FT%TZ)" "$summary")"
     echo "$now" > "$STATE_DIR/monitor.last-alert"
   fi
   printf '%s' "$summary" > "$STATE_DIR/monitor.state"

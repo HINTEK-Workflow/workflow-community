@@ -13,7 +13,7 @@ export const SERIES_PARTS_MAX = 30;
 export const SERIES_PARTS_DEFAULT = 12;
 
 export type SeriesPart = { heading: string; body: string; caption: string; at: string };
-export type SeriesShared = { template: string; logoVariant: string; logoSize: string; hashtags: string; toFacebook: boolean; toInstagram: boolean; toLinkedIn: boolean };
+export type SeriesShared = { template: string; logoVariant: string; logoSize: string; logoPlate?: string | null; hashtags: string; toFacebook: boolean; toInstagram: boolean; toLinkedIn: boolean };
 
 /** The count kept within 2–30 (a typed value that is not a whole number gives the default). */
 export function seriesCount(value: unknown): number {

@@ -7,6 +7,11 @@ import { swedishParts } from "@/lib/swedish-time";
  * (`db`: backups and its status file, shown only – never controllable from the app). The cron expressions are the cron
  * file's own (ops/cron/hintek-workflow; tests/server-jobs.test.ts asserts that they are exactly the same, so they can never
  * drift), the database server's are its systemd timers and cron (tests/hintek-ops.test.ts). Pure, so the tests read the same rules.
+ *
+ * Two editions (2026-11-15): Workflow's installation (with ee/) shows the list as its servers run it; the Community edition
+ * (without ee/, one server) shows only its own jobs – the ones its installation guide puts in cron – with its own schedule
+ * where that differs (serverJobsFor). Billing, credits, the erasure after an ended agreement and the database server's
+ * backups are Workflow's alone.
  */
 export type ServerJobPlace = "app" | "host" | "db";
 export type ServerJobDefinition = {
@@ -18,37 +23,60 @@ export type ServerJobDefinition = {
   cron: string | null;
   /** Instead of the cron text, when the schedule is not a plain cron line. */
   scheduleNote?: string;
+  /** A second schedule beside `cron` (the backup list: every hour and after the night's backups). */
+  alsoCron?: string;
   /** Kör nu asks first: the job sends mail or touches billing or removes data. */
   confirm?: boolean;
+  /** Only in this edition; without it the job is in both. */
+  edition?: ServerJobEdition;
+  /** The Community edition's own schedule or text, where its installation guide differs from Workflow's servers. */
+  community?: { cron?: string; description?: string };
+  /** Shown as Senast when the app cannot read the job's result (it is on the server only). */
+  lastNote?: string;
 };
+export type ServerJobEdition = "cloud" | "community";
 
 export const SERVER_JOBS: readonly ServerJobDefinition[] = [
-  { key: "monitor", name: "Övervakning", description: "Kontrollerar appen, certifikaten, disken, backuperna och jobben och larmar per e-post.", place: "host", cron: "*/5 * * * *" },
+  { key: "monitor", name: "Övervakning", description: "Kontrollerar appen, certifikaten, disken, backuperna och jobben och larmar per e-post.", place: "host", cron: "*/5 * * * *", lastNote: "Syns i serverns logg" },
+  { key: "nightly-backup", name: "Nattbackup", description: "Kopia av databasen och filerna på servern, kontrollerad innan den sparas. Övervakningen larmar om den är för gammal.", place: "host", cron: "15 1 * * *", edition: "community", lastNote: "Syns i serverns logg" },
   { key: "ai:digest", name: "Dagsammanställning", description: "Skickar dagens sammanställning till de företag som valt den.", place: "app", cron: "30 1 * * *", confirm: true },
-  { key: "keys:alerts", name: "Driftlarm om nycklar och servrar", description: "Larmar om nycklar som går ut och servrar som behöver uppdateras.", place: "app", cron: "45 6 * * *" },
-  { key: "secrets:sync", name: "Centrala nycklar", description: "Kontrollerar nycklarna mot nyckelvalvet och larmar vid avvikelser.", place: "app", cron: "*/10 * * * *" },
+  { key: "keys:alerts", name: "Driftlarm om nycklar och servrar", description: "Larmar om nycklar som går ut och servrar som behöver uppdateras.", place: "app", cron: "45 6 * * *", community: { description: "Larmar om nycklar som snart går ut eller har slutat fungera." } },
+  { key: "secrets:sync", name: "Centrala nycklar", description: "Kontrollerar nycklarna mot nyckelvalvet och larmar vid avvikelser.", place: "app", cron: "*/10 * * * *", community: { cron: "10 4 * * *", description: "Kontrollerar att de förseglade nycklarna går att öppna och larmar annars." } },
   { key: "history:retention", name: "Historik och lagringstid", description: "Rensar historik och loggar efter företagens lagringstid.", place: "app", cron: "30 3 * * *", confirm: true },
-  { key: "companies:closure", name: "Radering efter avslut", description: "Besked, påminnelser och radering för företag vars avtal har upphört.", place: "app", cron: "15 4 * * *", confirm: true },
+  { key: "companies:closure", name: "Radering efter avslut", description: "Besked, påminnelser och radering för företag vars avtal har upphört.", place: "app", cron: "15 4 * * *", confirm: true, edition: "cloud" },
   { key: "rounds:reminders", name: "Påminnelser om ronder", description: "Skickar dagens ronder till den som är ansvarig.", place: "app", cron: "0 6 * * *" },
-  { key: "billing:email", name: "Fakturamejl", description: "Skickar fakturornas e-post ur kön.", place: "app", cron: "*/10 * * * *", confirm: true },
-  { key: "billing:delinquency", name: "Förfallna fakturor", description: "Påminner om och hanterar fakturor som har förfallit.", place: "app", cron: "0 7 * * *", confirm: true },
-  { key: "billing:card-retries", name: "Nya kortförsök", description: "Försöker dra kortbetalningar som misslyckades igen.", place: "app", cron: "0 8 * * *", confirm: true },
+  { key: "billing:email", name: "Fakturamejl", description: "Skickar fakturornas e-post ur kön.", place: "app", cron: "*/10 * * * *", confirm: true, edition: "cloud" },
+  { key: "billing:delinquency", name: "Förfallna fakturor", description: "Påminner om och hanterar fakturor som har förfallit.", place: "app", cron: "0 7 * * *", confirm: true, edition: "cloud" },
+  { key: "billing:card-retries", name: "Nya kortförsök", description: "Försöker dra kortbetalningar som misslyckades igen.", place: "app", cron: "0 8 * * *", confirm: true, edition: "cloud" },
   { key: "integrity:check", name: "Integritetskontroll", description: "Kontrollerar att data och filer hänger ihop.", place: "app", cron: "0 5 * * 1" },
-  { key: "credits:check", name: "Kreditplånböcker", description: "Stämmer av krediternas saldo och larmar om något inte stämmer.", place: "app", cron: "20 5 * * *" },
+  { key: "credits:check", name: "Kreditplånböcker", description: "Stämmer av krediternas saldo och larmar om något inte stämmer.", place: "app", cron: "20 5 * * *", edition: "cloud" },
   { key: "mailings:send", name: "Utskick", description: "Skickar nyhetsbrev och viktig information ur kön.", place: "app", cron: "*/5 * * * *", confirm: true },
   { key: "notices:send", name: "Notiser", description: "Skickar påminnelser per e-post och push till dem som valt det.", place: "app", cron: "*/15 6-19 * * *", confirm: true },
   { key: "register:sync", name: "Artikelregistret", description: "Hämtar ändringar i det gemensamma artikelregistret.", place: "app", cron: "*/10 * * * *" },
   { key: "machine:rules", name: "Maskinregler", description: "Kontrollerar maskinregler som bara tiden avgör.", place: "app", cron: "*/5 * * * *" },
   { key: "machine:alarms", name: "Maskinlarm", description: "Eskalerar maskinlarm och skickar dem per e-post och push.", place: "app", cron: "*/5 * * * *", confirm: true },
-  { key: "host-status", name: "Serverstatus, appservern", description: "Skriver appserverns uppdateringar och omstart till Servrar och uppdateringar.", place: "host", cron: "17 * * * *" },
+  { key: "host-status", name: "Serverstatus, appservern", description: "Skriver appserverns uppdateringar och omstart till Servrar och uppdateringar.", place: "host", cron: "17 * * * *", edition: "cloud" },
   { key: "maintenance:plans", name: "Underhållsplaner", description: "Fyller på underhållsplanernas arbetsordrar ett år framåt.", place: "app", cron: "40 5 * * *" },
   { key: "schedule:publish", name: "Schemalagda inlägg", description: "Publicerar inlägg och webbsidor när tiden har kommit.", place: "app", cron: "*/5 * * * *", confirm: true },
-  { key: "db-backup", name: "Backup av databasen", description: "Krypterad säkerhetskopia av databasen, kontrollerad innan den sparas.", place: "db", cron: "30 2 * * *" },
-  { key: "files-backup", name: "Backup av filerna", description: "Krypterad säkerhetskopia av de uppladdade filerna.", place: "db", cron: "40 2 * * *" },
-  { key: "offsite", name: "Kopia till annan plats", description: "Kopierar de krypterade backuperna till en annan plats.", place: "db", cron: "30 3 * * *" },
-  { key: "predeploy", name: "Backup före släpp", description: "Databas och filer säkerhetskopieras före varje ny version.", place: "db", cron: null, scheduleNote: "före varje släpp" },
-  { key: "db-host-status", name: "Serverstatus, databasservern", description: "Skriver databasserverns uppdateringar och backuplistan.", place: "db", cron: "23 * * * *" },
+  { key: "db-backup", name: "Backup av databasen", description: "Krypterad säkerhetskopia av databasen, kontrollerad innan den sparas.", place: "db", cron: "30 2 * * *", edition: "cloud" },
+  { key: "files-backup", name: "Backup av filerna", description: "Krypterad säkerhetskopia av de uppladdade filerna.", place: "db", cron: "40 2 * * *", edition: "cloud" },
+  { key: "offsite", name: "Kopia till annan plats", description: "Kopierar de krypterade backuperna till en annan plats.", place: "db", cron: "30 3 * * *", edition: "cloud" },
+  { key: "predeploy", name: "Backup före släpp", description: "Databas och filer säkerhetskopieras före varje ny version.", place: "db", cron: null, scheduleNote: "före varje släpp", edition: "cloud" },
+  { key: "db-host-status", name: "Serverstatus, databasservern", description: "Skriver databasserverns uppdateringar.", place: "db", cron: "23 * * * *", edition: "cloud" },
+  { key: "backup-list", name: "Backuplistan", description: "Listar backuperna på databasservern med deras senaste resultat.", place: "db", cron: "25 * * * *", alsoCron: "50 3 * * *", edition: "cloud" },
 ];
+
+/** The edition's jobs, with the Community edition's own schedule and texts: `cloud` is true with ee/ (EE_PRESENT). */
+export function serverJobsFor(cloud: boolean): ServerJobDefinition[] {
+  const edition: ServerJobEdition = cloud ? "cloud" : "community";
+  return SERVER_JOBS.filter((job) => !job.edition || job.edition === edition).map((job) => {
+    if (cloud || !job.community) return job;
+    return { ...job, cron: job.community.cron ?? job.cron, description: job.community.description ?? job.description };
+  });
+}
+
+/** The monitor's limits the edition has: the database server's certificate is Workflow's alone. */
+export const monitorThresholdsFor = (cloud: boolean) => MONITOR_THRESHOLDS.filter((limit) => cloud || limit.key !== "DB_CERT_MIN_DAYS");
 
 /** The jobs the app may pause and start: run in the app container through scripts/ops/job.ts. */
 export const CONTROLLED_JOB_KEYS = SERVER_JOBS.filter((job) => job.place === "app").map((job) => job.key);
@@ -69,14 +97,14 @@ export const MONITOR_THRESHOLDS = [
 
 // ---- Cron ----------------------------------------------------------------------------------------------------------
 
-/** The cron file's jobs: run-job.sh <job> lines, monitor.sh and the host status (the @reboot line is not a schedule). */
+/** The cron file's jobs: run-job.sh <job> lines, monitor.sh, the host status and the Community edition's nightly backup (the @reboot line is not a schedule). */
 export function cronFileJobs(text: string): Map<string, string> {
   const jobs = new Map<string, string>();
   for (const line of text.split(/\r?\n/)) {
     const match = /^(\S+\s+\S+\s+\S+\s+\S+\s+\S+)\s+root\s+(.*)$/.exec(line.trim());
     if (!match || line.trim().startsWith("#")) continue;
     const [, fields, command] = match;
-    const key = /run-job\.sh (\S+)\s*$/.exec(command)?.[1] ?? (/monitor\.sh\b/.test(command) ? "monitor" : /host-status\.sh\b/.test(command) ? "host-status" : null);
+    const key = /run-job\.sh (\S+)\s*$/.exec(command)?.[1] ?? (/monitor\.sh\b/.test(command) ? "monitor" : /host-status\.sh\b/.test(command) ? "host-status" : /nightly-backup\.sh\b/.test(command) ? "nightly-backup" : null);
     if (key) jobs.set(key, fields.replace(/\s+/g, " "));
   }
   return jobs;

@@ -88,6 +88,9 @@ export function useFormDraft({ confirm }: { confirm: (options: ConfirmOptions) =
   const latest = useRef({ snapshot, templateId, revision, dirty, status, base });
   useEffect(() => { latest.current = { snapshot, templateId, revision, dirty, status, base }; });
   const saving = useRef(false);
+  // Which opening is the latest: a slower earlier one (the editor's own start looking for an ongoing draft, say) never
+  // replaces the form the person has opened since.
+  const opening = useRef(0);
 
   const setUrl = useCallback((id: string | null, original = false) => {
     router.replace(id ? `/?view=forms&${original ? "original" : "form"}=${encodeURIComponent(id)}` : "/?view=forms", { scroll: false });
@@ -112,9 +115,12 @@ export function useFormDraft({ confirm }: { confirm: (options: ConfirmOptions) =
    * when autosaved, so it is kept aside and offered instead. Returns whether the copy was laid over the draft.
    */
   const open = useCallback(async (id: string, recovered?: Snapshot, recoveredRevision?: number) => {
+    const turn = ++opening.current;
     setLoading(true);
     try {
-      const template = await loadDetail(id);
+      const { template } = await request<{ template: TemplateDetail }>(`/api/forms/admin?id=${encodeURIComponent(id)}`);
+      if (turn !== opening.current) return false;
+      setDetail(template);
       const stored: Snapshot = { meta: template.meta, document: normalizeFormDocument(template.draft) };
       const current = Boolean(recovered) && (recoveredRevision === undefined || recoveredRevision === template.draftRevision);
       setTemplateId(template.id);
@@ -125,20 +131,22 @@ export function useFormDraft({ confirm }: { confirm: (options: ConfirmOptions) =
       setUrl(template.id);
       return current;
     } catch (issue) {
-      setError((issue as Error).message);
+      if (turn === opening.current) setError((issue as Error).message);
       return false;
-    } finally { setLoading(false); }
-  }, [loadDetail, reset, setUrl, setRevision]);
+    } finally { if (turn === opening.current) setLoading(false); }
+  }, [reset, setUrl, setRevision]);
 
   /**
    * A Workflow original, opened by a company admin: shown as it is published, nothing saved. The first change is saved as
    * the company's own version; if the company already has one, that is opened instead.
    */
   const openOriginal = useCallback(async (id: string, recovered?: Snapshot) => {
+    const turn = ++opening.current;
     setLoading(true);
     try {
       const { original } = await request<{ original: { id: string; version: number; meta: FormMeta; document: FormDocument; copyId: string | null } }>(`/api/forms/admin?original=${encodeURIComponent(id)}`);
-      if (original.copyId) { setLoading(false); return open(original.copyId); }
+      if (turn !== opening.current) return;
+      if (original.copyId) return open(original.copyId);
       const stored: Snapshot = { meta: formMetaSchema.parse(original.meta), document: normalizeFormDocument(original.document) };
       setTemplateId(null);
       setRevision(0);
@@ -148,11 +156,12 @@ export function useFormDraft({ confirm }: { confirm: (options: ConfirmOptions) =
       setRecoveredAt(null);
       setUrl(original.id, true);
     } catch (issue) {
-      setError((issue as Error).message);
-    } finally { setLoading(false); }
+      if (turn === opening.current) setError((issue as Error).message);
+    } finally { if (turn === opening.current) setLoading(false); }
   }, [open, reset, setUrl, setRevision]);
 
   const startNew = useCallback((recovered?: Snapshot) => {
+    ++opening.current;
     const empty = emptySnapshot();
     setBase(null);
     setTemplateId(null);
@@ -185,11 +194,14 @@ export function useFormDraft({ confirm }: { confirm: (options: ConfirmOptions) =
       }
       // "Skapa formulär" on the Ny uppgiftstyp card starts a new form; unsaved work above is still restored first.
       if (searchParams.get("new")) return startNew();
+      // The person may open a form from Mina formulär while this is asked; that form then stays open.
+      const turn = opening.current;
       try {
         const resume = await request<{ id: string | null }>("/api/forms/admin?resume=1");
+        if (turn !== opening.current) return;
         if (resume.id) return open(resume.id);
-      } catch (issue) { setError((issue as Error).message); }
-      startNew();
+      } catch (issue) { if (turn === opening.current) setError((issue as Error).message); }
+      if (turn === opening.current) startNew();
     })();
   }, [open, openOriginal, startNew, searchParams]);
 

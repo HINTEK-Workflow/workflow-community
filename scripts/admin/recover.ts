@@ -1,8 +1,9 @@
 // Nödväg in (2026-10-03): when the superadmin is locked out – a forgotten password, Google switched off, mail that
-// does not work – root on the server repairs it without the app. Runs inside the app container:
+// does not work – root on the server repairs it without the app. Runs inside the app container, from the installation's
+// folder (elsewhere add -p <compose project>):
 //
-//   docker compose -p workflowhintekse exec -e ADMIN_PASSWORD='a long new password' app npm run admin:recover -- --password
-//   docker compose -p workflowhintekse exec app npm run admin:recover -- --google --mail
+//   docker compose exec -e ADMIN_PASSWORD='a long new password' app npm run admin:recover -- --password
+//   docker compose exec app npm run admin:recover -- --google --mail
 //
 //   --password  sets a new password for the installation's superadmin (INSTANCE_ADMIN_EMAIL) and ends every session
 //   --google    switches "Fortsätt med Google" on again under Inloggning

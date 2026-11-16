@@ -195,9 +195,10 @@ export type LogoKind = "main" | "onDark" | "onLight" | "black";
  * mörk bakgrund on a dark one, Logga för ljus bakgrund (else Logga i svart) on a light one – and the logo itself when that variant
  * is missing (and any variant that exists when even the logo is missing). A chosen variant that the company has not uploaded is read as Automatiskt. The plate: the logo itself keeps the
  * template's own (a white plate on a dark background); a variant on the background it was made for stands without one, and on the
- * other kind of background it gets a plate it reads on. Null when there is no logo at all.
+ * other kind of background it gets a plate it reads on. `plateChoice` none (Bakgrund bakom logotypen Ingen, 2026-11-15): never a
+ * plate. Null when there is no logo at all.
  */
-export function pickLogo(behind: string, available: Record<LogoKind, boolean>, choice: string | null | undefined, mainPlate: string | null): { variant: LogoKind; plate: string | null } | null {
+export function pickLogo(behind: string, available: Record<LogoKind, boolean>, choice: string | null | undefined, mainPlate: string | null, plateChoice?: string | null): { variant: LogoKind; plate: string | null } | null {
   const dark = textOn(behind) === "#FFFFFF";
   const wanted = choice && isLogoVariant(choice) ? choice : "auto";
   // The variant made for the background first, then the logo itself, then whatever exists (on a plate).
@@ -205,6 +206,8 @@ export function pickLogo(behind: string, available: Record<LogoKind, boolean>, c
   const automatic = () => order.find((kind) => available[kind]) ?? null;
   const variant = wanted !== "auto" && available[wanted] ? wanted : automatic();
   if (!variant) return null;
+  // Bakgrund bakom logotypen Ingen (2026-11-15): whichever variant, straight on the template.
+  if (plateChoice === "none") return { variant, plate: null };
   if (variant === "main") return { variant, plate: mainPlate };
   if (variant === "onDark") return { variant, plate: dark ? null : DARK_BACKGROUND };
   return { variant, plate: dark ? "#FFFFFF" : null };
@@ -393,8 +396,11 @@ function planOf(template: PostTemplate, ctx: Ctx): PostPlan {
   }
 }
 
-/** `logoVariant` and `logoSize` (2026-11-13): the post's own choice; missing is Automatiskt and Mellan. */
-export type PostImageInput = { heading: string; body: string; template: string; logoVariant?: string | null; logoSize?: string | null };
+/**
+ * `logoVariant` and `logoSize` (2026-11-13): the post's own choice; missing is Automatiskt and Mellan. `logoPlate` (2026-11-15):
+ * box (Ruta) or none (Ingen); missing is Ruta.
+ */
+export type PostImageInput = { heading: string; body: string; template: string; logoVariant?: string | null; logoSize?: string | null; logoPlate?: string | null };
 
 const facesOf = (fonts: PostFonts) => ({ bold: { main: face(fonts.bold), fallback: face(fonts.fallback ?? fonts.bold) }, regular: { main: face(fonts.regular), fallback: face(fonts.fallback ?? fonts.regular) } });
 
@@ -408,7 +414,9 @@ export function planPost(input: PostImageInput, brand: Pick<PostBrand, "primary"
   const ctx: Ctx = { primary: brandColour(brand.primary), image: Boolean(options.image), heading: input.heading.slice(0, HEADING_MAX).trim() || " ", body: input.body.slice(0, BODY_MAX).trim(), bold, regular,
     height: formatSize(options.format).height, offset: options.format === "story" ? STORY_OFFSET : 0 };
   const plan = planOf(template, ctx);
-  plan.logo = { ...plan.logo, area: sizedLogo(plan.logo.area, input.logoSize && isLogoSize(input.logoSize) ? input.logoSize : "medium") };
+  plan.logo = { ...plan.logo, area: sizedLogo(plan.logo.area, input.logoSize && isLogoSize(input.logoSize) ? input.logoSize : "medium"),
+    // Bakgrund bakom logotypen Ingen (2026-11-15): the template's plate is left out; anything else (or nothing) keeps it.
+    plate: input.logoPlate === "none" ? null : plan.logo.plate };
   const name = brand.companyName.trim();
   if (options.withName && name) {
     const area = plan.logo.area;
@@ -444,7 +452,7 @@ export async function renderPostImage(input: PostImageInput, brand: PostBrand, f
   let available: Record<LogoKind, boolean> = { main: Boolean(files.main), onDark: Boolean(files.onDark), onLight: Boolean(files.onLight), black: Boolean(files.black) };
   // A file that cannot be read counts as missing, and the next choice is tried.
   for (let tries = 0; tries < 4 && !logo; tries += 1) {
-    const chosen = pickLogo(probe.logo.behind, available, input.logoVariant, probe.logo.plate);
+    const chosen = pickLogo(probe.logo.behind, available, input.logoVariant, probe.logo.plate, input.logoPlate);
     if (!chosen) break;
     try {
       const pad = chosen.plate ? 22 : 0;

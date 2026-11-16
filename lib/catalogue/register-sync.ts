@@ -8,6 +8,7 @@ import { registerSearchText } from "@/lib/catalogue/register-text";
 import { forgetRegisterPresence } from "@/lib/catalogue/register-search";
 import type { WholesalerId } from "@/lib/wholesale/model";
 import { cancelEffect, knownRegisterTotal } from "@/lib/catalogue/register-progress";
+import { preflightWithAuthRetry } from "@/lib/catalogue/register-preflight";
 
 /**
  * Det gemensamma registrets synk (2026-10-17, docs/proposals/gemensamt-artikelregister-forslag-2026-10-17.md §5):
@@ -223,7 +224,8 @@ export async function runRegisterSync(kind: RegisterRunKind, options: { maxPages
     return run;
   };
   // The connection first (2026-10-17): switched on, keys, sign-in, the catalogue answering – or nothing starts.
-  const check = await use.preflight();
+  // A refused sign-in is tried once more after a short wait (Solar refuses the first token request just after midnight UTC).
+  const check = await preflightWithAuthRetry(use.preflight, use.pause);
   if (!check.ok) return record(result(false, `${check.message} Ingen hämtning startades.`), { requestedKind: null });
   // Claim the run: only when no other run is alive.
   const claimed = await prisma.$executeRaw`

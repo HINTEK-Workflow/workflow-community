@@ -84,6 +84,8 @@ export function postContentHash(post: PostContent & Record<string, unknown>): st
   // Logga (2026-11-13): the logo's variant and size likewise only when not the default (Automatiskt, Mellan).
   if (typeof post.logoVariant === "string" && post.logoVariant && post.logoVariant !== "auto") fields.logoVariant = post.logoVariant;
   if (typeof post.logoSize === "string" && post.logoSize && post.logoSize !== "medium") fields.logoSize = post.logoSize;
+  // Bakgrund bakom logotypen (2026-11-15): likewise only when Ingen.
+  if (post.logoPlate === "none") fields.logoPlate = "none";
   if (post.toNewsletter === true) {
     fields.toNewsletter = true;
     // The mail exactly as it will be sent: its own fields, or what follows the post (lib/mail/post-newsletter-mail.ts).

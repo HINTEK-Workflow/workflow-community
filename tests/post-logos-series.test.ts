@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import sharp from "sharp";
-import { blockEdges, contrast, IMAGE_HEIGHT, IMAGE_WIDTH, LOGO_BOX, pickLogo, planPost, renderPostImage, SAFE_SIDE } from "../lib/meta/image";
-import { isLogoSize, isLogoVariant, LOGO_SIZES, LOGO_VARIANTS, POST_TEMPLATES } from "../lib/meta/text";
+import { blockEdges, contrast, IMAGE_HEIGHT, IMAGE_WIDTH, LOGO_BOX, pickLogo, planPost, renderPostImage, SAFE_SIDE, STORY_HEIGHT } from "../lib/meta/image";
+import { isLogoPlate, isLogoSize, isLogoVariant, LOGO_PLATES, LOGO_SIZES, LOGO_VARIANTS, POST_TEMPLATES } from "../lib/meta/text";
 import { LOGO_VARIANT_FILES, logoVariantById, logoVariantByKey } from "../lib/kfid/logo-variants";
 import { postContentHash } from "../lib/schedule/model";
 import { SERIES_PARTS_DEFAULT, SERIES_PARTS_MAX, SERIES_PARTS_MIN, seriesClashes, seriesCount, seriesProblem, seriesTimes, type SeriesPart } from "../lib/schedule/post-series";
@@ -96,6 +96,43 @@ test("the picture draws the variant: a white logo stands on black without a plat
   assert.ok((await pixel(broken, centre.x, centre.y))[0] > 180, "the red logo");
 });
 
+test("Bakgrund bakom logotypen: Ruta keeps today's plates, Ingen draws every variant without one", () => {
+  const all = { main: true, onDark: true, onLight: true, black: true };
+  assert.ok(LOGO_PLATES.every((plate) => isLogoPlate(plate.key)) && !isLogoPlate("x"));
+  for (const choice of [undefined, null, "box"]) {
+    assert.deepEqual(pickLogo("#000000", all, "main", "#FFFFFF", choice), { variant: "main", plate: "#FFFFFF" }, String(choice));
+    assert.deepEqual(pickLogo("#FFFFFF", all, "onDark", null, choice), { variant: "onDark", plate: "#0F172A" }, String(choice));
+  }
+  for (const variant of ["auto", "main", "onDark", "onLight", "black"]) {
+    for (const behind of ["#000000", "#FFFFFF", "#1E3A8A"]) assert.equal(pickLogo(behind, all, variant, "#FFFFFF", "none")?.plate, null, `${variant} on ${behind}`);
+  }
+  assert.equal(pickLogo("#000000", { main: false, onDark: false, onLight: false, black: false }, "auto", null, "none"), null);
+  // The plan: the template's plate stays unless Ingen, in the feed and in the story.
+  for (const template of POST_TEMPLATES) {
+    for (const format of ["feed", "story"] as const) {
+      const base = planPost({ ...text, template: template.key }, { primary: "#174C72", companyName: "" }, fonts, { format });
+      assert.equal(planPost({ ...text, template: template.key, logoPlate: "box" }, { primary: "#174C72", companyName: "" }, fonts, { format }).logo.plate, base.logo.plate, `${template.key} ${format}`);
+      const none = planPost({ ...text, template: template.key, logoPlate: "none" }, { primary: "#174C72", companyName: "" }, fonts, { format });
+      assert.equal(none.logo.plate, null, `${template.key} ${format}`);
+      assert.deepEqual(none.logo.area, base.logo.area, `${template.key} ${format}: the same place`);
+    }
+  }
+});
+
+test("the picture with Ingen: the logo itself stands on black without the white plate, in the feed and in the story", async () => {
+  const red = new Uint8Array(await sharp({ create: { width: 400, height: 140, channels: 4, background: { r: 220, g: 20, b: 20, alpha: 1 } } }).png().toBuffer());
+  const pixel = async (jpeg: Buffer, x: number, y: number) => { const { data, info } = await sharp(jpeg).raw().toBuffer({ resolveWithObject: true }); const at = (y * info.width + x) * info.channels; return [data[at], data[at + 1], data[at + 2]]; };
+  for (const format of ["feed", "story"] as const) {
+    const plan = planPost({ ...text, template: "black" }, { primary: "#174C72", companyName: "" }, fonts, { format });
+    const y = plan.logo.area.y + plan.logo.area.height - 40;
+    const boxed = await renderPostImage({ ...text, template: "black", logoVariant: "main" }, { primary: "#174C72", companyName: "", logo: red }, fonts, null, format);
+    assert.ok((await pixel(boxed, plan.logo.area.x + 6, y)).every((value) => value > 230), `${format}: Ruta has the white plate`);
+    const bare = await renderPostImage({ ...text, template: "black", logoVariant: "main", logoPlate: "none" }, { primary: "#174C72", companyName: "", logo: red }, fonts, null, format);
+    assert.equal((await sharp(bare).metadata()).height, format === "story" ? STORY_HEIGHT : IMAGE_HEIGHT);
+    const edge = await pixel(bare, plan.logo.area.x + 3, y);
+    assert.ok(edge[0] > 180 && edge[1] < 80, `${format}: the red logo right at the edge, no plate: ${edge}`);  }
+});
+
 test("the logo's choice is part of the approved content only when it is not the default", () => {
   const post = { heading: "R", body: "", caption: "T", link: null, template: "white", toFacebook: true, toInstagram: false, backgroundSource: null };
   const base = postContentHash(post);
@@ -103,6 +140,10 @@ test("the logo's choice is part of the approved content only when it is not the 
   assert.notEqual(postContentHash({ ...post, logoVariant: "onDark" }), base);
   assert.notEqual(postContentHash({ ...post, logoSize: "large" }), base);
   assert.notEqual(postContentHash({ ...post, logoSize: "large" }), postContentHash({ ...post, logoSize: "small" }));
+  // Bakgrund bakom logotypen (2026-11-15): Ruta (or nothing) keeps the hash; Ingen asks for a new approval.
+  assert.equal(postContentHash({ ...post, logoPlate: null }), base);
+  assert.equal(postContentHash({ ...post, logoPlate: "box" }), base);
+  assert.notEqual(postContentHash({ ...post, logoPlate: "none" }), base);
 });
 
 test("the logo variants' files: one id and column each, found by key and by id", () => {

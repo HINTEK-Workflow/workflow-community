@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { CalendarClock, CircleCheck, ExternalLink, Eye, FilePen, Mail, Newspaper, Plus, Save, Send, SkipForward, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,8 +46,14 @@ const versionsText =(versions: string[]) => versions.length === 1 ? `version ${v
  * Veckobrev (2026-10-07): the weekly newsletter is never sent by itself – a draft is made, the bell tells the superadmin,
  * who reads it here and approves it with "Godkänn och skicka". Since 2026-10-15 a part of Installation →
  * E-post och utskick, since C6 (2026-10-21) its own page under Webbplats och utskick (`embedded`): the page heading "Utskick" names it.
+ * Nytt utskick is the page's main action (2026-11-15): always top right in the page header (`header` draws the page's
+ * own heading with it), never only in the editor's row while a draft is open.
  */
-export function Mailings({ notify, embedded = false }: { notify: (text: string, error?: boolean) => void; embedded?: boolean }) {
+export function Mailings({ notify, embedded = false, header }: {
+  notify: (text: string, error?: boolean) => void; embedded?: boolean;
+  /** The page's heading with the page's main actions (the workspace's heading when embedded). */
+  header?: (actions: ReactNode) => ReactNode;
+}) {
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState("");
   const [audience, setAudience] = useState<Audience>("NEWSLETTER");
@@ -89,9 +95,16 @@ export function Mailings({ notify, embedded = false }: { notify: (text: string, 
     } catch (cause) { notify((cause as Error).message, true); } finally { setBusy(""); }
   };
 
+  // Nytt utskick empties the editor; what was written in a new one is asked about first (an open draft stays stored).
+  const startNew = async () => {
+    if (!draftId && subject.trim() && !(await confirm({ title: "Börja på ett nytt utskick?", message: "Det du har skrivit här sparas inte.", confirmLabel: "Börja om", tone: "danger" }))) return;
+    clearEditor();
+  };
+  const newMailing = <Button type="button" disabled={!data || Boolean(busy)} onClick={() => void startNew()} data-testid="mailing-new"><Plus />Nytt utskick</Button>;
+  const top = header ? header(newMailing) : embedded ? null : <PageHeader title="Utskick" description="Nyhetsbrev och viktig information till användarna, via installationens e-postserver." actions={newMailing} />;
   // The page heading already says Utskick: no second one while the list loads.
-  if (error) return embedded ? <p role="alert" className="text-sm text-destructive">{error}</p> : <Panel icon={Newspaper} title="Utskick"><p role="alert" className="text-sm text-destructive">{error}</p></Panel>;
-  if (!data) return embedded ? <p role="status" className="text-sm text-muted-foreground">Hämtar utskicken…</p> : <Panel icon={Newspaper} title="Utskick"><p className="text-sm text-muted-foreground">Hämtar…</p></Panel>;
+  if (error) return <>{top}{embedded ? <p role="alert" className="text-sm text-destructive">{error}</p> : <Panel icon={Newspaper} title="Utskick"><p role="alert" className="text-sm text-destructive">{error}</p></Panel>}</>;
+  if (!data) return <>{top}{embedded ? <p role="status" className="text-sm text-muted-foreground">Hämtar utskicken…</p> : <Panel icon={Newspaper} title="Utskick"><p className="text-sm text-muted-foreground">Hämtar…</p></Panel>}</>;
   const problems = mailingProblems(document);
   const draft = data.release.draft;
   const waiting = data.drafts;
@@ -168,7 +181,7 @@ export function Mailings({ notify, embedded = false }: { notify: (text: string, 
       : `${item.status === "SENT" ? "Klart" : "Skickas"} · ${item.sent} skickade${item.pending ? ` · ${item.pending} i kö` : ""}${item.failed ? ` · ${item.failed} misslyckades` : ""}${item.skipped ? ` · ${item.skipped} hoppades över` : ""}`;
   return <div className="space-y-6">
     {confirmElement}
-    {embedded ? null : <PageHeader title="Utskick" description="Nyhetsbrev och viktig information till användarna, via installationens e-postserver." />}
+    {top}
     {/* Embedded, the e-mail settings right above already say why nothing is sent. */}
     {data.blockedReason && !embedded ? <div className="notice" role="status"><p>{data.blockedReason}</p></div> : null}
     {waiting.length ? <Panel title={data.weekly.available === false ? "Utkast väntar på godkännande" : "Veckobrev väntar på godkännande"} description={data.weekly.available === false ? "Ett utkast skickas aldrig av sig självt. Läs det, ändra vid behov och godkänn det – först då skickas det." : "Veckobrevet skickas aldrig av sig självt. Läs utkastet, ändra vid behov och godkänn det – först då skickas det."}
@@ -210,7 +223,6 @@ export function Mailings({ notify, embedded = false }: { notify: (text: string, 
         {draftId ? <>
           <Button type="button" variant="outline" disabled={subject.trim().length < 3 || Boolean(busy)} onClick={() => void saveAsDraft()} busy={busy === "draft"} busyLabel="Sparar…"><Save />Spara utkast</Button>
           <Button type="button" disabled={!ready || Boolean(busy) || !data.audiences.NEWSLETTER} onClick={() => void approve({ id: draftId, subject }, { subject, document })} busy={busy === "approve"} busyLabel="Köar…"><CircleCheck />Godkänn och skicka</Button>
-          <Button type="button" variant="ghost" disabled={Boolean(busy)} onClick={clearEditor}><Plus />Nytt utskick</Button>
         </> : <>
           <Button type="button" disabled={!ready || Boolean(busy) || !data.audiences[audience]} onClick={() => void run("send")} busy={busy === "send"} busyLabel="Köar…"><Send />Skicka</Button>
           {audience === "NEWSLETTER" ? <Button type="button" variant="outline" disabled={subject.trim().length < 3 || Boolean(busy)} onClick={() => void saveAsDraft()} busy={busy === "draft"} busyLabel="Sparar…"><FilePen />Spara som utkast</Button> : null}

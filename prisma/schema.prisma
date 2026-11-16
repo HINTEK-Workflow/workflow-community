@@ -2521,6 +2521,8 @@ model SocialPost {
   /// Logga (2026-11-13): auto (the variant that reads on the template), main, onDark, onLight or black; and small, medium or large.
   logoVariant            String       @default("auto")
   logoSize               String       @default("medium")
+  /// Bakgrund bakom logotypen (2026-11-15): box (Ruta, the template's plate) or none (Ingen, the logo straight on the template); null is box.
+  logoPlate              String?
   storyFacebookId        String?
   storyInstagramId       String?
   publishedAt            DateTime?
