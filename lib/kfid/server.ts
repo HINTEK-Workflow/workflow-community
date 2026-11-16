@@ -17,7 +17,10 @@ import { assertRequiredLegalAccess } from "@/lib/legal";
 import { serverExtensions } from "@/lib/extensions/server";
 import { hasWorkflowPermission, normalizeWorkflowPermissionProfile, type WorkflowPermissionAction, type WorkflowPermissionSubject } from "@/lib/workflow/permissions";
 import { readLimitedText } from "@/lib/security/limited-body";
-import { recordRequestUsage } from "@/lib/analytics/record";
+import { recordUsage } from "@/lib/analytics/record";
+import { notCounted, type CountingSubject } from "@/lib/analytics/exclusion";
+import { isHintekOrganization } from "@/lib/branding";
+import { ADDRESS_HEADER } from "@/lib/workflow/first-frame";
 import { allowedOrigins, publicSite } from "@/lib/public-site";
 import { headers } from "next/headers";
 import { isErasedCompany, NO_ACTIVE_COMPANY_TEXT, PAUSED_COMPANY_TEXT, pausedCompanyRefusal, REQUEST_METHOD_HEADER } from "@/lib/kfid/paused-company";
@@ -50,6 +53,22 @@ export const signedInUser = async () => (await signedInAuth())?.user ?? null;
  */
 /** The preview mode of this request; a request whose cookies cannot be read counts as previewing, so the superadmin's override stays off. */
 const requestViewAs = (): Promise<ViewAs | null> => headers().then((list) => viewAsFromCookieHeader(list.get("cookie"))).catch((): ViewAs => "owner");
+
+/** The requests already counted as a used function, so a route that asks for its context twice counts once. */
+const countedRequests = new WeakSet<object>();
+/**
+ * Beteendeanalys (2026-10-07; moved here from checkOrigin 2026-11-16, so the person is known): a changing request is
+ * counted as the function its address belongs to – an anonymous counter in memory – unless the person is the installation's
+ * own (a superadmin or a member of its own company) or the browser was switched off by the owner (lib/analytics/exclusion.ts).
+ */
+function countUsage(list: { get(name: string): string | null } | null, who: CountingSubject) {
+  if (!list || countedRequests.has(list)) return;
+  countedRequests.add(list);
+  const method = list.get(REQUEST_METHOD_HEADER);
+  const address = list.get(ADDRESS_HEADER);
+  if (!method || !address) return;
+  if (!notCounted(who)) recordUsage(method, address.split("?")[0]);
+}
 
 export async function context(options: { skipLegal?: boolean; allowedWhenPaused?: boolean } = {}) {
   const principal = currentPrincipal();
@@ -87,6 +106,10 @@ export async function context(options: { skipLegal?: boolean; allowedWhenPaused?
     if (refusal) throw new ApiError(refusal.status, refusal.message);
   }
   const organizationId = membership.organizationId;
+  const requestHeaders = principal ? null : await Promise.resolve().then(() => headers()).catch(() => null);
+  // Who is never counted in Beteendeanalys (2026-11-16): the installation's own people and a browser switched off by the owner.
+  const analytics: CountingSubject = { cookie: requestHeaders?.get("cookie") ?? null, superadmin: user.role === "SUPERADMIN", ownCompany: isHintekOrganization(membership.organization) };
+  countUsage(requestHeaders, analytics);
   // Read only (2026-10-08): a status or list read must not create credit data. `wallet` is null until an explicit
   // credit action creates it with ensureCreditWallet() (lib/credits/ensure-wallet.ts); reads show a zero balance.
   const wallet = await prisma.creditWallet.findUnique({ where: { organizationId } });
@@ -106,6 +129,8 @@ export async function context(options: { skipLegal?: boolean; allowedWhenPaused?
     seesAll: user.role === "SUPERADMIN" && !principal && superadminSeesAll({ role: user.role, memberRole: membership.role, viewAs: await requestViewAs() }),
     /** Set inside an API/MCP call: which key, for what. */
     integration: principal,
+    /** Beteendeanalys: who this request is, for the counters that skip the installation's own people (lib/analytics/exclusion.ts). */
+    analytics,
     /** This sign-in (null inside an API/MCP call): for "färsk inloggning" before sensitive changes. */
     auth: signedIn ? { sessionId: signedIn.sessionId, authAt: signedIn.authAt, method: signedIn.method } : null,
   };
@@ -129,8 +154,7 @@ export function checkOrigin(request: Request, options: { publicSite?: boolean } 
   });
   if (!origin || !allowed.includes(origin))
     throw new ApiError(403, "Otillåten begäran.");
-  // Beteendeanalys (2026-10-07): a counter in memory, anonymous, never waits or fails.
-  recordRequestUsage(request);
+  // Beteendeanalys: a used function is counted in context(), where the person is known (2026-11-16).
 }
 export async function body(request: Request) {
   // Read with a ceiling, so an oversized or endless body stops at 2 MB instead of filling memory (2026-10-04).

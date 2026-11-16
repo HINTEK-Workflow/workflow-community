@@ -17,7 +17,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const ctx = await context();
     const { id } = await params;
     const quote = await getQuote({ organizationId: ctx.organizationId, userId: ctx.user.id, admin: ctx.admin, permissions: ctx.workflowPermissions, storageMode: ctx.organization.storageMode }, z.string().trim().min(1).max(100).parse(id));
-    recordFeature("report_pdf");
+    recordFeature("report_pdf", ctx.analytics);
     const identity = await workflowReportIdentity(ctx.organizationId, ctx.organization.name);
     const bytes = await createQuotePdf({ identity, fontBytes: await workflowReportFont(), quote });
     const name = `offert-${quote.label.replace(/\s+/g, "-")}-${quote.title}`.replace(/[<>:"/\\|?*\u0000-\u001f]+/g, "-").slice(0, 120);

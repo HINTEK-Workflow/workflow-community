@@ -191,6 +191,18 @@ export async function facebookPhoto(transport: GraphTransport, page: { id: strin
 }
 
 /**
+ * Fler bilder (2026-11-16): one post with several pictures – each picture uploaded unpublished first (facebookPhoto with published:
+ * false), then the post on the page's feed with them as attached_media (Page Photos reference, "multi-photo post"). Returns the
+ * post's id.
+ */
+export async function facebookMultiPhotoPost(transport: GraphTransport, page: { id: string; token: string }, input: { photoIds: readonly string[]; message: string }) {
+  const attached = Object.fromEntries(input.photoIds.map((photoId, index) => [`attached_media[${index}]`, JSON.stringify({ media_fbid: photoId })]));
+  const answer = await graph<{ id?: string }>(transport, { method: "POST", path: `${page.id}/feed`, params: { message: input.message, ...attached, access_token: page.token } });
+  if (!answer.id) throw new MetaError("Facebook gav inget id tillbaka.", "other", 502);
+  return answer.id;
+}
+
+/**
  * Även som story (2026-11-13): an unpublished picture on the page (facebookPhoto with published: false, its own upload – Meta
  * refuses a picture already used in a post) becomes the page's story. Returns the story's post id.
  */

@@ -66,6 +66,7 @@ export const EXPORT_REGISTER: Record<string, ExportEntry> = {
   MetaConnection: excluded("The connection to the company's Meta app holds the sealed app secret and tokens; it is made again at Meta, never exported."),
   // LinkedIn (2026-11-11): the same – the connection holds the sealed client secret and tokens.
   LinkedInConnection: excluded("The connection to the company's LinkedIn app holds the sealed client secret and tokens; it is made again at LinkedIn, never exported."),
+  SocialPostImage: excluded("The posts' pictures: fetched or uploaded image bytes for publishing, not the company's own records; the posts themselves are exported (inlagg)."),
   SocialPost: archive("inlagg", "The company's posts for Facebook, Instagram and LinkedIn (drafts and what was published), without the picture (drawn from the texts)."),
   ScheduledPublish: excluded("Pending and past scheduled publications are working state for the publishing job (approved content snapshot, locks, retries); the posts and pages themselves are exported."),
   ContentSeries: excluded("A content series is a planning aid that produces ordinary posts; the posts are exported."),

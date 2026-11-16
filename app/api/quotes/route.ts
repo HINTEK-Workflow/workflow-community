@@ -96,7 +96,7 @@ export async function POST(request: Request) {
     if (input.action === "work_order") {
       requireQuotes(who, "read");
       await requireCloudWriteAccess(ctx);
-      return NextResponse.json(await createWorkOrderFromQuote(who, { id: ctx.user.id, name: ctx.user.name, email: ctx.user.email }, input.id));
+      return NextResponse.json(await createWorkOrderFromQuote(who, { id: ctx.user.id, name: ctx.user.name, email: ctx.user.email, analytics: ctx.analytics }, input.id));
     }
     requireQuotes(who, "edit");
     await requireCloudWriteAccess(ctx);

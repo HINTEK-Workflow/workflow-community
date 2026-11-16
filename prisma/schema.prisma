@@ -2483,44 +2483,44 @@ model LinkedInConnection {
 /// Publicera. The picture is drawn from heading, text and template on the server; imageKeyHash is the hash of the short-lived
 /// address Instagram fetches it from.
 model SocialPost {
-  id                     String       @id @default(cuid())
+  id                     String            @id @default(cuid())
   organizationId         String
-  organization           Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization           Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   /// manual, website (a published page) or release (a new version, HINTEK only).
-  source                 String       @default("manual")
+  source                 String            @default("manual")
   sourceRef              String?
   /// draft, publishing, published, partial, failed.
-  status                 String       @default("draft")
-  heading                String       @default("")
-  body                   String       @default("")
-  caption                String       @default("")
+  status                 String            @default("draft")
+  heading                String            @default("")
+  body                   String            @default("")
+  caption                String            @default("")
   /// Hashtaggar (2026-11-12): "#tag #tag", added after the caption on Facebook, Instagram and LinkedIn; never in the newsletter.
-  hashtags               String       @default("")
+  hashtags               String            @default("")
   link                   String?
-  template               String       @default("color")
+  template               String            @default("color")
   /// A picture behind the template (from the site, a page or an upload), 1080 x 1080 JPEG; null: the template's own colour.
   background             Bytes?
   /// Where the background came from: the address, or "uppladdad".
   backgroundSource       String?
-  toFacebook             Boolean      @default(true)
-  toInstagram            Boolean      @default(true)
+  toFacebook             Boolean           @default(true)
+  toInstagram            Boolean           @default(true)
   facebookPostId         String?
   instagramMediaId       String?
   /// LinkedIn (2026-11-11): off unless chosen; the post's URN once published.
-  toLinkedIn             Boolean      @default(false)
+  toLinkedIn             Boolean           @default(false)
   linkedInPostId         String?
   /// Även som nyhetsbrev (2026-11-12): only the installation's superadmin may tick it; Publicera or the schedule then sends the
   /// post as one newsletter mailing (Mailing.socialPostId), exactly once.
-  toNewsletter           Boolean      @default(false)
+  toNewsletter           Boolean           @default(false)
   /// The newsletter's own fields (2026-11-12): { subject, text, link, image }; a missing or null field follows the post
   /// (the heading, the caption without hashtags, the post's link and picture). Part of the approved content when ticked.
   newsletterMail         Json?
   /// Även som story (2026-11-13): off unless chosen; the post's picture in 9:16 also goes out as a story on the chosen Facebook
   /// page and/or Instagram account. The stories' own ids once published (retried alone like a channel).
-  toStory                Boolean      @default(false)
+  toStory                Boolean           @default(false)
   /// Logga (2026-11-13): auto (the variant that reads on the template), main, onDark, onLight or black; and small, medium or large.
-  logoVariant            String       @default("auto")
-  logoSize               String       @default("medium")
+  logoVariant            String            @default("auto")
+  logoSize               String            @default("medium")
   /// Bakgrund bakom logotypen (2026-11-15): box (Ruta, the template's plate) or none (Ingen, the logo straight on the template); null is box.
   logoPlate              String?
   storyFacebookId        String?
@@ -2530,18 +2530,49 @@ model SocialPost {
   lastError              String?
   testedAt               DateTime?
   testResult             String?
-  imageKeyHash           String?      @unique
+  imageKeyHash           String?           @unique
   imageKeyExpiresAt      DateTime?
   /// The story picture's own short-lived address (Instagram fetches it separately from the post's picture).
-  storyImageKeyHash      String?      @unique
+  storyImageKeyHash      String?           @unique
   storyImageKeyExpiresAt DateTime?
+  /// Bara på Instagram (2026-11-16): a text added only to Instagram's caption, after the post's text (e.g. "Länk i bio").
+  instagramText          String            @default("")
+  /// Kampanjlänkar (2026-11-16): links to the installation's own addresses get ?via=facebook|instagram|linkedin per channel.
+  /// Off for every post made before 0.67.0 (the migration), on for new ones.
+  campaignLinks          Boolean           @default(true)
+  /// Innehåller AI-genererat ljud eller bild (2026-11-16): sent as Instagram's is_ai_generated; Facebook has no such field.
+  aiGenerated            Boolean           @default(false)
+  /// Publiceringens förlopp (2026-11-16, lib/meta/progress.ts): the steps of the latest Testpublicering or Publicera and its result.
+  publishProgress        Json?
+  /// Fler bilder (2026-11-16): picture 2–10 after the drawn one (an Instagram carousel, several photos on Facebook).
+  images                 SocialPostImage[]
   createdById            String?
   updatedById            String?
-  createdAt              DateTime     @default(now())
-  updatedAt              DateTime     @default(now()) @updatedAt
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @default(now()) @updatedAt
 
   @@unique([organizationId, source, sourceRef])
+  @@unique([id, organizationId])
   @@index([organizationId, createdAt])
+}
+
+/// Fler bilder (2026-11-16): a post's own extra picture, 1080 x 1350 JPEG; always read with the post's company. Instagram fetches it
+/// from a short-lived address of its own (imageKeyHash), like the post's drawn picture.
+model SocialPostImage {
+  id                String     @id @default(cuid())
+  organizationId    String
+  postId            String
+  // Tenant relation (2026-10-08 rule): the image and its post are always the same company.
+  post              SocialPost @relation(fields: [postId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  position          Int        @default(0)
+  bytes             Bytes
+  /// The address it was fetched from, or "uppladdad".
+  source            String     @default("uppladdad")
+  imageKeyHash      String?    @unique
+  imageKeyExpiresAt DateTime?
+  createdAt         DateTime   @default(now())
+
+  @@index([organizationId, postId, position])
 }
 
 /// Schemalägg (2026-11-11): a publication an admin approved for a later time (lib/schedule/). The job schedule:publish

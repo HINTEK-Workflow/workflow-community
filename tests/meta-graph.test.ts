@@ -93,7 +93,7 @@ test("graph() turns a non-JSON or error answer into MetaError", async () => {
 test("Instagram: the container is waited for, an error status stops, the quota is read", async () => {
   const states = ["IN_PROGRESS", "IN_PROGRESS", "FINISHED"];
   const publisher: InstagramPublisher = {
-    remainingToday: async () => 3, createContainer: async () => "c1", publish: async () => "m1",
+    remainingToday: async () => 3, createContainer: async () => "c1", createCarousel: async () => "k1", publish: async () => "m1",
     containerStatus: async () => (states.shift() ?? "FINISHED") as never,
   };
   await waitForContainer(publisher, { id: "1", token: "t" }, "c1", { delayMs: 1 });

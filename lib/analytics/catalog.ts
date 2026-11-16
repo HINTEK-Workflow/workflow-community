@@ -5,7 +5,7 @@
  */
 import { OPERATOR_SITE } from "@/lib/operator-site";
 
-export const ANALYTICS_KINDS = ["page", "feature", "funnel", "consent", "demo"] as const;
+export const ANALYTICS_KINDS = ["page", "feature", "funnel", "consent", "demo", "landing"] as const;
 export type AnalyticsKind = (typeof ANALYTICS_KINDS)[number];
 export const isAnalyticsKind = (value: unknown): value is AnalyticsKind => (ANALYTICS_KINDS as readonly string[]).includes(String(value));
 
@@ -121,7 +121,7 @@ export const isConsentChoice = (value: unknown): value is ConsentChoice => (CONS
 const SITE_START = OPERATOR_SITE ? `start_${OPERATOR_SITE.key}` : null;
 const SITE_SOURCE = OPERATOR_SITE ? `from_${OPERATOR_SITE.key}` : null;
 const present = (keys: readonly (string | null)[]) => keys.filter((key): key is string => key !== null);
-export const DEMO_START_KEYS: readonly string[] = present(["start_button", SITE_START, "start_link", "start_login"]);
+export const DEMO_START_KEYS: readonly string[] = present(["start_button", "start_simulator", SITE_START, "start_link", "start_login", "start_facebook", "start_instagram", "start_linkedin"]);
 /**
  * Where a demo start came from (2026-11-11, "vilken väg man kom in" in the privacy policy 2026-11-11.1, avsnitt 3): the
  * Referer header sorted into one of the fixed groups when the demo starts. The address itself is never kept or sent on.
@@ -130,14 +130,19 @@ export const DEMO_SOURCE_KEYS: readonly string[] = present(["from_own", SITE_SOU
 export const DEMO_FLOW_KEYS = ["flow_tour_start", "flow_tour_done", "flow_user_switch", "flow_exit"] as const;
 export const DEMO_TIME_KEYS = ["time_lt1", "time_1to3", "time_3to10", "time_gt10"] as const;
 export const DEMO_LABELS: Record<string, string> = {
-  start_button: "Knapp på startsidan", start_link: "Direkt länk", start_login: "Inloggningen (demo / demo)",
+  start_button: "Knapp på startsidan", start_simulator: "Simulatorknappen på webbplatsen", start_link: "Direkt länk", start_login: "Inloggningen (demo / demo)",
+  // Kampanjlänkar i Inlägg (2026-11-16): a post's link gets ?via=<channel> (lib/meta/text.ts, campaignLink).
+  start_facebook: "Inlägg på Facebook", start_instagram: "Inlägg på Instagram", start_linkedin: "Inlägg på LinkedIn",
   from_own: "Workflows egna sidor", from_search: "Sökmotor", from_other: "Annan webbplats", from_none: "Ingen hänvisning (direkt eller app)",
   flow_tour_start: "Rundturen påbörjad", flow_tour_done: "Rundturen genomförd", flow_user_switch: "Byte av användare (Visa som)", flow_exit: "Demon avslutad med knappen",
   time_lt1: "Under 1 minut", time_1to3: "1–3 minuter", time_3to10: "3–10 minuter", time_gt10: "Över 10 minuter",
   ...(OPERATOR_SITE && SITE_START && SITE_SOURCE ? { [SITE_START]: OPERATOR_SITE.startLabel, [SITE_SOURCE]: OPERATOR_SITE.label } : {}),
 };
-/** How the visitor came, from `/demo?via=…`: the start page's button, the operator's website's link, the login page, otherwise the plain link. */
-const DEMO_VIA: Record<string, string> = { button: "start_button", ...(OPERATOR_SITE && SITE_START ? { [OPERATOR_SITE.via]: SITE_START } : {}), login: "start_login" };
+/**
+ * How the visitor came, from `/demo?via=…`: the start page's button, the simulator button (`via=simulator`, 2026-11-16), the
+ * operator's website's link, the login page, a post's campaign link (facebook/instagram/linkedin), otherwise the plain link.
+ */
+const DEMO_VIA: Record<string, string> = { button: "start_button", simulator: "start_simulator", ...(OPERATOR_SITE && SITE_START ? { [OPERATOR_SITE.via]: SITE_START } : {}), login: "start_login", facebook: "start_facebook", instagram: "start_instagram", linkedin: "start_linkedin" };
 export const demoStartKey = (via: string | null | undefined) => (via && Object.hasOwn(DEMO_VIA, via) ? DEMO_VIA[via] : "start_link");
 
 const SEARCH_ENGINES = /(^|\.)(google|bing|duckduckgo|yahoo|ecosia|startpage|qwant|yandex|baidu|brave)\.((com|co)\.[a-z]{2}|[a-z]{2,3})$/;
@@ -171,9 +176,114 @@ const SERVER_DEMO_KEYS = new Set<string>([...DEMO_START_KEYS, ...DEMO_SOURCE_KEY
 export const isDemoBrowserKey = (key: string) => isDemoKey(key) && !SERVER_DEMO_KEYS.has(key);
 export const demoKeyLabel = (key: string) => (key.startsWith("view:") ? pageLabel(key.slice(5)) : own(DEMO_LABELS, key) ?? key);
 
+// ---------- the public website (2026-11-16) ----------
+
+/**
+ * Landningssidan (2026-11-15/16): anonymous sums per day like the demo – no cookie, no identifier, nothing typed by a
+ * visitor. A count is a page load or a click, never a person. Keys:
+ * - `page:start` / `page:<slug>`: the start page or a feature page (/funktioner/<slug>) was shown;
+ * - `click:<target>`: one of the fixed buttons below was pressed (sorted by its address, never the address itself);
+ * - `device:<mobile|tablet|desktop>`: the screen width's group, once per page load;
+ * - `ref:<domain>`: the site a visitor came from (the domain only, never the address), `ref:none` without one and
+ *   `ref:other` past the day's limit, once per visit from outside;
+ * - `newsletter:requested` / `newsletter:confirmed`: Följ nyhetsbrevet asked for and confirmed.
+ */
+export const LANDING_CLICK_KEYS = ["demo", "simulator", "operator_demo", "plan", "signup", "contact", "github", "install", "read_more"] as const;
+export type LandingClick = (typeof LANDING_CLICK_KEYS)[number];
+export const LANDING_CLICK_LABELS: Record<LandingClick, string> = {
+  demo: "Prova demon", simulator: "Simulatorn i demon", operator_demo: "Operatörssidan i demon", plan: "Planerna och deras knappar", signup: "Logga in eller Skapa konto",
+  contact: "Kontakta oss (e-post)", github: "GitHub", install: "Kopiera installationskommandot", read_more: "Läs mer (undersida)",
+};
+export const LANDING_DEVICE_KEYS = ["mobile", "tablet", "desktop"] as const;
+export type LandingDevice = (typeof LANDING_DEVICE_KEYS)[number];
+export const LANDING_DEVICE_LABELS: Record<LandingDevice, string> = { mobile: "Mobil", tablet: "Surfplatta", desktop: "Dator" };
+export const LANDING_NEWSLETTER_KEYS = ["requested", "confirmed"] as const;
+export type LandingNewsletter = (typeof LANDING_NEWSLETTER_KEYS)[number];
+export const LANDING_NEWSLETTER_LABELS: Record<LandingNewsletter, string> = { requested: "Anmälningar till nyhetsbrevet", confirmed: "Bekräftade anmälningar" };
+/** The most different referring domains kept per day; the rest are counted together as `ref:other`. */
+export const LANDING_REF_DAY_LIMIT = 40;
+
+const SLUG = /^[a-z0-9](?:[a-z0-9-]{0,58}[a-z0-9])?$/;
+const DOMAIN = /^(?=.{3,60}$)[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$/;
+export const isLandingSlug = (value: unknown): value is string => typeof value === "string" && SLUG.test(value);
+const inList = <T extends string>(list: readonly T[], value: unknown): value is T => (list as readonly string[]).includes(String(value));
+export const isLandingClick = (value: unknown): value is LandingClick => inList(LANDING_CLICK_KEYS, value);
+export const isLandingDevice = (value: unknown): value is LandingDevice => inList(LANDING_DEVICE_KEYS, value);
+
+export function isLandingKey(key: string) {
+  const parts = key.split(":");
+  if (parts.length !== 2) return false;
+  const [group, rest] = parts;
+  if (group === "page") return rest === "start" || isLandingSlug(rest);
+  if (group === "click") return isLandingClick(rest);
+  if (group === "device") return isLandingDevice(rest);
+  if (group === "ref") return rest === "none" || rest === "other" || DOMAIN.test(rest);
+  if (group === "newsletter") return inList(LANDING_NEWSLETTER_KEYS, rest);
+  return false;
+}
+
+/** Second-level labels under which a country's sites sit (example.co.uk), so the domain kept is the site's own. */
+const SECOND_LEVEL = new Set(["co", "com", "org", "net", "gov", "ac", "edu"]);
+const bareHost = (value: string | null | undefined) => (value ?? "").trim().toLowerCase().replace(/:\d+$/, "").replace(/\.$/, "").replace(/^www\./, "");
+/**
+ * The domain a referring address belongs to ("l.facebook.com/l.php?u=…" → "facebook.com"), or null when there is
+ * none, it is not http(s), an IP address, or one of this installation's own hosts (`ownHosts`, their subdomains too). Only
+ * the domain is kept; the rest of the address is dropped here and never stored.
+ */
+export function referrerDomain(referrer: string | null | undefined, ownHosts: readonly (string | null | undefined)[] = []): string | null {
+  let host = "";
+  try {
+    const url = new URL(String(referrer ?? ""));
+    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+    host = url.hostname.toLowerCase().replace(/\.$/, "");
+  } catch { return null; }
+  if (!host || /^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.startsWith("[") || !host.includes(".")) return null;
+  const bare = host.replace(/^www\./, "");
+  if (ownHosts.map(bareHost).filter(Boolean).some((own) => bare === own || bare.endsWith(`.${own}`))) return null;
+  const labels = bare.split(".");
+  const keep = labels.length >= 3 && labels[labels.length - 1].length === 2 && SECOND_LEVEL.has(labels[labels.length - 2]) ? 3 : 2;
+  const domain = labels.slice(-keep).join(".");
+  return DOMAIN.test(domain) ? domain : null;
+}
+
+/**
+ * Which counted button a link on the landing page is, from its address (the owner edits the buttons, so the address decides,
+ * never the text). `inPlans` is a link in the price section. Null for any other link.
+ */
+export function landingClickOf(href: string, options: { inPlans?: boolean; base?: string } = {}): LandingClick | null {
+  let url: URL;
+  try { url = new URL(href, options.base ?? "https://workflow.invalid/"); } catch { return null; }
+  const host = url.hostname.toLowerCase();
+  if (url.protocol === "https:" && (host === "github.com" || host.endsWith(".github.com"))) return "github";
+  if (options.inPlans) return "plan";
+  if (url.protocol === "mailto:") return "contact";
+  if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+  if (url.hash === "#priser") return "plan";
+  const path = url.pathname.replace(/\/+$/, "") || "/";
+  if (path === "/demo") return url.hash === "#maskin" || url.searchParams.get("via") === "simulator" ? "simulator" : "demo";
+  if (path === "/operator/demo") return "operator_demo";
+  if (path === "/login" || path === "/register") return "signup";
+  if (path.startsWith("/funktioner/")) return "read_more";
+  return null;
+}
+
+/** The screen width's group: under 768 px a phone, under 1100 px a tablet, otherwise a computer. */
+export const landingDeviceOf = (width: number): LandingDevice => (width < 768 ? "mobile" : width < 1100 ? "tablet" : "desktop");
+
+export function landingKeyLabel(key: string) {
+  const [group, rest = ""] = key.split(":");
+  if (group === "page") return rest === "start" ? "Startsidan" : `/funktioner/${rest}`;
+  if (group === "click" && isLandingClick(rest)) return LANDING_CLICK_LABELS[rest];
+  if (group === "device" && isLandingDevice(rest)) return LANDING_DEVICE_LABELS[rest];
+  if (group === "ref") return rest === "none" ? "Ingen hänvisning (direkt)" : rest === "other" ? "Övriga webbplatser" : rest;
+  if (group === "newsletter" && inList(LANDING_NEWSLETTER_KEYS, rest)) return LANDING_NEWSLETTER_LABELS[rest];
+  return key;
+}
+
 /** Whether a key may be stored for a kind (the closed lists above; pages and functions are checked where they are counted). */
 export function validCounter(kind: AnalyticsKind, key: string) {
   if (kind === "demo") return isDemoKey(key);
+  if (kind === "landing") return isLandingKey(key);
   if (kind === "funnel") return isFunnelStep(key);
   if (kind === "consent") return isConsentChoice(key);
   if (kind === "feature") return isFeatureKey(key);
@@ -181,4 +291,4 @@ export function validCounter(kind: AnalyticsKind, key: string) {
 }
 
 export const kindLabel = (kind: string, key: string) =>
-  kind === "page" ? pageLabel(key) : kind === "feature" ? featureLabel(key) : kind === "funnel" && isFunnelStep(key) ? FUNNEL_LABELS[key] : kind === "consent" && isConsentChoice(key) ? CONSENT_LABELS[key] : kind === "demo" ? demoKeyLabel(key) : key;
+  kind === "page" ? pageLabel(key) : kind === "feature" ? featureLabel(key) : kind === "funnel" && isFunnelStep(key) ? FUNNEL_LABELS[key] : kind === "consent" && isConsentChoice(key) ? CONSENT_LABELS[key] : kind === "demo" ? demoKeyLabel(key) : kind === "landing" ? landingKeyLabel(key) : key;

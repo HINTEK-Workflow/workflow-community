@@ -5,6 +5,7 @@ import { ApiError } from "@/lib/kfid/errors";
 import { verifyTaskReferences } from "@/lib/kfid/task-references-server";
 import { requireSavedTaskLevels } from "@/lib/self-inspection/levels-server";
 import { recordFeature } from "@/lib/analytics/record";
+import type { CountingSubject } from "@/lib/analytics/exclusion";
 import { articleHitById } from "@/lib/catalogue/server";
 import { applyArticle, todayInSweden } from "@/lib/catalogue/snapshot";
 import { applyRiskStepOnSave } from "@/lib/workflow/risk-step-server";
@@ -68,7 +69,7 @@ export async function quoteMaterialSource(caller: QuoteCaller, source: { project
 
 const json = (value: unknown) => JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
 
-export async function createWorkOrderFromQuote(caller: QuoteCaller, actor: { id: string; name?: string | null; email?: string | null }, quoteId: string, today = todayInSweden()): Promise<{ id: string; materials: number; expenses: number; estimatedMinutes: number | null }> {
+export async function createWorkOrderFromQuote(caller: QuoteCaller, actor: { id: string; name?: string | null; email?: string | null; /** Beteendeanalys: the caller's request context. */ analytics?: CountingSubject }, quoteId: string, today = todayInSweden()): Promise<{ id: string; materials: number; expenses: number; estimatedMinutes: number | null }> {
   requireQuotes(caller, "read");
   if (!workOrderAccess(caller).create) throw new ApiError(403, "Du saknar behörighet att skapa arbetsordrar.");
   const quote = await getQuote(caller, quoteId, today);
@@ -107,7 +108,7 @@ export async function createWorkOrderFromQuote(caller: QuoteCaller, actor: { id:
     if (task.projectId) await tx.projectEvent.create({ data: { organizationId: caller.organizationId, projectId: task.projectId, kind: "UPDATED", summary: `Arbetsordern ${task.title} skapades från offert ${quote.label}`.slice(0, 500), taskId: row.id, actorName: actor.name || actor.email || "", createdBy: caller.userId } });
     return row;
   });
-  recordFeature("task_created_WORK_ORDER");
+  recordFeature("task_created_WORK_ORDER", actor.analytics);
   return { id: created.id, materials: plan.materials, expenses: plan.expenses, estimatedMinutes: plan.estimatedMinutes };
 }
 

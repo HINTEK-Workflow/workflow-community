@@ -1,6 +1,7 @@
 import { swedishDayKey } from "@/lib/swedish-time";
 import { CounterBuffer, type CounterRow } from "./buffer";
-import { featureForRequest, pageKey, type AnalyticsKind } from "./catalog";
+import { LANDING_REF_DAY_LIMIT, featureForRequest, pageKey, type AnalyticsKind } from "./catalog";
+import { notCounted, type CountingSubject } from "./exclusion";
 import { getAnalyticsSettings } from "./settings";
 import { writeCounters } from "./store";
 
@@ -46,26 +47,61 @@ function count(kind: AnalyticsKind, key: string) {
   }
 }
 
-/** A page of the app was opened (`view` is one the app has already accepted). */
-export function recordPageView(view: string | null | undefined, taskType?: string | null) {
+/**
+ * A page of the app was opened (`view` is one the app has already accepted). `who`: the installation's own people and a
+ * browser the owner switched off are not counted (lib/analytics/exclusion.ts).
+ */
+export function recordPageView(view: string | null | undefined, taskType?: string | null, who?: CountingSubject | null) {
+  if (notCounted(who)) return;
   const key = pageKey(view, taskType);
   if (key) count("page", key);
 }
 
-/** A function was used; keys outside the list are ignored. */
-export function recordFeature(key: string) {
+/** A function was used; keys outside the list are ignored. `who` as for recordPageView (a request context carries it). */
+export function recordFeature(key: string, who?: CountingSubject | null) {
+  if (notCounted(who)) return;
   count("feature", key);
 }
 
 /** A step in the public demo (fixed keys only, lib/analytics/catalog.ts); nothing about the visitor. */
-export function recordDemoEvent(key: string) {
-  count("demo", key);
+export function recordDemoEvent(key: string, who?: CountingSubject | null) {
+  if (!notCounted(who)) count("demo", key);
 }
 
-/** A changing request that passed the origin check: counted as the function its address belongs to. */
-export function recordRequestUsage(request: Request) {
+// The referring domains seen today, so a day can never hold more than LANDING_REF_DAY_LIMIT of them (the rest: ref:other).
+const referrers: { day: string; seen: Set<string> } = ((globalThis as { __wfLandingRefs?: { day: string; seen: Set<string> } }).__wfLandingRefs ??= { day: "", seen: new Set() });
+
+/** Something on the public website (fixed keys, lib/analytics/catalog.ts): a page, a button, a device group or a referrer. */
+export function recordLandingEvent(key: string, who?: CountingSubject | null) {
+  if (notCounted(who)) return;
   try {
-    const key = featureForRequest(request.method, new URL(request.url).pathname);
+    let counted = key;
+    if (key.startsWith("ref:") && key !== "ref:none" && key !== "ref:other") {
+      const today = swedishDayKey(new Date());
+      if (referrers.day !== today) { referrers.day = today; referrers.seen = new Set(); }
+      if (!referrers.seen.has(key) && referrers.seen.size >= LANDING_REF_DAY_LIMIT) counted = "ref:other";
+      else referrers.seen.add(key);
+    }
+    count("landing", counted);
+  } catch {
+    // never throws
+  }
+}
+
+/** A changing request: counted as the function its address belongs to, unless `who` is not counted. */
+export function recordRequestUsage(request: Request, who?: CountingSubject | null) {
+  try {
+    if (notCounted(who ?? { cookie: request.headers.get("cookie") })) return;
+    recordUsage(request.method, new URL(request.url).pathname);
+  } catch {
+    // never throws
+  }
+}
+
+/** The same from a method and a path (context() reads them from the headers the proxy sets). */
+export function recordUsage(method: string, pathname: string) {
+  try {
+    const key = featureForRequest(method, pathname);
     if (key) count("feature", key);
   } catch {
     // never throws

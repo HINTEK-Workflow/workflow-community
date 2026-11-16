@@ -3,6 +3,7 @@ import { env } from "@/lib/env";
 import { checkOrigin, failure } from "@/lib/kfid/server";
 import { confirmSubscription } from "@/lib/mail/newsletter-subscribers";
 import { readLimitedText } from "@/lib/security/limited-body";
+import { recordLandingEvent } from "@/lib/analytics/record";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,8 @@ export async function POST(request: Request) {
     if (fromPage) token = new URLSearchParams(text).get("t") ?? "";
     else { try { const value = JSON.parse(text) as { t?: unknown }; token = typeof value?.t === "string" ? value.t : ""; } catch { token = ""; } }
     const done = await confirmSubscription(token);
+    // Beteendeanalys (2026-11-16): one anonymous count for the day; never the address.
+    if (done) recordLandingEvent("newsletter:confirmed", { cookie: request.headers.get("cookie") });
     if (fromPage) return NextResponse.redirect(new URL(`/newsletter/confirm?status=${done ? "ok" : "invalid"}`, env.APP_URL), 303);
     return done ? NextResponse.json({ ok: true }) : NextResponse.json({ error: "Länken är inte giltig." }, { status: 400 });
   } catch (error) {

@@ -19,6 +19,18 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "0.67.0",
+    date: "2026-11-16",
+    summary: "Inlägg kan ha flera bilder och en egen text för Instagram, och du ser hur publiceringen går.",
+    items: [
+      "Ett inlägg kan ha en egen text för Instagram och flera bilder som visas som ett bildspel.",
+      "Länkar i ett inlägg får en märkning, så att du ser vilken kanal besöket kom från.",
+      "Du ser hur långt publiceringen har kommit och kan avbryta den. Lämnar du sidan mitt i får du en fråga först.",
+      "Du kan markera att ett inlägg innehåller AI-genererad bild eller AI-genererat ljud. Instagram visar det för läsaren.",
+      "Förhandsvisningen av bilder går fortare.",
+    ],
+  },
+  {
     version: "0.66.0",
     date: "2026-11-16",
     summary: "Den publika sidan berättar i tre steg hur ett maskinlarm blir en åtgärd, och du loggas inte ut när Workflow uppdateras.",

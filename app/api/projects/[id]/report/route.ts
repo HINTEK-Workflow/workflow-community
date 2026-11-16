@@ -36,7 +36,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const workflowTasks = tasks.filter((task): task is NonNullable<typeof task> => Boolean(task?.projectId === project.id));
     if (workflowTasks.length !== query.taskIds.length) throw new ApiError(400, "En vald uppgift tillhör inte projektet.");
     for (const task of workflowTasks) requireWorkflowPermission(ctx, workflowSubjectForTask(task.kind, task.formArea), "report");
-    recordFeature("report_pdf");
+    recordFeature("report_pdf", ctx.analytics);
     const result = await PDFDocument.create();
     // Protocols follow as their own PDFs in the control's look (2026-09-27).
     const protocols = workflowTasks.filter((task) => task.kind === "FORM");

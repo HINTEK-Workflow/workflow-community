@@ -642,7 +642,7 @@ export async function POST(request: Request) {
         await deviationItem(tx, { organizationId: ctx.organizationId, userId: ctx.user.id, workOrderId: row.id, sourceTaskId: task.data.details.source?.taskId, facts: input.maintenance });
       return row;
     });
-    recordFeature(`task_created_${task.kind}`);
+    recordFeature(`task_created_${task.kind}`, ctx.analytics);
     return NextResponse.json(created);
   } catch (error) {
     return failure(error);

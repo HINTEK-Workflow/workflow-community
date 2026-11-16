@@ -1,3 +1,4 @@
+import { optedOutHere } from "@/lib/analytics/exclusion";
 import { emptyPlaceRegisterFilter, listPlaceRegister, objectTypeOptions, placeRegisterCounts, placeRegisterFilterSchema } from "@/lib/workflow/place-register";
 import { listPlaceLabel, tempPlaceOf } from "@/lib/workflow/temp-place";
 import { isUrgentOpen, maintenanceListFilterSchema, maintenanceMatches, withoutStaleWaiting } from "@/lib/workflow/maintenance";
@@ -2103,7 +2104,8 @@ export function setDemoReporting(on: boolean) { reporting = on; }
  * demo asks for is answered in the browser.
  */
 export function sendDemoEvent(key: string | null) {
-  if (!reporting || !key || !realFetch || !isDemoBrowserKey(key)) return;
+  // A browser the owner switched off under Beteendeanalys (wf-no-stats, 2026-11-16) sends nothing.
+  if (!reporting || !key || !realFetch || !isDemoBrowserKey(key) || optedOutHere()) return;
   void realFetch("/api/analytics/event", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "demo", key }), keepalive: true, credentials: "omit" }).catch(() => undefined);
 }
 /**

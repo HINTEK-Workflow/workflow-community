@@ -1,4 +1,4 @@
-import { DEMO_FLOW_KEYS, DEMO_SOURCE_KEYS, DEMO_START_KEYS, DEMO_TIME_KEYS, FUNNEL_LABELS, FUNNEL_STEPS, demoKeyLabel, isFunnelStep, kindLabel, type FunnelStep } from "./catalog";
+import { DEMO_FLOW_KEYS, DEMO_SOURCE_KEYS, DEMO_START_KEYS, DEMO_TIME_KEYS, FUNNEL_LABELS, FUNNEL_STEPS, LANDING_CLICK_KEYS, LANDING_DEVICE_KEYS, demoKeyLabel, isFunnelStep, kindLabel, landingKeyLabel, type FunnelStep } from "./catalog";
 import { csvCell } from "../csv/cell";
 
 /**
@@ -25,10 +25,24 @@ export type DemoReport = {
   /** Time in the demo in four buckets, in order; the shares are of the visits that were counted. */
   time: RankedRow[];
 };
-/** The public pages per day or week (2026-11-11): the funnel's steps and the answers in the cookie box. */
-export type PublicPoint = { date: string; label?: string; landing: number; pricing: number; register: number; checkout: number; statistics: number; necessary: number; demoStarts: number };
+/** The public website (2026-11-16): page loads, counted buttons, where visitors came from and the screen; no cookie. */
+export type LandingReport = {
+  hasData: boolean;
+  /** Page loads on the start page and the feature pages together. */
+  views: number;
+  pages: RankedRow[];
+  /** The counted buttons, in a fixed order. */
+  clicks: RankedRow[];
+  /** The referring sites (domain only), the most first; "none" is a visit without one. */
+  sources: RankedRow[];
+  devices: RankedRow[];
+  newsletter: { requested: number; confirmed: number };
+};
+/** The public pages per day or week (2026-11-11): the funnel's steps, the answers in the cookie box and the website's page loads. */
+export type PublicPoint = { date: string; label?: string; landing: number; pricing: number; register: number; checkout: number; statistics: number; necessary: number; demoStarts: number; landingViews: number };
 export type Report = {
   demo: DemoReport;
+  landing: LandingReport;
   from: string; to: string;
   hasData: boolean;
   totals: { pageViews: number; featureUses: number };
@@ -78,12 +92,17 @@ export function buildReport(rows: CounterRowLike[], from: string, to: string): R
   const demoCounts = new Map<string, number>();
   const demoDay = new Map<string, { starts: number }>();
   const publicDay = new Map<string, Omit<PublicPoint, "date" | "label">>();
-  const emptyPublic = () => ({ landing: 0, pricing: 0, register: 0, checkout: 0, statistics: 0, necessary: 0, demoStarts: 0 });
+  const emptyPublic = () => ({ landing: 0, pricing: 0, register: 0, checkout: 0, statistics: 0, necessary: 0, demoStarts: 0, landingViews: 0 });
+  const landingCounts = new Map<string, number>();
   for (const row of inRange) {
     const point = publicDay.get(row.day) ?? emptyPublic();
     if (row.kind === "funnel" && isFunnelStep(row.key)) point[row.key] += row.count;
     else if (row.kind === "consent" && (row.key === "statistics" || row.key === "necessary")) point[row.key] += row.count;
     else if (row.kind === "demo" && (DEMO_START_KEYS as readonly string[]).includes(row.key)) point.demoStarts += row.count;
+    else if (row.kind === "landing") {
+      landingCounts.set(row.key, (landingCounts.get(row.key) ?? 0) + row.count);
+      if (row.key.startsWith("page:")) point.landingViews += row.count;
+    }
     publicDay.set(row.day, point);
   }
   for (const row of inRange) {
@@ -115,7 +134,7 @@ export function buildReport(rows: CounterRowLike[], from: string, to: string): R
   for (const point of publicDaily) {
     const week = monday(point.date);
     const current = publicWeeks.get(week) ?? { date: week, label: `v. ${isoWeek(week).week}`, ...emptyPublic() };
-    for (const key of ["landing", "pricing", "register", "checkout", "statistics", "necessary", "demoStarts"] as const) current[key] += point[key];
+    for (const key of ["landing", "pricing", "register", "checkout", "statistics", "necessary", "demoStarts", "landingViews"] as const) current[key] += point[key];
     publicWeeks.set(week, current);
   }
   const first = funnelCounts.get(FUNNEL_STEPS[0]) ?? 0;
@@ -144,8 +163,28 @@ export function buildReport(rows: CounterRowLike[], from: string, to: string): R
     flows: fixedRows(DEMO_FLOW_KEYS),
     time: fixedRows(DEMO_TIME_KEYS),
   };
+  const landingGroup = (group: string) => new Map([...landingCounts].filter(([key]) => key.startsWith(`${group}:`)));
+  const landingRows = (counts: Map<string, number>, limit: number): RankedRow[] => {
+    const total = [...counts.values()].reduce((sum, value) => sum + value, 0);
+    return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, limit)
+      .map(([key, count]) => ({ key, label: landingKeyLabel(key), count, share: percent(count, total) ?? 0 }));
+  };
+  const landingFixed = (group: string, keys: readonly string[]): RankedRow[] => {
+    const total = keys.reduce((sum, key) => sum + (landingCounts.get(`${group}:${key}`) ?? 0), 0);
+    return keys.map((key) => { const count = landingCounts.get(`${group}:${key}`) ?? 0; return { key: `${group}:${key}`, label: landingKeyLabel(`${group}:${key}`), count, share: percent(count, total) ?? 0 }; });
+  };
+  const pageCounts = landingGroup("page");
+  const landing: LandingReport = {
+    hasData: landingCounts.size > 0,
+    views: [...pageCounts.values()].reduce((sum, value) => sum + value, 0),
+    pages: landingRows(pageCounts, 12),
+    clicks: landingFixed("click", LANDING_CLICK_KEYS),
+    sources: landingRows(landingGroup("ref"), 12),
+    devices: landingFixed("device", LANDING_DEVICE_KEYS),
+    newsletter: { requested: landingCounts.get("newsletter:requested") ?? 0, confirmed: landingCounts.get("newsletter:confirmed") ?? 0 },
+  };
   return {
-    demo,
+    demo, landing,
     from: start, to,
     hasData: inRange.length > 0,
     totals: { pageViews: [...pages.values()].reduce((sum, value) => sum + value, 0), featureUses: [...features.values()].reduce((sum, value) => sum + value, 0) },
@@ -158,7 +197,7 @@ export function buildReport(rows: CounterRowLike[], from: string, to: string): R
 
 /** The headline figures of a period, for the key-figure tiles and the comparison with the period before (2026-11-11). */
 export type PeriodTotals = {
-  pageViews: number; featureUses: number; demoStarts: number;
+  pageViews: number; featureUses: number; demoStarts: number; landingViews: number;
   landing: number; register: number; checkout: number;
   statistics: number; necessary: number;
   /** Share who allowed statistics, 0–100; null without answers. */ consentRate: number | null;
@@ -168,7 +207,7 @@ export const periodTotals = (report: Report): PeriodTotals => {
   const step = (name: FunnelStep) => report.funnel.steps.find((row) => row.step === name)?.count ?? 0;
   const landing = step("landing");
   return {
-    pageViews: report.totals.pageViews, featureUses: report.totals.featureUses, demoStarts: report.demo.starts.total,
+    pageViews: report.totals.pageViews, featureUses: report.totals.featureUses, demoStarts: report.demo.starts.total, landingViews: report.landing.views,
     landing, register: step("register"), checkout: step("checkout"),
     statistics: report.consent.statistics, necessary: report.consent.necessary, consentRate: report.consent.rate,
     registerRate: landing ? Math.min(100, percent(step("register"), landing) ?? 0) : null,
@@ -194,7 +233,7 @@ export function buildComparedReport(rows: CounterRowLike[], from: string, to: st
   return { ...report, previous: { ...before, ...periodTotals(buildReport(rows, before.from, before.to)) } };
 }
 
-const KIND_NAME: Record<string, string> = { page: "sida", feature: "funktion", funnel: "tratt", consent: "samtycke", demo: "demo" };
+const KIND_NAME: Record<string, string> = { page: "sida", feature: "funktion", funnel: "tratt", consent: "samtycke", demo: "demo", landing: "webbplats" };
 // The same CSV cell as every export: keys and names never run as a formula in Excel (R2, review 2026-10-20).
 const cell = csvCell;
 

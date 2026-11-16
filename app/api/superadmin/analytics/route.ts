@@ -9,6 +9,10 @@ import { discardPendingCounts, flushAnalytics } from "@/lib/analytics/record";
 import { getAnalyticsSettings, saveAnalyticsSettings } from "@/lib/analytics/settings";
 import { firstCounterDay, readCounters, resetCounters } from "@/lib/analytics/store";
 import { swedishDayKey } from "@/lib/swedish-time";
+import { noStatsCookieDomain, noStatsCookieLine, optedOut } from "@/lib/analytics/exclusion";
+import { publicSite } from "@/lib/public-site";
+import { publicInstance } from "@/lib/instance";
+import { instanceAppUrl } from "@/lib/instance-server";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +21,16 @@ async function superadmin() {
   if (!user) throw new ApiError(401, "Logga in för att fortsätta.");
   if (user.role !== "SUPERADMIN") throw new ApiError(403, "Bara installationens administratör kan göra det.");
   return user;
+}
+
+/**
+ * Egna besök (2026-11-16): whether the browser asking is switched off, and where that holds – on both addresses when the
+ * public site shares the app's parent domain, otherwise on the app's address only. The installation's own company is named,
+ * since its people are never counted in the app.
+ */
+function ownVisits(request: Request) {
+  const domain = noStatsCookieDomain(publicSite());
+  return { browserExcluded: optedOut(request.headers.get("cookie")), sharedDomain: domain, company: publicInstance().operator };
 }
 
 const query = z.object({ from: z.iso.date().optional(), to: z.iso.date().optional(), format: z.enum(["json", "csv"]).default("json") });
@@ -42,7 +56,7 @@ export async function GET(request: Request) {
     const rows = await readCounters(previousPeriod(shown, to).from, to);
     return NextResponse.json({
       settings: await getAnalyticsSettings(), funnelAvailable: EE_PRESENT, retentionChoices: RETENTION_CHOICES,
-      today, first: await firstCounterDay(), report: buildComparedReport(rows, from, to),
+      today, first: await firstCounterDay(), report: buildComparedReport(rows, from, to), own: ownVisits(request),
     }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     return failure(error);
@@ -54,6 +68,8 @@ const settingsInput = z.object({
   funnel: z.boolean().optional(),
   retentionMonths: z.number().int().refine((value) => (RETENTION_CHOICES as readonly number[]).includes(value), "Välj en av de erbjudna lagringstiderna.").optional(),
   reset: z.literal(true).optional(),
+  /** Räkna inte den här webbläsaren (2026-11-16): sets or removes wf-no-stats on the browser that asks. */
+  browser: z.enum(["exclude", "include"]).optional(),
 }).strict();
 
 export async function POST(request: Request) {
@@ -74,9 +90,18 @@ export async function POST(request: Request) {
       if (after.funnel !== before.funnel) changes.push(`Trattmätning på de publika sidorna ${after.funnel ? "påslagen" : "avstängd"}.`);
       if (after.retentionMonths !== before.retentionMonths) changes.push(`Lagringstiden för räknarna är ${after.retentionMonths} månader.`);
     }
+    if (input.browser) changes.push(input.browser === "exclude" ? "En webbläsare räknas inte längre i statistiken." : "En webbläsare räknas i statistiken igen.");
     if (user.activeOrganizationId && changes.length)
       await prisma.administrationEvent.create({ data: { actorId: user.id, organizationId: user.activeOrganizationId, action: "analytics_settings", detail: changes.join(" ") } });
-    return NextResponse.json({ ok: true, settings: await getAnalyticsSettings() });
+    const response = NextResponse.json({ ok: true, settings: await getAnalyticsSettings() });
+    if (input.browser) {
+      const secure = instanceAppUrl().startsWith("https:");
+      const domain = noStatsCookieDomain(publicSite());
+      response.headers.append("Set-Cookie", noStatsCookieLine(input.browser === "exclude", { secure, domain }));
+      // Switched back on: a copy on the app's address alone (set before the public site shared the domain) goes too.
+      if (input.browser === "include" && domain) response.headers.append("Set-Cookie", noStatsCookieLine(false, { secure, domain: null }));
+    }
+    return response;
   } catch (error) {
     return failure(error);
   }

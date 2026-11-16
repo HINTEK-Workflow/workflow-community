@@ -34,7 +34,7 @@ export async function createPostSeries(actor: Actor, input: PostSeriesInput) {
   const connection = await postScheduleProblem(actor.organizationId, {
     id: "", status: "draft", heading: first.heading, body: first.body, caption: first.caption, hashtags: shared.hashtags, link: null, template: shared.template,
     logoVariant: shared.logoVariant, logoSize: shared.logoSize, logoPlate: shared.logoPlate ?? null, toFacebook: shared.toFacebook, toInstagram: shared.toInstagram, toNewsletter: false, newsletterMail: null,
-    toStory: false, backgroundSource: null, background: null, ...({ toLinkedIn: shared.toLinkedIn } as object),
+    toStory: false, backgroundSource: null, background: null, instagramText: "", campaignLinks: true, aiGenerated: false, images: [], ...({ toLinkedIn: shared.toLinkedIn } as object),
   });
   if (connection) throw new ApiError(409, connection);
   const times = input.parts.map((part) => fromSwedishDateTimeInput(part.at)!);

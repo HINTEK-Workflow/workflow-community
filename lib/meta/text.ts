@@ -16,6 +16,11 @@ export const CAPTION_STORE_MAX = LINKEDIN_COMMENTARY_MAX;
 export const HASHTAGS_MAX = 30;
 export const MENTIONS_MAX = 20;
 export const LINK_MAX = 500;
+/** Bara på Instagram (2026-11-16): the longest text added only to Instagram's caption. */
+export const INSTAGRAM_TEXT_MAX = 300;
+/** Fler bilder (2026-11-16): the most pictures in one post (the drawn one and up to nine more; Instagram takes 20, kept at 10). */
+export const IMAGES_MAX = 10;
+export const EXTRA_IMAGES_MAX = IMAGES_MAX - 1;
 
 /** The picture (2026-11-12): portrait 4:5, Instagram's largest feed format; the same JPEG goes to Facebook and LinkedIn. */
 export const IMAGE_WIDTH = 1080;
@@ -88,8 +93,12 @@ export function checklistItems(body: string): string[] {
   return items.slice(0, 4);
 }
 
-/** The post's texts; `hashtags` (2026-11-12): its own field, "#tag #tag", added after the caption on every channel. */
-export type PostText = { heading: string; body: string; caption: string; link: string | null; hashtags?: string };
+/**
+ * The post's texts; `hashtags` (2026-11-12): its own field, "#tag #tag", added after the caption on every channel.
+ * `instagramText` (2026-11-16): added only to Instagram's caption. `campaignLinks` (2026-11-16): the channel's ?via= on links to the
+ * installation's own addresses (campaignText).
+ */
+export type PostText = { heading: string; body: string; caption: string; link: string | null; hashtags?: string; instagramText?: string; campaignLinks?: boolean };
 
 /** The most hashtags the field keeps (Instagram's limit for a whole post). */
 export const HASHTAG_FIELD_MAX = 30;
@@ -121,13 +130,43 @@ export function normalizeHashtags(input: string): string {
 export const hashtagList = (text: string | null | undefined) => (text ?? "").match(HASHTAG) ?? [];
 
 export type PostChannel = "facebook" | "instagram" | "linkedin";
+
 /**
- * The caption a channel gets: the post's text, then its hashtags after one blank line, then (Facebook and LinkedIn) the link on
- * its own line. The stored caption itself never holds the field's hashtags; the newsletter uses the caption alone.
+ * Kampanjlänkar (2026-11-15, built 2026-11-16): an address on one of the installation's own hosts gets ?via=<channel>, so
+ * Beteendeanalys can tell which channel brought the visit (lib/analytics/catalog.ts, demoStartKey). An address that already has
+ * a via keeps it; any other address is left as it is. Pure.
  */
-export function captionWithHashtags(post: Pick<PostText, "caption" | "link" | "hashtags">, channel: PostChannel): string {
-  const text = [post.caption.trim(), normalizeHashtags(post.hashtags ?? "")].filter(Boolean).join("\n\n");
-  return channel !== "instagram" && post.link ? `${text}\n\n${post.link}` : text;
+export function campaignLink(url: string, channel: PostChannel, hosts: readonly string[]): string {
+  let parsed: URL;
+  try { parsed = new URL(url); } catch { return url; }
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return url;
+  const own = hosts.map((host) => host.trim().toLowerCase().replace(/\.$/, "")).filter(Boolean);
+  if (!own.includes(parsed.host.toLowerCase()) && !own.includes(parsed.hostname.toLowerCase())) return url;
+  if (parsed.searchParams.has("via")) return url;
+  parsed.searchParams.set("via", channel);
+  return parsed.toString();
+}
+
+/** Every https/http address in a text through campaignLink; a full stop or bracket right after an address stays outside it. Pure. */
+export function campaignText(text: string, channel: PostChannel, hosts: readonly string[]): string {
+  if (!hosts.length) return text;
+  return text.replace(/https?:\/\/[^\s<>"]+/gi, (match) => {
+    const tail = /[.,;:!?)\]'’”]+$/u.exec(match)?.[0] ?? "";
+    const url = tail ? match.slice(0, -tail.length) : match;
+    return campaignLink(url, channel, hosts) + tail;
+  });
+}
+
+/**
+ * The caption a channel gets: the post's text, then (Instagram only) the Instagram text, then its hashtags after one blank line,
+ * then (Facebook and LinkedIn) the link on its own line; with campaignLinks and `hosts`, the channel's ?via= on the own links.
+ * The stored caption itself never holds the field's hashtags; the newsletter uses the caption alone.
+ */
+export function captionWithHashtags(post: Pick<PostText, "caption" | "link" | "hashtags" | "instagramText" | "campaignLinks">, channel: PostChannel, hosts: readonly string[] = []): string {
+  const extra = channel === "instagram" ? (post.instagramText ?? "").trim() : "";
+  const text = [post.caption.trim(), extra, normalizeHashtags(post.hashtags ?? "")].filter(Boolean).join("\n\n");
+  const full = channel !== "instagram" && post.link ? `${text}\n\n${post.link}` : text;
+  return post.campaignLinks ? campaignText(full, channel, hosts) : full;
 }
 
 export type PostChannels = { toFacebook: boolean; toInstagram: boolean; toLinkedIn?: boolean };
@@ -142,6 +181,7 @@ export function postProblem(post: PostText & PostChannels): string | null {
   if (post.heading.length > HEADING_MAX) return `Rubriken får vara högst ${HEADING_MAX} tecken.`;
   if (post.body.length > BODY_MAX) return `Texten i bilden får vara högst ${BODY_MAX} tecken.`;
   if (!post.caption.trim()) return "Skriv inläggets text.";
+  if ((post.instagramText ?? "").length > INSTAGRAM_TEXT_MAX) return `Texten bara för Instagram får vara högst ${INSTAGRAM_TEXT_MAX} tecken.`;
   const max = captionLimit(post);
   if (post.caption.length > max) return `Inläggets text får vara högst ${max} tecken${post.toInstagram ? " (Instagrams gräns)" : ""}.`;
   if (post.toInstagram && instagramCaption(post).length > CAPTION_MAX) return `Texten och hashtaggarna får vara högst ${CAPTION_MAX} tecken tillsammans (Instagrams gräns).`;
@@ -156,12 +196,13 @@ export const safeLink = (value: string) => {
   try { const url = new URL(value); return (url.protocol === "https:" || url.protocol === "http:") && !url.username && !url.password && value.length <= LINK_MAX; } catch { return false; }
 };
 
+type CaptionInput = Pick<PostText, "caption" | "link" | "hashtags" | "instagramText" | "campaignLinks">;
 /** The text Facebook gets: the caption, the hashtags, then the link on its own line. */
-export const facebookCaption = (post: Pick<PostText, "caption" | "link" | "hashtags">) => captionWithHashtags(post, "facebook");
-/** Instagram's: the caption and the hashtags (Instagram shows no links in a caption). */
-export const instagramCaption = (post: Pick<PostText, "caption" | "hashtags">) => captionWithHashtags({ ...post, link: null }, "instagram");
+export const facebookCaption = (post: CaptionInput, hosts: readonly string[] = []) => captionWithHashtags(post, "facebook", hosts);
+/** Instagram's: the caption, the Instagram text and the hashtags (Instagram shows no links in a caption). */
+export const instagramCaption = (post: Omit<CaptionInput, "link">, hosts: readonly string[] = []) => captionWithHashtags({ ...post, link: null }, "instagram", hosts);
 /** The text LinkedIn gets: like Facebook's, the caption, the hashtags and the link on its own line (LinkedIn shows links in the text). */
-export const linkedInCommentary = (post: Pick<PostText, "caption" | "link" | "hashtags">) => captionWithHashtags(post, "linkedin");
+export const linkedInCommentary = (post: CaptionInput, hosts: readonly string[] = []) => captionWithHashtags(post, "linkedin", hosts);
 
 const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: "\"", apos: "'", nbsp: " ", "#039": "'", "#8211": "–", "#8217": "’" };
 /** Markup as plain text: tags and comments out, entities read, spaces collapsed. */

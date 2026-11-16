@@ -152,7 +152,7 @@ export async function createWorkOrderFromDeviation(ctx: Context, deviationId: st
     if (task.projectId) await tx.projectEvent.create({ data: { organizationId, projectId: task.projectId, kind: "UPDATED", summary: `Arbetsordern ${task.title} skapades från avvikelse ${entry.number} i avvikelseloggen`.slice(0, 500), taskId: row.id, actorName: ctx.user.name || ctx.user.email, createdBy: ctx.user.id } });
     return row;
   });
-  recordFeature("task_created_WORK_ORDER");
+  recordFeature("task_created_WORK_ORDER", ctx.analytics);
   return created;
 }
 

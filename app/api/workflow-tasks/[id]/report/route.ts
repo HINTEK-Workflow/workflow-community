@@ -13,7 +13,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const task = await cloudWorkflowReportTask(ctx.organizationId, id);
     if (!task) throw new ApiError(404, "Uppgiften hittades inte.");
     requireWorkflowPermission(ctx, workflowSubjectForTask(task.kind, task.formArea), "report");
-    recordFeature("report_pdf");
+    recordFeature("report_pdf", ctx.analytics);
     const identity = await workflowReportIdentity(ctx.organizationId, ctx.organization.name);
     // A protocol can also be taken out as Excel or as the empty form to fill in by hand, like the control (2026-09-27).
     const query = new URL(request.url).searchParams;

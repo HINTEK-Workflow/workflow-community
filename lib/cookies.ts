@@ -91,6 +91,7 @@ export const COOKIE_GROUPS: CookieGroup[] = [
       { name: "hwf_demo", kind: "Kaka", content: "Värdet \"1\".", purpose: "Visar den påhittade demon i stället för arbetsytan.", lifetime: "Tills webbläsaren stängs" },
       { name: "workflow.demo.tour-closed", kind: "Sessionslagring", content: "Att rundturen i demon är stängd.", purpose: "Visar inte demons rundtur igen i samma flik.", lifetime: "Tills fliken stängs" },
       { name: "wf_view_as", kind: "Kaka", content: "Vald roll.", purpose: "Bara för superadmin: Visa som en annan roll.", lifetime: "Högst 8 timmar" },
+      { name: "wf-no-stats", kind: "Kaka", content: "Värdet \"1\".", purpose: "Bara för superadmin, när den själv väljer det under Beteendeanalys: besök från den här webbläsaren räknas inte i statistiken.", lifetime: "400 dagar, eller tills valet slås av" },
     ],
   },
 ];

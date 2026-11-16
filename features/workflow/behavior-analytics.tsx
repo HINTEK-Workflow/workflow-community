@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AppWindow, Cookie, Eye, Globe, type LucideIcon, MousePointerClick, PlayCircle, Route, ShieldCheck, Trash2, UserCheck, UserPlus } from "lucide-react";
+import { AppWindow, Cookie, Eye, Globe, type LucideIcon, MousePointerClick, MonitorSmartphone, PlayCircle, Route, ShieldCheck, Trash2, UserCheck, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -22,7 +22,9 @@ import { InPageTabs, type InPageTab } from "@/features/workflow/in-page-tabs";
 import type { FunnelStep } from "@/lib/analytics/catalog";
 
 type ComparedReport = Report & { previous: PeriodTotals & { from: string; to: string } };
-type Data = { settings: AnalyticsSettings; funnelAvailable: boolean; retentionChoices: number[]; today: string; first: string | null; report: ComparedReport };
+/** Egna besök (2026-11-16): whether this browser is switched off, the shared domain it then holds for, and the own company. */
+type OwnVisits = { browserExcluded: boolean; sharedDomain: string | null; company: string };
+type Data = { settings: AnalyticsSettings; funnelAvailable: boolean; retentionChoices: number[]; today: string; first: string | null; report: ComparedReport; own: OwnVisits };
 
 const PRESETS = [{ days: 7, label: "7 dagar" }, { days: 30, label: "30 dagar" }, { days: 90, label: "90 dagar" }, { days: 365, label: "12 månader" }] as const;
 /**
@@ -161,7 +163,7 @@ export function BehaviorAnalytics({ notify }: { notify: (text: string, error?: b
     finally { setBusy(false); }
   };
   const reset = async () => {
-    if (!(await confirm({ title: "Nollställ beteendeanalysen?", message: "Alla räknare raderas: sidvisningar, använda funktioner, demobesök, stegen från startsidan och svaren om kakor. Det går inte att ångra. Exportera först om du vill spara dem.", confirmLabel: "Nollställ", tone: "danger" }))) return;
+    if (!(await confirm({ title: "Nollställ beteendeanalysen?", message: "Alla räknare raderas: sidvisningar, använda funktioner, webbplatsen, demobesök, stegen från startsidan och svaren om kakor. Det går inte att ångra. Exportera först om du vill spara dem.", confirmLabel: "Nollställ", tone: "danger" }))) return;
     await save({ reset: true }, "Beteendeanalysen är nollställd.");
   };
   const report = data?.report;
@@ -170,7 +172,7 @@ export function BehaviorAnalytics({ notify }: { notify: (text: string, error?: b
   const appRows = useMemo<Point[]>(() => !report ? [] : bucket === "day" ? report.daily.map((point) => ({ name: day(point.date), pages: point.pages, features: point.features }))
     : report.weekly.map((point) => ({ name: `${point.label} (${day(point.date)})`, pages: point.pages, features: point.features })), [report, bucket]);
   const publicRows = useMemo<Point[]>(() => !report ? [] : (bucket === "day" ? report.publicDaily : report.publicWeekly).map((point) => ({
-    name: bucket === "day" ? day(point.date) : `${point.label} (${day(point.date)})`, landing: point.landing, register: point.register, statistics: point.statistics, necessary: point.necessary, demoStarts: point.demoStarts,
+    name: bucket === "day" ? day(point.date) : `${point.label} (${day(point.date)})`, landing: point.landing, register: point.register, statistics: point.statistics, necessary: point.necessary, demoStarts: point.demoStarts, landingViews: point.landingViews,
   })), [report, bucket]);
   const csvHref = `/api/superadmin/analytics?format=csv&from=${range.from}&to=${range.to}`;
   const today = data?.today ?? swedishDayKey(new Date());
@@ -178,6 +180,7 @@ export function BehaviorAnalytics({ notify }: { notify: (text: string, error?: b
   const before = report?.previous;
   const funnel = Boolean(data?.funnelAvailable);
   const webTiles: Tile[] = now && before && report ? [
+    ...(funnel ? [{ label: "Sidvisningar på webbplatsen", value: number(now.landingViews), detail: "startsidan och undersidorna", icon: MonitorSmartphone, tone: "sky", testId: "kpi-site", change: change(now.landingViews, before.landingViews), spark: report.publicDaily.map((point) => point.landingViews) }] : []),
     { label: "Demostarter", value: number(now.demoStarts), detail: "besök som öppnade demon", icon: PlayCircle, tone: "emerald", testId: "kpi-demo", change: change(now.demoStarts, before.demoStarts), spark: report.publicDaily.map((point) => point.demoStarts) },
     ...(funnel ? [
       { label: "Besök på startsidan", value: number(now.landing), detail: "som tillåtit statistik", icon: Globe, tone: "sky", testId: "kpi-landing", change: change(now.landing, before.landing), spark: report.publicDaily.map((point) => point.landing) },
@@ -214,17 +217,33 @@ export function BehaviorAnalytics({ notify }: { notify: (text: string, error?: b
         </div>
       </div>
       {/* The line keeps its height before the figures come, so nothing under it moves. */}
+      <p className="min-h-4 text-xs text-muted-foreground" data-testid="analytics-own">{data ? `Egna besök räknas inte. ${data.own.browserExcluded ? "Den här webbläsaren räknas inte." : "Den här webbläsaren räknas (ändra under Insamling)."}` : " "}</p>
       <p className="min-h-4 text-xs text-muted-foreground" data-testid="analytics-period">{report ? `${day(report.from)} – ${day(report.to)}, jämfört med ${day(report.previous.from)} – ${day(report.previous.to)}.` : " "}</p>
     </ListToolbar>
 
     {!report ? (!error ? <StatisticsSkeleton label="Hämtar beteendeanalysen…" /> : null) : <div aria-busy={loading || undefined}>
       <InPageTabs label="Statistik för" tabs={PARTS} current={part} onSelect={selectPart} idBase="analytics" testId="analytics-tabs" />
       <div role="tabpanel" id="analytics-panel" aria-labelledby={`analytics-tab-${part}`} className="space-y-6" data-testid={`analytics-part-${part}`}>
-        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4" data-testid="analytics-kpis">
+        <div className={`grid grid-cols-2 gap-3 ${(part === "web" ? webTiles : appTiles).length > 4 ? "lg:grid-cols-3 2xl:grid-cols-5" : "xl:grid-cols-4"}`} data-testid="analytics-kpis">
           {(part === "web" ? webTiles : appTiles).map((tile) => <KpiTile key={tile.testId} tile={tile} />)}
         </div>
 
         {part === "web" ? <>
+          {funnel ? <div data-testid="analytics-site-panel"><Panel title="Webbplatsen" icon={MonitorSmartphone} description="Räknat per sidvisning och knapptryck utan kaka, så ingen känns igen mellan besöken.">
+            {report.landing.hasData ? <div className="space-y-6" data-testid="analytics-site">
+              <TimeChart rows={publicRows} kind="bar" unit={unit} label={`Sidvisningar på webbplatsen per ${per}`} testId="analytics-site-chart" tableTestId="analytics-site-table" height="h-56"
+                series={[{ key: "landingViews", name: "Sidvisningar", color: "var(--viz-1)" }]} />
+              <div className="@container"><div className="grid gap-6 @2xl:grid-cols-2 @5xl:grid-cols-3">
+                <RankedList title="Sidor" rows={report.landing.pages} testId="analytics-site-pages" />
+                <RankedList title="Knappar" rows={report.landing.clicks} testId="analytics-site-clicks" color="bg-[var(--viz-2)]" />
+                <RankedList title="Varifrån besökarna kom" rows={report.landing.sources} testId="analytics-site-sources" />
+                <RankedList title="Skärm" rows={report.landing.devices} testId="analytics-site-devices" color="bg-[var(--viz-2)]" />
+              </div></div>
+              <p className="text-sm" data-testid="analytics-site-newsletter">Nyhetsbrevet: <strong className="tabular-nums">{number(report.landing.newsletter.requested)}</strong> anmälningar, <strong className="tabular-nums">{number(report.landing.newsletter.confirmed)}</strong> bekräftade.</p>
+              <p className="text-xs text-muted-foreground">Bara webbplatsens namn sparas, aldrig hela adressen. Besök inom webbplatsen räknas inte som en väg in.</p>
+            </div> : <p className="text-sm text-muted-foreground" data-testid="analytics-site-empty">Inget har räknats på webbplatsen under perioden. Det räknas från 16 nov 2026.</p>}
+          </Panel></div> : null}
+
           {funnel && data ? <>
             <div data-testid="analytics-public"><Panel title="Från startsidan till betalning" icon={Route} description="Bara besök som har tillåtit statistik räknas, en gång per steg.">
               {!data.settings.funnel ? <p className="notice mb-4 text-sm" data-testid="analytics-funnel-off">Mätningen av startsidan är avstängd. Slå på den under Insamling längst ned.</p> : null}
@@ -281,13 +300,20 @@ export function BehaviorAnalytics({ notify }: { notify: (text: string, error?: b
         <label className="flex items-start gap-3 text-sm" htmlFor="analytics-usage">
           <Checkbox id="analytics-usage" data-testid="analytics-usage" checked={data.settings.usage} disabled={busy}
             onCheckedChange={(checked) => void save({ usage: checked === true }, checked === true ? "Räkningen i appen är påslagen." : "Räkningen i appen är avstängd.")} />
-          <span><span className="font-medium">Räkna appen och demon</span><span className="mt-1 block text-xs leading-5 text-muted-foreground">Anonyma summor per dag, utan kaka. Inget om person eller webbläsare sparas, så samtycke behövs inte.</span></span>
+          <span><span className="font-medium">Räkna appen, demon och webbplatsen</span><span className="mt-1 block text-xs leading-5 text-muted-foreground">Anonyma summor per dag, utan kaka. Inget om person eller webbläsare sparas, så samtycke behövs inte.</span></span>
         </label>
         {data.funnelAvailable ? <label className="flex items-start gap-3 text-sm" htmlFor="analytics-funnel">
           <Checkbox id="analytics-funnel" data-testid="analytics-funnel" checked={data.settings.funnel} disabled={busy}
             onCheckedChange={(checked) => void save({ funnel: checked === true }, checked === true ? "Mätningen av startsidan är påslagen." : "Mätningen av startsidan är avstängd.")} />
           <span><span className="font-medium">Mät startsidan: vägen till betalning och svaren om kakor</span><span className="mt-1 block text-xs leading-5 text-muted-foreground">Vägen mäts bara efter Tillåt statistik, och kakan wf-stat minns bara vilka steg besöket har nått.</span></span>
         </label> : null}
+        {/* Egna besök (2026-11-15/16): the own company is never counted; this browser on the owner's own press. */}
+        <label className="flex items-start gap-3 text-sm" htmlFor="analytics-browser">
+          <Checkbox id="analytics-browser" data-testid="analytics-browser" checked={data.own.browserExcluded} disabled={busy}
+            onCheckedChange={(checked) => void save({ browser: checked === true ? "exclude" : "include" }, checked === true ? "Den här webbläsaren räknas inte längre." : "Den här webbläsaren räknas igen.")} />
+          <span><span className="font-medium">Räkna inte den här webbläsaren</span><span className="mt-1 block text-xs leading-5 text-muted-foreground">
+            {data.own.sharedDomain ? `Gäller appen och ${data.own.sharedDomain}.` : "Gäller appens adress."} Sätter kakan wf-no-stats i webbläsaren. Superadmin och alla i {data.own.company} räknas aldrig i appen.</span></span>
+        </label>
         <div className="flex flex-wrap items-end gap-3">
           <label className="space-y-1 text-xs text-muted-foreground">Räknarna sparas
             <select className="form-select" aria-label="Lagringstid för räknarna" data-testid="analytics-retention" value={data.settings.retentionMonths} disabled={busy}

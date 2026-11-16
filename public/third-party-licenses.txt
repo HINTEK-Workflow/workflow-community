@@ -1,6 +1,6 @@
 Tredjepartslicenser i Workflow
 
-Paketen som följer med Workflow 0.66.0 i servern och webbläsaren, med version och licens, typsnitten och
+Paketen som följer med Workflow 0.67.0 i servern och webbläsaren, med version och licens, typsnitten och
 licenstexterna som paketen själva levererar. Skapad av scripts/licenses/collect.mjs från package-lock.json.
 Kartans källangivelse (Lantmäteriet, CC BY 4.0) står under Hjälp och verktyg › Om Workflow.
 

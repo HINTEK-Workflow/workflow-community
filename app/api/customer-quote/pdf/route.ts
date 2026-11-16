@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     checkOrigin(request);
     const input = requestSchema.parse(await body(request));
     const { bytes, fileName } = await quotePdfByToken(input.token, { ip: clientIp(request.headers), userAgent: request.headers.get("user-agent") ?? "" });
-    recordFeature("report_pdf");
+    recordFeature("report_pdf", { cookie: request.headers.get("cookie") });
     return new Response(new Uint8Array(bytes), { headers: {
       "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`,
       "Cache-Control": "no-store", "Referrer-Policy": "no-referrer",

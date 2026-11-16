@@ -80,6 +80,8 @@ export const RATE_RULES = {
   funnel: { name: "funnel-ip", limit: 300, windowSeconds: 60 * 60 },
   // The public demo reports each page it shows (2026-11-04): more than a funnel step, still never unlimited from one address.
   demoEvents: { name: "demo-events-ip", limit: 1200, windowSeconds: 60 * 60 },
+  // Landningssidan (2026-11-16): a page load and a few button presses per visit; never unlimited from one address.
+  landingEvents: { name: "landing-events-ip", limit: 600, windowSeconds: 60 * 60 },
   // API- och MCP-anrop (2026-10-08): 120 tool calls per key or connected app a minute, counted in RateLimitBucket like
   // the sign-in rules (lib/tools/dispatch.ts), so the limit holds across every app process and through a restart.
   integrationCall: { name: "integration-call", limit: 120, windowSeconds: 60 },

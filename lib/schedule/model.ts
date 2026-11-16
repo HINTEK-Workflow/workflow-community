@@ -86,6 +86,12 @@ export function postContentHash(post: PostContent & Record<string, unknown>): st
   if (typeof post.logoSize === "string" && post.logoSize && post.logoSize !== "medium") fields.logoSize = post.logoSize;
   // Bakgrund bakom logotypen (2026-11-15): likewise only when Ingen.
   if (post.logoPlate === "none") fields.logoPlate = "none";
+  // 0.67.0 (2026-11-16): Bara på Instagram, Kampanjlänkar, the AI disclosure and the extra pictures (their own bytes), each only
+  // when used, so every earlier approval stays valid.
+  if (typeof post.instagramText === "string" && post.instagramText.trim()) fields.instagramText = post.instagramText;
+  if (post.campaignLinks === true) fields.campaignLinks = true;
+  if (post.aiGenerated === true) fields.aiGenerated = true;
+  if (Array.isArray(post.images) && post.images.length) fields.images = post.images.map((image) => sha((image as { bytes: Uint8Array }).bytes));
   if (post.toNewsletter === true) {
     fields.toNewsletter = true;
     // The mail exactly as it will be sent: its own fields, or what follows the post (lib/mail/post-newsletter-mail.ts).

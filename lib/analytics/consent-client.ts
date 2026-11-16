@@ -1,5 +1,6 @@
 import { CONSENT_COOKIE, CONSENT_MAX_AGE_SECONDS, FUNNEL_COOKIE, clearCookieLine, consentCookieValue, cookieValue, parseConsent, setCookieLine } from "./consent";
 import type { ConsentChoice } from "./catalog";
+import { optedOutHere } from "./exclusion";
 
 /**
  * The visitor's answer in the browser (2026-10-07). Browser only: reads and writes `wf-consent`, takes
@@ -27,6 +28,8 @@ export function writeConsent(choice: ConsentChoice) {
 /** Tells the server which answer was given (a sum per day, no cookie, nothing about the visitor). */
 export function reportConsentChoice(choice: ConsentChoice) {
   try {
+    // A browser the owner switched off under Beteendeanalys (wf-no-stats, 2026-11-16) is not counted.
+    if (optedOutHere()) return;
     void fetch("/api/analytics/event", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "consent", choice }), keepalive: true }).catch(() => undefined);
   } catch { /* counting is never needed */ }
 }

@@ -8,6 +8,11 @@ import { graph, MetaError, type GraphTransport } from "./graph";
  * reached on graph.facebook.com with the page token. Publishing is two steps: a container (the picture's public address and
  * the caption; Instagram fetches the picture itself), then – when the container's status_code is FINISHED – media_publish.
  * A test makes the container and waits for FINISHED, but never publishes it (an unpublished container expires by itself).
+ *
+ * Karusell (2026-11-16, Meta's Content Publishing guide): one child container per picture (is_carousel_item=true, no caption), then
+ * a CAROUSEL container with the children's ids and the caption, then media_publish of that one.
+ * AI (2026-11-16): is_ai_generated=true is Instagram's own self-disclosure ("AI info"), set on the post's container – the single
+ * picture, the story or the carousel – and never on a carousel child (Meta refuses it there).
  */
 export type InstagramAccount = { id: string; token: string };
 export type ContainerStatus = "FINISHED" | "IN_PROGRESS" | "ERROR" | "EXPIRED" | "PUBLISHED" | "UNKNOWN";
@@ -15,8 +20,10 @@ export type ContainerStatus = "FINISHED" | "IN_PROGRESS" | "ERROR" | "EXPIRED" |
 export interface InstagramPublisher {
   /** How many posts the account may still publish in the current 24 hours, or null when it cannot be read. */
   remainingToday(account: InstagramAccount): Promise<number | null>;
-  /** `story` (2026-11-13): a story container (media_type STORIES); a story has no caption. */
-  createContainer(account: InstagramAccount, input: { imageUrl: string; caption: string; story?: boolean }): Promise<string>;
+  /** `story` (2026-11-13): a story container (media_type STORIES); a story has no caption. `carouselItem` (2026-11-16): a carousel's child. */
+  createContainer(account: InstagramAccount, input: { imageUrl: string; caption: string; story?: boolean; carouselItem?: boolean; aiGenerated?: boolean }): Promise<string>;
+  /** Karusell (2026-11-16): the carousel's own container from its children (2–20, already FINISHED). */
+  createCarousel(account: InstagramAccount, input: { children: readonly string[]; caption: string; aiGenerated?: boolean }): Promise<string>;
   containerStatus(account: InstagramAccount, containerId: string): Promise<ContainerStatus>;
   publish(account: InstagramAccount, containerId: string): Promise<string>;
 }
@@ -38,9 +45,20 @@ export function facebookLoginInstagram(transport: GraphTransport): InstagramPubl
       }
     },
     async createContainer(account, input) {
-      const answer = await graph<{ id?: string }>(transport, { method: "POST", path: `${account.id}/media`, params: input.story
-        ? { image_url: input.imageUrl, media_type: "STORIES", access_token: account.token }
-        : { image_url: input.imageUrl, caption: input.caption, access_token: account.token } });
+      const ai = input.aiGenerated && !input.carouselItem ? { is_ai_generated: true } : {};
+      const answer = await graph<{ id?: string }>(transport, { method: "POST", path: `${account.id}/media`, params: input.carouselItem
+        ? { image_url: input.imageUrl, is_carousel_item: true, access_token: account.token }
+        : input.story
+          ? { image_url: input.imageUrl, media_type: "STORIES", ...ai, access_token: account.token }
+          : { image_url: input.imageUrl, caption: input.caption, ...ai, access_token: account.token } });
+      if (!answer.id) throw new MetaError("Instagram gav inget id tillbaka.", "other", 502);
+      return answer.id;
+    },
+    async createCarousel(account, input) {
+      if (input.children.length < 2 || input.children.length > 20) throw new MetaError("En karusell har 2–20 bilder.", "other", 400);
+      const answer = await graph<{ id?: string }>(transport, { method: "POST", path: `${account.id}/media`, params: {
+        media_type: "CAROUSEL", children: input.children.join(","), caption: input.caption, ...(input.aiGenerated ? { is_ai_generated: true } : {}), access_token: account.token,
+      } });
       if (!answer.id) throw new MetaError("Instagram gav inget id tillbaka.", "other", 502);
       return answer.id;
     },

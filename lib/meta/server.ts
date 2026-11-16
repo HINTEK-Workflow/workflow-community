@@ -8,13 +8,19 @@ import { ApiError } from "@/lib/kfid/errors";
 import { read } from "@/lib/kfid/storage";
 import { workflowReportFont } from "@/lib/workflow/report-server";
 import {
-  debugToken, deleteObject, exchangeUserToken, facebookPhoto, facebookPhotoStory, fetchTransport, GRAPH_VERSION, graphIsLocal, INSTAGRAM_SCOPES, isGraphId, listPages, MetaError, missingScopes,
+  debugToken, deleteObject, exchangeUserToken, facebookMultiPhotoPost, facebookPhoto, facebookPhotoStory, fetchTransport, GRAPH_VERSION, graphIsLocal, INSTAGRAM_SCOPES, isGraphId, listPages, MetaError, missingScopes,
   type GraphTransport, type TokenInfo,
 } from "./graph";
 import sharp from "sharp";
+import { publicSite } from "@/lib/public-site";
 import { brandColour, IMAGE_HEIGHT, IMAGE_WIDTH, renderPostImage, type PostBrand, type PostFormat, type PostImageInput } from "./image";
+import { createImageCache, imageCacheKey } from "./image-cache";
 import { facebookLoginInstagram, waitForContainer, type InstagramPublisher } from "./instagram";
-import { BODY_MAX, CAPTION_STORE_MAX, draftFromWebsitePage, facebookCaption, HEADING_MAX, instagramCaption, isLogoPlate, isLogoSize, isLogoVariant, isTemplate, LINK_MAX, linkedInCommentary, normalizeHashtags, postProblem, safeLink, type PostText } from "./text";
+import { cancelSummary, cancelWaiting, finishProgress, initialProgress, progressOf, setStep, type PublishProgress, type StepKey, type StepStatus } from "./progress";
+import {
+  BODY_MAX, CAPTION_STORE_MAX, draftFromWebsitePage, EXTRA_IMAGES_MAX, facebookCaption, HEADING_MAX, INSTAGRAM_TEXT_MAX, instagramCaption, isLogoPlate, isLogoSize, isLogoVariant, isTemplate, LINK_MAX, linkedInCommentary,
+  normalizeHashtags, postProblem, safeLink, type PostText,
+} from "./text";
 
 /**
  * Facebook och Instagram (2026-11-10) on the server: a company's own Meta app, the page and Instagram account it posts to, and
@@ -275,11 +281,16 @@ const postSelect = {
   id: true, source: true, sourceRef: true, status: true, heading: true, body: true, caption: true, hashtags: true, link: true, template: true, toFacebook: true, toInstagram: true, toLinkedIn: true, toNewsletter: true, newsletterMail: true,
   toStory: true, storyFacebookId: true, storyInstagramId: true, logoVariant: true, logoSize: true, logoPlate: true,
   backgroundSource: true, facebookPostId: true, instagramMediaId: true, linkedInPostId: true, publishedAt: true, lastError: true, testedAt: true, testResult: true, createdAt: true, updatedAt: true,
+  // 0.67.0 (2026-11-16): Bara på Instagram, Kampanjlänkar, the AI disclosure, the latest run's steps and the extra pictures (never their bytes).
+  instagramText: true, campaignLinks: true, aiGenerated: true, publishProgress: true,
+  images: { select: { id: true, position: true, source: true }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] },
 } satisfies Prisma.SocialPostSelect;
 type PostRow = Prisma.SocialPostGetPayload<{ select: typeof postSelect }>;
 const postOut = (post: PostRow) => ({
   ...post, publishedAt: post.publishedAt?.toISOString() ?? null, testedAt: post.testedAt?.toISOString() ?? null,
   createdAt: post.createdAt.toISOString(), updatedAt: post.updatedAt.toISOString(),
+  images: post.images.map((image) => ({ id: image.id, source: image.source === "uppladdad" ? "uppladdad" : "webbplatsen" })),
+  publishProgress: progressOf(post.publishProgress) as PublishProgress | null,
 });
 export type PostView = ReturnType<typeof postOut>;
 
@@ -303,7 +314,9 @@ export type PostInput = Partial<PostText> & { template?: string; toFacebook?: bo
   /** Bakgrund bakom logotypen (2026-11-15): box (Ruta) or none (Ingen). */
   logoPlate?: string | null;
   /** The newsletter's own fields (lib/mail/post-newsletter-mail.ts); null: everything follows the post again. */
-  newsletterMail?: NewsletterMail | null };
+  newsletterMail?: NewsletterMail | null;
+  /** Innehåller AI-genererat ljud eller bild (2026-11-16). */
+  aiGenerated?: boolean };
 
 function cleanInput(input: PostInput) {
   const data: Prisma.SocialPostUncheckedUpdateInput = {};
@@ -322,6 +335,9 @@ function cleanInput(input: PostInput) {
   if (input.toLinkedIn !== undefined) data.toLinkedIn = input.toLinkedIn;
   if (input.toNewsletter !== undefined) data.toNewsletter = input.toNewsletter;
   if (input.toStory !== undefined) data.toStory = input.toStory;
+  if (input.instagramText !== undefined) data.instagramText = input.instagramText.slice(0, INSTAGRAM_TEXT_MAX);
+  if (input.campaignLinks !== undefined) data.campaignLinks = input.campaignLinks;
+  if (input.aiGenerated !== undefined) data.aiGenerated = input.aiGenerated;
   if (input.logoVariant !== undefined) { if (!isLogoVariant(input.logoVariant)) throw new ApiError(400, "Okänd logga."); data.logoVariant = input.logoVariant; }
   if (input.logoSize !== undefined) { if (!isLogoSize(input.logoSize)) throw new ApiError(400, "Okänd storlek på loggan."); data.logoSize = input.logoSize; }
   if (input.logoPlate !== undefined) { if (input.logoPlate !== null && !isLogoPlate(input.logoPlate)) throw new ApiError(400, "Okänd bakgrund bakom loggan."); data.logoPlate = input.logoPlate; }
@@ -353,9 +369,15 @@ export async function createPost(actor: Actor, input: PostInput) {
   return postOut(post);
 }
 
+/** A post that may be changed: not published, not being published and no Testpublicering running (2026-11-16). */
+function requireEditable(post: PostRow) {
+  if (post.status === "published" || post.status === "publishing") throw new ApiError(409, "Ett publicerat inlägg kan inte ändras. Gör ett nytt.");
+  if (progressOf(post.publishProgress)?.running) throw new ApiError(409, "Vänta tills testpubliceringen är klar.");
+}
+
 export async function updatePost(actor: Actor, id: string, input: PostInput) {
   const post = await postOf(actor.organizationId, id);
-  if (post.status === "published" || post.status === "publishing") throw new ApiError(409, "Ett publicerat inlägg kan inte ändras. Gör ett nytt.");
+  requireEditable(post);
   await checkNewsletterTick(actor, input);
   const updated = await prisma.socialPost.update({ where: { id: post.id, organizationId: actor.organizationId }, data: { ...cleanInput(input), updatedById: actor.userId }, select: postSelect });
   await scheduleChanged(actor.organizationId, post.id);
@@ -365,7 +387,7 @@ export async function updatePost(actor: Actor, id: string, input: PostInput) {
 /** Removes the post from Workflow (never from Facebook or Instagram). */
 export async function deletePost(actor: Actor, id: string) {
   const post = await postOf(actor.organizationId, id);
-  if (post.status === "publishing") throw new ApiError(409, "Inlägget publiceras just nu.");
+  if (post.status === "publishing" || progressOf(post.publishProgress)?.running) throw new ApiError(409, "Inlägget publiceras just nu.");
   await prisma.socialPost.deleteMany({ where: { id: post.id, organizationId: actor.organizationId } });
   await scheduleChanged(actor.organizationId, post.id, true);
   await audit(actor, "meta_post", `Tog bort inlägget (id ${post.id}) från Workflow.`);
@@ -406,25 +428,33 @@ export async function draftFromWebsite(actor: Actor, page: { id: number; title: 
  * A background picture for the post (Inlägg, 2026-11-10): a picture of the company's site or of a page (fetched by the server under
  * Min webbsida's rules, never by the browser) or an upload, stored as one 1080 × 1350 JPEG (4:5) with the post. null removes it.
  */
-export async function setPostBackground(actor: Actor, id: string, source: { url: string } | { bytes: Uint8Array; type: string } | null) {
+export type PictureSource = { url: string } | { bytes: Uint8Array; type: string };
+
+/** A picture from the company's site (fetched by the server under Min webbsida's rules) or an upload, as one 1080 × 1350 JPEG. */
+async function normalPicture(organizationId: string, source: PictureSource) {
+  let bytes: Uint8Array;
+  let label: string;
+  if ("url" in source) {
+    const { fetchImageForPost } = await import("@/lib/website/server");
+    bytes = new Uint8Array((await fetchImageForPost(organizationId, source.url)).bytes);
+    label = source.url.slice(0, 500);
+  } else {
+    const { imageSignature, MEDIA_TYPES } = await import("@/lib/website/wp-client");
+    if (!MEDIA_TYPES[source.type] || !imageSignature(source.bytes, source.type)) throw new ApiError(400, "Bara PNG, JPEG, WebP och GIF kan användas.");
+    bytes = source.bytes;
+    label = "uppladdad";
+  }
+  const normal = await sharp(Buffer.from(bytes), { limitInputPixels: 60_000_000 }).rotate().resize(IMAGE_WIDTH, IMAGE_HEIGHT, { fit: "cover" }).jpeg({ quality: 85 }).toBuffer().catch(() => { throw new ApiError(400, "Bilden kunde inte läsas."); });
+  return { bytes: new Uint8Array(normal), label };
+}
+
+export async function setPostBackground(actor: Actor, id: string, source: PictureSource | null) {
   const post = await postOf(actor.organizationId, id);
-  if (post.status === "published" || post.status === "publishing") throw new ApiError(409, "Ett publicerat inlägg kan inte ändras. Gör ett nytt.");
+  requireEditable(post);
   let data: { background: Uint8Array<ArrayBuffer> | null; backgroundSource: string | null } = { background: null, backgroundSource: null };
   if (source) {
-    let bytes: Uint8Array;
-    let label: string;
-    if ("url" in source) {
-      const { fetchImageForPost } = await import("@/lib/website/server");
-      bytes = new Uint8Array((await fetchImageForPost(actor.organizationId, source.url)).bytes);
-      label = source.url.slice(0, 500);
-    } else {
-      const { imageSignature, MEDIA_TYPES } = await import("@/lib/website/wp-client");
-      if (!MEDIA_TYPES[source.type] || !imageSignature(source.bytes, source.type)) throw new ApiError(400, "Bara PNG, JPEG, WebP och GIF kan användas.");
-      bytes = source.bytes;
-      label = "uppladdad";
-    }
-    const normal = await sharp(Buffer.from(bytes), { limitInputPixels: 60_000_000 }).rotate().resize(IMAGE_WIDTH, IMAGE_HEIGHT, { fit: "cover" }).jpeg({ quality: 85 }).toBuffer().catch(() => { throw new ApiError(400, "Bilden kunde inte läsas."); });
-    data = { background: new Uint8Array(normal), backgroundSource: label };
+    const picture = await normalPicture(actor.organizationId, source);
+    data = { background: picture.bytes, backgroundSource: picture.label };
   }
   const updated = await prisma.socialPost.update({ where: { id: post.id, organizationId: actor.organizationId }, data: { ...data, updatedById: actor.userId }, select: postSelect });
   await scheduleChanged(actor.organizationId, post.id);
@@ -435,6 +465,60 @@ export async function setPostBackground(actor: Actor, id: string, source: { url:
 const backgroundOf = async (organizationId: string, id: string) =>
   (await prisma.socialPost.findFirst({ where: { id, organizationId }, select: { background: true } }))?.background ?? null;
 
+// ---------- Fler bilder (2026-11-16) ----------
+
+/**
+ * Fler bilder (2026-11-15, built 2026-11-16): pictures 2–10 of a post, after the drawn one – an Instagram carousel and a
+ * Facebook post with several photos. Each is a picture of the company's site or an upload, stored as it is (1080 × 1350, no
+ * template on it). Only the company's own post; changed like the background, so a scheduled post asks for a new approval.
+ */
+export async function addPostImage(actor: Actor, id: string, source: PictureSource) {
+  const post = await postOf(actor.organizationId, id);
+  requireEditable(post);
+  if (post.images.length >= EXTRA_IMAGES_MAX) throw new ApiError(409, `Ett inlägg har högst ${EXTRA_IMAGES_MAX + 1} bilder.`);
+  const picture = await normalPicture(actor.organizationId, source);
+  const last = await prisma.socialPostImage.findFirst({ where: { organizationId: actor.organizationId, postId: post.id }, orderBy: { position: "desc" }, select: { position: true } });
+  await prisma.socialPostImage.create({ data: { organizationId: actor.organizationId, postId: post.id, position: (last?.position ?? 0) + 1, bytes: picture.bytes, source: picture.label } });
+  return touchPost(actor, post.id, `Lade till en bild i inlägget (id ${post.id}).`);
+}
+
+export async function removePostImage(actor: Actor, id: string, imageId: string) {
+  const post = await postOf(actor.organizationId, id);
+  requireEditable(post);
+  const removed = await prisma.socialPostImage.deleteMany({ where: { id: imageId, postId: post.id, organizationId: actor.organizationId } });
+  if (!removed.count) throw new ApiError(404, "Bilden finns inte.");
+  return touchPost(actor, post.id, `Tog bort en bild från inlägget (id ${post.id}).`);
+}
+
+/** Moves a picture one step earlier (-1) or later (1). */
+export async function movePostImage(actor: Actor, id: string, imageId: string, step: -1 | 1) {
+  const post = await postOf(actor.organizationId, id);
+  requireEditable(post);
+  const order = post.images.map((image) => image.id);
+  const at = order.indexOf(imageId);
+  if (at < 0) throw new ApiError(404, "Bilden finns inte.");
+  const to = at + step;
+  if (to < 0 || to >= order.length) return postOut(post);
+  [order[at], order[to]] = [order[to], order[at]];
+  await prisma.$transaction(order.map((one, index) => prisma.socialPostImage.updateMany({ where: { id: one, postId: post.id, organizationId: actor.organizationId }, data: { position: index + 1 } })));
+  return touchPost(actor, post.id, null);
+}
+
+async function touchPost(actor: Actor, postId: string, auditText: string | null) {
+  const updated = await prisma.socialPost.update({ where: { id: postId, organizationId: actor.organizationId }, data: { updatedById: actor.userId }, select: postSelect });
+  await scheduleChanged(actor.organizationId, postId);
+  if (auditText) await audit(actor, "meta_post", auditText);
+  return postOut(updated);
+}
+
+/** One extra picture's bytes (the company's own post only), or null. */
+export async function postExtraImage(organizationId: string, postId: string, imageId: string) {
+  return (await prisma.socialPostImage.findFirst({ where: { id: imageId, postId, organizationId }, select: { bytes: true } }))?.bytes ?? null;
+}
+
+const extraImagesOf = (organizationId: string, postId: string) =>
+  prisma.socialPostImage.findMany({ where: { organizationId, postId }, orderBy: [{ position: "asc" }, { createdAt: "asc" }], select: { id: true, bytes: true } });
+
 // ---------- the picture ----------
 
 /** Which of the company's logos exist (Logga, 2026-11-13): the editor marks a missing variant. */
@@ -443,21 +527,40 @@ export async function logoAvailability(organizationId: string) {
   return { main: Boolean(settings?.logoPath), onDark: Boolean(settings?.logoOnDarkPath), onLight: Boolean(settings?.logoOnLightPath), black: Boolean(settings?.logoBlackPath) };
 }
 
-async function brandOf(organizationId: string): Promise<PostBrand> {
+async function brandSettingsOf(organizationId: string) {
   const [settings, organization] = await Promise.all([
     prisma.workspaceSettings.findUnique({ where: { organizationId }, select: { companyName: true, logoPath: true, logoOnDarkPath: true, logoOnLightPath: true, logoBlackPath: true, themePrimary: true, reportPrimary: true } }),
     prisma.organization.findUnique({ where: { id: organizationId }, select: { name: true } }),
   ]);
+  return { settings, organizationName: organization?.name ?? "" };
+}
+
+async function brandOf({ settings, organizationName }: Awaited<ReturnType<typeof brandSettingsOf>>): Promise<PostBrand> {
   // The company's own files only (its settings row); one that cannot be read counts as missing.
   const file = (key: string | null | undefined) => (key ? read(key).then((bytes) => new Uint8Array(bytes)).catch(() => null) : Promise.resolve(null));
   const [logo, onDark, onLight, black] = await Promise.all([file(settings?.logoPath), file(settings?.logoOnDarkPath), file(settings?.logoOnLightPath), file(settings?.logoBlackPath)]);
-  return { primary: brandColour(settings?.themePrimary, brandColour(settings?.reportPrimary)), companyName: settings?.companyName || organization?.name || "", logo, logos: { onDark, onLight, black } };
+  return { primary: brandColour(settings?.themePrimary, brandColour(settings?.reportPrimary)), companyName: settings?.companyName || organizationName || "", logo, logos: { onDark, onLight, black } };
 }
+
+/** Förhandsbildens cache (2026-11-16, lib/meta/image-cache.ts): the same content is drawn once per process. */
+const imageCache = createImageCache();
+export const clearImageCacheForTests = () => imageCache.clear();
 
 /** The picture; `postId` adds that post's background (the company's own post only); `format` story is the 9:16 story picture. */
 export async function renderImage(organizationId: string, input: PostImageInput, postId?: string | null, format: PostFormat = "feed") {
-  const [brand, fonts, background] = await Promise.all([brandOf(organizationId), workflowReportFont(), postId ? backgroundOf(organizationId, postId) : null]);
-  return renderPostImage(input, brand, fonts, background, format);
+  const [brandSettings, background] = await Promise.all([brandSettingsOf(organizationId), postId ? backgroundOf(organizationId, postId) : null]);
+  const { settings, organizationName } = brandSettings;
+  // Everything the picture is drawn from; the logo files by their stored keys (an upload is stored under a new key).
+  const key = imageCacheKey({
+    organizationId, format, heading: input.heading, body: input.body, template: input.template, logoVariant: input.logoVariant ?? null, logoSize: input.logoSize ?? null, logoPlate: input.logoPlate ?? null,
+    brand: settings ?? null, organizationName,
+  }, background);
+  const cached = imageCache.get(key);
+  if (cached) return cached;
+  const [brand, fonts] = await Promise.all([brandOf(brandSettings), workflowReportFont()]);
+  const bytes = await renderPostImage(input, brand, fonts, background, format);
+  imageCache.set(key, bytes);
+  return bytes;
 }
 
 export async function postImage(organizationId: string, id: string, format: PostFormat = "feed") {
@@ -470,35 +573,64 @@ const IMAGE_KEY = /^[A-Za-z0-9_-]{43}$/;
 
 /**
  * The picture behind a post's short-lived public address (Instagram fetches it), or null. No session; nothing else is shown.
- * Each picture has its own key (2026-11-13): the post's (4:5) and the story's (9:16), so both containers can exist at once.
+ * Each picture has its own key (2026-11-13): the post's (4:5) and the story's (9:16), so both containers can exist at once; and
+ * (2026-11-16) each extra picture of a carousel its own.
  */
 export async function publicPostImage(key: string) {
   if (!IMAGE_KEY.test(key)) return null;
   const hash = keyHash(key);
   const post = await prisma.socialPost.findFirst({ where: { OR: [{ imageKeyHash: hash }, { storyImageKeyHash: hash }] }, select: { id: true, organizationId: true, heading: true, body: true, template: true, logoVariant: true, logoSize: true, logoPlate: true, imageKeyHash: true, imageKeyExpiresAt: true, storyImageKeyExpiresAt: true } });
-  if (!post) return null;
-  const story = post.imageKeyHash !== hash;
-  const expires = story ? post.storyImageKeyExpiresAt : post.imageKeyExpiresAt;
-  if (!expires || expires.getTime() < Date.now()) return null;
-  return renderImage(post.organizationId, post, post.id, story ? "story" : "feed");
+  if (post) {
+    const story = post.imageKeyHash !== hash;
+    const expires = story ? post.storyImageKeyExpiresAt : post.imageKeyExpiresAt;
+    if (!expires || expires.getTime() < Date.now()) return null;
+    return renderImage(post.organizationId, post, post.id, story ? "story" : "feed");
+  }
+  const extra = await prisma.socialPostImage.findFirst({ where: { imageKeyHash: hash }, select: { bytes: true, imageKeyExpiresAt: true } });
+  if (!extra?.imageKeyExpiresAt || extra.imageKeyExpiresAt.getTime() < Date.now()) return null;
+  return Buffer.from(extra.bytes);
 }
 
+const imageAddress = (key: string) => `${new URL(env.APP_URL).origin}/api/meta/image/${key}`;
 async function issueImageAddress(organizationId: string, postId: string, format: PostFormat = "feed") {
   const key = randomBytes(32).toString("base64url");
   const expires = new Date(Date.now() + IMAGE_KEY_MS);
   await prisma.socialPost.update({ where: { id: postId, organizationId }, data: format === "story" ? { storyImageKeyHash: keyHash(key), storyImageKeyExpiresAt: expires } : { imageKeyHash: keyHash(key), imageKeyExpiresAt: expires } });
-  return `${new URL(env.APP_URL).origin}/api/meta/image/${key}`;
+  return imageAddress(key);
 }
 const dropImageAddress = (organizationId: string, postId: string, format: PostFormat = "feed") => prisma.socialPost.updateMany({ where: { id: postId, organizationId },
   data: format === "story" ? { storyImageKeyHash: null, storyImageKeyExpiresAt: null } : { imageKeyHash: null, imageKeyExpiresAt: null } });
+/** Karusell (2026-11-16): an extra picture's own short-lived address. */
+async function issueExtraAddress(organizationId: string, postId: string, imageId: string) {
+  const key = randomBytes(32).toString("base64url");
+  await prisma.socialPostImage.updateMany({ where: { id: imageId, postId, organizationId }, data: { imageKeyHash: keyHash(key), imageKeyExpiresAt: new Date(Date.now() + IMAGE_KEY_MS) } });
+  return imageAddress(key);
+}
+const dropExtraAddresses = (organizationId: string, postId: string) => prisma.socialPostImage.updateMany({ where: { postId, organizationId }, data: { imageKeyHash: null, imageKeyExpiresAt: null } });
+
+/**
+ * Kampanjlänkar (2026-11-16): the installation's own hosts – the app and, when there is one, the public site and its www. twin
+ * (Workflow: app.example.com, example.com, www.example.com). A link to any of them gets the channel's ?via=.
+ */
+export function campaignHosts(): string[] {
+  const hosts = new Set<string>();
+  try { hosts.add(new URL(env.APP_URL).host.toLowerCase()); } catch { /* no app address */ }
+  const site = publicSite();
+  if (site) for (const host of [site.siteHost, site.appHost, ...site.aliasHosts]) hosts.add(host);
+  return [...hosts].filter(Boolean);
+}
 
 // ---------- publishing ----------
 
-type Outcome = { ok: boolean; id?: string | null; message: string };
+type Outcome = { ok: boolean; id?: string | null; message: string;
+  /** Avbryt (2026-11-16): stopped before anything was sent on this channel. */
+  cancelled?: boolean };
 export type PublishResult = { post: PostView; facebook: Outcome | null; instagram: Outcome | null;
   /** Även som story (2026-11-13): the stories, each reported (and retried) on its own. */
   facebookStory: Outcome | null; instagramStory: Outcome | null;
-  linkedin: Outcome | null; newsletter: Outcome | null; message: string };
+  linkedin: Outcome | null; newsletter: Outcome | null; message: string;
+  /** Avbryt (2026-11-16): the run was stopped before every channel was tried. */
+  cancelled?: boolean };
 
 const outcomeOf = (error: unknown): Outcome => ({ ok: false, message: error instanceof MetaError ? error.message : error instanceof ApiError ? error.message : "Något gick fel." });
 /** The channels' names in the order they are published (the stories are channels of their own, 2026-11-13). */
@@ -514,20 +646,18 @@ const outcomeLines = (outcomes: Record<ChannelKey, Outcome | null>, failedOnly =
 /** "A", "A och B", "A, B och C". */
 const listed = (names: string[]) => (names.length > 1 ? `${names.slice(0, -1).join(", ")} och ${names[names.length - 1]}` : names[0] ?? "");
 
+/** Publiceringens förlopp (2026-11-16): how a run reports its steps and asks whether Avbryt was pressed. */
+type PublishHooks = { step(key: StepKey, status: StepStatus, detail?: string | null): Promise<void>; cancelled(): Promise<boolean> };
+const NO_HOOKS: PublishHooks = { step: async () => undefined, cancelled: async () => false };
+const CANCELLED: Outcome = { ok: false, cancelled: true, message: "Avbrutet innan något skickades." };
+const NOT_TRIED: Outcome = { ok: false, message: "Inte försökt: token gäller inte längre." };
+const STEP_OF: Record<ChannelKey, StepKey> = { facebook: "facebook", instagram: "instagram", facebookStory: "facebookStory", instagramStory: "instagramStory", linkedin: "linkedin" };
+
 /**
- * Publicera (`live`) or Testpublicering (`test`), always an admin's press and only when publishing is switched on for the
- * company – for Facebook and Instagram under their connection, for LinkedIn (2026-11-11) under its own. A test posts a picture to
- * the page that nobody sees and removes it again, makes Instagram fetch and check the picture without publishing it and uploads
- * the picture to LinkedIn without a post – so the whole way is tried while nothing becomes public. A live post is claimed first
- * (draft → publishing), so two presses never post twice; a post where one channel failed is retried for that one only.
- *
- * Även som story (2026-11-13): with toStory, the post's picture in 9:16 also becomes a story on the chosen Facebook page and/or
- * Instagram account, after the feed posts – Instagram a STORIES container from the story picture's own address, Facebook an
- * unpublished upload made the page's story (photo_stories). Each story is a channel of its own: its id is kept, a failed one makes
- * the post "partial" and is retried alone. A test checks the story picture the same way as the post's, and publishes nothing.
- * A story has no caption and no link (Meta's API cannot add link stickers).
+ * Every check before anything is sent, and – for Publicera – the claim (draft → publishing), so two presses never post twice.
+ * Throws the reason when the post cannot be published now.
  */
-export async function publishPost(actor: Actor, id: string, mode: "test" | "live", options: { newsletter?: boolean } = {}): Promise<PublishResult> {
+async function preparePublish(actor: Actor, id: string, mode: "test" | "live", options: { newsletter?: boolean }) {
   const { organizationId } = actor;
   const connection = await row(organizationId);
   const { linkedInPublishBlock, linkedInPublishingOn, publishToLinkedIn } = await import("@/lib/linkedin/server");
@@ -559,54 +689,149 @@ export async function publishPost(actor: Actor, id: string, mode: "test" | "live
     const claimed = await prisma.socialPost.updateMany({ where: { id: post.id, organizationId, status: { in: ["draft", "failed", "partial"] } }, data: { status: "publishing", lastError: null } });
     if (!claimed.count) throw new ApiError(409, "Inlägget publiceras redan.");
   }
-  let facebook: Outcome | null = null;
-  let instagramOutcome: Outcome | null = null;
-  let facebookStory: Outcome | null = null;
-  let instagramStory: Outcome | null = null;
-  let linkedin: Outcome | null = null;
-  let tokenBroken: MetaError | null = null;
-  const catchMeta = (error: unknown) => { if (error instanceof MetaError && error.kind === "token") tokenBroken = error; return outcomeOf(error); };
+  return { actor, mode, post, connection, pageToken, toFacebook, toInstagram, toLinkedIn, toFacebookStory, toInstagramStory, withNewsletter, publishToLinkedIn };
+}
+type PublishPlan = Awaited<ReturnType<typeof preparePublish>>;
+
+/** The steps a run will show, in order. */
+const stepsOf = (plan: PublishPlan): StepKey[] => {
+  const chosen: [boolean, StepKey][] = [[plan.toFacebook, "facebook"], [plan.toInstagram, "instagram"], [plan.toFacebookStory, "facebookStory"], [plan.toInstagramStory, "instagramStory"],
+    [plan.toLinkedIn, "linkedin"], [Boolean(plan.withNewsletter), "newsletter"]];
+  return chosen.filter(([on]) => on).map(([, key]) => key);
+};
+
+/**
+ * Facebook: one picture as before; several (Fler bilder, 2026-11-16) are uploaded unpublished and then made one post on the feed.
+ * A test removes what it uploaded; so does a run that stops before the post is made.
+ */
+async function facebookPost(page: { id: string; token: string }, pictures: readonly Uint8Array[], caption: string, mode: "test" | "live", cancelled: () => Promise<boolean>, detail: (text: string) => Promise<void>): Promise<Outcome> {
+  if (pictures.length === 1) {
+    const photo = await facebookPhoto(transport(), page, { bytes: pictures[0], caption, published: mode === "live" });
+    if (mode === "test") { await deleteObject(transport(), photo.photoId, page.token).catch(() => undefined); return { ok: true, message: "Facebook tog emot bilden (som inte visades och togs bort igen)." }; }
+    return { ok: true, id: photo.postId ?? photo.photoId, message: "Publicerat på Facebook." };
+  }
+  const ids: string[] = [];
+  let posted = false;
   try {
-    const bytes = await renderImage(organizationId, post, post.id);
-    if (toFacebook) {
-      const page = { id: connection!.pageId!, token: pageToken! };
-      try {
-        const photo = await facebookPhoto(transport(), page, { bytes, caption: facebookCaption(post), published: mode === "live" });
-        if (mode === "test") { await deleteObject(transport(), photo.photoId, page.token).catch(() => undefined); facebook = { ok: true, message: "Facebook tog emot bilden (som inte visades och togs bort igen)." }; }
-        else facebook = { ok: true, id: photo.postId ?? photo.photoId, message: "Publicerat på Facebook." };
-      } catch (error) { facebook = catchMeta(error); }
+    for (const [index, picture] of pictures.entries()) {
+      await detail(`Laddar upp bild ${index + 1} av ${pictures.length}…`);
+      ids.push((await facebookPhoto(transport(), page, { bytes: picture, caption: "", published: false })).photoId);
     }
-    if (toInstagram && !tokenBroken) {
-      const account = { id: connection!.instagramId!, token: pageToken! };
-      try {
-        const publisher = instagram();
-        if (mode === "live") {
-          const remaining = await publisher.remainingToday(account);
-          if (remaining === 0) throw new MetaError("Instagram tillåter inte fler inlägg från kontot i dag. Försök igen i morgon.", "rate", 429);
-        }
-        const imageUrl = await issueImageAddress(organizationId, post.id);
-        try {
-          const container = await publisher.createContainer(account, { imageUrl, caption: instagramCaption(post) });
-          await waitForContainer(publisher, account, container, metaTiming);
-          instagramOutcome = mode === "live"
-            ? { ok: true, id: await publisher.publish(account, container), message: "Publicerat på Instagram." }
-            : { ok: true, message: "Instagram hämtade och godkände bilden (inget publicerades)." };
-        } finally { await dropImageAddress(organizationId, post.id).catch(() => undefined); }
-      } catch (error) { instagramOutcome = catchMeta(error); }
-    } else if (toInstagram) instagramOutcome = { ok: false, message: "Inte försökt: token gäller inte längre." };
-    if (toFacebookStory || toInstagramStory) {
+    if (mode === "test") return { ok: true, message: `Facebook tog emot ${ids.length} bilder (som inte visades och togs bort igen).` };
+    if (await cancelled()) return { ...CANCELLED, message: "Avbrutet innan inlägget gjordes. Inget publicerades på Facebook." };
+    await detail("Publicerar…");
+    const id = await facebookMultiPhotoPost(transport(), page, { photoIds: ids, message: caption });
+    posted = true;
+    return { ok: true, id, message: `Publicerat på Facebook med ${ids.length} bilder.` };
+  } finally {
+    if (!posted) for (const photoId of ids) await deleteObject(transport(), photoId, page.token).catch(() => undefined);
+  }
+}
+
+/**
+ * Instagram: one picture as before; several (Karusell, 2026-11-16) as one child container per picture, then the CAROUSEL container
+ * with the caption. A test waits until Instagram has fetched and accepted everything but publishes nothing.
+ */
+async function instagramPost(plan: PublishPlan, account: { id: string; token: string }, extras: readonly { id: string }[], caption: string, cancelled: () => Promise<boolean>, detail: (text: string) => Promise<void>): Promise<Outcome> {
+  const { mode, post } = plan;
+  const { organizationId } = plan.actor;
+  const publisher = instagram();
+  if (mode === "live") {
+    const remaining = await publisher.remainingToday(account);
+    if (remaining === 0) throw new MetaError("Instagram tillåter inte fler inlägg från kontot i dag. Försök igen i morgon.", "rate", 429);
+  }
+  const ai = post.aiGenerated === true;
+  try {
+    let container: string;
+    const count = extras.length + 1;
+    if (!extras.length) {
+      container = await publisher.createContainer(account, { imageUrl: await issueImageAddress(organizationId, post.id), caption, aiGenerated: ai });
+      await detail("Instagram hämtar bilden…");
+      await waitForContainer(publisher, account, container, metaTiming);
+    } else {
+      const urls = [await issueImageAddress(organizationId, post.id), ...(await Promise.all(extras.map((extra) => issueExtraAddress(organizationId, post.id, extra.id))))];
+      const children: string[] = [];
+      for (const imageUrl of urls) children.push(await publisher.createContainer(account, { imageUrl, caption: "", carouselItem: true }));
+      await detail(`Instagram hämtar ${count} bilder…`);
+      for (const child of children) await waitForContainer(publisher, account, child, metaTiming);
+      container = await publisher.createCarousel(account, { children, caption, aiGenerated: ai });
+      await waitForContainer(publisher, account, container, metaTiming);
+    }
+    if (mode === "test") return { ok: true, message: extras.length ? `Instagram hämtade och godkände ${count} bilder som karusell (inget publicerades).` : "Instagram hämtade och godkände bilden (inget publicerades)." };
+    if (await cancelled()) return { ...CANCELLED, message: "Avbrutet innan publiceringen. Inget publicerades på Instagram." };
+    await detail("Publicerar…");
+    return { ok: true, id: await publisher.publish(account, container), message: extras.length ? `Publicerat på Instagram som karusell med ${count} bilder.` : "Publicerat på Instagram." };
+  } finally {
+    await dropImageAddress(organizationId, post.id).catch(() => undefined);
+    if (extras.length) await dropExtraAddresses(organizationId, post.id).catch(() => undefined);
+  }
+}
+
+/**
+ * Publicera (`live`) or Testpublicering (`test`), always an admin's press and only when publishing is switched on for the
+ * company – for Facebook and Instagram under their connection, for LinkedIn (2026-11-11) under its own. A test posts a picture to
+ * the page that nobody sees and removes it again, makes Instagram fetch and check the picture without publishing it and uploads
+ * the picture to LinkedIn without a post – so the whole way is tried while nothing becomes public. A live post is claimed first
+ * (draft → publishing), so two presses never post twice; a post where one channel failed is retried for that one only.
+ *
+ * Även som story (2026-11-13): with toStory, the post's picture in 9:16 also becomes a story on the chosen Facebook page and/or
+ * Instagram account, after the feed posts – Instagram a STORIES container from the story picture's own address, Facebook an
+ * unpublished upload made the page's story (photo_stories). Each story is a channel of its own: its id is kept, a failed one makes
+ * the post "partial" and is retried alone. A test checks the story picture the same way as the post's, and publishes nothing.
+ * A story has no caption and no link (Meta's API cannot add link stickers).
+ *
+ * 0.67.0 (2026-11-16): Fler bilder (an Instagram carousel, several photos on Facebook; LinkedIn and the stories take the first
+ * picture), Kampanjlänkar (?via= per channel), Bara på Instagram, the AI disclosure (Instagram's is_ai_generated) and the steps
+ * (startPublish runs this on the server and keeps the steps with the post; Avbryt stops what has not begun).
+ */
+export async function publishPost(actor: Actor, id: string, mode: "test" | "live", options: { newsletter?: boolean } = {}): Promise<PublishResult> {
+  return executePublish(await preparePublish(actor, id, mode, options), NO_HOOKS);
+}
+
+async function executePublish(plan: PublishPlan, hooks: PublishHooks): Promise<PublishResult> {
+  const { actor, mode, post, connection, pageToken } = plan;
+  const { organizationId } = actor;
+  const outcomes: Record<ChannelKey, Outcome | null> = { facebook: null, instagram: null, facebookStory: null, instagramStory: null, linkedin: null };
+  let tokenBroken: MetaError | null = null;
+  let stopped = false;
+  const catchMeta = (error: unknown) => { if (error instanceof MetaError && error.kind === "token") tokenBroken = error; return outcomeOf(error); };
+  const cancelled = async () => { if (!stopped && await hooks.cancelled()) stopped = true; return stopped; };
+  /** Begins a channel's step, unless Avbryt was pressed. */
+  const begin = async (key: StepKey, detail: string) => { if (await cancelled()) return false; await hooks.step(key, "running", detail); return true; };
+  const finish = async (key: ChannelKey, outcome: Outcome) => {
+    outcomes[key] = outcome;
+    await hooks.step(STEP_OF[key], outcome.cancelled ? "cancelled" : outcome.ok ? "done" : "failed", outcome.message);
+  };
+  const detailOf = (key: StepKey) => (text: string) => hooks.step(key, "running", text);
+  const hosts = post.campaignLinks ? campaignHosts() : [];
+  const page = { id: connection?.pageId ?? "", token: pageToken ?? "" };
+  const account = { id: connection?.instagramId ?? "", token: pageToken ?? "" };
+  try {
+    await hooks.step("image", "running", post.images.length ? "Ritar bilden och hämtar de andra bilderna…" : null);
+    const bytes = await renderImage(organizationId, post, post.id);
+    const extras = post.images.length ? await extraImagesOf(organizationId, post.id) : [];
+    const pictures = [new Uint8Array(bytes), ...extras.map((extra) => new Uint8Array(extra.bytes))];
+    await hooks.step("image", "done", pictures.length > 1 ? `${pictures.length} bilder klara.` : "Bilden är klar.");
+    if (plan.toFacebook && await begin("facebook", "Laddar upp bilden…")) {
+      try { await finish("facebook", await facebookPost(page, pictures, facebookCaption(post, hosts), mode, cancelled, detailOf("facebook"))); } catch (error) { await finish("facebook", catchMeta(error)); }
+    }
+    if (plan.toInstagram && tokenBroken) await finish("instagram", NOT_TRIED);
+    else if (plan.toInstagram && await begin("instagram", "Gör i ordning bilden för Instagram…")) {
+      try { await finish("instagram", await instagramPost(plan, account, extras, instagramCaption(post, hosts), cancelled, detailOf("instagram"))); } catch (error) { await finish("instagram", catchMeta(error)); }
+    }
+    if (plan.toFacebookStory || plan.toInstagramStory) {
       const storyBytes = await renderImage(organizationId, post, post.id, "story");
-      if (toFacebookStory && !tokenBroken) {
-        const page = { id: connection!.pageId!, token: pageToken! };
+      if (plan.toFacebookStory && tokenBroken) await finish("facebookStory", NOT_TRIED);
+      else if (plan.toFacebookStory && await begin("facebookStory", "Laddar upp storybilden…")) {
         try {
           // Its own upload, never shown as a post: Meta refuses a picture already used in a published post.
           const photo = await facebookPhoto(transport(), page, { bytes: storyBytes, caption: "", published: false });
-          if (mode === "test") { await deleteObject(transport(), photo.photoId, page.token).catch(() => undefined); facebookStory = { ok: true, message: "Facebook tog emot storybilden (som inte visades och togs bort igen)." }; }
-          else facebookStory = { ok: true, id: await facebookPhotoStory(transport(), page, photo.photoId), message: "Publicerad som story på Facebook." };
-        } catch (error) { facebookStory = catchMeta(error); }
-      } else if (toFacebookStory) facebookStory = { ok: false, message: "Inte försökt: token gäller inte längre." };
-      if (toInstagramStory && !tokenBroken) {
-        const account = { id: connection!.instagramId!, token: pageToken! };
+          if (mode === "test") { await deleteObject(transport(), photo.photoId, page.token).catch(() => undefined); await finish("facebookStory", { ok: true, message: "Facebook tog emot storybilden (som inte visades och togs bort igen)." }); }
+          else await finish("facebookStory", { ok: true, id: await facebookPhotoStory(transport(), page, photo.photoId), message: "Publicerad som story på Facebook." });
+        } catch (error) { await finish("facebookStory", catchMeta(error)); }
+      }
+      if (plan.toInstagramStory && tokenBroken) await finish("instagramStory", NOT_TRIED);
+      else if (plan.toInstagramStory && await begin("instagramStory", "Instagram hämtar storybilden…")) {
         try {
           const publisher = instagram();
           if (mode === "live") {
@@ -615,19 +840,22 @@ export async function publishPost(actor: Actor, id: string, mode: "test" | "live
           }
           const imageUrl = await issueImageAddress(organizationId, post.id, "story");
           try {
-            const container = await publisher.createContainer(account, { imageUrl, caption: "", story: true });
+            const container = await publisher.createContainer(account, { imageUrl, caption: "", story: true, aiGenerated: post.aiGenerated === true });
             await waitForContainer(publisher, account, container, metaTiming);
-            instagramStory = mode === "live"
-              ? { ok: true, id: await publisher.publish(account, container), message: "Publicerad som story på Instagram." }
-              : { ok: true, message: "Instagram hämtade och godkände storybilden (inget publicerades)." };
+            if (mode === "test") await finish("instagramStory", { ok: true, message: "Instagram hämtade och godkände storybilden (inget publicerades)." });
+            else if (await cancelled()) await finish("instagramStory", { ...CANCELLED, message: "Avbrutet innan publiceringen. Ingen story publicerades på Instagram." });
+            else await finish("instagramStory", { ok: true, id: await publisher.publish(account, container), message: "Publicerad som story på Instagram." });
           } finally { await dropImageAddress(organizationId, post.id, "story").catch(() => undefined); }
-        } catch (error) { instagramStory = catchMeta(error); }
-      } else if (toInstagramStory) instagramStory = { ok: false, message: "Inte försökt: token gäller inte längre." };
+        } catch (error) { await finish("instagramStory", catchMeta(error)); }
+      }
     }
-    if (toLinkedIn) linkedin = await publishToLinkedIn(organizationId, { commentary: linkedInCommentary(post), image: new Uint8Array(bytes), altText: [post.heading, post.body].filter((part) => part.trim()).join(". ") }, mode);
+    if (plan.toLinkedIn && await begin("linkedin", mode === "test" ? "Kontrollerar kopplingen och laddar upp bilden…" : "Laddar upp bilden och publicerar…")) {
+      await finish("linkedin", await plan.publishToLinkedIn(organizationId, { commentary: linkedInCommentary(post, hosts), image: pictures[0], altText: [post.heading, post.body].filter((part) => part.trim()).join(". ") }, mode));
+    }
   } finally {
     if (tokenBroken) await invalidate(organizationId, (tokenBroken as MetaError).message);
     if (mode === "live") {
+      const { facebook, instagram: instagramOutcome, facebookStory, instagramStory, linkedin } = outcomes;
       const fbId = facebook?.ok ? facebook.id ?? null : post.facebookPostId;
       const igId = instagramOutcome?.ok ? instagramOutcome.id ?? null : post.instagramMediaId;
       const liId = linkedin?.ok ? linkedin.id ?? null : post.linkedInPostId;
@@ -636,9 +864,10 @@ export async function publishPost(actor: Actor, id: string, mode: "test" | "live
       const storiesDone = !post.toStory || ((!post.toFacebook || fbStoryId) && (!post.toInstagram || igStoryId));
       const done = (!post.toFacebook || fbId) && (!post.toInstagram || igId) && (!post.toLinkedIn || liId) && storiesDone;
       const any = fbId || igId || liId || fbStoryId || igStoryId;
-      const errors = outcomeLines({ facebook, instagram: instagramOutcome, facebookStory, instagramStory, linkedin }, true).join(" ");
+      const tried = Object.values(outcomes).some((outcome) => outcome && !outcome.cancelled);
+      const errors = outcomeLines(outcomes, true).join(" ");
       await prisma.socialPost.updateMany({ where: { id: post.id, organizationId }, data: {
-        status: done ? "published" : any ? "partial" : (facebook || instagramOutcome || facebookStory || instagramStory || linkedin) ? "failed" : "draft",
+        status: done ? "published" : any ? "partial" : tried ? "failed" : "draft",
         facebookPostId: fbId, instagramMediaId: igId, linkedInPostId: liId, storyFacebookId: fbStoryId, storyInstagramId: igStoryId, lastError: errors || null,
         ...(done ? { publishedAt: new Date(), publishedById: actor.userId } : {}),
       } });
@@ -646,21 +875,75 @@ export async function publishPost(actor: Actor, id: string, mode: "test" | "live
   }
   // The newsletter goes on its own, whatever the channels did, and is reported beside them; at most once per post.
   let newsletter: Outcome | null = null;
-  if (withNewsletter) {
+  if (plan.withNewsletter && await begin("newsletter", "Köar nyhetsbrevet…")) {
     const { sendPostAsNewsletter } = await import("@/lib/mail/post-newsletter");
     newsletter = await sendPostAsNewsletter(actor, post, () => renderImage(organizationId, post, post.id)).catch(() => ({ ok: false, message: "Nyhetsbrevet kunde inte köas. Försök igen." }));
+    await hooks.step("newsletter", newsletter.ok ? "done" : "failed", newsletter.message);
     await audit(actor, "meta_newsletter", `Inlägget (id ${post.id}) som nyhetsbrev: ${newsletter.ok ? "köat eller redan skickat" : "inte skickat"}.`);
   }
-  const outcomes = { facebook, instagram: instagramOutcome, facebookStory, instagramStory, linkedin };
-  const where = listed(CHANNEL_KEYS.filter((key) => outcomes[key]).map((key) => CHANNEL_NAME[key]));
+  const wasCancelled = stopped || Object.values(outcomes).some((outcome) => outcome?.cancelled);
+  const where = listed(CHANNEL_KEYS.filter((key) => outcomes[key] && !outcomes[key]!.cancelled).map((key) => CHANNEL_NAME[key]));
   const okAll = Object.values(outcomes).every((outcome) => !outcome || outcome.ok);
-  const message = mode === "test"
-    ? (okAll ? `Testpubliceringen gick bra (${where}). Inget syns för andra.` : "Testpubliceringen gick inte hela vägen. Se vad som hände nedan.")
-    : (okAll ? `Inlägget är publicerat på ${where}.` : "Inlägget kunde inte publiceras överallt. Se vad som hände nedan.") + (newsletter ? ` ${newsletter.message}` : "");
+  const message = wasCancelled ? (mode === "test" ? "Testpubliceringen avbröts." : "Publiceringen avbröts.")
+    : mode === "test"
+      ? (okAll ? `Testpubliceringen gick bra (${where}). Inget syns för andra.` : "Testpubliceringen gick inte hela vägen. Se vad som hände nedan.")
+      : (okAll ? `Inlägget är publicerat på ${where}.` : "Inlägget kunde inte publiceras överallt. Se vad som hände nedan.") + (newsletter ? ` ${newsletter.message}` : "");
   if (mode === "test") await prisma.socialPost.updateMany({ where: { id: post.id, organizationId }, data: { testedAt: new Date(), testResult: outcomeLines(outcomes).join(" ").slice(0, 500) } });
-  await audit(actor, mode === "live" ? "meta_publish" : "meta_test", `${mode === "live" ? "Publicerade" : "Testpublicerade"} inlägget (id ${post.id}) till ${where || "ingenstans"}: ${okAll ? "klart" : "delvis eller inte"}.`);
-  if (linkedin) await audit(actor, mode === "live" ? "linkedin_publish" : "linkedin_test", `${mode === "live" ? "Publicerade" : "Testpublicerade"} inlägget (id ${post.id}) till LinkedIn: ${linkedin.ok ? "klart" : "inte"}.`);
-  return { post: await getPost(organizationId, post.id), facebook, instagram: instagramOutcome, facebookStory, instagramStory, linkedin, newsletter, message };
+  await audit(actor, mode === "live" ? "meta_publish" : "meta_test", `${mode === "live" ? "Publicerade" : "Testpublicerade"} inlägget (id ${post.id}) till ${where || "ingenstans"}: ${wasCancelled ? "avbrutet" : okAll ? "klart" : "delvis eller inte"}.`);
+  if (outcomes.linkedin) await audit(actor, mode === "live" ? "linkedin_publish" : "linkedin_test", `${mode === "live" ? "Publicerade" : "Testpublicerade"} inlägget (id ${post.id}) till LinkedIn: ${outcomes.linkedin.ok ? "klart" : "inte"}.`);
+  return { post: await getPost(organizationId, post.id), ...outcomes, newsletter, message, cancelled: wasCancelled };
+}
+
+// ---------- Publiceringens förlopp (2026-11-16) ----------
+
+/** The runs in this server process, so the same post is never run twice at once (the stored steps say so to the page). */
+const activeRuns = new Set<string>();
+
+/**
+ * Testpublicering and Publicera from the page (2026-11-15): every check is made at once (a refusal is the answer), then
+ * the run goes on on the server by itself and keeps its steps with the post – the page shows them as they come, also after it
+ * was closed and opened again. The answer is the post with its first steps.
+ */
+export async function startPublish(actor: Actor, id: string, mode: "test" | "live") {
+  const { organizationId } = actor;
+  const current = await prisma.socialPost.findFirst({ where: { id, organizationId }, select: { id: true, publishProgress: true } });
+  if (!current) throw new ApiError(404, "Inlägget finns inte.");
+  if (activeRuns.has(current.id) || progressOf(current.publishProgress)?.running) throw new ApiError(409, "Inlägget publiceras redan. Vänta tills det är klart.");
+  activeRuns.add(current.id);
+  let plan: PublishPlan;
+  try { plan = await preparePublish(actor, current.id, mode, {}); } catch (error) { activeRuns.delete(current.id); throw error; }
+  let progress: PublishProgress = initialProgress(mode, stepsOf(plan));
+  await prisma.socialPost.updateMany({ where: { id: current.id, organizationId }, data: { publishProgress: progress as unknown as Prisma.InputJsonValue } });
+  // Avbryt sets only cancelRequested (cancelPublish); every save keeps the stored value of it, in the same statement.
+  const save = (next: PublishProgress) => prisma.$executeRaw`UPDATE "SocialPost" SET "publishProgress" = jsonb_set(${JSON.stringify(next)}::jsonb, '{cancelRequested}', COALESCE("publishProgress"->'cancelRequested', 'false'::jsonb)) WHERE "id" = ${current.id} AND "organizationId" = ${organizationId}`;
+  const hooks: PublishHooks = {
+    async step(key, status, detail = null) { progress = setStep(progress, key, status, detail); await save(progress).catch(() => undefined); },
+    async cancelled() {
+      const stored = await prisma.socialPost.findFirst({ where: { id: current.id, organizationId }, select: { publishProgress: true } }).catch(() => null);
+      return progressOf(stored?.publishProgress)?.cancelRequested === true;
+    },
+  };
+  void (async () => {
+    let message: string;
+    try {
+      const result = await executePublish(plan, hooks);
+      if (result.cancelled) { progress = cancelWaiting(progress); message = cancelSummary(progress); } else message = result.message;
+    } catch (error) {
+      message = error instanceof ApiError || error instanceof MetaError ? error.message : "Något gick fel under publiceringen. Kontrollera kanalerna innan du försöker igen.";
+    }
+    progress = finishProgress(progress, message);
+    await save(progress).catch(() => undefined);
+  })().catch(() => undefined).finally(() => activeRuns.delete(current.id));
+  return getPost(organizationId, current.id);
+}
+
+/** Avbryt: the running run stops before its next step; what was already sent stays where it is (the run says what). */
+export async function cancelPublish(actor: Actor, id: string) {
+  const post = await postOf(actor.organizationId, id);
+  if (!progressOf(post.publishProgress)?.running) throw new ApiError(409, "Inget publiceras just nu.");
+  await prisma.$executeRaw`UPDATE "SocialPost" SET "publishProgress" = jsonb_set("publishProgress", '{cancelRequested}', 'true'::jsonb) WHERE "id" = ${post.id} AND "organizationId" = ${actor.organizationId} AND "publishProgress" IS NOT NULL`;
+  await audit(actor, "meta_publish_cancel", `Avbröt publiceringen av inlägget (id ${post.id}).`);
+  return getPost(actor.organizationId, post.id);
 }
 
 /** For the tests: the hash a key is stored as. */

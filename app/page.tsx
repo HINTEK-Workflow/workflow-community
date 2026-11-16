@@ -8,7 +8,7 @@ import { recordPageView } from "@/lib/analytics/record";
 import { AppShell, type View } from "@/components/app-shell";
 import { LazyDemoApp as DemoApp } from "@/features/demo/demo-app-lazy";
 import { DEMO_COOKIE, DEMO_VIEWS } from "@/lib/demo";
-import { shellBranding } from "@/lib/branding";
+import { isHintekOrganization, shellBranding } from "@/lib/branding";
 import { publicInstance } from "@/lib/instance";
 
 import { Workspace } from "@/features/kfid/workspace";
@@ -248,8 +248,10 @@ export default async function HomePage({
     redirect(published ? `/?view=workflow_task&taskType=FORM&formId=${encodeURIComponent(published.id)}${context}` : `/?view=new_task${context}`);
   }
   // Beteendeanalys (2026-10-07): the page is counted for the day, anonymously (no person, company or address);
-  // a prefetch is not a visit.
-  if (!(await headers()).get("next-router-prefetch")) recordPageView(view, params.taskType);
+  // a prefetch is not a visit. The installation's own people and a browser the owner switched off are not counted (2026-11-16).
+  const requestHeaders = await headers();
+  if (!requestHeaders.get("next-router-prefetch"))
+    recordPageView(view, params.taskType, { cookie: requestHeaders.get("cookie"), superadmin: user.role === "SUPERADMIN", ownCompany: activeMembership ? isHintekOrganization(activeMembership.organization) : false });
   // Arbetsvy (2026-10-08): the admin's default view for this member; never in Local (no members). Display only.
   const workView = user && !seesAll ? workViewOf(user, preferences ?? null) : null;
   const preferenceData = preferenceObject(preferences ?? null);
