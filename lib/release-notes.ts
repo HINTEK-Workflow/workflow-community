@@ -19,6 +19,20 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "0.66.0",
+    date: "2026-11-16",
+    summary: "Den publika sidan berättar i tre steg hur ett maskinlarm blir en åtgärd, och du loggas inte ut när Workflow uppdateras.",
+    items: [
+      "Den publika sidan är indelad i Koppla, Följ upp och AI. Undersidorna har nya skärmbilder och exempel i PDF.",
+      "Simulatorn i demon går att öppna direkt från den publika sidan.",
+      "Rapportera fel eller förslag syns tydligare i sidfoten och på inloggningssidan.",
+      "Fält och knappar har samma storlek i inloggningen, när du skapar konto och när du rapporterar fel.",
+      "Du loggas inte längre ut när Workflow startar om efter en uppdatering.",
+      "Rondprotokoll får läsbara nummer, och långa företagsnamn får plats i PDF:ernas sidhuvud och sidfot.",
+      "Community: installationen klarar en uppdatering även när den publicerade historiken har ändrats.",
+    ],
+  },
+  {
     version: "0.65.0",
     date: "2026-11-15",
     summary: "Knapparna står på samma plats på alla sidor, och allt på den publika sidan går att ändra i redigeraren.",

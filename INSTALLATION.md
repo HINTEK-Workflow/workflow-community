@@ -74,8 +74,30 @@ Det här gör skriptet:
 - skapar `.env` med nya slumpade hemligheter och lediga portar (från 3000 för appen och 5432 för databasen)
 - startar Workflow och skapar ert konto som superadmin.
 
-Första starten tar 5–10 minuter. Workflow hamnar i mappen `workflow-community` i hemmappen. Vill ni installera för hand,
-se *Manuell installation (för utvecklare)* i [README.sv.md](README.sv.md).
+Första starten tar 5–10 minuter. Vill ni installera för hand, se *Manuell installation (för utvecklare)* i
+[README.sv.md](README.sv.md).
+
+### Var Workflow hamnar
+
+- Workflow hamnar i mappen `workflow-community` i hemmappen, till exempel `/home/anna/workflow-community` eller
+  `C:\Users\anna\workflow-community`.
+- Vill ni ha en annan mapp, ange den med `WORKFLOW_DIR` när ni kör installationsraden. På Linux och macOS:
+
+  ```bash
+  curl -fsSL https://raw.githubusercontent.com/HINTEK-Workflow/workflow-community/main/install.sh | WORKFLOW_DIR="$HOME/workflow-ny" bash
+  ```
+
+  I PowerShell på Windows:
+
+  ```powershell
+  $env:WORKFLOW_DIR = "$HOME\workflow-ny"; irm https://raw.githubusercontent.com/HINTEK-Workflow/workflow-community/main/install.ps1 | iex
+  ```
+
+- Finns Workflow redan i mappen uppdateras den installationen. En ny mapp ger en ny, separat installation med egna
+  inställningar och en egen databas.
+- Använd samma `WORKFLOW_DIR` varje gång ni uppdaterar en installation som inte ligger i standardmappen.
+- Körs Workflow redan i mappen säger skriptet det och väntar i 10 sekunder innan det fortsätter. Tryck Ctrl+C för att
+  avbryta.
 
 ## 3. Ställ in efter första inloggningen
 
@@ -247,6 +269,17 @@ Inom fem minuter efter det ska `tail /var/log/workflow/monitor.log` visa `OK`.
 - Ta en backup och kör sedan installationsraden igen (eller `git pull` följt av `docker compose up -d --build` i
   mappen).
 - Inställningar och data behålls, och databasen uppdateras när Workflow startar.
+
+**Om den publicerade historiken har skrivits om**
+
+Ibland görs historiken i arkivet på GitHub om. Då kan en äldre kopia inte uppdateras på vanligt sätt, och `git pull`
+stoppar med `Not possible to fast-forward`. Kör installationsraden i stället. Skriptet gör så här:
+
+- Har ni inte ändrat något i mappen flyttar skriptet den till den nya versionen. Den gamla versionen sparas i en
+  Git-gren som heter `backup/` följt av datum och tid.
+- Har ni ändrat filer eller gjort egna commits stoppar skriptet och skriver inte över något. Spara era ändringar någon
+  annanstans och kör igen, eller installera i en ny mapp med `WORKFLOW_DIR`.
+- `.env`, filerna i `storage` och databasen påverkas aldrig, eftersom de inte ligger i Git.
 
 **Vad ändras, och måste ni göra något?**
 

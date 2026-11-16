@@ -25,6 +25,56 @@ set_value() { # key value file
   else printf '%s=%s\n' "$1" "$2" >> "$3"; fi
 }
 env_value() { sed -n "s/^$1=//p" "$DIR/.env" | tail -n 1; }
+new_folder_hint="Vill du installera en ny, separat Workflow i stället? Välj en ny mapp, till exempel:
+  curl -fsSL https://raw.githubusercontent.com/HINTEK-Workflow/workflow-community/main/install.sh | WORKFLOW_DIR=\"\$HOME/workflow-ny\" bash"
+# Tells the user when the folder already holds an installation that is running now, before it is restarted.
+show_running() {
+  [[ -f "$DIR/.env" ]] || return 0
+  local names; names="$(cd "$DIR" && docker compose ps --status running --format '{{.Name}}' 2>/dev/null | tr '\n' ' ' || true)"
+  names="${names% }"; [[ -n "$names" ]] || return 0
+  printf '\n\033[33mObs: Workflow i %s körs redan (%s).\n' "$DIR" "${names// /, }"
+  printf 'Den uppdateras och startas om. Dina inställningar (.env), dina filer och databasen behålls.\n%s\n' "$new_folder_hint"
+  printf 'Fortsätter om 10 sekunder. Tryck Ctrl+C för att avbryta.\033[0m\n'
+  sleep 10
+}
+# Updates an existing clone. If the published history has been rewritten, a clone without own commits or changes is
+# moved to the new history and its old state is kept as a backup branch. .env, storage and the database volume are not
+# tracked by Git and are never touched.
+update_clone() {
+  local upstream remote_ref before commit backup own=true
+  upstream="$(git -C "$DIR" rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null)" \
+    || fail "$DIR följer ingen gren på GitHub och kan inte uppdateras automatiskt.
+$new_folder_hint"
+  remote_ref="refs/remotes/$upstream"
+  before="$(git -C "$DIR" rev-parse -q --verify "$remote_ref" 2>/dev/null || true)"
+  git -C "$DIR" fetch origin || fail "Kunde inte hämta uppdateringar till $DIR. Kontrollera internetanslutningen och kör igen."
+  if git -C "$DIR" merge-base --is-ancestor HEAD "$remote_ref" 2>/dev/null; then
+    git -C "$DIR" merge --ff-only "$remote_ref" || fail "Kunde inte uppdatera $DIR."
+    return
+  fi
+  echo "Den publicerade versionen har en ny historik, så $DIR kan inte uppdateras på vanligt sätt."
+  if [[ -n "$(git -C "$DIR" status --porcelain --untracked-files=no)" ]]; then
+    fail "Du har ändrat filer i $DIR. De skrivs inte över.
+Spara dina ändringar någon annanstans, eller låt mappen vara och installera i en ny mapp.
+$new_folder_hint"
+  fi
+  # HEAD has no own commits if it is part of what the remote branch pointed to before this run or earlier. The ref's
+  # log holds every old and new value, also the one a forced update replaced in an earlier, failed run.
+  local log; log="$(git -C "$DIR" rev-parse --absolute-git-dir)/logs/$remote_ref"
+  for commit in $before $( [[ -f "$log" ]] && awk '{ print $1; print $2 }' "$log" | sort -u ); do
+    if git -C "$DIR" merge-base --is-ancestor HEAD "$commit" 2>/dev/null; then own=false; break; fi
+  done
+  if $own; then
+    fail "$DIR innehåller egna ändringar (commits) som inte finns på GitHub. De skrivs inte över.
+Spara dem, eller låt mappen vara och installera i en ny mapp.
+$new_folder_hint"
+  fi
+  backup="backup/$(date +%Y-%m-%d-%H%M%S)"
+  git -C "$DIR" branch "$backup" HEAD || fail "Kunde inte spara en kopia av den gamla versionen."
+  git -C "$DIR" reset --hard "$remote_ref" || fail "Kunde inte uppdatera $DIR."
+  echo "Uppdaterat till den nya versionen. Den gamla versionen finns kvar i Git-grenen $backup."
+  echo "Dina inställningar (.env), dina filer (storage) och databasen är orörda."
+}
 
 printf '\033[36mWorkflow Community Edition - installation\033[0m\n'
 
@@ -35,8 +85,9 @@ docker info >/dev/null 2>&1 || fail "Docker är inte igång. Starta det och kör
 docker compose version >/dev/null 2>&1 || fail "Docker Compose saknas. Installera Docker Compose v2 och kör igen."
 
 step "Hämtar Workflow till $DIR"
-if [[ -d "$DIR/.git" ]]; then git -C "$DIR" pull --ff-only
-elif [[ -e "$DIR" ]]; then fail "$DIR finns redan men är ingen Workflow-installation. Välj en annan mapp med WORKFLOW_DIR."
+if [[ -d "$DIR/.git" ]]; then show_running; update_clone
+elif [[ -e "$DIR" ]]; then fail "$DIR finns redan men är ingen Workflow-installation.
+$new_folder_hint"
 else git clone --depth 1 "$SOURCE" "$DIR"; fi
 cd "$DIR"
 

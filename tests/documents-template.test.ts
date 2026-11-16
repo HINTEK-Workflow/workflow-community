@@ -579,3 +579,21 @@ test("finding 19: the protocol's box says — where there is no place or work or
   assert.match(text, /—/);
   assert.doesNotMatch(text, /Ingen plats|Ingen arbetsorder/);
 });
+
+test("a long company name is printed whole in the head, on a following page and in the footer (2026-11-16)", async () => {
+  const company = "Exempel El & Automation i Mellanstad AB";
+  // The documents' own typeface, as Cloud, Local and the demo draw them.
+  const font = (name: string) => new Uint8Array(readFileSync(`public/fonts/${name}`));
+  const fonts = { regular: font("Manrope-Regular.ttf"), bold: font("Manrope-Bold.ttf"), fallback: font("DejaVuSans.ttf") };
+  const kit = await createReportKit({ identity: { company, sender: { ...sender, registeredOffice: "Exempelstad" } }, fontBytes: fonts, head: { kind: "Arbetsorderrapport", title: "Rubrik", number: "AO-1", continuation: "AO-1 · fortsättning" } });
+  kit.firstPage();
+  kit.addPage();
+  kit.footer();
+  const pages = drawingText(await pdfDrawing(await kit.pdf.save())).map((page) => page.replace(/\s+/g, " "));
+  assert.equal(pages.length, 2);
+  for (const [index, page] of pages.entries()) {
+    assert.ok(page.includes(company), `page ${index + 1} names the company whole`);
+    assert.ok(!page.includes("…"), `page ${index + 1} cuts nothing`);
+    assert.ok(page.split(company).length - 1 >= 2, `page ${index + 1}: head and footer`);
+  }
+});

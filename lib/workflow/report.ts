@@ -24,8 +24,18 @@ export type WorkflowReportOptions = Record<WorkflowReportSection, boolean>;
 export const protocolNumberOf = (taskId: string) => {
   // The demo's made-up protocols (demo-task-290) get a readable number instead of a cut word (kundresa 2026-11-07, M16: "P-OTASK290").
   const demo = /^demo-[a-z-]*?(\d+)$/.exec(taskId);
-  return demo ? `P-DEMO-${demo[1]}` : `P-${taskId.replace(/[^a-zA-Z0-9]/g, "").slice(-8).toUpperCase()}`;
+  if (demo) return `P-DEMO-${demo[1]}`;
+  // A demo protocol named by words (demo-task-rond-reservkraft) gets a fixed four-digit number from its id, never the end of a
+  // word (2026-11-16: the demo's round protocol said "P-ERVKRAFT"); four digits, so it never meets a numbered one (P-DEMO-290).
+  if (taskId.startsWith("demo-")) return `P-DEMO-${1000 + (fnv1a(taskId) % 9000)}`;
+  return `P-${taskId.replace(/[^a-zA-Z0-9]/g, "").slice(-8).toUpperCase()}`;
 };
+/** A small fixed hash (FNV-1a, 32 bits): the same id always gives the same number, in Cloud, Local and the demo. */
+function fnv1a(value: string) {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < value.length; index += 1) { hash ^= value.charCodeAt(index); hash = Math.imul(hash, 0x01000193) >>> 0; }
+  return hash;
+}
 
 /**
  * `prices` (Priser på materialraden, 2026-10-09; utgifterna 2026-11-04): every amount in a work order report – the material

@@ -11,7 +11,9 @@ async function sessionUserId(): Promise<string | null | undefined> {
   try {
     const response = await fetch("/api/auth/session", { cache: "no-store" });
     if (!response.ok) return undefined;
-    const session = await response.json() as { user?: { id?: string } } | null;
+    const session = await response.json() as { user?: { id?: string }; unavailable?: boolean } | null;
+    // The server could not check the session just now (lib/auth/config.ts): not known, so not "utloggad".
+    if (session?.unavailable) return undefined;
     return session?.user?.id ?? null;
   } catch { return undefined; }
 }

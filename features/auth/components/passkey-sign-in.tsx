@@ -74,7 +74,7 @@ export function PasskeySignIn({ returnTo, busy, onError, onPending }: { returnTo
   }, []);
 
   if (!supported) return null;
-  return <Button type="button" variant="outline" size="lg" className="h-10 w-full" disabled={busy || pending} data-testid="login-passkey"
+  return <Button type="button" variant="outline" className="w-full" disabled={busy || pending} data-testid="login-passkey"
     onClick={() => { onError(null); run(false).catch((error) => { if (!cancelled(error)) onError(error instanceof Error && error.message && !/WebAuthn|credential/i.test(error.message) ? error.message : passkeyErrorText(undefined)); }); }} busy={pending} busyLabel="Loggar in…">
     {pending ? <LoaderCircle className="size-4 animate-spin" /> : <Fingerprint className="size-4" />}
     Logga in med passkey

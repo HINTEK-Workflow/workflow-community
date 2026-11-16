@@ -167,7 +167,7 @@ export function LoginForm({
       >
         {codeStep ? <div className="space-y-2" data-testid="login-code-step">
           <Label htmlFor="code" className="text-sm font-medium">Kod från autentiseringsappen</Label>
-          <Input id="code" name="code" type="text" inputMode="text" autoComplete="one-time-code" autoFocus placeholder="123456" className="h-10 text-sm" required />
+          <Input id="code" name="code" type="text" inputMode="text" autoComplete="one-time-code" autoFocus placeholder="123456" required />
           <p className="text-xs leading-5 text-muted-foreground">Tvåstegsverifiering är påslagen för {codeStep.email}. Skriv koden som appen visar just nu – eller en av dina reservkoder.</p>
           <button type="button" className="public-link text-xs" onClick={() => { setCodeStep(null); setError(null); }}>Tillbaka</button>
         </div> : <>
@@ -187,7 +187,6 @@ export function LoginForm({
             title="Skriv din e-postadress."
             autoComplete="email webauthn"
             placeholder="namn@exempel.se"
-            className="h-10 text-sm"
             required
           />
         </div>
@@ -202,7 +201,6 @@ export function LoginForm({
             type="password"
             autoComplete="current-password"
             placeholder="••••••••"
-            className="h-10 text-sm"
             required
           />
         </div>
@@ -220,8 +218,7 @@ export function LoginForm({
 
         <Button
           type="submit"
-          className="h-10 w-full"
-          size="lg"
+          className="w-full"
           disabled={pending || otherPending}
         >
           {pending ? (
@@ -250,8 +247,7 @@ export function LoginForm({
           {googleOffered ? <Button
             type="button"
             variant="outline"
-            size="lg"
-            className="h-10 w-full"
+            className="w-full"
             onClick={googleEnabled ? handleGoogleSignIn : undefined}
             disabled={!googleEnabled || googlePending || pending || microsoftPending || passkeyPending}
           >
@@ -263,7 +259,7 @@ export function LoginForm({
             </svg>
             {googlePending ? "Google..." : "Google"}
           </Button> : null}
-          {microsoftEnabled ? <Button type="button" variant="outline" size="lg" className="h-10 w-full" onClick={handleMicrosoftSignIn} disabled={microsoftPending || pending || googlePending || passkeyPending} data-testid="login-microsoft">
+          {microsoftEnabled ? <Button type="button" variant="outline" className="w-full" onClick={handleMicrosoftSignIn} disabled={microsoftPending || pending || googlePending || passkeyPending} data-testid="login-microsoft">
             <svg viewBox="0 0 24 24" className="size-5" aria-hidden="true">
               <path d="M2 2h9.5v9.5H2z" fill="#F25022" />
               <path d="M12.5 2H22v9.5h-9.5z" fill="#7FBA00" />
@@ -292,7 +288,7 @@ export function LoginForm({
           <span className="h-px flex-1 bg-slate-200" />
         </div>
         {/* A plain link: /demo sets the demo cookie, so it must never be prefetched. */}
-        <Button asChild variant="outline" size="lg" className="h-10 w-full">
+        <Button asChild variant="outline" className="w-full">
           <a href="/demo?via=button"><PlayCircle />Visa demo med exempeldata</a>
         </Button>
         <p className="text-center text-xs leading-5 text-muted-foreground">Påhittade kunder och uppgifter. Inget sparas och inget konto behövs.</p>

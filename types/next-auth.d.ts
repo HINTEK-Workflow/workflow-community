@@ -41,5 +41,7 @@ declare module "next-auth/jwt" {
     activeOrganizationId?: string | null;
     activeOrganizationName?: string | null;
     activeOrganizationSlug?: string | null;
+    /** The database could not be asked at the last check (2026-11-16): nothing is let in, the token is kept and checked again. */
+    unavailable?: boolean;
   }
 }

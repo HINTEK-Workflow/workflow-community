@@ -197,13 +197,26 @@ export function KeyCard({ icon, title, description, status, statusTestId, proble
             <span aria-hidden="true" className="size-2 rounded-full bg-current" />Ej sparade ändringar
           </span> : null}
         </div>
-        {more ? <CollapsibleSection title="Mer" open={open} onOpenChange={setOpen} testId={moreTestId ?? "key-card-more"} divided={false}>
-          <div className="space-y-2 text-xs text-muted-foreground">{typeof more === "function" ? more(open) : more}</div>
-        </CollapsibleSection> : null}
+        {more ? <KeyCardMore open={open} onOpenChange={setOpen} testId={moreTestId ?? "key-card-more"}>{typeof more === "function" ? more(open) : more}</KeyCardMore> : null}
         </div>
       </div>
     </KeyCardActionSlot.Provider></KeyCardParts.Provider>
   </Panel>;
+}
+
+/**
+ * Mer at a card's foot (2026-11-16: a card that is not a KeyCard drew its own, a little apart from the key cards'): the folded row
+ * under the card's one thin line, with the explanations in small muted text. KeyCard draws it from `more`; a card of another
+ * build (Maskiner under Kopplingar) puts it last in its content, in a `KeyCardFoot`, so the row stands as on the key cards.
+ */
+export function KeyCardMore({ open, onOpenChange, testId, children }: { open: boolean; onOpenChange: (open: boolean) => void; testId: string; children: React.ReactNode }) {
+  return <CollapsibleSection title="Mer" open={open} onOpenChange={onOpenChange} testId={testId} divided={false}>
+    <div className="space-y-2 text-xs text-muted-foreground">{children}</div>
+  </CollapsibleSection>;
+}
+/** The foot of a card that is not a KeyCard: the same distance above it and the same free room above it as a key card's foot. */
+export function KeyCardFoot({ children }: { children: React.ReactNode }) {
+  return <div className="mt-auto flex flex-col gap-3 pt-3" data-key-card-foot="">{children}</div>;
 }
 
 /** The fields of a card, two side by side where the card is wide enough, else one under the other. */

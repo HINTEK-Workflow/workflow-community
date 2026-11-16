@@ -106,6 +106,11 @@ test("a measured value judged against a limit without a value is said to lack it
 test("the demo's protocols get a readable number; real ones keep theirs", () => {
   assert.equal(protocolNumberOf("demo-task-290"), "P-DEMO-290");
   assert.equal(protocolNumberOf("cmabc123def456ghi789"), "P-56GHI789");
+  // A demo protocol named by words (the round protocol said "P-ERVKRAFT", 2026-11-16): four fixed digits, the same every time.
+  const round = protocolNumberOf("demo-task-rond-reservkraft");
+  assert.match(round, /^P-DEMO-\d{4}$/);
+  assert.equal(protocolNumberOf("demo-task-rond-reservkraft"), round);
+  assert.notEqual(protocolNumberOf("demo-task-fortlopande-kontor"), round);
 });
 
 async function pdfText(task: Partial<WorkflowReportTask> & Pick<WorkflowReportTask, "data">) {

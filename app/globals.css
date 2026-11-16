@@ -391,6 +391,12 @@ html:not([data-theme="dark"]) .workspace-sidebar-note { background: color-mix(in
 /* Text wordmark in the self-hosted Gugi font (SIL OFL, public/picture/fonts/gugi), in every theme (2026-10-03). */
 .workflow-brand-text { display: block; overflow: hidden; font-family: Gugi, var(--font-manrope), sans-serif; font-size: 1.25rem; line-height: 1.75rem; color: var(--brand-wordmark); white-space: nowrap; text-overflow: ellipsis; }
 .auth-brand .workflow-brand-text { font-size: 1.625rem; line-height: 2rem; }
+/* Inloggningskortet (AuthShell, 2026-11-16: Logga in, Glömt lösenord, Skapa konto and Rapportera fel look the same):
+   fields, selects and buttons 40 px with a mouse (44 px on touch, as everywhere), and the shared Field's labels at the body
+   size like the plain Label, so the form component used does not show. docs/ui-system.md, "Inloggningskortet". */
+.auth-form { --control-h: 2.5rem; }
+@media (pointer: coarse) { .auth-form { --control-h: 2.75rem; } }
+.auth-form .field-label { font-size: var(--text-body); }
 /* WorkflowBrand measures the whole name and its first word with these rulers and shows what fits whole (2026-10-10). */
 .workflow-brand-ruler { position: absolute; top: 0; left: 0; width: max-content; overflow: visible; visibility: hidden; pointer-events: none; }
 html:not([data-theme="dark"]) :is(.workspace-sidebar, .workspace-header, .workspace-drawer) .workflow-brand-text { color: #ffffff; }

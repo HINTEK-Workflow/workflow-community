@@ -58,7 +58,6 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
           type="password"
           autoComplete="new-password"
           placeholder="Minst 12 tecken"
-          className="h-10 text-sm"
           required
         />
       </div>
@@ -71,7 +70,6 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
           type="password"
           autoComplete="new-password"
           placeholder="Skriv samma lösenord igen"
-          className="h-10 text-sm"
           required
         />
       </div>

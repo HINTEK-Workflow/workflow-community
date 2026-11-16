@@ -2,7 +2,7 @@
 
 Svenska | [English](README.md)
 
-> **Status: under aktiv utveckling.** Texten beskriver vad utgåvan innehåller i version 0.65.0. Ärenden och pull
+> **Status: under aktiv utveckling.** Texten beskriver vad utgåvan innehåller i version 0.66.0. Ärenden och pull
 > requests är välkomna: se [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Workflow är en webbapp för el- och installationsföretag. Den samlar arbetsordrar, offerter, fakturaunderlag, artiklar

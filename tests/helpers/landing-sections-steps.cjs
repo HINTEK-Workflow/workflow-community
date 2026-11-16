@@ -51,7 +51,7 @@ async function runLandingSections(page, { marker }) {
   await canvas.getByTestId("landing-login-top").first().waitFor();
   await canvas.getByRole("textbox", { name: "Meny – länk 1", exact: true }).click();
   await settings.waitFor();
-  assert.equal(await settings.getByLabel("Adress", { exact: true }).inputValue(), "#t-controls");
+  assert.equal(await settings.getByLabel("Adress", { exact: true }).inputValue(), "#steg-koppla");
   // The company's blue bar (2026-11-12): its own links, set in Sidhuvud, drawn on the page at once.
   await canvas.getByTestId("landing-company-bar").click({ position: { x: 4, y: 4 } });
   const company = page.getByTestId("landing-company-settings");
@@ -62,14 +62,14 @@ async function runLandingSections(page, { marker }) {
   await company.getByRole("alert").first().waitFor();
 
   // ---- A free section: text in place, points, order, visibility.
-  const machineTitle = canvas.getByRole("textbox", { name: "Maskinkoppling och larm – rubrik", exact: true });
+  const machineTitle = canvas.getByRole("textbox", { name: "Maskinkoppling – rubrik", exact: true });
   await machineTitle.click();
   await page.keyboard.press("Control+A");
   await page.keyboard.type(`Maskinlarm ${marker}`);
   await page.keyboard.press("Enter");
-  await canvas.getByRole("textbox", { name: "Maskinkoppling och larm – rubrik", exact: true }).filter({ hasText: marker }).waitFor();
+  await canvas.getByRole("textbox", { name: "Maskinkoppling – rubrik", exact: true }).filter({ hasText: marker }).waitFor();
   const before = await canvas.locator("section[id^='t-']").evaluateAll((nodes) => nodes.map((node) => node.id));
-  await canvas.getByRole("button", { name: /^Flytta Maskinkoppling och larm nedåt$/ }).click();
+  await canvas.getByRole("button", { name: /^Flytta Maskinkoppling nedåt$/ }).click();
   const after = await canvas.locator("section[id^='t-']").evaluateAll((nodes) => nodes.map((node) => node.id));
   assert.notDeepEqual(after, before, "a section moves");
   assert.equal(after[before.indexOf("t-machine") + 1], "t-machine", "it moved one step down");
@@ -87,8 +87,8 @@ async function runLandingSections(page, { marker }) {
   assert.equal(await bullets.count(), bulletCount, "and removed");
 
   // ---- Its picture: choose one of ours, upload one of his own, remove it.
-  await topic.locator("#landing-topic-image-library").selectOption("/landing/operator-terminal.webp");
-  await page.waitForFunction(() => document.querySelector("#t-ai img")?.getAttribute("src") === "/landing/operator-terminal.webp");
+  await topic.locator("#landing-topic-image-library").selectOption("/landing/felanmalan-operatorsterminal.webp");
+  await page.waitForFunction(() => document.querySelector("#t-ai img")?.getAttribute("src") === "/landing/felanmalan-operatorsterminal.webp");
   await topic.getByTestId("landing-topic-image-file").setInputFiles({ name: "egen.png", mimeType: "image/png", buffer: PNG });
   // The upload's own address (/landing-images/…), not the library picture chosen just before: removing it before the upload
   // has answered would let the late answer put the picture back.
@@ -143,7 +143,7 @@ async function runLandingSections(page, { marker }) {
   const sent = response.request().postDataJSON().landing;
   assert.ok(sent.topics.some((item) => item.title === `Maskinlarm ${marker}`) && sent.hero.buttons[0].label === `Prova ${marker}` && sent.hero.buttons[1].visible === false);
   assert.ok(sent.faq.items.some((item) => item.question === `Fråga ${marker}?`), "the questions are saved with the page");
-  assert.ok(sent.layout.length >= 10 && sent.header.nav.length === 3, "the light bar: Kontroller, Maskiner and AI (2026-11-12)");
+  assert.ok(sent.layout.length >= 10 && sent.header.nav.length === 3, "the menu: Koppla, Följ upp and AI (2026-11-16)");
   assert.equal(sent.header.company.items[0].label, `Hem ${marker}`, "the blue bar's own links are saved");
   assert.ok(sent.header.company.items[0].href.startsWith("https://"), "an unsafe address is never stored");
   await saveStatus.filter({ hasText: /sparad/ }).waitFor();
@@ -223,16 +223,16 @@ async function runLandingReset(page, { marker }) {
   await page.getByTestId("landing-ribbon").getByRole("button", { name: "Standardtexter", exact: true }).click();
   await confirmDialog(page).getByRole("button", { name: "Återställ", exact: true }).click();
   await canvas.getByRole("textbox", { name: "Överst – knapp 1", exact: true }).filter({ hasNotText: marker }).waitFor();
-  await canvas.getByRole("textbox", { name: "Maskinkoppling och larm – rubrik", exact: true }).filter({ hasNotText: marker }).waitFor();
+  await canvas.getByRole("textbox", { name: "Maskinkoppling – rubrik", exact: true }).filter({ hasNotText: marker }).waitFor();
   assert.equal(await page.locator('[data-landing-select="link:hero.buttons.1"]').getAttribute("data-off"), null, "the hidden button is back");
   // A single section back to its default text.
-  await canvas.getByRole("textbox", { name: "Kontroller och formulär – rubrik", exact: true }).click();
+  await canvas.getByRole("textbox", { name: "Kontroller – rubrik", exact: true }).click();
   await page.keyboard.press("Control+A");
   await page.keyboard.type("Annan rubrik");
   await page.keyboard.press("Enter");
   await canvas.locator('[data-landing-select="topic:controls"]').click({ position: { x: 4, y: 40 } });
   await page.getByTestId("landing-topic-reset").click();
-  await canvas.getByRole("textbox", { name: "Kontroller och formulär – rubrik", exact: true }).filter({ hasNotText: "Annan rubrik" }).waitFor();
+  await canvas.getByRole("textbox", { name: "Kontroller – rubrik", exact: true }).filter({ hasNotText: "Annan rubrik" }).waitFor();
 }
 
 /** The notice about new default texts: his own text is listed, never replaced by itself; he chooses per part. */

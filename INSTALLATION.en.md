@@ -77,8 +77,30 @@ What the script does:
 - creates `.env` with new random secrets and free ports (from 3000 for the app and 5432 for the database)
 - starts Workflow and creates your account as superadmin.
 
-The first start takes 5-10 minutes. Workflow is placed in the folder `workflow-community` in your home folder. To
-install by hand, see *Manual installation (for developers)* in [README.md](README.md).
+The first start takes 5-10 minutes. To install by hand, see *Manual installation (for developers)* in
+[README.md](README.md).
+
+### Where Workflow is placed
+
+- Workflow is placed in the folder `workflow-community` in your home folder, for example
+  `/home/anna/workflow-community` or `C:\Users\anna\workflow-community`.
+- For another folder, set `WORKFLOW_DIR` when you run the install line. On Linux and macOS:
+
+  ```bash
+  curl -fsSL https://raw.githubusercontent.com/HINTEK-Workflow/workflow-community/main/install.sh | WORKFLOW_DIR="$HOME/workflow-new" bash
+  ```
+
+  In PowerShell on Windows:
+
+  ```powershell
+  $env:WORKFLOW_DIR = "$HOME\workflow-new"; irm https://raw.githubusercontent.com/HINTEK-Workflow/workflow-community/main/install.ps1 | iex
+  ```
+
+- If the folder already holds Workflow, that installation is updated. A new folder gives a new, separate installation
+  with its own settings and its own database.
+- Use the same `WORKFLOW_DIR` every time you update an installation that is not in the default folder.
+- If Workflow is already running in the folder, the script says so and waits 10 seconds before it goes on. Press
+  Ctrl+C to stop.
 
 ## 3. Set up after the first sign-in
 
@@ -256,6 +278,17 @@ Within five minutes after that, `tail /var/log/workflow/monitor.log` should show
 - Take a backup, then run the install line again (or `git pull` followed by `docker compose up -d --build` in the
   folder).
 - Settings and data are kept, and the database is updated when Workflow starts.
+
+**If the published history has been rewritten**
+
+Now and then the history of the repository on GitHub is rewritten. An older copy can then not be updated the usual
+way, and `git pull` stops with `Not possible to fast-forward`. Run the install line instead. The script does this:
+
+- If you have not changed anything in the folder, the script moves it to the new version. The old version is kept in a
+  Git branch named `backup/` followed by the date and time.
+- If you have changed files or made your own commits, the script stops and overwrites nothing. Save your changes
+  elsewhere and run it again, or install in a new folder with `WORKFLOW_DIR`.
+- `.env`, the files in `storage` and the database are never touched, since they are not in Git.
 
 **What changes, and do you need to do anything?**
 

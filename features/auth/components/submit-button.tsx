@@ -15,8 +15,7 @@ export function SubmitButton({ children, pendingLabel }: SubmitButtonProps) {
   return (
     <Button
       type="submit"
-      className="h-10 w-full text-sm font-medium"
-      size="lg"
+      className="w-full"
       disabled={pending}
     >
       {pending ? (

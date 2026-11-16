@@ -21,27 +21,53 @@ export const registrationStorageMode = async () => (publicInstance().features.bi
 // paid step. Only while "Tillåt nya konton" is on. The acceptances are stored against the exact document versions.
 
 let checkedAt = 0;
+/** The read under way, which every caller meanwhile waits for; `generation` drops a read made stale by registrationGateChanged. */
+let reading: Promise<void> | null = null;
+let generation = 0;
+/** Whether a read has succeeded since the process started; until then the checks keep their closed defaults. */
+let loaded = false;
 /**
  * Reads "Tillåt nya konton" and "Vem får logga in" at most every 15 seconds and updates the access checks, so a person
  * who may no longer sign in loses an existing session, API key and MCP access at the next check.
+ *
+ * Utloggad efter omstart (2026-11-16): every caller waits for the read under way. Before, only the first request after a
+ * start waited for the settings; requests arriving meanwhile were judged by the closed defaults, so everyone but the owner
+ * was refused – and the session route then wrote an empty token into the cookie, a real sign-out. A read that fails keeps
+ * the values last read (the administrator's own choice) and is tried again two seconds later; before the first good read
+ * the checks stay closed, as before.
  */
 export async function refreshRegistrationGate() {
+  if (reading) return reading;
   if (Date.now() - checkedAt < 15_000) return;
-  checkedAt = Date.now();
+  const mine = ++generation;
+  const pending = readGate(mine).finally(() => { if (reading === pending) reading = null; });
+  reading = pending;
+  return pending;
+}
+
+async function readGate(mine: number) {
   const row = await prisma.systemSettings.findUnique({ where: { id: "global" }, select: { registrationOpen: true, loginAccess: true } }).catch(() => undefined);
-  if (row === undefined) { setRegistrationGate(false); setInvitedMembers([]); return; }
-  setRegistrationGate(Boolean(row?.registrationOpen));
-  const rule = readLoginRule(row?.loginAccess);
-  setLoginRule(rule);
+  const rule = row === undefined ? null : readLoginRule(row?.loginAccess);
   // Only asked for where it decides anything: a chosen rule, or open registration, already says who may sign in.
-  setInvitedMembers(rule.mode || row?.registrationOpen ? [] : await readInvitedMembers());
+  const invited = row === undefined || !rule ? null : rule.mode || row?.registrationOpen ? [] : await readInvitedMembers();
+  if (mine !== generation) return;
+  if (row === undefined || !rule || invited === null) {
+    if (!loaded) { setRegistrationGate(false); setInvitedMembers([]); }
+    checkedAt = Date.now() - 13_000; // tried again in two seconds, not at every request while the database is away
+    return;
+  }
+  setRegistrationGate(Boolean(row?.registrationOpen));
+  setLoginRule(rule);
+  setInvitedMembers(invited);
+  loaded = true;
+  checkedAt = Date.now();
 }
 
 /** After an accepted invitation: the next access check reads again, so the new member need not wait for the 15 seconds. */
-export function registrationGateChanged() { checkedAt = 0; }
+export function registrationGateChanged() { checkedAt = 0; reading = null; generation++; }
 
-/** The addresses of those who accepted an invitation and still are active members of an active company. Refused on failure. */
-async function readInvitedMembers() {
+/** The addresses of those who accepted an invitation and still are active members of an active company; null when unreadable. */
+async function readInvitedMembers(): Promise<string[] | null> {
   const rows = await prisma.$queryRaw<{ email: string }[]>`
     SELECT DISTINCT lower(u.email) AS email
     FROM "OrganizationInvitation" i
@@ -49,8 +75,8 @@ async function readInvitedMembers() {
     JOIN "User" u ON u.id = i."acceptedUserId" AND u."isActive" = true
     JOIN "Organization" o ON o.id = i."organizationId" AND o."isActive" = true
     WHERE i.status = 'ACCEPTED'
-    LIMIT 20000`.catch(() => []);
-  return rows.map((row) => row.email);
+    LIMIT 20000`.catch(() => null);
+  return rows ? rows.map((row) => row.email) : null;
 }
 
 /** The saved "Vem får logga in" (mode null = not chosen yet). */

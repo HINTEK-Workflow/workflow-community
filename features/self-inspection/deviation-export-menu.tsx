@@ -35,7 +35,10 @@ export function browserDeviationExporter(company: string, photos?: DeviationPhot
       try { const response = await fetch(photos.href(id)); if (response.ok) bytes.set(id, new Uint8Array(await response.arrayBuffer())); } catch { /* counted in the PDF */ }
     }));
     const pdf = await createDeviationsPdf({ identity: identity ? await identity() : { company }, fontBytes, entries, sections, photos: bytes, scope });
-    saveBlob(pdf as unknown as BlobPart, filename, MIME.pdf);
+    // The demo's copy is stamped Demo like its other PDFs (2026-11-16), through the same step as the programme's PDF.
+    const { browserPdfCopy } = await import("@/features/demo/demo-pdf");
+    const copy = await browserPdfCopy(new Uint8Array(pdf), filename);
+    saveBlob(copy.bytes as unknown as BlobPart, copy.filename, MIME.pdf);
   };
 }
 

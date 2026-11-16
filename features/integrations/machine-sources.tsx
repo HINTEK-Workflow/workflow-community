@@ -8,7 +8,7 @@ import { formatSwedish } from "@/lib/swedish-time";
 import { cn } from "@/lib/utils";
 import { ALARM_MODES, ALARM_MODE_LABELS, type AlarmMode } from "@/lib/machine/alarm-rules";
 import { indicatorBadge, type IndicatorTone } from "@/features/workflow/indicator-tone";
-import { CollapsibleSection, DialogActions, Modal, Panel } from "../../features/kfid/ui";
+import { DialogActions, Modal, Panel } from "../../features/kfid/ui";
 import { api } from "../../features/kfid/api";
 import { useConfirm } from "../../features/kfid/confirm";
 import { KeyField } from "../../features/kfid/secret-field";
@@ -19,7 +19,7 @@ import { MachinePartSelect } from "@/features/maintenance/part-picker";
 import { MachineSignalsPage } from "./machine-signals";
 import { MachineProfilesSection, MachineSamplesPage, useProfiles } from "./machine-profiles";
 import { MachineAlarmSection } from "./machine-alarm-responsibility";
-import { KeyCard, KeyCardGrid, KeyFields } from "./key-card";
+import { KeyCard, KeyCardFoot, KeyCardGrid, KeyCardMore, KeyFields } from "./key-card";
 import { MachineSimulatorButton } from "./machine-simulator-button";
 import { useModules } from "@/features/workflow/use-modules";
 
@@ -210,9 +210,8 @@ export function MachineSourcesPanel({ notify }: { notify: (text: string, error?:
     </Modal>
     {/* Maskinanalys med AI (UX-granskningen C4, 2026-10-22): chosen here, where the machines are, instead of under Arbetssätt. */}
     {aiHere ? <section className="mt-5 space-y-2" aria-label="Maskinanalys med AI"><h4 className="text-xs font-semibold text-foreground">Maskinanalys med AI</h4><AiMachineExplainSwitch /></section> : null}
-    {/* Mer (2026-11-12, the key cards' rule): how to send, folded at the card's foot under its one thin line. */}
-    <CollapsibleSection title="Mer" open={howOpen} onOpenChange={setHowOpen} testId="machine-how" divided={false} className="mt-4">
-      <div className="space-y-2 text-xs leading-5 text-muted-foreground">
+    {/* Mer (2026-11-12, the key cards' rule): how to send, folded at the card's foot under its one thin line – the key cards' own Mer and foot (2026-11-16). */}
+    <KeyCardFoot><KeyCardMore open={howOpen} onOpenChange={setHowOpen} testId="machine-how">
       <p className="font-medium text-foreground">Så skickar du händelser</p>
       <p>Skicka en POST med nyckeln som Bearer och JSON. Högst 20 händelser per anrop. Varje händelse har ett eget eventId, så att samma händelse två gånger aldrig blir två poster.</p>
       <pre className="overflow-x-auto rounded-md bg-muted p-3 text-xs text-foreground">{`POST ${address || "https://<din-adress>/api/ingest/v1/events"}
@@ -227,8 +226,7 @@ Content-Type: application/json
       <pre className="overflow-x-auto rounded-md bg-muted p-3 text-xs text-foreground">{`POST ${address ? address.replace(/events$/, "raw") : "https://<din-adress>/api/ingest/v1/raw"}
 X-Hintek-Key: <källans nyckel>
 Content-Type: application/json`}</pre>
-      </div>
-    </CollapsibleSection>
+    </KeyCardMore></KeyCardFoot>
   </Panel>
   {/* Egna kort (2026-11-12): every source is a card of its own, two per row where there is room, all its buttons in the
       card's one action row. */}

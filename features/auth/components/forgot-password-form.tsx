@@ -44,7 +44,6 @@ export function ForgotPasswordForm() {
           type="email"
           autoComplete="email"
           placeholder="namn@foretag.se"
-          className="h-10 text-sm"
           required
         />
       </div>

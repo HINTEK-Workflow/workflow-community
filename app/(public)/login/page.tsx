@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { REPORT_PATH } from "@ee/present";
 import { registrationOpen } from "@/lib/auth/registration";
 import { googleKeysConfigured, googleSignInAllowed } from "@/lib/auth/login-settings";
 import { AuthShell } from "@/features/auth/components/auth-shell";
@@ -84,6 +86,8 @@ export default async function LoginPage({
     <AuthShell
       title="Välkommen tillbaka"
       description="Logga in för att fortsätta till din arbetsyta."
+      // Rapportera fel (2026-11-16): also reachable before signing in – a problem with the sign-in itself, too.
+      below={REPORT_PATH ? <Link href={`${REPORT_PATH}?sida=${encodeURIComponent("/login")}`} className="mt-6 text-sm text-muted-foreground hover:text-foreground" data-testid="login-report-link">Rapportera fel eller förslag</Link> : undefined}
     >
       <LoginForm
         returnTo={returnTo}

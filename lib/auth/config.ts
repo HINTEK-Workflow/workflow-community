@@ -300,19 +300,32 @@ export const authOptions: NextAuthOptions = {
       }
 
       if (token.sub) {
-        const dbUser = await findUserById(token.sub);
+        delete token.unavailable;
+        try {
+          const dbUser = await findUserById(token.sub);
 
-        // Ended by a password change or "Logga ut överallt", and – for a token with a session row – by ending that row.
-        if (canAccessTest(dbUser) && dbUser
-          && !tokenRevoked(token.authAt ?? (token.iat as number | undefined), dbUser.passwordChangedAt, dbUser.sessionsRevokedAt)
-          && (!token.sid || await sessionStillValid(token.sid, dbUser.id))) {
-          return setTokenFromUser(token, dbUser);
+          // Ended by a password change or "Logga ut överallt", and – for a token with a session row – by ending that row.
+          if (canAccessTest(dbUser) && dbUser
+            && !tokenRevoked(token.authAt ?? (token.iat as number | undefined), dbUser.passwordChangedAt, dbUser.sessionsRevokedAt)
+            && (!token.sid || await sessionStillValid(token.sid, dbUser.id))) {
+            return setTokenFromUser(token, dbUser);
+          }
+        } catch {
+          // Utloggad efter omstart (2026-11-16): the database could not be asked (a restart, a lost connection). An error here
+          // made NextAuth's session route delete the cookie – a real sign-out. Now nothing is let in for this request (the
+          // session callback gives no user), but the token is kept and checked in full again at the next request.
+          return { ...token, unavailable: true };
         }
       }
 
       return {};
     },
     async session({ session, token }) {
+      if (token.unavailable) {
+        // Not checked (the database could not be asked): no user, and the answer says why, so the page does not say "utloggad".
+        delete (session as { user?: unknown }).user;
+        return Object.assign(session, { unavailable: true });
+      }
       if (!token.sub || !isAllowedPrivateEmail(token.email)) {
         delete (session as { user?: unknown }).user;
         return session;

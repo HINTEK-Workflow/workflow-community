@@ -24,7 +24,7 @@ export const SCOPES = [
 export const OPERATOR_ACCOUNTS: OperatorAccount[] = [
   { id: "o1", name: "Press 4", kind: "Terminal", scope: "p4", scopeLabel: "Linje 2 › Press 4", parts: ["pump", "motor"], status: "Aktiv" },
   { id: "o2", name: "Linje 2", kind: "Terminal", scope: "l2", scopeLabel: "Linje 2", parts: ["pump", "motor", "band"], status: "Aktiv" },
-  { id: "o3", name: "lisa.berg@exempelfabriken.se", kind: "E-post", scope: "r1", scopeLabel: "Fabriken Mellanstad", parts: ["pump", "motor", "band"], status: "Aktiv" },
+  { id: "o3", name: "lisa.berg@exempel.se", kind: "E-post", scope: "r1", scopeLabel: "Fabriken Mellanstad", parts: ["pump", "motor", "band"], status: "Aktiv" },
   { id: "o4", name: "Avdelning Montering", kind: "Terminal", scope: "l2", scopeLabel: "Linje 2", parts: ["pump", "motor", "band"], status: "Spärrad" },
   { id: "o5", name: "Elin Ström (Microsoft)", kind: "Microsoft", scope: "r1", scopeLabel: "Fabriken Mellanstad", parts: ["pump", "motor", "band"], status: "Aktiv" },
 ];

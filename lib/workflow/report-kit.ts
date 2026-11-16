@@ -233,6 +233,25 @@ export function fitFooterText(font: TextMeasurer, value: string, maxWidth: numbe
   return `${cut.trimEnd()}…`;
 }
 
+/**
+ * The size a line is drawn at so it fits `maxWidth` (2026-11-16: long company names were cut in the head and footer): the
+ * given size, or smaller down to `min` points. What still does not fit at `min` is shortened with … by the caller.
+ */
+export function fitTextSize(font: TextMeasurer, value: string, maxWidth: number, size: number, min: number) {
+  const wide = font.widthOfTextAtSize(value, size);
+  if (wide <= maxWidth || !wide) return size;
+  return Math.max(min, Math.floor(size * (maxWidth / wide) * 4) / 4);
+}
+/** Lines for a name over at most `maxLines` lines: the size shrinks to `min` before the last line is shortened with …. */
+function fitNameLines(font: TextMeasurer, value: string, maxWidth: number, size: number, min: number, maxLines: number) {
+  let current = size;
+  let lines = wrap(font, value, current, maxWidth);
+  while (lines.length > maxLines && current > min) { current = Math.max(min, current - 0.5); lines = wrap(font, value, current, maxWidth); }
+  // The words that did not get a line go into the last one, which fitFooterText then shortens with ….
+  if (lines.length > maxLines) lines = [...lines.slice(0, maxLines - 1), lines.slice(maxLines - 1).join(" ")];
+  return { lines: lines.map((line) => fitFooterText(font, line, maxWidth, current)), size: current };
+}
+
 export const isJpeg = (bytes: Uint8Array) => bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
 export const isPng = (bytes: Uint8Array) => bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e;
 
@@ -617,15 +636,17 @@ export async function createReportKit(input: { identity: KitIdentity; fontBytes:
       const addressWidth = Math.min(mm(95), senderWidth);
       const addressLines = addressLine ? wrap(regular, addressLine, TYPE.small, addressWidth) : [];
       const logoSize = logo ? logo.scaleToFit(addressWidth, mm(11)) : null;
-      const nameLines = logo ? [] : wrap(bold, company, 14, senderWidth).slice(0, 2);
-      const senderHeight = (logoSize ? logoSize.height : nameLines.length * 14 * LEADING.body) + (addressLines.length ? mm(1.5) + addressLines.length * TYPE.small * LEADING.party : 0);
+      // A long name gets two lines and a smaller size before anything is cut (2026-11-16).
+      const name = logo ? { lines: [] as string[], size: 14 } : fitNameLines(bold, company, senderWidth, 14, 10, 2);
+      const nameLines = name.lines;
+      const senderHeight = (logoSize ? logoSize.height : nameLines.length * name.size * LEADING.body) + (addressLines.length ? mm(1.5) + addressLines.length * TYPE.small * LEADING.party : 0);
       const rowHeight = Math.max(titleHeight, senderHeight);
       const bottom = TOP - rowHeight;
       // Both columns stand on the row's bottom edge (align-items: end). A logo without an address line (a project report's
       // protocols) keeps the place it has over a two-line address on every other first page, so it does not jump.
       let y = addressLines.length ? bottom + senderHeight : Math.min(TOP, bottom + senderHeight + mm(1.5) + 2 * TYPE.small * LEADING.party);
       if (logoSize) { kit.page.drawImage(logo!, { x: MARGIN, y: y - logoSize.height, width: logoSize.width, height: logoSize.height }); y -= logoSize.height; }
-      else y -= kit.text(nameLines.join("\n"), MARGIN, y, { size: 14, bold: true, maxWidth: senderWidth, maxLines: 2 });
+      else y -= kit.text(nameLines.join("\n"), MARGIN, y, { size: name.size, bold: true, maxWidth: senderWidth, maxLines: 2 });
       if (addressLines.length) { y -= mm(1.5); kit.text(addressLines.join("\n"), MARGIN, y, { size: TYPE.small, leading: LEADING.party, color: colors.muted, maxWidth: addressWidth }); }
       y = bottom + titleHeight;
       y -= kit.text(head.kind, MARGIN, y, { size: TYPE.label, color: colors.muted, align: "right", maxWidth: CONTENT_WIDTH, maxLines: 1 });
@@ -662,7 +683,13 @@ export async function createReportKit(input: { identity: KitIdentity; fontBytes:
       const rowHeight = Math.max(titleHeight, senderHeight);
       const bottom = TOP - rowHeight;
       if (logoSize) kit.page.drawImage(logo!, { x: MARGIN, y: bottom + senderHeight - logoSize.height, width: logoSize.width, height: logoSize.height });
-      else kit.text(fitFooterText(bold, company, mm(60), 14), MARGIN, bottom + senderHeight, { size: 14, bold: true, maxWidth: mm(60), maxLines: 1 });
+      else {
+        // The name takes the room the title and the number leave, and a smaller size, before it is cut (2026-11-16).
+        const used = Math.max(bold.widthOfTextAtSize(title, 14), numberText ? bold.widthOfTextAtSize(numberText, 11.5) : 0);
+        const nameWidth = Math.max(mm(60), CONTENT_WIDTH - mm(8) - used);
+        const nameSize = fitTextSize(bold, company, nameWidth, 14, 10);
+        kit.text(fitFooterText(bold, company, nameWidth, nameSize), MARGIN, bottom + senderHeight, { size: nameSize, bold: true, maxWidth: nameWidth, maxLines: 1 });
+      }
       let y = bottom + titleHeight;
       y -= kit.text(title, MARGIN, y, { size: 14, leading: LEADING.head, bold: true, color: colors.navy, align: "right", maxWidth: CONTENT_WIDTH, maxLines: 1 });
       if (numberText) { y -= mm(0.5); kit.text(numberText, MARGIN, y, { size: 11.5, bold: true, align: "right", maxWidth: CONTENT_WIDTH, maxLines: 1 }); }
@@ -1498,6 +1525,9 @@ export async function createReportKit(input: { identity: KitIdentity; fontBytes:
   return kit;
 }
 
+/** The smallest size the footer's first line shrinks to before the name is shortened. */
+const FOOT_MIN = 6.5;
+
 /** The footer strip, shared with the project report's continuous footer (report-merge.ts). */
 function drawFooter(page: PDFPage, faces: { regular: Face; bold: Face }, input: { company: string; legal: readonly string[]; common: PdfTexts; trace: PdfTrace | null; page: number; pageCount: number; second: string }) {
   const { regular, bold } = faces;
@@ -1510,20 +1540,24 @@ function drawFooter(page: PDFPage, faces: { regular: Face; bold: Face }, input: 
   const secondBaseline = firstBaseline - lineHeight;
   const pageText = input.common.text("page", { sida: input.page + 1, sidor: input.pageCount });
   const pageWidth = bold.widthOfTextAtSize(pageText, size);
-  const draw = (face: Face, text: string, x: number, baseline: number, color: KitColor) => {
+  const draw = (face: Face, text: string, x: number, baseline: number, color: KitColor, at: number = size) => {
     let cursor = x;
-    if (input.trace) traceLine(input.trace, face, text, x, baseline, size, { page: input.page, bold: face === bold, color, align: "left", footer: true });
-    for (const run of face.runs(text)) { page.drawText(run.text, { x: cursor, y: baseline, size, font: run.font, color }); cursor += run.font.widthOfTextAtSize(run.text, size); }
+    if (input.trace) traceLine(input.trace, face, text, x, baseline, at, { page: input.page, bold: face === bold, color, align: "left", footer: true });
+    for (const run of face.runs(text)) { page.drawText(run.text, { x: cursor, y: baseline, size: at, font: run.font, color }); cursor += run.font.widthOfTextAtSize(run.text, at); }
     return cursor - x;
   };
   const room = CONTENT_WIDTH - pageWidth - mm(6);
-  // The legal details matter more than the name, which the head already shows: a long line shortens the name first.
-  const legalWidth = input.legal.length ? regular.widthOfTextAtSize(` · ${input.legal.join(" · ")}`, size) : 0;
-  const companyText = fitFooterText(bold, input.company, Math.max(room * 0.2, Math.min(room * 0.6, room - legalWidth)), size);
-  const companyWidth = bold.widthOfTextAtSize(companyText, size);
-  const tail = input.legal.length ? fitFooterText(regular, ` · ${input.legal.join(" · ")}`, room - companyWidth, size) : "";
-  draw(bold, companyText, MARGIN, firstBaseline, INK);
-  if (tail) draw(regular, tail, MARGIN + companyWidth, firstBaseline, MUTED);
+  const legalText = input.legal.length ? ` · ${input.legal.join(" · ")}` : "";
+  // A long name with the legal details is drawn a little smaller first, on the same two lines (2026-11-16: the name was cut).
+  const fullWidth = bold.widthOfTextAtSize(input.company, size) + (legalText ? regular.widthOfTextAtSize(legalText, size) : 0);
+  const lineSize = fullWidth > room ? Math.max(FOOT_MIN, Math.floor(size * (room / fullWidth) * 4) / 4) : size;
+  // The legal details matter more than the name, which the head already shows: a line still too long shortens the name first.
+  const legalWidth = legalText ? regular.widthOfTextAtSize(legalText, lineSize) : 0;
+  const companyText = fitFooterText(bold, input.company, Math.max(room * 0.2, Math.min(room * 0.6, room - legalWidth)), lineSize);
+  const companyWidth = bold.widthOfTextAtSize(companyText, lineSize);
+  const tail = legalText ? fitFooterText(regular, legalText, room - companyWidth, lineSize) : "";
+  draw(bold, companyText, MARGIN, firstBaseline, INK, lineSize);
+  if (tail) draw(regular, tail, MARGIN + companyWidth, firstBaseline, MUTED, lineSize);
   draw(regular, fitFooterText(regular, input.second, CONTENT_WIDTH, size), MARGIN, secondBaseline, MUTED);
   // The page number is drawn last, so a page's text ends with "Sida n av N" (the tests read it there).
   draw(bold, pageText, PAGE_WIDTH - MARGIN - pageWidth, firstBaseline, INK);

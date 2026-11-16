@@ -16,7 +16,7 @@ import { OperatorApiError } from "@/features/operator/operator-api";
  */
 export const DEMO_OPERATOR_COMPANY = "Exempelfabriken AB";
 export const DEMO_OPERATOR_PASSWORD = "Fabrik-Demo-7";
-export const DEMO_OPERATOR_HINT = `Demo med påhittade konton. Logga in som Press 4, Linje 2 eller lisa.berg@exempelfabriken.se med lösenordet ${DEMO_OPERATOR_PASSWORD}. Inget sparas.`;
+export const DEMO_OPERATOR_HINT = `Demo med påhittade konton. Logga in som Press 4, Linje 2 eller lisa.berg@exempel.se med lösenordet ${DEMO_OPERATOR_PASSWORD}. Inget sparas.`;
 const ON_CALL_PERSON_MS = 4000;
 
 const node = (id: string, name: string, parentId: string | null, objectType: string, reportable = true, operatingState = ""): MachineNode =>
@@ -41,7 +41,7 @@ function createStore() {
   const accounts: DemoAccount[] = [
     { id: "op-press4", username: "Press 4", kind: "password", shared: true, active: true, nodeIds: ["m-press4"], createdAt: ago(400), lastLoginAt: ago(3) },
     { id: "op-linje2", username: "Linje 2", kind: "password", shared: true, active: true, nodeIds: ["m-linje2"], createdAt: ago(380), lastLoginAt: ago(26) },
-    { id: "op-lisa", username: "lisa.berg@exempelfabriken.se", kind: "password", shared: false, active: true, nodeIds: ["m-fabrik", "m-station"], createdAt: ago(300), lastLoginAt: ago(50) },
+    { id: "op-lisa", username: "lisa.berg@exempel.se", kind: "password", shared: false, active: true, nodeIds: ["m-fabrik", "m-station"], createdAt: ago(300), lastLoginAt: ago(50) },
     { id: "op-montering", username: "Avdelning Montering", kind: "password", shared: true, active: false, nodeIds: ["m-linje2"], createdAt: ago(200), lastLoginAt: null },
     { id: "op-elin", username: "Elin Ström", kind: "microsoft", shared: false, active: true, nodeIds: [], createdAt: ago(2), lastLoginAt: ago(2) },
   ];

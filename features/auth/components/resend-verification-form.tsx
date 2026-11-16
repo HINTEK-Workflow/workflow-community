@@ -53,7 +53,6 @@ export function ResendVerificationForm({
           defaultValue={email}
           autoComplete="email"
           placeholder="namn@foretag.se"
-          className="h-10 text-sm"
           readOnly={locked}
           required
         />

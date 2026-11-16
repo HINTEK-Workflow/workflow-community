@@ -39,6 +39,61 @@ function Succeeds([scriptblock]$Command) {
   try { & $Command *> $null } finally { $ErrorActionPreference = $previous }
   return $LASTEXITCODE -eq 0
 }
+# Runs git in the install folder and returns its output, or $null if git failed.
+function GitOut {
+  $previous = $ErrorActionPreference; $ErrorActionPreference = "Continue"
+  try { $out = & git -C $Dir @args 2>$null } finally { $ErrorActionPreference = $previous }
+  if ($LASTEXITCODE -ne 0) { return $null }
+  return $out
+}
+$NewFolderHint = "Vill du installera en ny, separat Workflow i stället? Välj en ny mapp, till exempel:`n  `$env:WORKFLOW_DIR = `"`$HOME\workflow-ny`"; irm https://raw.githubusercontent.com/HINTEK-Workflow/workflow-community/main/install.ps1 | iex"
+# Tells the user when the folder already holds an installation that is running now, before it is restarted.
+function ShowRunning {
+  if (-not (Test-Path (Join-Path $Dir ".env"))) { return }
+  $previous = $ErrorActionPreference; $ErrorActionPreference = "Continue"
+  try { Push-Location $Dir; $names = @(docker compose ps --status running --format "{{.Name}}" 2>$null | Where-Object { $_ }) }
+  finally { Pop-Location; $ErrorActionPreference = $previous }
+  if ($names.Count -eq 0) { return }
+  Write-Host ""
+  Write-Host "Obs: Workflow i $Dir körs redan ($($names -join ', '))." -ForegroundColor Yellow
+  Write-Host "Den uppdateras och startas om. Dina inställningar (.env), dina filer och databasen behålls." -ForegroundColor Yellow
+  Write-Host $NewFolderHint -ForegroundColor Yellow
+  Write-Host "Fortsätter om 10 sekunder. Tryck Ctrl+C för att avbryta." -ForegroundColor Yellow
+  Start-Sleep -Seconds 10
+}
+# Updates an existing clone. If the published history has been rewritten, a clone without own commits or changes is
+# moved to the new history and its old state is kept as a backup branch. .env, storage and the database volume are not
+# tracked by Git and are never touched.
+function UpdateClone {
+  $upstream = GitOut rev-parse --abbrev-ref --symbolic-full-name "@{u}"
+  if (-not $upstream) { Fail "$Dir följer ingen gren på GitHub och kan inte uppdateras automatiskt.`n$NewFolderHint" }
+  $remoteRef = "refs/remotes/$upstream"
+  $before = GitOut rev-parse -q --verify $remoteRef
+  Native { git -C $Dir fetch origin } "Kunde inte hämta uppdateringar till $Dir. Kontrollera internetanslutningen och kör igen."
+  if (Succeeds { git -C $Dir merge-base --is-ancestor HEAD $remoteRef }) {
+    Native { git -C $Dir merge --ff-only $remoteRef } "Kunde inte uppdatera $Dir."
+    return
+  }
+  Write-Host "Den publicerade versionen har en ny historik, så $Dir kan inte uppdateras på vanligt sätt."
+  if (GitOut status --porcelain --untracked-files=no) {
+    Fail "Du har ändrat filer i $Dir. De skrivs inte över.`nSpara dina ändringar någon annanstans, eller låt mappen vara och installera i en ny mapp.`n$NewFolderHint"
+  }
+  # HEAD has no own commits if it is part of what the remote branch pointed to before this run or earlier. The ref's
+  # log holds every old and new value, also the one a forced update replaced in an earlier, failed run.
+  $log = Join-Path (GitOut rev-parse --absolute-git-dir) "logs/$remoteRef"
+  $logged = if (Test-Path $log) { Get-Content $log | ForEach-Object { ($_ -split " ")[0..1] } } else { @() }
+  $known = @($before) + @($logged) | Where-Object { $_ -match "^[0-9a-f]{40,64}$" -and $_ -notmatch "^0+$" } | Select-Object -Unique
+  $own = $true
+  foreach ($commit in $known) { if (Succeeds { git -C $Dir merge-base --is-ancestor HEAD $commit }) { $own = $false; break } }
+  if ($own) {
+    Fail "$Dir innehåller egna ändringar (commits) som inte finns på GitHub. De skrivs inte över.`nSpara dem, eller låt mappen vara och installera i en ny mapp.`n$NewFolderHint"
+  }
+  $backup = "backup/" + (Get-Date -Format "yyyy-MM-dd-HHmmss")
+  Native { git -C $Dir branch $backup HEAD } "Kunde inte spara en kopia av den gamla versionen."
+  Native { git -C $Dir reset --hard $remoteRef } "Kunde inte uppdatera $Dir."
+  Write-Host "Uppdaterat till den nya versionen. Den gamla versionen finns kvar i Git-grenen $backup."
+  Write-Host "Dina inställningar (.env), dina filer (storage) och databasen är orörda."
+}
 
 Write-Host "Workflow Community Edition - installation" -ForegroundColor Cyan
 
@@ -48,8 +103,8 @@ if (-not (Get-Command docker -ErrorAction SilentlyContinue)) { Fail "Docker sakn
 if (-not (Succeeds { docker info })) { Fail "Docker Desktop är inte igång. Starta det, vänta tills det är klart och kör igen." }
 
 Step "Hämtar Workflow till $Dir"
-if (Test-Path (Join-Path $Dir ".git")) { Native { git -C $Dir pull --ff-only } "Kunde inte uppdatera $Dir." }
-elseif (Test-Path $Dir) { Fail "$Dir finns redan men är ingen Workflow-installation. Välj en annan mapp med `$env:WORKFLOW_DIR." }
+if (Test-Path (Join-Path $Dir ".git")) { ShowRunning; UpdateClone }
+elseif (Test-Path $Dir) { Fail "$Dir finns redan men är ingen Workflow-installation.`n$NewFolderHint" }
 else { Native { git clone --depth 1 $Source $Dir } "Kunde inte hämta Workflow." }
 Set-Location $Dir
 

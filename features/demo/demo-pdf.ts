@@ -47,3 +47,14 @@ export function demoPdfResponse(bytes: Uint8Array, filename: string, inline = fa
 
 /** The file name a demo PDF gets: the usual name with "demo-" first, so a saved file says what it is. */
 export const demoFileName = (name: string) => `demo-${name.replace(/[<>:"/\\|?*\u0000-\u001f]+/g, "-")}`;
+
+/** True in the public demo, whose backend marks the window (features/demo/demo-backend.ts). */
+export const inWorkflowDemo = () => typeof window !== "undefined" && Boolean((window as typeof window & { __workflowDemo?: boolean }).__workflowDemo);
+
+/**
+ * The one step a PDF drawn in the browser goes through before it is saved (2026-11-16: the avvikelselogg's PDF lacked the Demo
+ * mark the others had): in the demo it is stamped and named "demo-…", elsewhere (Local) it is left as it is.
+ */
+export async function browserPdfCopy(bytes: Uint8Array, filename: string, demo = inWorkflowDemo()): Promise<{ bytes: Uint8Array; filename: string }> {
+  return demo ? { bytes: await stampDemoPdf(bytes), filename: demoFileName(filename) } : { bytes, filename };
+}

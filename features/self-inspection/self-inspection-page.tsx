@@ -75,9 +75,9 @@ export async function downloadSelfInspectionPdfInBrowser(version: VersionView, c
   const fontBytes = await fetchReportFonts();
   const { createSelfInspectionPdf } = await import("@/lib/self-inspection/report");
   const bytes = await createSelfInspectionPdf({ identity: typeof company === "string" ? { company } : await company(), fontBytes, version });
-  if (!demo) { download(bytes, pdfName(version)); return; }
-  const { demoFileName, stampDemoPdf } = await import("@/features/demo/demo-pdf");
-  download(await stampDemoPdf(new Uint8Array(bytes)), demoFileName(pdfName(version)));
+  const { browserPdfCopy } = await import("@/features/demo/demo-pdf");
+  const copy = await browserPdfCopy(new Uint8Array(bytes), pdfName(version), demo);
+  download(copy.bytes, copy.filename);
 }
 
 export function cloudSelfInspectionBackend(): SelfInspectionBackend {
