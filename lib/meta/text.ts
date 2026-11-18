@@ -5,6 +5,8 @@
  * after the text (Instagram shows no links in a caption). The limits are Instagram's, the strictest, when Instagram is chosen;
  * LinkedIn (2026-11-11) takes up to 3000 characters for the text and the link together.
  */
+import { currentAppVersion } from "@/lib/release-notes";
+
 export const HEADING_MAX = 90;
 export const BODY_MAX = 220;
 /** Instagram's limit for the caption. */
@@ -129,6 +131,20 @@ export function normalizeHashtags(input: string): string {
 /** The hashtags of a text (the field or a caption) as a list. */
 export const hashtagList = (text: string | null | undefined) => (text ?? "").match(HASHTAG) ?? [];
 
+/**
+ * Versionen i texten (2026-11-16): `{version}` in a post's text stands for the app's version when it is shown or published,
+ * so a draft written before a release still names the current one. The stored text keeps the token (and so does the schedule's
+ * hash of the approved content); it is replaced where the text is drawn, previewed or sent. Pure.
+ */
+export const VERSION_TOKEN = "{version}";
+export const withVersion = (text: string, version: string = currentAppVersion()) => (text.includes(VERSION_TOKEN) ? text.split(VERSION_TOKEN).join(version) : text);
+/** The post's texts with the version put in (heading, picture text, post text and Instagram text). */
+export function postWithVersion<T extends { heading?: string; body?: string; caption?: string; instagramText?: string | null }>(post: T, version: string = currentAppVersion()): T {
+  const out: Record<string, unknown> = { ...post };
+  for (const key of ["heading", "body", "caption", "instagramText"] as const) if (typeof out[key] === "string") out[key] = withVersion(out[key] as string, version);
+  return out as T;
+}
+
 export type PostChannel = "facebook" | "instagram" | "linkedin";
 
 /**
@@ -163,8 +179,8 @@ export function campaignText(text: string, channel: PostChannel, hosts: readonly
  * The stored caption itself never holds the field's hashtags; the newsletter uses the caption alone.
  */
 export function captionWithHashtags(post: Pick<PostText, "caption" | "link" | "hashtags" | "instagramText" | "campaignLinks">, channel: PostChannel, hosts: readonly string[] = []): string {
-  const extra = channel === "instagram" ? (post.instagramText ?? "").trim() : "";
-  const text = [post.caption.trim(), extra, normalizeHashtags(post.hashtags ?? "")].filter(Boolean).join("\n\n");
+  const extra = channel === "instagram" ? withVersion(post.instagramText ?? "").trim() : "";
+  const text = [withVersion(post.caption).trim(), extra, normalizeHashtags(post.hashtags ?? "")].filter(Boolean).join("\n\n");
   const full = channel !== "instagram" && post.link ? `${text}\n\n${post.link}` : text;
   return post.campaignLinks ? campaignText(full, channel, hosts) : full;
 }

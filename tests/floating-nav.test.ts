@@ -58,10 +58,10 @@ test("floating nav: while editing Tillbaka is the page's Avbryt, and the floatin
   assert.deepEqual(floatingNavModel({ ...page, save: true, headerInView: false }).buttons, ["back", "save"], "a saved job: Tillbaka and Spara");
 });
 
-test("floating nav: under 1024 px the bottom bar has Spara – never two; the group stands left above the bar", () => {
+test("floating nav: under 1024 px the bottom bar has Spara – never two; the group stands right above the bar (2026-11-17)", () => {
   const tablet = floatingNavModel({ ...page, wide: false, level: 2, cancel: true, save: true, headerInView: false });
   assert.deepEqual(tablet.buttons, ["back", "cancel"]);
-  assert.equal(tablet.placement, "left");
+  assert.equal(tablet.placement, "bar");
   assert.equal(tablet.compact, true);
 });
 

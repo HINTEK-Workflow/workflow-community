@@ -396,7 +396,8 @@ html:not([data-theme="dark"]) .workspace-sidebar-note { background: color-mix(in
    size like the plain Label, so the form component used does not show. docs/ui-system.md, "Inloggningskortet". */
 .auth-form { --control-h: 2.5rem; }
 @media (pointer: coarse) { .auth-form { --control-h: 2.75rem; } }
-.auth-form .field-label { font-size: var(--text-body); }
+/* …and in the same colour as the plain Label (2026-11-17: Rapportera fel had blue Typ, Rubrik and Beskrivning). */
+.auth-form .field-label { font-size: var(--text-body); color: var(--foreground); }
 /* WorkflowBrand measures the whole name and its first word with these rulers and shows what fits whole (2026-10-10). */
 .workflow-brand-ruler { position: absolute; top: 0; left: 0; width: max-content; overflow: visible; visibility: hidden; pointer-events: none; }
 html:not([data-theme="dark"]) :is(.workspace-sidebar, .workspace-header, .workspace-drawer) .workflow-brand-text { color: #ffffff; }
@@ -554,7 +555,12 @@ body:has(.public-page) :is([role="dialog"], [role="alertdialog"], [data-testid="
    (ee/landing/ui/landing-scroll-bar.tsx); it slides in and out, never shown at the top of the page. */
 .landing-scroll-bar { position: absolute; left: 0; right: 0; top: 100%; background: #ffffff; border-bottom: 1px solid #e2e8f0; box-shadow: 0 6px 16px rgb(11 40 80 / .08); opacity: 0; transform: translateY(-6px); pointer-events: none; transition: opacity 200ms ease, transform 200ms ease; }
 .landing-scroll-bar[data-shown] { opacity: 1; transform: none; pointer-events: auto; }
-.landing-scroll-bar nav { scrollbar-width: none; }
+/* On a narrow screen the links slide sideways under the fixed Prova demon: only sideways, snapping to each link, and the page itself
+   does not move along (2026-11-17: "floaty, inte fast höger–vänster"). A soft edge shows that more links follow. */
+.landing-scroll-bar nav { scrollbar-width: none; overscroll-behavior-x: contain; scroll-snap-type: x proximity; touch-action: pan-x; -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 1.25rem), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 1.25rem), transparent); }
+.landing-scroll-bar nav::-webkit-scrollbar { display: none; }
+.landing-scroll-bar nav li { scroll-snap-align: start; }
+.landing-scroll-bar nav ul { padding-right: 1.25rem; }
 @media (max-width: 480px) { .landing-scroll-bar .landing-sub-link { padding: .375rem .5rem; font-size: 14px; } .landing-scroll-bar .landing-sub-button { padding: 0 10px; } .landing-scroll-bar .gap-4 { gap: .5rem; } }
 @media (prefers-reduced-motion: reduce) { .landing-scroll-bar { transition: none; transform: none; } }
 /* Logga in as a person icon at the right of the blue bar (2026-11-12), 44 px to tap, visible on every width. */
@@ -570,6 +576,51 @@ body:has(.public-page) :is([role="dialog"], [role="alertdialog"], [data-testid="
 /* The page's parts under the top buttons: quiet chips. */
 .landing-hero-link { display: inline-flex; align-items: center; min-height: 36px; padding: .375rem .875rem; border: 1px solid #d9e0ea; border-radius: 999px; background: #ffffff; color: #113351; font-size: 14px; font-weight: 600; line-height: 1.3; transition: background-color 150ms ease; }
 .landing-hero-link:hover { background: #e7f1fc; }
+/* Kom igång (2026-11-16): the numbers 1 – 2 – 3 above a step; the one the visitor chose is larger and filled, the others quiet; each
+   is a link to its step (ee/landing/ui/landing-steps.tsx). At least 28 px, so a finger hits them. */
+.landing-step-dot { display: inline-flex; align-items: center; justify-content: center; width: 1.75rem; height: 1.75rem; border: 1px solid var(--border); border-radius: 999px; color: var(--muted-foreground); font-size: 12px; font-weight: 700; line-height: 1; text-decoration: none; transition: border-color 150ms ease, color 150ms ease; }
+.landing-step-dot:hover { border-color: var(--primary); color: var(--primary); }
+.landing-step-dot[aria-current="step"] { width: 2.5rem; height: 2.5rem; font-size: 16px; border-color: var(--primary); background: var(--primary); color: var(--primary-foreground); }
+/* A section's pictures (ee/landing/ui/landing-topic-gallery.tsx): three in a row from 640 px; on a phone a row that slides sideways
+   (each picture 80 % wide, so the next one shows), and the page itself never scrolls sideways. */
+.landing-topic-gallery { display: grid; grid-auto-flow: column; grid-auto-columns: 80%; gap: .75rem; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; padding-bottom: .25rem; }
+.landing-topic-gallery > li { scroll-snap-align: start; }
+@media (min-width: 640px) { .landing-topic-gallery { grid-auto-flow: row; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; overflow: visible; padding-bottom: 0; } }
+.landing-gallery-frame { aspect-ratio: 16 / 10; }
+/* Three pictures (2026-11-16): one large and two smaller, stacked beside it and together as tall as the large one. On a phone
+   the large one on top and the two smaller side by side under it, so nothing slides sideways. */
+.landing-topic-gallery[data-layout="feature"] { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-columns: auto; overflow: visible; padding-bottom: 0; }
+.landing-topic-gallery[data-layout="feature"] > li:first-child { grid-column: 1 / -1; }
+@media (min-width: 640px) {
+  .landing-topic-gallery[data-layout="feature"] { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); grid-template-rows: repeat(2, minmax(0, 1fr)); }
+  .landing-topic-gallery[data-layout="feature"] > li:first-child { grid-column: 1; grid-row: 1 / span 2; }
+  .landing-topic-gallery[data-layout="feature"] > li:not(:first-child) .landing-gallery-frame { aspect-ratio: auto; flex: 1 1 0; min-height: 0; }
+}
+/* A feature page's way back (2026-11-17): the app's round arrow at the bottom right, shown once the page has scrolled. */
+.landing-back-floating { position: fixed; z-index: 30; right: calc(env(safe-area-inset-right) + 1rem); bottom: calc(env(safe-area-inset-bottom) + 1rem); opacity: 0; transform: translateY(.5rem); transition: opacity 160ms ease, transform 160ms ease; pointer-events: none; }
+.landing-back-floating[data-shown] { opacity: 1; transform: none; }
+.landing-back-floating .floating-nav-button > svg { width: 1.25rem; height: 1.25rem; stroke-width: 2.2; }
+@media (prefers-reduced-motion: reduce) { .landing-back-floating { transition: none; } }
+/* The landing page's picture pop-up (ee/landing/ui/landing-lightbox.tsx): the whole window, the picture always whole within it. On a
+   phone Föregående/Nästa sit at the bottom, beside the caption; from 640 px at the sides, beside the picture. */
+.landing-lightbox { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .75rem; padding: calc(env(safe-area-inset-top) + .75rem) calc(env(safe-area-inset-right) + 1rem) calc(env(safe-area-inset-bottom) + 4.5rem) calc(env(safe-area-inset-left) + 1rem); background: rgb(8 15 28 / .92); color: #ffffff; }
+.landing-lightbox-bar { position: absolute; top: calc(env(safe-area-inset-top) + .75rem); left: calc(env(safe-area-inset-left) + 1rem); right: calc(env(safe-area-inset-right) + 1rem); display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.landing-lightbox-figure { display: flex; flex-direction: column; align-items: center; gap: .625rem; max-width: 100%; margin: 3rem 0 0; }
+.landing-lightbox-image { display: block; width: auto; height: auto; max-width: calc(100vw - 2rem - env(safe-area-inset-left) - env(safe-area-inset-right)); max-height: calc(100dvh - 10.5rem - env(safe-area-inset-top) - env(safe-area-inset-bottom)); border-radius: .5rem; background: #ffffff; box-shadow: 0 10px 40px rgb(0 0 0 / .45); }
+.landing-lightbox-caption { max-width: 48rem; text-align: center; font-size: .9375rem; line-height: 1.4; color: rgb(255 255 255 / .9); }
+.landing-lightbox-button { display: inline-flex; align-items: center; justify-content: center; gap: .375rem; min-width: 2.75rem; height: 2.75rem; padding-inline: .75rem; border: 1px solid rgb(255 255 255 / .3); border-radius: 999px; background: rgb(255 255 255 / .12); color: #ffffff; font-size: .875rem; font-weight: 600; transition: background-color 150ms ease; }
+.landing-lightbox-button:hover { background: rgb(255 255 255 / .22); }
+.landing-lightbox-button:focus-visible { outline: 2px solid #ffffff; outline-offset: 2px; }
+.landing-lightbox-prev, .landing-lightbox-next { position: absolute; bottom: calc(env(safe-area-inset-bottom) + 1rem); padding-inline: 0; width: 2.75rem; }
+.landing-lightbox-prev { left: calc(50% - 3.25rem); }
+.landing-lightbox-next { right: calc(50% - 3.25rem); }
+@media (min-width: 640px) {
+  .landing-lightbox { padding: calc(env(safe-area-inset-top) + 1rem) 5rem calc(env(safe-area-inset-bottom) + 1.5rem); }
+  .landing-lightbox-image { max-width: calc(100vw - 10rem); max-height: calc(100dvh - 9rem - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
+  .landing-lightbox-prev, .landing-lightbox-next { top: 50%; bottom: auto; transform: translateY(-50%); }
+  .landing-lightbox-prev { left: 1.25rem; }
+  .landing-lightbox-next { right: 1.25rem; }
+}
 /* Anchors land under the sticky top (65 px, + 52 px when the light bar is shown). */
 html:has(.landing-header) { scroll-padding-top: 5rem; }
 html:has(.landing-sub) { scroll-padding-top: 8rem; }
@@ -873,7 +924,7 @@ html:not([data-theme="dark"]) :is(.workspace-aside, .workspace-drawer):hover { -
   .workspace-toast { bottom: calc(3.75rem + env(safe-area-inset-bottom)); }
   /* HINTEK AI stays (2026-11-02): it has no other way in on a phone on its side outside the app look. */
   .floating-nav > :not(.floating-nav-assistant) { display: none; }
-  .floating-nav[data-placement="left"] { bottom: calc(4rem + env(safe-area-inset-bottom)); }
+  .floating-nav[data-placement="bar"] { bottom: calc(4rem + env(safe-area-inset-bottom)); }
 }
 @media (max-width: 639px) {
   .mobile-form-action { width: 100%; justify-content: center; }
@@ -1846,6 +1897,10 @@ input:where(:not([type="checkbox"], [type="radio"], [type="range"], [type="file"
   [data-testid="answer-buttons"] > button { min-height: 2.75rem; min-width: 2.75rem; }
   [data-testid="cookie-notice"] button { min-height: 2.75rem; }
   nav[aria-label="Juridiska dokument"] a { display: inline-flex; min-height: 2.75rem; min-width: 2.75rem; align-items: center; justify-content: center; }
+  /* The landing footer's list of policies (2026-11-17: far too much space between the rows on a phone): rows as tall as the
+     other footer lines' tap height, the text at the column's left edge (DPA was centred in its 44 px box). */
+  footer nav[aria-label="Juridiska dokument"].flex-col { gap: 0; }
+  footer nav[aria-label="Juridiska dokument"].flex-col a { min-height: 2.25rem; min-width: 0; justify-content: flex-start; }
   .native-search-field { min-height: 2.75rem; }
   .native-top-bar-button[data-kind] > span { height: 2.75rem; }
   .native-top-bar-button[data-icon] > span, .native-top-bar-button[data-kind="back"] > .native-top-bar-pill { width: 2.75rem; height: 2.75rem; }
@@ -1868,7 +1923,8 @@ input:where(:not([type="checkbox"], [type="radio"], [type="range"], [type="file"
 @media (min-width: 1024px) {
   .floating-nav[data-placement="right"]:has(button)::before { content: ""; position: fixed; z-index: -1; left: 16rem; right: 0; bottom: 0; height: 5.25rem; border-top: 1px solid var(--border); background: var(--background); pointer-events: auto; }
 }
-.floating-nav[data-placement="left"] { left: .75rem; bottom: calc(5.5rem + env(safe-area-inset-bottom)); }
+/* A tablet: above the bottom bar, at the right like on a computer (2026-11-17). */
+.floating-nav[data-placement="bar"] { right: .75rem; bottom: calc(5.5rem + env(safe-area-inset-bottom)); }
 .floating-nav-button { pointer-events: auto; display: inline-flex; height: 2.75rem; min-width: 2.75rem; align-items: center; justify-content: center; gap: .5rem; border-radius: 9999px; padding: 0 1.125rem 0 1rem; background: var(--floating-nav-bg); color: var(--floating-nav-fg); box-shadow: var(--floating-nav-shadow); font-size: .875rem; font-weight: 600; line-height: 1; white-space: nowrap; cursor: pointer; transition: background-color 150ms ease; }
 .floating-nav-button:hover { background: var(--floating-nav-bg-hover); }
 .floating-nav-button:focus-visible { outline: 2px solid var(--floating-nav-ring); outline-offset: -4px; }
@@ -1889,7 +1945,7 @@ input:where(:not([type="checkbox"], [type="radio"], [type="range"], [type="file"
  * round button, over the page but not blocking it, no higher than the window leaves under the top bar. A tablet has the group
  * at the left above the bottom bar, a computer at the bottom right; under 640 px the window is the whole screen (Dialog).
  */
-.assistant-popup { position: fixed; z-index: 35; display: flex; flex-direction: column; overflow: hidden; left: .75rem; bottom: calc(8.75rem + env(safe-area-inset-bottom)); width: min(24rem, calc(100vw - 1.5rem)); height: min(34rem, calc(100dvh - 8.75rem - env(safe-area-inset-bottom) - var(--workspace-header-h) - .5rem)); border: 1px solid var(--border); border-radius: 1rem; background: var(--card); box-shadow: 0 16px 40px rgb(11 40 80 / .22), 0 2px 6px rgb(11 40 80 / .12); }
+.assistant-popup { position: fixed; z-index: 35; display: flex; flex-direction: column; overflow: hidden; right: .75rem; bottom: calc(8.75rem + env(safe-area-inset-bottom)); width: min(24rem, calc(100vw - 1.5rem)); height: min(34rem, calc(100dvh - 8.75rem - env(safe-area-inset-bottom) - var(--workspace-header-h) - .5rem)); border: 1px solid var(--border); border-radius: 1rem; background: var(--card); box-shadow: 0 16px 40px rgb(11 40 80 / .22), 0 2px 6px rgb(11 40 80 / .12); }
 .assistant-popup > * { min-height: 0; flex: 1; }
 @media (min-width: 1024px) {
   .assistant-popup { left: auto; right: 1.5rem; bottom: 5rem; height: min(38rem, calc(100dvh - 5rem - var(--workspace-header-h) - .5rem)); }

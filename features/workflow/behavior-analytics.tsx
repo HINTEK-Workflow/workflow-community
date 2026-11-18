@@ -13,6 +13,7 @@ import { Panel } from "@/features/kfid/ui";
 import { GrowBar, Sparkline, Trend } from "@/features/overview/viz";
 import { StatisticsSkeleton } from "@/components/skeleton";
 import { addReportDays, changePercent, periodTotals, type PeriodTotals, type RankedRow, type Report } from "@/lib/analytics/report";
+import { demoInsights, type Insights, rankByCount, siteInsights } from "@/lib/analytics/insights";
 import type { AnalyticsSettings } from "@/lib/analytics/settings-model";
 import { formatSwedish, swedishDayKey } from "@/lib/swedish-time";
 import { useLoadEffect } from "@/lib/use-load-effect";
@@ -94,6 +95,15 @@ function RankedList({ title, rows, testId, color = "bg-[var(--viz-1)]", empty = 
         <GrowBar value={row.count} max={max} fill={color} />
       </li>)}
     </ul> : <p className="text-sm text-muted-foreground">{empty}</p>}
+  </div>;
+}
+
+/** The period in a few plain lines and what they may mean (2026-11-16), above the lists. */
+function InsightLines({ insights, testId }: { insights: Insights; testId: string }) {
+  if (!insights.facts.length) return null;
+  return <div className="rounded-lg border bg-muted/40 p-3 text-sm" data-testid={testId}>
+    <ul className="list-disc space-y-1 pl-5">{insights.facts.map((line) => <li key={line}>{line}</li>)}</ul>
+    {insights.meaning.length ? <p className="mt-2 text-xs text-muted-foreground"><strong className="text-foreground">Vad det kan betyda:</strong> {insights.meaning.join(" ")}</p> : null}
   </div>;
 }
 
@@ -231,11 +241,12 @@ export function BehaviorAnalytics({ notify }: { notify: (text: string, error?: b
         {part === "web" ? <>
           {funnel ? <div data-testid="analytics-site-panel"><Panel title="Webbplatsen" icon={MonitorSmartphone} description="Räknat per sidvisning och knapptryck utan kaka, så ingen känns igen mellan besöken.">
             {report.landing.hasData ? <div className="space-y-6" data-testid="analytics-site">
+              <InsightLines insights={siteInsights(report.landing)} testId="analytics-site-insights" />
               <TimeChart rows={publicRows} kind="bar" unit={unit} label={`Sidvisningar på webbplatsen per ${per}`} testId="analytics-site-chart" tableTestId="analytics-site-table" height="h-56"
                 series={[{ key: "landingViews", name: "Sidvisningar", color: "var(--viz-1)" }]} />
               <div className="@container"><div className="grid gap-6 @2xl:grid-cols-2 @5xl:grid-cols-3">
-                <RankedList title="Sidor" rows={report.landing.pages} testId="analytics-site-pages" />
-                <RankedList title="Knappar" rows={report.landing.clicks} testId="analytics-site-clicks" color="bg-[var(--viz-2)]" />
+                <RankedList title="Mest visade sidor" rows={report.landing.pages} testId="analytics-site-pages" />
+                <RankedList title="Mest tryckta knappar" rows={rankByCount(report.landing.clicks)} testId="analytics-site-clicks" color="bg-[var(--viz-2)]" />
                 <RankedList title="Varifrån besökarna kom" rows={report.landing.sources} testId="analytics-site-sources" />
                 <RankedList title="Skärm" rows={report.landing.devices} testId="analytics-site-devices" color="bg-[var(--viz-2)]" />
               </div></div>
@@ -270,6 +281,7 @@ export function BehaviorAnalytics({ notify }: { notify: (text: string, error?: b
 
           <div data-testid="analytics-demo-panel"><Panel title="Demon" icon={PlayCircle} description="Räknat per besök utan kaka och IP-adress, så ingen känns igen mellan besöken.">
             {report.demo.hasData ? <div className="space-y-6" data-testid="analytics-demo">
+              <InsightLines insights={demoInsights(report.demo)} testId="analytics-demo-insights" />
               <TimeChart rows={publicRows} kind="bar" unit={unit} label={`Demostarter per ${per}`} testId="analytics-demo-chart" tableTestId="analytics-demo-table" height="h-56"
                 series={[{ key: "demoStarts", name: "Demostarter", color: "var(--viz-2)" }]} />
               <div className="@container"><div className="grid gap-6 @2xl:grid-cols-2 @5xl:grid-cols-3">
@@ -278,6 +290,7 @@ export function BehaviorAnalytics({ notify }: { notify: (text: string, error?: b
                 <RankedList title="Ungefärlig tid i demon" rows={report.demo.time} testId="analytics-demo-time" />
                 <RankedList title="Sidor i demon" rows={report.demo.views} testId="analytics-demo-views" />
                 <RankedList title="Vad besökarna gjorde" rows={report.demo.flows} testId="analytics-demo-flows" />
+                <RankedList title="Skärm" rows={report.demo.devices} testId="analytics-demo-devices" color="bg-[var(--viz-2)]" empty="Inget under perioden. Det räknas från 16 nov 2026." />
               </div></div>
               <p className="text-xs text-muted-foreground">Bara typen av webbplats sparas, aldrig adressen, och tiden räknas tills sidan lämnas eller döljs.</p>
             </div> : <p className="text-sm text-muted-foreground" data-testid="analytics-demo-empty">Ingen har öppnat demon under perioden.</p>}

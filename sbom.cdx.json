@@ -10,9 +10,9 @@
     ],
     "component": {
       "type": "application",
-      "bom-ref": "workflow-community@0.67.0",
+      "bom-ref": "workflow-community@0.69.0",
       "name": "workflow-community",
-      "version": "0.67.0",
+      "version": "0.69.0",
       "licenses": [
         {
           "license": {
@@ -3080,9 +3080,9 @@
     },
     {
       "type": "library",
-      "bom-ref": "@next/env@16.4.2",
+      "bom-ref": "@next/env@16.4.5",
       "name": "@next/env",
-      "version": "16.4.2",
+      "version": "16.4.5",
       "scope": "required",
       "licenses": [
         {
@@ -3091,19 +3091,19 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40next/env@16.4.2",
+      "purl": "pkg:npm/%40next/env@16.4.5",
       "hashes": [
         {
           "alg": "SHA-512",
-          "content": "9d3513147ec6e7f27f7e6a648d52de80e92ac8a38fd0212c25c32cc8ee1409878dd6cbbe60c5bf31f69212b9c9b242fb5ccf940cae9a4efb25c6c442cb26bfb0"
+          "content": "27048fc2976464be55325da303fabe248f0c65dc1e00bdf19b0e7fb5bf72fd32ed992d185d99e6603cd28a1c24f314e3d4e2fe58ce77813a9a8fdeb2b8ba7a5f"
         }
       ]
     },
     {
       "type": "library",
-      "bom-ref": "@next/eslint-plugin-next@16.4.2",
+      "bom-ref": "@next/eslint-plugin-next@16.4.5",
       "name": "@next/eslint-plugin-next",
-      "version": "16.4.2",
+      "version": "16.4.5",
       "scope": "excluded",
       "licenses": [
         {
@@ -3112,19 +3112,19 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40next/eslint-plugin-next@16.4.2",
+      "purl": "pkg:npm/%40next/eslint-plugin-next@16.4.5",
       "hashes": [
         {
           "alg": "SHA-512",
-          "content": "8024d6970d1ef98ea46a3a45c8a2a0035f798d4242461973244d2557bb9f7bc6be82122c00d599d3f16227083a0ee386d7e3af45b7190dc141a1187798d271d2"
+          "content": "74d99ce32e049ffdf8b56c5a045176b46fd1f467a247054f7fbbfc033fcfaa4f05713e14bf478f9ab64abd604bda7172d50a6b3e0256fba5e37f257a8db455dd"
         }
       ]
     },
     {
       "type": "library",
-      "bom-ref": "@next/swc-darwin-arm64@16.4.2",
+      "bom-ref": "@next/swc-darwin-arm64@16.4.5",
       "name": "@next/swc-darwin-arm64",
-      "version": "16.4.2",
+      "version": "16.4.5",
       "scope": "optional",
       "licenses": [
         {
@@ -3133,19 +3133,19 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40next/swc-darwin-arm64@16.4.2",
+      "purl": "pkg:npm/%40next/swc-darwin-arm64@16.4.5",
       "hashes": [
         {
           "alg": "SHA-512",
-          "content": "38d92116f64d15696c10738cffcd40b71772b893f629160a611d09c4fc2f72ed40b8f30c32070bfb05b696e95d26f32d6702ad531a12902c9c856e7021ea184b"
+          "content": "5b94e7881cd628049b34dc0767f4bf7f53314145d4fcb76392554c580d148db7e5ed2667533165b38e613b48bfb05ec1c758c9056a7b5969a841a8d7b57fcef0"
         }
       ]
     },
     {
       "type": "library",
-      "bom-ref": "@next/swc-darwin-x64@16.4.2",
+      "bom-ref": "@next/swc-darwin-x64@16.4.5",
       "name": "@next/swc-darwin-x64",
-      "version": "16.4.2",
+      "version": "16.4.5",
       "scope": "optional",
       "licenses": [
         {
@@ -3154,19 +3154,19 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40next/swc-darwin-x64@16.4.2",
+      "purl": "pkg:npm/%40next/swc-darwin-x64@16.4.5",
       "hashes": [
         {
           "alg": "SHA-512",
-          "content": "96e3c231b3ac0a8685fa45c91148e68e6399835942dc17e586652ef99996e2d06edaf5bfe005da93c24116f78f8b31a4c5598d880c3fafdadafba52f8825ad59"
+          "content": "b96ab8aa41daa410d2d68165b564b86314dbf692c702d2cd7296ee2ba4a646c79b2d866aa4130bfe3fc2d28a7ee74258193a598152ff0d636dffaa1695a9abaf"
         }
       ]
     },
     {
       "type": "library",
-      "bom-ref": "@next/swc-linux-arm64-gnu@16.4.2",
+      "bom-ref": "@next/swc-linux-arm64-gnu@16.4.5",
       "name": "@next/swc-linux-arm64-gnu",
-      "version": "16.4.2",
+      "version": "16.4.5",
       "scope": "optional",
       "licenses": [
         {
@@ -3175,19 +3175,19 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40next/swc-linux-arm64-gnu@16.4.2",
+      "purl": "pkg:npm/%40next/swc-linux-arm64-gnu@16.4.5",
       "hashes": [
         {
           "alg": "SHA-512",
-          "content": "c61c054c09dc272682372e4aa8a2ae29a208742cb5ff5655d6ce52d46d21853ef018c9034e57c9e9a41b7d1167206fecdff903af143c6b27157be7394273fca3"
+          "content": "15d45cc8ec79bb93f9d66940a8b07d11775df2364ee5fb1d1ed93804041292a3b2c02b1b4cd37fae6c3e8ceee99e68cd740b6ed801b8e8dcdb08bd853c3aeb83"
         }
       ]
     },
     {
       "type": "library",
-      "bom-ref": "@next/swc-linux-arm64-musl@16.4.2",
+      "bom-ref": "@next/swc-linux-arm64-musl@16.4.5",
       "name": "@next/swc-linux-arm64-musl",
-      "version": "16.4.2",
+      "version": "16.4.5",
       "scope": "optional",
       "licenses": [
         {
@@ -3196,19 +3196,19 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40next/swc-linux-arm64-musl@16.4.2",
+      "purl": "pkg:npm/%40next/swc-linux-arm64-musl@16.4.5",
       "hashes": [
         {
           "alg": "SHA-512",
-          "content": "4f53cd99f6cf731af99ddb5650bff7c10b4b5eccfcd3c96aeac7361ab353e64da8aae17b532a9975d1d2b807b01d5b16b065deea7b25f47a0dd5836b8958ee4a"
+          "content": "732be69a0b515d1f1a1954fceb08bd3f2e772257f20b1ecfd9f671b805c0a13ba69839e12ad5328eb31e5df6a9aa9e2a803fa04f946ac860ff55f035ea310aed"
         }
       ]
     },
     {
       "type": "library",
-      "bom-ref": "@next/swc-linux-x64-gnu@16.4.2",
+      "bom-ref": "@next/swc-linux-x64-gnu@16.4.5",
       "name": "@next/swc-linux-x64-gnu",
-      "version": "16.4.2",
+      "version": "16.4.5",
       "scope": "optional",
       "licenses": [
         {
@@ -3217,19 +3217,19 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40next/swc-linux-x64-gnu@16.4.2",
+      "purl": "pkg:npm/%40next/swc-linux-x64-gnu@16.4.5",
       "hashes": [
         {
           "alg": "SHA-512",
-          "content": "37d70350e086b64246e4f34a0c5654177c579ddac925ca4ba75db5b801a3206bcefd4da9f6d7dd34e33d86d8fbfb97fbda5d26f2b330fdcbd869c509050a2e76"
+          "content": "84f73e165f8ddb60c0bea647ab9e7d3666a65dba0e5f92eef08e569740decdfae14e4d59cf6d4d41e62864398d23f3634dcaddb15c4cef61739f6948f90faf03"
         }
       ]
     },
     {
       "type": "library",
-      "bom-ref": "@next/swc-linux-x64-musl@16.4.2",
+      "bom-ref": "@next/swc-linux-x64-musl@16.4.5",
       "name": "@next/swc-linux-x64-musl",
-      "version": "16.4.2",
+      "version": "16.4.5",
       "scope": "optional",
       "licenses": [
         {
@@ -3238,19 +3238,19 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40next/swc-linux-x64-musl@16.4.2",
+      "purl": "pkg:npm/%40next/swc-linux-x64-musl@16.4.5",
       "hashes": [
         {
           "alg": "SHA-512",
-          "content": "c98dae8756215fab9fb98cb61426f0d5da9b95b848e7b18b60025f0a4a83f5ab93bfaa4bac7ebb51c72373740c2817826001ba96482ed3c131997d5b6e37a38d"
+          "content": "81b002604f083ff8e5a6b353a625971dbf0df42a1f3b3a671301f64ab233d5d51b8897f515b0ecb03ba90803de3f54dac5ef26806db4b0665a98923b28539d67"
         }
       ]
     },
     {
       "type": "library",
-      "bom-ref": "@next/swc-win32-arm64-msvc@16.4.2",
+      "bom-ref": "@next/swc-win32-arm64-msvc@16.4.5",
       "name": "@next/swc-win32-arm64-msvc",
-      "version": "16.4.2",
+      "version": "16.4.5",
       "scope": "optional",
       "licenses": [
         {
@@ -3259,19 +3259,19 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40next/swc-win32-arm64-msvc@16.4.2",
+      "purl": "pkg:npm/%40next/swc-win32-arm64-msvc@16.4.5",
       "hashes": [
         {
           "alg": "SHA-512",
-          "content": "8ff02b591207a4c301eb060b321af6a6e4e0b81b7bd25354fc29a397da7a7530c4f031a49d824c3fd3ddc0f93676aa4234bfca217f727e7803bc87acc493e6b2"
+          "content": "fbc823fbe64ca3c1f6d178768a38cdab2164e4b3cbc34002e05b384eafc6f78ae38d05e13a33788e0496b1628f16cc98dba85f21e7a6248c0ab4cc4eb29e4604"
         }
       ]
     },
     {
       "type": "library",
-      "bom-ref": "@next/swc-win32-x64-msvc@16.4.2",
+      "bom-ref": "@next/swc-win32-x64-msvc@16.4.5",
       "name": "@next/swc-win32-x64-msvc",
-      "version": "16.4.2",
+      "version": "16.4.5",
       "scope": "optional",
       "licenses": [
         {
@@ -3280,11 +3280,11 @@
           }
         }
       ],
-      "purl": "pkg:npm/%40next/swc-win32-x64-msvc@16.4.2",
+      "purl": "pkg:npm/%40next/swc-win32-x64-msvc@16.4.5",
       "hashes": [
         {
           "alg": "SHA-512",
-          "content": "000e1e7725870e4a373424a8d31e86a26b1d8056f4a11d49dcc5d4d5be71b7a151160e00b9cacc3d6dd2d2109effda275343b505ba46401b2aa35af41a77aed6"
+          "content": "a8d663ebaa585e76962e217d47d1946df05dac2bfb902e936997c8c01d8a1f958f73ff2910cde754e8fc86942158953c4bde2b947e4c3c3717d79f91ae05218b"
         }
       ]
     },
@@ -11027,9 +11027,9 @@
     },
     {
       "type": "library",
-      "bom-ref": "eslint-config-next@16.4.2",
+      "bom-ref": "eslint-config-next@16.4.5",
       "name": "eslint-config-next",
-      "version": "16.4.2",
+      "version": "16.4.5",
       "scope": "excluded",
       "licenses": [
         {
@@ -11038,11 +11038,11 @@
           }
         }
       ],
-      "purl": "pkg:npm/eslint-config-next@16.4.2",
+      "purl": "pkg:npm/eslint-config-next@16.4.5",
       "hashes": [
         {
           "alg": "SHA-512",
-          "content": "3f7def8dc11331773ea818e917bed37891d92f393a70f713cbc2a3a712ee71807798220520e44c719f9c05770088862313944cee3ca49c410ec0c35d9f1fc00d"
+          "content": "9af877f7360ba0d8e94f9b5599ff3166eee2e6510e6f98cde5c5baa83f4ea5e0a9e0610439e62d6b46765f22a20f4a58765be6e7f4dde818bcf7499a3d19488e"
         }
       ]
     },
@@ -15897,9 +15897,9 @@
     },
     {
       "type": "library",
-      "bom-ref": "next@16.4.2",
+      "bom-ref": "next@16.4.5",
       "name": "next",
-      "version": "16.4.2",
+      "version": "16.4.5",
       "scope": "required",
       "licenses": [
         {
@@ -15908,11 +15908,11 @@
           }
         }
       ],
-      "purl": "pkg:npm/next@16.4.2",
+      "purl": "pkg:npm/next@16.4.5",
       "hashes": [
         {
           "alg": "SHA-512",
-          "content": "afea012688df79f5233a25a40615e02d2fa28315ffec15b22b9f6e1e7c8eca994c48bb4167e40b3f7a24add6136eb7eb6eb98d4d558b04f6870d7f4a45a22ddf"
+          "content": "ae675fb16a2c8d350efba4744b72a8928224e8a8f4b160d14def3ab591dda9a587fe85eafee757dffe316fe6108bb6966f2105a20943539e246a27cb09d5db07"
         }
       ]
     },
@@ -21199,7 +21199,7 @@
   ],
   "dependencies": [
     {
-      "ref": "workflow-community@0.67.0",
+      "ref": "workflow-community@0.69.0",
       "dependsOn": [
         "@dnd-kit/core@6.3.1",
         "@dnd-kit/sortable@10.0.0",
@@ -21222,13 +21222,13 @@
         "dockview-react@8.8.3",
         "dotenv@18.0.6",
         "driver.js@1.9.0",
-        "eslint-config-next@16.4.2",
+        "eslint-config-next@16.4.5",
         "eslint@10.12.0",
         "exceljs@4.4.0",
         "leaflet@1.9.4",
         "lucide-react@1.52.0",
         "next-auth@4.24.15",
-        "next@16.4.2",
+        "next@16.4.5",
         "nodemailer@10.5.0",
         "openai@7.28.0",
         "pdf-lib@1.17.1",
@@ -22124,46 +22124,46 @@
       ]
     },
     {
-      "ref": "@next/env@16.4.2",
+      "ref": "@next/env@16.4.5",
       "dependsOn": []
     },
     {
-      "ref": "@next/eslint-plugin-next@16.4.2",
+      "ref": "@next/eslint-plugin-next@16.4.5",
       "dependsOn": [
         "@eslint-community/eslint-utils@4.9.1",
         "fast-glob@3.3.1"
       ]
     },
     {
-      "ref": "@next/swc-darwin-arm64@16.4.2",
+      "ref": "@next/swc-darwin-arm64@16.4.5",
       "dependsOn": []
     },
     {
-      "ref": "@next/swc-darwin-x64@16.4.2",
+      "ref": "@next/swc-darwin-x64@16.4.5",
       "dependsOn": []
     },
     {
-      "ref": "@next/swc-linux-arm64-gnu@16.4.2",
+      "ref": "@next/swc-linux-arm64-gnu@16.4.5",
       "dependsOn": []
     },
     {
-      "ref": "@next/swc-linux-arm64-musl@16.4.2",
+      "ref": "@next/swc-linux-arm64-musl@16.4.5",
       "dependsOn": []
     },
     {
-      "ref": "@next/swc-linux-x64-gnu@16.4.2",
+      "ref": "@next/swc-linux-x64-gnu@16.4.5",
       "dependsOn": []
     },
     {
-      "ref": "@next/swc-linux-x64-musl@16.4.2",
+      "ref": "@next/swc-linux-x64-musl@16.4.5",
       "dependsOn": []
     },
     {
-      "ref": "@next/swc-win32-arm64-msvc@16.4.2",
+      "ref": "@next/swc-win32-arm64-msvc@16.4.5",
       "dependsOn": []
     },
     {
-      "ref": "@next/swc-win32-x64-msvc@16.4.2",
+      "ref": "@next/swc-win32-x64-msvc@16.4.5",
       "dependsOn": []
     },
     {
@@ -25042,9 +25042,9 @@
       "dependsOn": []
     },
     {
-      "ref": "eslint-config-next@16.4.2",
+      "ref": "eslint-config-next@16.4.5",
       "dependsOn": [
-        "@next/eslint-plugin-next@16.4.2",
+        "@next/eslint-plugin-next@16.4.5",
         "eslint-import-resolver-node@0.3.9",
         "eslint-import-resolver-typescript@3.10.1",
         "eslint-plugin-import@2.32.0",
@@ -26428,7 +26428,7 @@
         "@panva/hkdf@1.2.1",
         "cookie@0.7.2",
         "jose@4.15.9",
-        "next@16.4.2",
+        "next@16.4.5",
         "nodemailer@10.5.0",
         "oauth@0.9.15",
         "openid-client@5.7.1",
@@ -26440,17 +26440,17 @@
       ]
     },
     {
-      "ref": "next@16.4.2",
+      "ref": "next@16.4.5",
       "dependsOn": [
-        "@next/env@16.4.2",
-        "@next/swc-darwin-arm64@16.4.2",
-        "@next/swc-darwin-x64@16.4.2",
-        "@next/swc-linux-arm64-gnu@16.4.2",
-        "@next/swc-linux-arm64-musl@16.4.2",
-        "@next/swc-linux-x64-gnu@16.4.2",
-        "@next/swc-linux-x64-musl@16.4.2",
-        "@next/swc-win32-arm64-msvc@16.4.2",
-        "@next/swc-win32-x64-msvc@16.4.2",
+        "@next/env@16.4.5",
+        "@next/swc-darwin-arm64@16.4.5",
+        "@next/swc-darwin-x64@16.4.5",
+        "@next/swc-linux-arm64-gnu@16.4.5",
+        "@next/swc-linux-arm64-musl@16.4.5",
+        "@next/swc-linux-x64-gnu@16.4.5",
+        "@next/swc-linux-x64-musl@16.4.5",
+        "@next/swc-win32-arm64-msvc@16.4.5",
+        "@next/swc-win32-x64-msvc@16.4.5",
         "@swc/helpers@0.5.23",
         "baseline-browser-mapping@2.11.31",
         "caniuse-lite@1.0.30001819",

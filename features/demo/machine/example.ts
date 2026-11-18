@@ -1,10 +1,15 @@
 import type { DeviceInst, Layout, Wire } from "@/lib/machine/simulator/surface/layout";
+import type { WireEvent } from "@/lib/machine/simulator/events";
+import { SIM_EVENT_PREFIX, SIM_TEXT_PREFIX } from "@/lib/machine/simulator/limits";
 
 // Demokopplingen: the ready machine in the simulator, for the demo only. It is not one of the simulator's own examples, so the product's
 // simulator never lists it. A start button, a fan that runs for a minute, a motor protection and an alarm output with a fixed text. Invented
 // values, no real plant's.
 
 export const DEMO_MACHINE = { start: "knapp-1", protection: "vippa-1", alarmText: "Fläkt F1, motorskydd" } as const;
+/** The alarm output, and the code the simulator gives its alarm (alarmCode in the engine; tests/demo-machine.test.ts holds them equal). */
+export const DEMO_ALARM_DEVICE = "larm-1";
+export const DEMO_ALARM_CODE = "LARM-1";
 
 const device = (id: string, kind: DeviceInst["kind"], x: number, y: number, label: string): DeviceInst => ({ id, kind, x, y, label, options: {} });
 const wires = (pairs: readonly [string, string][]): Wire[] => pairs.map(([from, to], index) => {
@@ -19,7 +24,7 @@ export const demoMachineLayout = (): Layout => ({
     device(DEMO_MACHINE.start, "knapp", 150, 60, "Start"),
     device(DEMO_MACHINE.protection, "vippa", 290, 60, "Motorskydd"),
     device("tilluftsflakt-1", "tilluftsflakt", 480, 540, "Fläkt F1"),
-    { ...device("larm-1", "larm", 700, 540, DEMO_MACHINE.alarmText), options: { severity: "fault" } },
+    { ...device(DEMO_ALARM_DEVICE, "larm", 700, 540, DEMO_MACHINE.alarmText), options: { severity: "fault" } },
   ],
   wires: wires([
     ["kalla24-1:+", "plc:24V"], ["kalla24-1:−", "plc:0V"],
@@ -51,4 +56,12 @@ export const demoMachineLayout = (): Layout => ({
     "Larm := Motorskydd;",
     "END_PROGRAM",
   ].join("\n"),
+});
+
+/**
+ * The alarm a phone raises without the simulator (2026-11-16): what the simulator sends when the motor protection trips, with
+ * the simulator's mark on the id and on the text, so it takes the same way through the intake and the product's rules.
+ */
+export const phoneAlarmEvent = (eventId: string, at: Date): WireEvent => ({
+  eventId: `${SIM_EVENT_PREFIX}${eventId}`, occurredAt: at.toISOString(), type: "alarm", code: DEMO_ALARM_CODE, severity: "fault", state: "raised", text: `${SIM_TEXT_PREFIX}${DEMO_MACHINE.alarmText}`,
 });

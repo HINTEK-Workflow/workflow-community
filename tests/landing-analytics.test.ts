@@ -42,7 +42,7 @@ test("a landing link is sorted by its address into the fixed buttons", () => {
   assert.equal(landingClickOf("mailto:info@example.com?subject=x", { base }), "contact");
   assert.equal(landingClickOf("https://app.example.com/register", { base }), "signup");
   assert.equal(landingClickOf("/funktioner/maskinlarm", { base }), "read_more");
-  assert.equal(landingClickOf("#steg-koppla", { base }), null);
+  assert.equal(landingClickOf("#steg-start", { base }), null);
   assert.equal(landingClickOf("javascript:alert(1)", { base }), null);
   assert.deepEqual([320, 767, 768, 1099, 1100, 2000].map(landingDeviceOf), ["mobile", "mobile", "tablet", "tablet", "desktop", "desktop"]);
 });
@@ -70,7 +70,7 @@ test("the report shows the website's pages, buttons, ways in, screens and newsle
   const report = buildReport(rows, "2026-11-15", "2026-11-16");
   assert.equal(report.landing.hasData, true);
   assert.equal(report.landing.views, 10);
-  assert.deepEqual(report.landing.pages.map((row) => [row.label, row.count]), [["Startsidan", 8], ["/funktioner/maskinlarm", 2]]);
+  assert.deepEqual(report.landing.pages.map((row) => [row.label, row.count]), [["Startsidan", 8], ["Undersida: Maskinlarm", 2]]);
   assert.equal(report.landing.clicks.length, LANDING_CLICK_KEYS.length, "every button, in a fixed order");
   assert.equal(report.landing.clicks.find((row) => row.key === "click:demo")?.count, 4);
   assert.deepEqual(report.landing.sources.map((row) => row.label), ["google.se", "Ingen hänvisning (direkt)"]);

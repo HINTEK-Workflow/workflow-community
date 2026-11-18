@@ -8,7 +8,8 @@ import { parseEvent } from "../lib/machine/intake";
 import { validateLayout } from "../lib/machine/simulator/surface/layout";
 import { compileProgram } from "../lib/machine/simulator/st/interpreter";
 import { createDemoDatabase } from "../features/demo/demo-data";
-import { DEMO_MACHINE, demoMachineLayout } from "../features/demo/machine/example";
+import { DEMO_ALARM_CODE, DEMO_ALARM_DEVICE, DEMO_MACHINE, demoMachineLayout, phoneAlarmEvent } from "../features/demo/machine/example";
+import { alarmCode } from "../lib/machine/simulator/surface/engine";
 import { considerDemoAlarm, DEMO_FAULT_CREATOR, demoMachineNotices, finishDemoOrder, makeDemoFaultOrder, skipDemoRest } from "../features/demo/machine/orders";
 import { basisText, candidateSentence, createObserver, describedEnough, EMPTY_DESCRIPTION, type Finished, type MachineDescription, NO_DESCRIPTION_TEXT, observe, type Observer, OPERATOR_AI_NOTE, operatorAdvice, READY_DESCRIPTION, SETTLE_MS, type TaughtCause, teach } from "../features/demo/machine/rules";
 import { faultOrderText } from "../lib/operator/rules";
@@ -306,4 +307,19 @@ test("honest words: future tense in the docs, marked on the page, no maker's or 
   assert.doesNotMatch(rules + readFileSync("features/demo/machine/example.ts", "utf8"), /\b(Siemens|ABB|Schneider|Allen|Beckhoff|Omron|IEC|EN \d|SS \d|ISO \d)\b/);
   assert.match(readFileSync("docs/drift/MASKININTAG.md", "utf8"), /Riktning[^\n]*lokal AI|lokal AI[^\n]*Riktning/i);
   assert.match(readFileSync("docs/beslut/atkomst-och-data.md", "utf8"), /Prova maskinkopplingen/);
+});
+
+test("a phone's alarm is the simulator's own: the same code and marked text, taken by the intake, and it makes a work order", () => {
+  assert.equal(alarmCode(DEMO_ALARM_DEVICE), DEMO_ALARM_CODE);
+  const layout = demoMachineLayout();
+  assert.ok(layout.devices.some((device) => device.id === DEMO_ALARM_DEVICE && device.label === DEMO_MACHINE.alarmText));
+  const now = new Date("2026-11-16T10:00:00Z");
+  const wire = phoneAlarmEvent("telefon-1", now);
+  assert.match(wire.eventId, /^plcsim-telefon-1$/);
+  const parsed = parseEvent(wire, now);
+  assert.equal(parsed.ok, true);
+  assert.ok(wire.text?.startsWith("Simulerat: "));
+  const db = createDemoDatabase(now);
+  const outcome = considerDemoAlarm(db, SOURCE, { type: "alarm", code: wire.code, severity: wire.severity, state: wire.state ?? null, text: wire.text ?? "", occurredAt: now }, null, now);
+  assert.equal(outcome.kind, "created");
 });

@@ -19,6 +19,33 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "0.69.0",
+    date: "2026-11-18",
+    summary: "Funktionssidorna har fått fler bilder och exempel, och startsidan fungerar bättre i mobilen.",
+    items: [
+      "Varje funktionssida visar bilder och PDF-exempel i jämna rader, och bilderna går att förstora.",
+      "Tillbaka på en funktionssida tar dig till samma ställe på startsidan där du var.",
+      "I mobilen står knapparna på startsidan under varandra och är lika breda.",
+      "Märket Gratis kan vara grönt, och färgen väljer du i redigeraren.",
+      "Rapportera fel har samma utseende som inloggningen.",
+      "På surfplattan ligger pilarna och Workflow AI till höger, som på datorn.",
+      "Integritetspolicyn har ett nytt datum.",
+    ],
+  },
+  {
+    version: "0.68.0",
+    date: "2026-11-16",
+    summary: "Startsidan visar hur du kommer igång, och demon passar bättre i mobilen.",
+    items: [
+      "Startsidan visar hur du kommer igång i tre steg, med bilder som går att förstora.",
+      "I mobilen börjar demon med rundturen, och du kan se ett larm bli en arbetsorder direkt i telefonen.",
+      "Beteendeanalys visar om demon öppnas i mobil, surfplatta eller dator, med korta rader om vad siffrorna betyder.",
+      "Skriv {version} i ett inlägg så står den senaste versionen där när inlägget publiceras.",
+      "Varje undersida får en egen bild när den delas.",
+      "En ny Community-installation öppnar guiden Ställ in Workflow vid första inloggningen.",
+    ],
+  },
+  {
     version: "0.67.0",
     date: "2026-11-16",
     summary: "Inlägg kan ha flera bilder och en egen text för Instagram, och du ser hur publiceringen går.",

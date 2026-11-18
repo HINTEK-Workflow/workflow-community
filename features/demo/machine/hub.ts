@@ -8,6 +8,7 @@ import { announce, notice } from "@/lib/workflow/toast";
 import { demoDatabase } from "../demo-backend";
 import { DEMO_CONNECTION_MACHINE_ID } from "../demo-operator";
 import { demoMachineEvents, demoMachineIngest, demoMachineSource } from "../demo-connections";
+import { phoneAlarmEvent } from "./example";
 import { considerDemoAlarm, finishDemoOrder, makeDemoFaultOrder, noteCauseOnOrder, skipDemoRest } from "./orders";
 import { type DemoFaultReport, type DemoMachineMessage, type Diagnosis, type FeedRow, type LogRow, openDemoChannel, type WorkflowMessage } from "./protocol";
 import { describedEnough, type DemoMode, inSentence, EMPTY_DESCRIPTION, type MachineDescription, mappingLine, READY_DESCRIPTION, reportCandidates, SIMULATED_ON_CALL_TEXT, type TaughtCause, teach } from "./rules";
@@ -186,3 +187,13 @@ export function finishMachineOrder(taskId: string) {
 }
 export function skipMachineRest() { skipDemoRest(demoDatabase(), new Date()); notice("Vilan hoppades över (bara i demon)."); }
 
+
+/**
+ * A phone has no simulator (2026-11-16, "innehållet får förbättras i demo start mobil"): the motor protection is tripped from
+ * here instead, as the simulator would send it, and the alarm goes the same way through the intake and the product's rules.
+ * The same machine, the same code and text, marked as simulated; only this page's memory is touched.
+ */
+export function tripDemoAlarmHere() {
+  if (!channel) return;
+  ingest([phoneAlarmEvent(`telefon-${snapshot.session}-${++sequence}`, new Date())], null);
+}

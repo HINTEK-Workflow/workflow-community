@@ -1,4 +1,4 @@
-import { DEMO_FLOW_KEYS, DEMO_SOURCE_KEYS, DEMO_START_KEYS, DEMO_TIME_KEYS, FUNNEL_LABELS, FUNNEL_STEPS, LANDING_CLICK_KEYS, LANDING_DEVICE_KEYS, demoKeyLabel, isFunnelStep, kindLabel, landingKeyLabel, type FunnelStep } from "./catalog";
+import { DEMO_DEVICE_KEYS, DEMO_FLOW_KEYS, DEMO_SOURCE_KEYS, DEMO_START_KEYS, DEMO_TIME_KEYS, FUNNEL_LABELS, FUNNEL_STEPS, LANDING_CLICK_KEYS, LANDING_DEVICE_KEYS, demoKeyLabel, isFunnelStep, kindLabel, landingKeyLabel, type FunnelStep } from "./catalog";
 import { csvCell } from "../csv/cell";
 
 /**
@@ -24,6 +24,8 @@ export type DemoReport = {
   flows: RankedRow[];
   /** Time in the demo in four buckets, in order; the shares are of the visits that were counted. */
   time: RankedRow[];
+  /** The screen of the visits (2026-11-16): phone, tablet or computer, once per page load. */
+  devices: RankedRow[];
 };
 /** The public website (2026-11-16): page loads, counted buttons, where visitors came from and the screen; no cookie. */
 export type LandingReport = {
@@ -162,6 +164,7 @@ export function buildReport(rows: CounterRowLike[], from: string, to: string): R
     views: ranked(viewCounts, "page", 12),
     flows: fixedRows(DEMO_FLOW_KEYS),
     time: fixedRows(DEMO_TIME_KEYS),
+    devices: fixedRows(DEMO_DEVICE_KEYS),
   };
   const landingGroup = (group: string) => new Map([...landingCounts].filter(([key]) => key.startsWith(`${group}:`)));
   const landingRows = (counts: Map<string, number>, limit: number): RankedRow[] => {

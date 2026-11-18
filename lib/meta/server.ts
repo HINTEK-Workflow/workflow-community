@@ -19,7 +19,7 @@ import { facebookLoginInstagram, waitForContainer, type InstagramPublisher } fro
 import { cancelSummary, cancelWaiting, finishProgress, initialProgress, progressOf, setStep, type PublishProgress, type StepKey, type StepStatus } from "./progress";
 import {
   BODY_MAX, CAPTION_STORE_MAX, draftFromWebsitePage, EXTRA_IMAGES_MAX, facebookCaption, HEADING_MAX, INSTAGRAM_TEXT_MAX, instagramCaption, isLogoPlate, isLogoSize, isLogoVariant, isTemplate, LINK_MAX, linkedInCommentary,
-  normalizeHashtags, postProblem, safeLink, type PostText,
+  normalizeHashtags, postProblem, safeLink, type PostText, withVersion,
 } from "./text";
 
 /**
@@ -547,7 +547,9 @@ const imageCache = createImageCache();
 export const clearImageCacheForTests = () => imageCache.clear();
 
 /** The picture; `postId` adds that post's background (the company's own post only); `format` story is the 9:16 story picture. */
-export async function renderImage(organizationId: string, input: PostImageInput, postId?: string | null, format: PostFormat = "feed") {
+export async function renderImage(organizationId: string, drawn: PostImageInput, postId?: string | null, format: PostFormat = "feed") {
+  // {version} in the picture's heading or text is the running version (2026-11-16), in the preview and when published.
+  const input = { ...drawn, heading: withVersion(drawn.heading), body: withVersion(drawn.body) };
   const [brandSettings, background] = await Promise.all([brandSettingsOf(organizationId), postId ? backgroundOf(organizationId, postId) : null]);
   const { settings, organizationName } = brandSettings;
   // Everything the picture is drawn from; the logo files by their stored keys (an upload is stored under a new key).

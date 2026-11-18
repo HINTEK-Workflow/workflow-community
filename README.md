@@ -2,7 +2,7 @@
 
 [Svenska](README.sv.md) | English
 
-> **Status: in active development.** This text describes what the edition contains as of version 0.67.0. Issues
+> **Status: in active development.** This text describes what the edition contains as of version 0.69.0. Issues
 > and pull requests are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Workflow is a web app for electrical and installation companies. It brings together work orders, quotes, invoice bases,

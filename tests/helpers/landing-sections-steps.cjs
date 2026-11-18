@@ -51,7 +51,7 @@ async function runLandingSections(page, { marker }) {
   await canvas.getByTestId("landing-login-top").first().waitFor();
   await canvas.getByRole("textbox", { name: "Meny – länk 1", exact: true }).click();
   await settings.waitFor();
-  assert.equal(await settings.getByLabel("Adress", { exact: true }).inputValue(), "#steg-koppla");
+  assert.equal(await settings.getByLabel("Adress", { exact: true }).inputValue(), "#steg-start");
   // The company's blue bar (2026-11-12): its own links, set in Sidhuvud, drawn on the page at once.
   await canvas.getByTestId("landing-company-bar").click({ position: { x: 4, y: 4 } });
   const company = page.getByTestId("landing-company-settings");
@@ -62,24 +62,25 @@ async function runLandingSections(page, { marker }) {
   await company.getByRole("alert").first().waitFor();
 
   // ---- A free section: text in place, points, order, visibility.
-  const machineTitle = canvas.getByRole("textbox", { name: "Maskinkoppling – rubrik", exact: true });
+  const machineTitle = canvas.getByRole("textbox", { name: "Steg 1 – rubrik", exact: true });
   await machineTitle.click();
   await page.keyboard.press("Control+A");
   await page.keyboard.type(`Maskinlarm ${marker}`);
   await page.keyboard.press("Enter");
-  await canvas.getByRole("textbox", { name: "Maskinkoppling – rubrik", exact: true }).filter({ hasText: marker }).waitFor();
+  await canvas.getByRole("textbox", { name: "Steg 1 – rubrik", exact: true }).filter({ hasText: marker }).waitFor();
   const before = await canvas.locator("section[id^='t-']").evaluateAll((nodes) => nodes.map((node) => node.id));
-  await canvas.getByRole("button", { name: /^Flytta Maskinkoppling nedåt$/ }).click();
+  await canvas.getByRole("button", { name: /^Flytta Steg 1 nedåt$/ }).click();
   const after = await canvas.locator("section[id^='t-']").evaluateAll((nodes) => nodes.map((node) => node.id));
   assert.notDeepEqual(after, before, "a section moves");
-  assert.equal(after[before.indexOf("t-machine") + 1], "t-machine", "it moved one step down");
-  await canvas.getByTestId("section-toggle-topic:operator").click();
-  assert.equal(await canvas.getByTestId("section-toggle-topic:operator").getAttribute("aria-pressed"), "false", "a section can be hidden");
-  await canvas.getByTestId("section-toggle-topic:operator").click();
-  await canvas.locator('[data-landing-select="topic:ai"]').click({ position: { x: 4, y: 40 } });
+  assert.equal(after[before.indexOf("t-start1") + 1], "t-start1", "it moved one step down");
+  await canvas.getByTestId("section-toggle-topic:start3").click();
+  assert.equal(await canvas.getByTestId("section-toggle-topic:start3").getAttribute("aria-pressed"), "false", "a section can be hidden");
+  await canvas.getByTestId("section-toggle-topic:start3").click();
+  await canvas.locator('[data-landing-select="topic:start3"]').click({ position: { x: 4, y: 40 } });
   const topic = page.getByTestId("landing-topic-settings");
   await topic.waitFor();
-  const bullets = canvas.locator("#t-ai li");
+  // Only the points: the section's pictures (Kom igång's gallery) are list items too.
+  const bullets = canvas.locator("#t-start3 [data-testid='landing-topic-bullets'] > li");
   const bulletCount = await bullets.count();
   await topic.getByTestId("landing-topic-add-bullet").click();
   assert.equal(await bullets.count(), bulletCount + 1, "a point is added");
@@ -88,13 +89,14 @@ async function runLandingSections(page, { marker }) {
 
   // ---- Its picture: choose one of ours, upload one of his own, remove it.
   await topic.locator("#landing-topic-image-library").selectOption("/landing/felanmalan-operatorsterminal.webp");
-  await page.waitForFunction(() => document.querySelector("#t-ai img")?.getAttribute("src") === "/landing/felanmalan-operatorsterminal.webp");
+  // The section's own picture window, not its gallery (Kom igång has both).
+  await page.waitForFunction(() => document.querySelector("#t-start3 [data-testid='landing-topic-window'] img")?.getAttribute("src") === "/landing/felanmalan-operatorsterminal.webp");
   await topic.getByTestId("landing-topic-image-file").setInputFiles({ name: "egen.png", mimeType: "image/png", buffer: PNG });
   // The upload's own address (/landing-images/…), not the library picture chosen just before: removing it before the upload
   // has answered would let the late answer put the picture back.
-  await page.waitForFunction(() => /^\/landing-images\/[A-Za-z0-9._-]+\.webp$/.test(document.querySelector("#t-ai img")?.getAttribute("src") ?? ""), null, { timeout: 15000 });
+  await page.waitForFunction(() => /^\/landing-images\/[A-Za-z0-9._-]+\.webp$/.test(document.querySelector("#t-start3 [data-testid='landing-topic-window'] img")?.getAttribute("src") ?? ""), null, { timeout: 15000 });
   await topic.getByTestId("landing-topic-image-remove").click();
-  await canvas.locator("#t-ai").getByTestId("landing-image-empty").waitFor();
+  await canvas.locator("#t-start3").getByTestId("landing-image-empty").waitFor();
   await topic.getByTestId("landing-topic-image-remove").waitFor();
   await topic.locator("#landing-topic-image-library").selectOption("/landing/ai-simulering.webp");
 
@@ -143,7 +145,7 @@ async function runLandingSections(page, { marker }) {
   const sent = response.request().postDataJSON().landing;
   assert.ok(sent.topics.some((item) => item.title === `Maskinlarm ${marker}`) && sent.hero.buttons[0].label === `Prova ${marker}` && sent.hero.buttons[1].visible === false);
   assert.ok(sent.faq.items.some((item) => item.question === `Fråga ${marker}?`), "the questions are saved with the page");
-  assert.ok(sent.layout.length >= 10 && sent.header.nav.length === 3, "the menu: Koppla, Följ upp and AI (2026-11-16)");
+  assert.ok(sent.layout.length >= 10 && sent.header.nav.length === 3, "the menu: Kom igång, Resten av arbetet and Planer (2026-11-16)");
   assert.equal(sent.header.company.items[0].label, `Hem ${marker}`, "the blue bar's own links are saved");
   assert.ok(sent.header.company.items[0].href.startsWith("https://"), "an unsafe address is never stored");
   await saveStatus.filter({ hasText: /sparad/ }).waitFor();
@@ -158,13 +160,13 @@ async function runLandingSubpages(page, { marker }) {
   const canvas = page.getByTestId("landing-canvas");
   const ribbon = page.getByTestId("landing-ribbon");
   await page.getByTestId("landing-ribbon").getByRole("button", { name: "Startsidan", exact: true }).click();
-  // Eight cards, four in a row, each with its area icon; a card's settings in the panel.
-  assert.equal(await canvas.getByTestId("landing-feature-card").count(), 8);
-  await canvas.locator('[data-landing-select="card:1"]').click({ position: { x: 4, y: 4 } });
+  // Twelve cards, four in a row (Planering is the fifth), each with its area icon; a card's settings in the panel.
+  assert.equal(await canvas.getByTestId("landing-feature-card").count(), 12);
+  await canvas.locator('[data-landing-select="card:4"]').click({ position: { x: 4, y: 4 } });
   const cardPanel = page.getByTestId("landing-card-settings");
   await cardPanel.waitFor();
   await cardPanel.locator("#landing-card-icon").selectOption("project");
-  await canvas.locator('[data-landing-select="card:1"] [data-area="project"]').waitFor();
+  await canvas.locator('[data-landing-select="card:4"] [data-area="project"]').waitFor();
   await cardPanel.locator("#landing-card-icon").selectOption("calendar");
   // Redigera undersidan: the page on the canvas, its texts in place.
   await canvas.getByTestId("landing-edit-page-planering").click();
@@ -181,12 +183,12 @@ async function runLandingSubpages(page, { marker }) {
   // Hidden: its Läs mer is dimmed on the start page; shown again from the list of pages.
   await settings.getByTestId("landing-page-visible").click();
   await ribbon.getByRole("button", { name: "Startsidan", exact: true }).click();
-  await page.waitForFunction(() => document.querySelector('[data-landing-select="card:1"] [data-testid="landing-read-more-card"]')?.getAttribute("data-off") === "true");
+  await page.waitForFunction(() => document.querySelector('[data-landing-select="card:4"] [data-testid="landing-read-more-card"]')?.getAttribute("data-off") === "true");
   await ribbon.getByRole("button", { name: "Undersidor", exact: true }).click();
   const list = page.getByTestId("landing-pages-settings");
   await list.waitFor();
   await list.getByTestId("landing-pages-toggle-planering").click();
-  await page.waitForFunction(() => !document.querySelector('[data-landing-select="card:1"] [data-testid="landing-read-more-card"]')?.getAttribute("data-off"));
+  await page.waitForFunction(() => !document.querySelector('[data-landing-select="card:4"] [data-testid="landing-read-more-card"]')?.getAttribute("data-off"));
   // Opened from the list too.
   await list.getByTestId("landing-pages-open-underhall").click();
   await canvas.getByRole("textbox", { name: "Undersida – rubrik", exact: true }).filter({ hasText: "Maskiner, planer, förråd och kostnader" }).waitFor();
@@ -198,7 +200,7 @@ async function runLandingSubpages(page, { marker }) {
   const sent = response.request().postDataJSON().landing;
   const planning = sent.pages.items.find((item) => item.slug === "planering");
   assert.ok(planning.title === `Planering ${marker}` && planning.visible === true && planning.seo.title.includes(marker));
-  assert.equal(sent.features.items.length, 8);
+  assert.equal(sent.features.items.length, 12);
   return { sent };
 }
 
@@ -223,16 +225,16 @@ async function runLandingReset(page, { marker }) {
   await page.getByTestId("landing-ribbon").getByRole("button", { name: "Standardtexter", exact: true }).click();
   await confirmDialog(page).getByRole("button", { name: "Återställ", exact: true }).click();
   await canvas.getByRole("textbox", { name: "Överst – knapp 1", exact: true }).filter({ hasNotText: marker }).waitFor();
-  await canvas.getByRole("textbox", { name: "Maskinkoppling – rubrik", exact: true }).filter({ hasNotText: marker }).waitFor();
+  await canvas.getByRole("textbox", { name: "Steg 1 – rubrik", exact: true }).filter({ hasNotText: marker }).waitFor();
   assert.equal(await page.locator('[data-landing-select="link:hero.buttons.1"]').getAttribute("data-off"), null, "the hidden button is back");
   // A single section back to its default text.
-  await canvas.getByRole("textbox", { name: "Kontroller – rubrik", exact: true }).click();
+  await canvas.getByRole("textbox", { name: "Steg 2 – rubrik", exact: true }).click();
   await page.keyboard.press("Control+A");
   await page.keyboard.type("Annan rubrik");
   await page.keyboard.press("Enter");
-  await canvas.locator('[data-landing-select="topic:controls"]').click({ position: { x: 4, y: 40 } });
+  await canvas.locator('[data-landing-select="topic:start2"]').click({ position: { x: 4, y: 40 } });
   await page.getByTestId("landing-topic-reset").click();
-  await canvas.getByRole("textbox", { name: "Kontroller – rubrik", exact: true }).filter({ hasNotText: "Annan rubrik" }).waitFor();
+  await canvas.getByRole("textbox", { name: "Steg 2 – rubrik", exact: true }).filter({ hasNotText: "Annan rubrik" }).waitFor();
 }
 
 /** The notice about new default texts: his own text is listed, never replaced by itself; he chooses per part. */

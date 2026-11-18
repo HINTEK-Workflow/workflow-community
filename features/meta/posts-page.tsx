@@ -30,8 +30,9 @@ import { cn } from "@/lib/utils";
 import type { LinkedInView } from "@/lib/linkedin/server";
 import type { MetaView, PostView } from "@/lib/meta/server";
 import {
-  BODY_MAX, CAPTION_STORE_MAX, captionLimit, facebookCaption, HEADING_MAX, INSTAGRAM_TEXT_MAX, instagramCaption, GRID_CROP, IMAGE_WIDTH, LINKEDIN_COMMENTARY_MAX, linkedInCommentary, postProblem,
+  BODY_MAX, CAPTION_STORE_MAX, captionLimit, facebookCaption, HEADING_MAX, INSTAGRAM_TEXT_MAX, instagramCaption, GRID_CROP, IMAGE_WIDTH, LINKEDIN_COMMENTARY_MAX, linkedInCommentary, postProblem, VERSION_TOKEN,
 } from "@/lib/meta/text";
+import { currentAppVersion } from "@/lib/release-notes";
 
 /**
  * Inlägg (2026-11-10): the company's posts for its Facebook page, Instagram account and – since 2026-11-11 – LinkedIn. A
@@ -298,6 +299,7 @@ function PostEditor({ post, connection, linkedin, newsletter, logos, campaignHos
           <fieldset disabled={locked} className="space-y-3">
             <div className="field-stack"><div className="flex items-center justify-between gap-2"><label htmlFor="post-caption" className="text-xs font-medium">Text</label><Counter value={draft.caption} max={captionLimit(draft)} /></div>
               <textarea id="post-caption" className="form-textarea min-h-32" value={draft.caption} maxLength={CAPTION_STORE_MAX} onChange={(event) => set("caption", event.target.value)} data-testid="post-caption" />
+              <p className="text-xs text-muted-foreground" data-testid="post-version-hint">Skriv {VERSION_TOKEN} i en text, så står den aktuella versionen där när inlägget visas och publiceras (nu {currentAppVersion()}).</p>
               {draft.toLinkedIn ? <p className="text-xs text-muted-foreground" data-testid="post-linkedin-count">LinkedIn: {linkedInCommentary({ ...draft, link: draft.link?.trim() || null }, previewHosts).length}/{LINKEDIN_COMMENTARY_MAX} tecken med hashtaggar och länk.</p> : null}</div>
             {/* Bara på Instagram (2026-11-16): e.g. "Länk i bio", after the text on Instagram only. */}
             {draft.toInstagram ? <div className="field-stack" data-testid="post-instagram-extra"><div className="flex items-center justify-between gap-2"><label htmlFor="post-instagram-text" className="text-xs font-medium">Text bara på Instagram</label><Counter value={draft.instagramText} max={INSTAGRAM_TEXT_MAX} /></div>

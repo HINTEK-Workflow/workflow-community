@@ -129,6 +129,8 @@ export const DEMO_START_KEYS: readonly string[] = present(["start_button", "star
 export const DEMO_SOURCE_KEYS: readonly string[] = present(["from_own", SITE_SOURCE, "from_search", "from_other", "from_none"]);
 export const DEMO_FLOW_KEYS = ["flow_tour_start", "flow_tour_done", "flow_user_switch", "flow_exit"] as const;
 export const DEMO_TIME_KEYS = ["time_lt1", "time_1to3", "time_3to10", "time_gt10"] as const;
+/** The screen width's group of a demo visit (2026-11-16, "om det är besökare från dator eller mobil"), once per page load, as on the website. */
+export const DEMO_DEVICE_KEYS = ["device_mobile", "device_tablet", "device_desktop"] as const;
 export const DEMO_LABELS: Record<string, string> = {
   start_button: "Knapp på startsidan", start_simulator: "Simulatorknappen på webbplatsen", start_link: "Direkt länk", start_login: "Inloggningen (demo / demo)",
   // Kampanjlänkar i Inlägg (2026-11-16): a post's link gets ?via=<channel> (lib/meta/text.ts, campaignLink).
@@ -136,6 +138,7 @@ export const DEMO_LABELS: Record<string, string> = {
   from_own: "Workflows egna sidor", from_search: "Sökmotor", from_other: "Annan webbplats", from_none: "Ingen hänvisning (direkt eller app)",
   flow_tour_start: "Rundturen påbörjad", flow_tour_done: "Rundturen genomförd", flow_user_switch: "Byte av användare (Visa som)", flow_exit: "Demon avslutad med knappen",
   time_lt1: "Under 1 minut", time_1to3: "1–3 minuter", time_3to10: "3–10 minuter", time_gt10: "Över 10 minuter",
+  device_mobile: "Mobil", device_tablet: "Surfplatta", device_desktop: "Dator",
   ...(OPERATOR_SITE && SITE_START && SITE_SOURCE ? { [SITE_START]: OPERATOR_SITE.startLabel, [SITE_SOURCE]: OPERATOR_SITE.label } : {}),
 };
 /**
@@ -269,10 +272,14 @@ export function landingClickOf(href: string, options: { inPlans?: boolean; base?
 
 /** The screen width's group: under 768 px a phone, under 1100 px a tablet, otherwise a computer. */
 export const landingDeviceOf = (width: number): LandingDevice => (width < 768 ? "mobile" : width < 1100 ? "tablet" : "desktop");
+/** A demo visit's screen group, by the same widths as the website's (2026-11-16). */
+export const demoDeviceKey = (width: number) => `device_${landingDeviceOf(width)}` as (typeof DEMO_DEVICE_KEYS)[number];
 
+/** A feature page's address in words (2026-11-16, Beteendeanalys in plain labels): "maskin-larm" → "Maskin larm". */
+export const slugWords = (slug: string) => { const words = slug.replace(/-+/g, " ").trim(); return words ? words[0].toUpperCase() + words.slice(1) : slug; };
 export function landingKeyLabel(key: string) {
   const [group, rest = ""] = key.split(":");
-  if (group === "page") return rest === "start" ? "Startsidan" : `/funktioner/${rest}`;
+  if (group === "page") return rest === "start" ? "Startsidan" : `Undersida: ${slugWords(rest)}`;
   if (group === "click" && isLandingClick(rest)) return LANDING_CLICK_LABELS[rest];
   if (group === "device" && isLandingDevice(rest)) return LANDING_DEVICE_LABELS[rest];
   if (group === "ref") return rest === "none" ? "Ingen hänvisning (direkt)" : rest === "other" ? "Övriga webbplatser" : rest;

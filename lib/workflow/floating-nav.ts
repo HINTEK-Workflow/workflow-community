@@ -49,8 +49,8 @@ export type FloatingNavModel = {
    * 1, which has Hem and Mer, and not while the group has stepped aside (keyboard, menu, the panel itself).
    */
   assistant: boolean;
-  /** Where the group stands: bottom right on a computer, bottom left above the bottom bar on a tablet. */
-  placement: "right" | "left";
+  /** Where the group stands: bottom right on a computer; on a tablet above the bottom bar, also at the right (2026-11-17: "som i datorn"). */
+  placement: "right" | "bar";
   /** Symbols only (visning 2, and every narrow screen), or symbols with words (visning 3 on a computer). */
   compact: boolean;
 };
@@ -68,7 +68,7 @@ export const usefulFallback = (fallback: string | null, here: string) => (fallba
  * there really is nothing to go to.
  */
 export function floatingNavModel(input: FloatingNavInput): FloatingNavModel {
-  const placement = input.wide ? "right" : "left";
+  const placement = input.wide ? "right" : "bar";
   const compact = input.level < 3 || !input.wide;
   if (input.native || input.covered) return { buttons: [], idle: [], assistant: false, placement, compact };
   const buttons: FloatingNavButton[] = [];

@@ -99,7 +99,7 @@ function useChatFillsScreen() {
  *   nearly transparent, at the group's outer end so that it stays where it is, and a phone on its side draws it alone
  *   (app/globals.css). Where the chat fills the screen the group steps aside. The focus comes back to it when the chat closes.
  * Visning 1 has its own top bar and edge swipe: nothing is drawn there. Visning 2 is compact (symbols), 3 has words. A computer
- * has the group at the bottom right; a tablet at the left above the bottom bar (which has Spara; the right side has Verktyg).
+ * has the group at the bottom right; a tablet at the right above the bottom bar (which has Spara; the right side has Verktyg).
  */
 export function FloatingNav({ hidden = false, onAssistant, assistantOpen = false }: { hidden?: boolean; onAssistant?: () => void; assistantOpen?: boolean }) {
   const router = useRouter();
@@ -145,7 +145,6 @@ export function FloatingNav({ hidden = false, onAssistant, assistantOpen = false
   const assistant = model.assistant ? <button ref={assistantRef} type="button" className="floating-nav-button floating-nav-round floating-nav-assistant" onClick={() => { openedAssistant.current = true; onAssistant?.(); }}
     aria-label={assistantOpen ? "Stäng Workflow AI" : "Workflow AI"} title={assistantOpen ? "Stäng Workflow AI" : "Workflow AI"} aria-haspopup="dialog" aria-expanded={assistantOpen} data-testid="floating-nav-assistant">{assistantOpen ? <X aria-hidden="true" /> : <MessageCircle aria-hidden="true" />}</button> : null;
   return <div className={cn("floating-nav", model.compact && "floating-nav-compact")} data-placement={model.placement} data-level={level} data-testid="floating-nav" role="group" aria-label="Navigering">
-    {model.placement === "left" ? assistant : null}
     {/* The arrows keep their places: first Tillbaka, then Framåt, nearly transparent where they have no function here. */}
     {[...ROUND, ...model.buttons.filter((button) => !ROUND.includes(button))].map((button) => {
       const Icon = ICONS[button];
@@ -156,6 +155,6 @@ export function FloatingNav({ hidden = false, onAssistant, assistantOpen = false
         <Icon aria-hidden="true" />{model.compact || round ? null : <span>{label}</span>}
       </button>;
     })}
-    {model.placement === "right" ? assistant : null}
+    {assistant}
   </div>;
 }

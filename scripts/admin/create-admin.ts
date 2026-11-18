@@ -54,6 +54,9 @@ async function main() {
     await tx.organizationMember.create({
       data: { organizationId: organization.id, userId: created.id, role: OrganizationMemberRole.OWNER },
     });
+    // The first sign-in opens the setup guide, as for a newly registered owner (registration.ts); without it a new
+    // installation landed on Produktöversikten (2026-11-16).
+    await tx.userPreferences.create({ data: { userId: created.id, data: { tours: { setupPending: new Date().toISOString() } } } });
     return created;
   });
   console.log(`Created superadmin ${user.email} in ${instance.operator} (${slug}). Sign in at ${process.env.APP_URL ?? "APP_URL"}.`);

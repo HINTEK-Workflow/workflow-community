@@ -5,6 +5,7 @@ import { publicInstance } from "@/lib/instance";
 import { postNewsletterDocument, resolvePostMail, type PostForMail } from "@/lib/mail/post-newsletter-mail";
 import { audienceRecipients, buildMailingEmail, processMailings, recipientRows } from "@/lib/mail/mailings";
 import { storeMailingImage } from "@/lib/mail/mailing-images";
+import { withVersion } from "@/lib/meta/text";
 
 /**
  * Även som nyhetsbrev (2026-11-12: "så det kommer med i samma postning"): a post (Inlägg) that the installation's
@@ -33,7 +34,8 @@ export async function requireNewsletterRight(userId: string) {
 
 const fallbackSubject = () => `Nytt från ${publicInstance().name}`;
 /** The mail as it will be sent from this post (its own fields, or what the post gives). */
-export const postMail = (post: PostForMail) => resolvePostMail(post, fallbackSubject());
+// {version} in the post or in the mail's own fields is the running version (2026-11-16); the schedule's hash keeps the token.
+export const postMail = (post: PostForMail) => { const mail = resolvePostMail(post, fallbackSubject()); return { ...mail, subject: withVersion(mail.subject), text: withVersion(mail.text) }; };
 
 /** Visa mejlet: the mail exactly as it is sent, in the newsletter's template (the picture inline, since the preview is not sent). */
 export async function previewPostNewsletter(post: PostForMail, image: Uint8Array | null) {

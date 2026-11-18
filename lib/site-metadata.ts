@@ -73,8 +73,11 @@ export function publicDocumentMetadata(name: string, siteOrigin: string, key: st
   };
 }
 
-/** A feature page's own title and description (the landing editor's Funktionssidor, 2026-11-14); empty search texts mean its heading and lead. */
-export type FeaturePageSeo = { path: string; title: string; description: string };
+/**
+ * A feature page's own title and description (the landing editor's Funktionssidor, 2026-11-14); empty search texts mean its heading and
+ * lead. `image` (2026-11-16): its share picture (its own, its picture or the start page's); absent or null means the generated one.
+ */
+export type FeaturePageSeo = { path: string; title: string; description: string; image?: { url: string; alt: string } | null };
 
 /**
  * The metadata of a feature page (/funktioner/<adress>, 2026-11-14). On the public site while it may be indexed: indexable on its
@@ -90,6 +93,6 @@ export function featurePageMetadata(name: string, siteOrigin: string | null, pag
     description,
     robots: { index: true, follow: true },
     alternates: { canonical: url, languages: pageLanguages(url) },
-    ...sitePreview(name, url, { title: `${page.title} | ${name}`, description }),
+    ...sitePreview(name, url, { title: `${page.title} | ${name}`, description, image: page.image ?? null }),
   };
 }

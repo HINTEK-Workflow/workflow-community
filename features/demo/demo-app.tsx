@@ -14,7 +14,7 @@ import { PageHeader } from "@/components/page-shell";
 import { nativeHidesView } from "@/lib/workflow/native-mode";
 import { VIEW_LABEL } from "@/lib/workflow/navigation";
 import { DEMO_REPORTS_UNAVAILABLE, demoCurrentUser, demoDatabase, installDemoBackend, onDemoUserChange, sendDemoEvent, setDemoReporting, setDemoUser } from "./demo-backend";
-import { demoTimeKey, demoViewKey } from "@/lib/analytics/catalog";
+import { demoDeviceKey, demoTimeKey, demoViewKey } from "@/lib/analytics/catalog";
 import { announce } from "@/lib/workflow/toast";
 import { useDetailLevel, useNativeMode } from "@/features/workflow/use-detail-level";
 import { DEMO_ADMIN_ID, DEMO_COMPANY, type DemoUserId } from "./demo-data";
@@ -58,7 +58,16 @@ const useDemoUser = () => useSyncExternalStore(onDemoUserChange, () => demoCurre
 
 // Approximate time in the demo (Beteendeanalys, 2026-11-04): one of four buckets, sent once when the visit ends. The clock is a
 // number in memory for this page load only; nothing is stored and the exact time is never sent.
-const visit = { startedAt: typeof performance === "undefined" ? 0 : performance.now(), reported: false };
+const visit = { startedAt: typeof performance === "undefined" ? 0 : performance.now(), reported: false, device: false };
+// The screen's group (2026-11-16), once per page load: only phone, tablet or computer, never the size itself.
+function reportDevice() {
+  if (visit.device) return;
+  visit.device = true;
+  // Inside the app column's frame the screen is the whole window's.
+  let width = window.innerWidth;
+  try { width = window.top?.innerWidth ?? width; } catch { /* Another origin: the frame's own width. */ }
+  sendDemoEvent(demoDeviceKey(width));
+}
 function reportTime() {
   if (visit.reported) return;
   visit.reported = true;
@@ -155,6 +164,7 @@ export function DemoApp({ view, unavailable = false, report = false, customerId,
   const shellUser = useMemo(() => ({ id: user.id, name: user.name, email: user.email, role: "USER", memberRole: user.role, workflowPermissions: user.permissions, organizationName: DEMO_COMPANY, invoicingOn: true, workProfile: demoWorkProfile(user.permissions) }), [user]);
   // Which page is shown, and the time when the visit ends (the page is hidden or left).
   useEffect(() => { sendDemoEvent(demoViewKey(view)); }, [view]);
+  useEffect(reportDevice, []);
   useEffect(() => {
     const leave = () => { if (document.visibilityState === "hidden") reportTime(); };
     document.addEventListener("visibilitychange", leave);

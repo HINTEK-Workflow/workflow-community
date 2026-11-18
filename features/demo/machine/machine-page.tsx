@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { RemoveButton } from "@/components/ui/remove-button";
 import { Field, Panel } from "@/features/kfid/ui";
 import { demoSimulatorHref } from "@/lib/demo";
+import { DEMO_ALARMS_ID } from "./phone-start";
 import { PHONE_SIMULATOR_TEXT, usePhoneScreen } from "./use-phone-screen";
 import { ALARM_SAFETY_TEXT } from "@/lib/machine/alarm-escalation";
 import { MACHINES_HREF, SIM_TEXT_PREFIX } from "@/lib/machine/simulator/limits";
@@ -209,7 +210,7 @@ export function DemoMachinePage({ canOpenEvents = true }: { canOpenEvents?: bool
           </ul>
         </Panel>
       </>}
-    <Panel icon={ClipboardList} title="Larm i Workflow" description={`Från källan ${DEMO_MACHINE_SOURCE_NAME}. Samma regler som i produkten: en öppen order per källa, ${cooldownMinutes} min vila och bara fel och kritiska larm.`} actions={canOpenEvents ? <Button asChild size="sm" variant="outline"><Link href={MACHINES_HREF} data-testid="demo-machine-events"><ScrollText />Händelser</Link></Button>
+    <div id={DEMO_ALARMS_ID} className="scroll-mt-20"><Panel icon={ClipboardList} title="Larm i Workflow" description={`Från källan ${DEMO_MACHINE_SOURCE_NAME}. Samma regler som i produkten: en öppen order per källa, ${cooldownMinutes} min vila och bara fel och kritiska larm.`} actions={canOpenEvents ? <Button asChild size="sm" variant="outline"><Link href={MACHINES_HREF} data-testid="demo-machine-events"><ScrollText />Händelser</Link></Button>
       : <Button type="button" size="sm" variant="outline" disabledReason="Bara företagsadministratören ser maskinernas händelser. Byt till Elin under Visa som." data-testid="demo-machine-events"><ScrollText />Händelser</Button>}>
       {shown.length ? <ul className="space-y-3" data-testid="demo-machine-feed">{shown.map((row) => <AlarmRow key={row.id} row={row} />)}</ul>
         : <p className="text-sm text-muted-foreground" data-testid="demo-machine-feed-empty">Inga larm än.</p>}
@@ -217,7 +218,7 @@ export function DemoMachinePage({ canOpenEvents = true }: { canOpenEvents?: bool
         <p className="text-sm font-medium">Regelanalysen i produkten säger</p>
         {findings.map((finding) => <p key={finding.dedupeKey} className="text-sm">{withoutMark(finding.title)}: {finding.basis}</p>)}
       </div> : null}
-    </Panel>
+    </Panel></div>
     {mode === "mapped" ? <Panel icon={BrainCircuit} title="Vad systemet har lärt sig" description={`${describedEnough(description) ? `Beskrivning och ${description.rows.filter((row) => row.function.trim()).length} signaler` : "Ingen beskrivning"}, ${taught.length} ${taught.length === 1 ? "lärd orsak" : "lärda orsaker"}. Finns bara i den här sidans minne.`}>
       <div className="space-y-4">
         {taught.length ? <ul className="space-y-3" data-testid="demo-machine-learned-list">{taught.map((item) => <TaughtLine key={item.id} id={item.id} cause={item.cause} label={item.patternLabel} times={item.times} at={item.lastAt} />)}</ul>
