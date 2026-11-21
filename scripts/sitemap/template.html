@@ -1,0 +1,823 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Webbplatskarta Workflow</title>
+<meta name="description" content="Visuell webbplatskarta över HINTEK Workflow: vyer, flikar, steg och popupar med länkar per kategori.">
+<style>
+:root {
+  --bg: #f4f6f9; --card: #ffffff; --fg: #1b2330; --muted: #5d6878; --line: #d5dbe4; --soft: #eef2f7;
+  --accent: #0a72e8; --warn: #c2410c; --warn-soft: #fff1e6; --bad: #b91c1c; --ok: #15803d; --edge-dim: 0.07; --node-dim: 0.22;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12161f; --card: #1a202b; --fg: #e7ebf2; --muted: #9aa4b4; --line: #323b4b; --soft: #222a37;
+    --accent: #5aa6ff; --warn: #fb923c; --warn-soft: #3a2414; --bad: #f87171; --ok: #4ade80; --edge-dim: 0.09; --node-dim: 0.25;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12161f; --card: #1a202b; --fg: #e7ebf2; --muted: #9aa4b4; --line: #323b4b; --soft: #222a37;
+  --accent: #5aa6ff; --warn: #fb923c; --warn-soft: #3a2414; --bad: #f87171; --ok: #4ade80; --edge-dim: 0.09; --node-dim: 0.25;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--fg); font: 13px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; display: flex; flex-direction: column; overflow: hidden; }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 8px 16px; background: var(--card); border-bottom: 1px solid var(--line); }
+header h1 { font-size: 15px; margin: 0; font-weight: 650; }
+header .meta { color: var(--muted); font-size: 12px; flex: 1 1 120px; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+header .spacer { flex: 1; }
+input[type="search"] { height: 32px; min-width: 170px; width: 190px; padding: 0 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); font: inherit; }
+button, select { height: 32px; padding: 0 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--fg); font: inherit; cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button[aria-pressed="true"] { background: var(--warn-soft); border-color: var(--warn); color: var(--warn); font-weight: 600; }
+.main { flex: 1; display: grid; grid-template-columns: 250px 1fr; min-height: 0; position: relative; }
+.main.no-legend { grid-template-columns: 1fr; }
+.main.no-legend aside.legend { display: none; }
+aside { background: var(--card); overflow: auto; padding: 12px 14px; min-height: 0; }
+aside.legend { border-right: 1px solid var(--line); }
+aside.panel { border-left: 1px solid var(--line); position: absolute; top: 0; right: 0; bottom: 0; width: min(390px, calc(100% - 16px)); z-index: 5; display: none; box-shadow: -6px 0 24px rgba(0,0,0,.18); }
+aside.panel.open { display: block; }
+.panel-close { float: right; height: 28px; width: 28px; padding: 0; margin: -2px -4px 0 8px; }
+aside h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 14px 0 6px; font-weight: 650; }
+aside h2:first-child { margin-top: 0; }
+label.row { display: flex; align-items: center; gap: 8px; padding: 3px 0; cursor: pointer; }
+label.row input { margin: 0; }
+label.row[hidden] { display: none; }
+.swatch { width: 26px; height: 0; border-top: 3px solid; flex: none; }
+.swatch.dash { border-top-style: dashed; }
+.swatch.dot { border-top-style: dotted; }
+.count { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px 6px; }
+.chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; }
+.chip i { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+#stage { position: relative; overflow: hidden; background: var(--bg); cursor: grab; touch-action: none; }
+#stage.dragging { cursor: grabbing; }
+svg { display: block; width: 100%; height: 100%; user-select: none; }
+.colhead { font-size: 12px; font-weight: 650; fill: var(--muted); }
+.colline { stroke: var(--line); stroke-dasharray: 2 6; }
+.node rect.box { fill: color-mix(in srgb, var(--c) 13%, var(--card)); stroke: var(--c); stroke-width: 1.2; }
+.node.k-group rect.box, .node.k-entry rect.box { stroke-width: 2.2; fill: color-mix(in srgb, var(--c) 24%, var(--card)); }
+.node.k-modal rect.box, .node.k-popup rect.box { stroke-dasharray: 4 3; }
+.node.k-step rect.box, .node.k-section rect.box { fill: var(--card); }
+.node.k-dead rect.box { stroke: var(--bad); stroke-dasharray: 3 3; }
+.node.k-service rect.box { stroke-width: 2.2; fill: color-mix(in srgb, var(--c) 20%, var(--card)); }
+.node text { fill: var(--fg); font-size: 13px; pointer-events: none; }
+.node.k-group text, .node.k-entry text { font-weight: 650; }
+.node text.tag { font-size: 9.5px; fill: var(--muted); font-weight: 600; }
+.node { cursor: pointer; }
+.node:hover rect.box { stroke-width: 2.4; }
+.node.sel rect.box { stroke-width: 3; }
+.node .ring { fill: none; stroke: var(--warn); stroke-width: 2.5; display: none; }
+.anom .node.has-anom .ring { display: block; }
+.node .badge { display: none; }
+.anom .node.has-anom .badge { display: block; }
+.badge rect { fill: var(--warn); }
+.badge text { fill: #fff; font-size: 9.5px; font-weight: 700; }
+.edge { fill: none; stroke-width: 1.4; opacity: .75; }
+.edge.cat-tree { stroke-width: 1; opacity: .5; }
+.edge.cond-mark { stroke: #c026d3 !important; stroke-dasharray: 7 3 1 3 !important; }
+.edge.dead { stroke: var(--bad) !important; stroke-width: 3; opacity: 1; }
+.edge:hover { stroke-width: 3; opacity: 1; }
+.focus .edge { opacity: var(--edge-dim); }
+.focus .edge.hi { opacity: 1; stroke-width: 2.4; }
+.focus .node { opacity: var(--node-dim); }
+.focus .node.hi { opacity: 1; }
+.searching .node:not(.match) { opacity: var(--node-dim); }
+.searching .node.match rect.box { stroke-width: 3; stroke: var(--accent); }
+.anom .edge.anom-edge { stroke: var(--warn) !important; stroke-width: 2.6; opacity: 1; }
+/* Provat i appen (klickroboten, scripts/sitemap/observed.json): en stapel i rutans vänsterkant. */
+.node rect.seen { fill: var(--ok); }
+.node rect.seen.no { fill: var(--muted); opacity: .45; }
+.seen-key { display: inline-block; width: 4px; height: 12px; border-radius: 2px; background: var(--ok); vertical-align: -1px; margin-right: 4px; }
+.seen-key.no { background: var(--muted); opacity: .45; }
+.edge.cat-robot { stroke-width: 2; opacity: .9; }
+.pill.ok { border-color: var(--ok); color: var(--ok); }
+#tip { position: fixed; z-index: 10; pointer-events: none; max-width: 440px; background: var(--card); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; font-size: 12px; box-shadow: 0 4px 14px rgba(0,0,0,.18); display: none; }
+#tip b { font-weight: 650; }
+#tip .file { color: var(--muted); font-family: ui-monospace, Consolas, monospace; font-size: 11px; word-break: break-all; }
+.panel .title { font-size: 16px; font-weight: 650; margin: 0 0 2px; }
+.panel .sub { color: var(--muted); margin-bottom: 8px; }
+.kv { display: grid; grid-template-columns: 92px 1fr; gap: 2px 8px; margin: 6px 0 10px; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; word-break: break-word; }
+.file { font-family: ui-monospace, Consolas, monospace; font-size: 11.5px; color: var(--muted); word-break: break-all; }
+.list { list-style: none; margin: 0; padding: 0; }
+.list li { padding: 5px 0; border-top: 1px solid var(--line); }
+.list li:first-child { border-top: 0; }
+.list a { color: var(--accent); cursor: pointer; text-decoration: none; }
+.list a:hover { text-decoration: underline; }
+.pill { display: inline-block; font-size: 10.5px; padding: 0 6px; border-radius: 9px; border: 1px solid var(--line); color: var(--muted); margin-left: 4px; }
+.pill.c { border-color: #c026d3; color: #c026d3; }
+.pill.bad { border-color: var(--bad); color: var(--bad); }
+.dotc { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: 0; }
+.hint { color: var(--muted); font-size: 12px; }
+.toolbar-zoom { display: inline-flex; gap: 4px; }
+.mobile-only { display: none; }
+@media (max-width: 900px) {
+  .main { grid-template-columns: 1fr; position: relative; }
+  aside.legend { position: absolute; top: 0; bottom: 0; z-index: 5; width: min(360px, calc(100% - 16px)); display: none; box-shadow: 0 6px 24px rgba(0,0,0,.25); }
+  aside.legend { left: 0; } aside.panel { right: 0; }
+  aside.open { display: block; }
+  .mobile-only { display: inline-block; }
+  header { padding: 8px 16px; }
+  input[type="search"] { min-width: 0; flex: 1 1 160px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Webbplatskarta · HINTEK Workflow</h1>
+  <span class="meta" id="meta"></span>
+  <span class="spacer"></span>
+  <button type="button" id="open-legend" aria-expanded="true">Linjer och filter</button>
+  <input type="search" id="search" placeholder="Sök sida, vy, fil …" aria-label="Sök i kartan">
+  <select id="seen" aria-label="Visa" hidden><option value="all">Visa: Allt</option><option value="tested">Visa: Provat i appen</option><option value="code">Visa: Bara i koden</option></select>
+  <button type="button" id="anom" aria-pressed="false">Visa avvikelser</button>
+  <span class="toolbar-zoom"><button type="button" id="zin" aria-label="Zooma in">+</button><button type="button" id="zout" aria-label="Zooma ut">−</button><button type="button" id="fit">Hela kartan</button></span>
+  <select id="dir" aria-label="Riktning"><option value="rtl">Riktning: Höger → vänster</option><option value="ltr">Riktning: Vänster → höger</option></select>
+  <select id="theme" aria-label="Tema"><option value="auto">Tema: auto</option><option value="light">Ljust</option><option value="dark">Mörkt</option></select>
+  <button type="button" id="open-panel">Iakttagelser</button>
+</header>
+<div class="main">
+  <aside class="legend" id="legend">
+    <h2>Visa som</h2>
+    <label class="row"><input type="radio" name="role" value="all" checked> Alla vägar</label>
+    <label class="row"><input type="radio" name="role" value="superadmin"> Produktadmin <span class="count" data-role-count="superadmin"></span></label>
+    <label class="row"><input type="radio" name="role" value="admin"> Kundföretagets admin <span class="count" data-role-count="admin"></span></label>
+    <label class="row"><input type="radio" name="role" value="member"> Användare <span class="count" data-role-count="member"></span></label>
+    <div class="hint">Tänder bara rutor och linjer som rollen når. I koden är Användare en medarbetare med förvalet Utföra arbete (har Kunder); QA:s medarbetare har varken Kunder eller Driftronder.</div>
+    <div id="seen-legend" hidden>
+      <label class="row"><input type="checkbox" id="follow-robot" checked> Följ robotens rollprov</label>
+      <h2>Provat i appen</h2>
+      <div class="hint" id="seen-summary"></div>
+      <div class="hint" style="margin-top:4px"><span class="seen-key"></span>Provad <span class="seen-key no" style="margin-left:8px"></span>Bara i koden <span class="seen-key" id="robot-key" style="margin-left:8px"></span>Bara roboten</div>
+    </div>
+    <h2>Linjer</h2>
+    <div id="cats"></div>
+    <h2>Villkorade länkar</h2>
+    <label class="row"><input type="radio" name="cond" value="show" checked> Visa som vanliga</label>
+    <label class="row"><input type="radio" name="cond" value="mark"> Markera (lila streck-punkt)</label>
+    <label class="row"><input type="radio" name="cond" value="hide"> Dölj</label>
+    <div class="hint">Villkor: admin, superadmin, tillval (AI, Import, betalning, landningssida), Cloud, Visa mer, eget val (genväg, flikrad, Hem-ruta), behörighet (bara skapa), demo.</div>
+    <h2>Enhet</h2>
+    <label class="row"><input type="radio" name="device" value="all" checked> Båda</label>
+    <label class="row"><input type="radio" name="device" value="desktop"> Bara dator</label>
+    <label class="row"><input type="radio" name="device" value="phone"> Bara telefon (appvyn)</label>
+    <h2>Nivåer</h2>
+    <div id="levels"></div>
+    <h2>Rutor</h2>
+    <label class="row"><input type="checkbox" data-kind="step" checked> Steg (step=)</label>
+    <label class="row"><input type="checkbox" data-kind="section" checked> Avsnitt (section=)</label>
+    <label class="row"><input type="checkbox" data-kind="modal"> Popupar (Modal)</label>
+    <label class="row"><input type="checkbox" data-kind="public" checked> Publika sidor</label>
+    <label class="row" id="service-kind" hidden><input type="checkbox" data-kind="service" checked> Externa tjänster</label>
+    <label class="row"><input type="checkbox" id="items"> Visa enskilda poster (ett jobb, en kund …)</label>
+    <label class="row"><input type="checkbox" id="shared"> Delade filers länkar från alla sidor</label>
+    <div id="services-legend" hidden>
+      <h2>Externa tjänster</h2>
+      <div class="hint">Färgen säger vems nyckel tjänsten använder. UT: Workflow anropar tjänsten. IN: tjänsten anropar Workflow.</div>
+      <div class="chips" id="owners" style="flex-direction:column;align-items:flex-start"></div>
+    </div>
+    <h2>Funktionsfärger</h2>
+    <div class="chips" id="types"></div>
+    <h2>Så läser du kartan</h2>
+    <div class="hint">Klicka på en ruta: dess linjer in och ut tänds och resten tonas ned. Klicka på tom yta för att släppa. Mushjulet rullar, Ctrl + mushjulet zoomar, dra för att flytta. Håll muspekaren över en ruta eller linje för fil och rad.</div>
+  </aside>
+  <div id="stage"><svg id="svg" aria-label="Webbplatskarta"><defs id="defs"></defs><g id="vp"><g id="cols"></g><g id="edges"></g><g id="nodes"></g></g></svg></div>
+  <aside class="panel" id="panel"></aside>
+</div>
+<div id="tip"></div>
+<script id="map-data" type="application/json">__MAP_DATA__</script>
+<script>
+(function () {
+  "use strict";
+  const DATA = JSON.parse(document.getElementById("map-data").textContent);
+  const NS = "http://www.w3.org/2000/svg";
+  const byId = new Map(DATA.nodes.map((n) => [n.id, n]));
+  const CAT = new Map(DATA.cats.map((c) => [c.key, c]));
+  const W = 236, H = 28, ROW = 34, TOP = 40;
+  const ROOT_ORDER = ["v:stats", "e:dator", "e:flikrad", "e:delad", "e:server", "e:publik", "e:extern"];
+  const KIND_ORDER = { group: 0, entry: 0, view: 1, variant: 2, popup: 3, public: 1, step: 4, section: 5, modal: 6, dead: 7, service: 1 };
+  const KIND_LABEL = { view: "Vy", variant: "Variant av vy", group: "Menygrupp", entry: "Ingång", popup: "Popup/panel", public: "Publik sida", step: "Steg (step=)", section: "Avsnitt (section=)", modal: "Popup (Modal)", dead: "Finns inte", service: "Extern tjänst" };
+  // Externa tjänster (2026-10-25): rutans märke säger åt vilket håll den pratar, färgen vems nyckel den använder.
+  const DIRECTION_TAG = { out: "UT", in: "IN", both: "UT+IN" };
+  const TYPE_LABEL = { "work-order": "Arbetsorder", control: "Uppgift/kontroll", risk: "Risk", round: "Driftrond", time: "Tid", customer: "Kund", project: "Projekt", quote: "Offert/inköp", purchase: "Inköp", instrument: "Instrument", tools: "Verktyg", calendar: "Kalender", neutral: "Neutral", checkin: "Checka in", new: "Ny", notice: "Notis" };
+  const COND_TAG = { admin: "ADMIN", superadmin: "SUPER", tillval: "TILLVAL", cloud: "CLOUD", "visa mer": "VISA MER", "eget val": "VAL", "behörighet": "BEH", demo: "DEMO" };
+
+  // Färger: appens --type-* (ljust och mörkt) som tokens.
+  (function colors() {
+    const light = DATA.colors.light, dark = DATA.colors.dark;
+    const decl = (set) => Object.entries(set).map(([k, v]) => "--type-" + k + ":" + v + ";").join("");
+    const style = document.createElement("style");
+    style.textContent = ":root{" + decl(light) + "}@media (prefers-color-scheme: dark){:root:not([data-theme=\"light\"]){" + decl(dark) + "}}:root[data-theme=\"dark\"]{" + decl(dark) + "}";
+    document.head.appendChild(style);
+  })();
+  const typeVar = (t) => "var(--type-" + (DATA.colors.light[t] ? t : "neutral") + ")";
+
+  // Tema.
+  const themeSel = document.getElementById("theme");
+  try { const saved = localStorage.getItem("wfmap-theme"); if (saved) themeSel.value = saved; } catch (e) { }
+  const applyTheme = () => { const v = themeSel.value; if (v === "auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme", v); try { localStorage.setItem("wfmap-theme", v); } catch (e) { } };
+  themeSel.addEventListener("change", applyTheme); applyTheme();
+
+  const s = DATA.stats;
+  document.getElementById("meta").textContent = "Version " + (DATA.version || "?") + " · gren " + DATA.branch + " · " + DATA.commit + " · " + new Date(DATA.generated).toLocaleString("sv-SE") + " · " + s.pages + " sidor (" + s.views + " vyer) · " + s.nodes + " rutor · " + s.edges + " linjer";
+
+  // Tillstånd.
+  const maxLevel = Math.max(...DATA.nodes.map((n) => n.level || 0));
+  const state = {
+    cats: Object.fromEntries(DATA.cats.map((c) => [c.key, c.on])), cond: "show", device: "all",
+    levels: Object.fromEntries([...Array(maxLevel + 1).keys()].map((l) => [l, true])),
+    kinds: { step: true, section: true, modal: false, public: true, service: true }, shared: false, showItems: false,
+    selected: null, search: "", anom: false, dir: "rtl", role: "all", seen: "all", followRobot: true,
+  };
+
+  // Avvikelser.
+  const A = DATA.anomalies;
+  const anomNodes = new Map();
+  const addAnom = (id, code, text) => { if (!anomNodes.has(id)) anomNodes.set(id, []); anomNodes.get(id).push({ code, text }); };
+  A.noIncoming.forEach((x) => addAnom(x.id, "0", "Ingen väg in: " + x.note));
+  A.multiMenu.forEach((x) => addAnom(x.id, "2", "Flera menyvägar (" + x.device + (x.byDefault ? "" : ", bara med egna val") + "): " + x.ways.join(" · ")));
+  A.oneDevice.forEach((x) => addAnom(x.id, x.device === "bara dator" ? "D" : "T", "Nås " + x.device + ": " + x.note));
+  (A.sameName || []).forEach((x) => addAnom(x.id, "N", "Samma namn: " + x.note));
+  A.dead.forEach((x) => { addAnom(x.from, "X", "Död länk: " + x.reason); addAnom(x.to, "X", "Död länk hit: " + x.reason); });
+  (A.oldAddress || []).forEach((x) => addAnom(x.from, "G", "Länkar till gammal adress " + (byId.get(x.to) || {}).label));
+  // Provat i appen (2026-10-24): klickrobotens omgång (scripts/sitemap/observed.json), om den finns.
+  const OBSV = DATA.observed || null;
+  const TRIED = A.observed || [];
+  const ROLE_TEXT = { superadmin: "Produktadmin", admin: "Kundföretagets admin", member: "Användare" }, DEVICE_TEXT = { desktop: "dator", phone: "telefon" };
+  const SEEN_KIND = { finding: "Fynd", robotNode: "Ruta som saknas i koden", robotEdge: "Väg som saknas i koden", roleMap: "Roller: koden mot appen", back: "Bakåt" };
+  function runsText(runs) {
+    const by = {};
+    (runs || []).forEach((r) => { const [role, dev] = r.split("-"); (by[role] = by[role] || []); if (DEVICE_TEXT[dev] && !by[role].includes(DEVICE_TEXT[dev])) by[role].push(DEVICE_TEXT[dev]); });
+    return ["superadmin", "admin", "member"].filter((r) => by[r]).map((r) => ROLE_TEXT[r] + " (" + by[r].join(", ") + ")").join(" · ");
+  }
+  const wasTested = (x) => Boolean(x.robotOnly) || (x.tested || []).length > 0;
+  function testedText(x) {
+    if (x.tested === undefined) return "";
+    if (x.robotOnly) return "Bara hittad av roboten – saknas i koden" + (x.tested.length ? ": " + runsText(x.tested) : "");
+    return x.tested.length ? "Provad i appen: " + runsText(x.tested) : "Bara i koden – aldrig nådd av roboten";
+  }
+  const anomEdgeKey = new Set([...A.dead.map((x) => x.from + "|" + x.to), ...(A.oldAddress || []).map((x) => x.from + "|" + x.to)]);
+
+  // Förklaringsrutan.
+  const catsBox = document.getElementById("cats");
+  const catCount = {};
+  DATA.edges.forEach((e) => { catCount[e.cat] = (catCount[e.cat] || 0) + 1; });
+  const defs = document.getElementById("defs");
+  DATA.cats.forEach((c) => {
+    const lab = document.createElement("label"); lab.className = "row";
+    const box = document.createElement("input"); box.type = "checkbox"; box.checked = c.on; box.dataset.cat = c.key;
+    box.addEventListener("change", () => { state.cats[c.key] = box.checked; render(); });
+    const sw = document.createElement("span"); sw.className = "swatch" + (c.dash.startsWith("1 ") || c.dash.startsWith("2 ") ? " dot" : c.dash ? " dash" : ""); sw.style.borderTopColor = c.color;
+    const txt = document.createElement("span"); txt.textContent = c.label;
+    const cnt = document.createElement("span"); cnt.className = "count"; cnt.textContent = c.key === "via" ? "" : catCount[c.key] || 0; if (c.key === "via") cnt.id = "via-count";
+    lab.append(box, sw, txt, cnt); catsBox.appendChild(lab);
+    const m = document.createElementNS(NS, "marker");
+    m.setAttribute("id", "arrow-" + c.key); m.setAttribute("viewBox", "0 0 10 10"); m.setAttribute("refX", "9"); m.setAttribute("refY", "5");
+    m.setAttribute("markerWidth", "7"); m.setAttribute("markerHeight", "7"); m.setAttribute("orient", "auto-start-reverse");
+    const p = document.createElementNS(NS, "path"); p.setAttribute("d", "M0,0 L10,5 L0,10 z"); p.setAttribute("fill", c.color); m.appendChild(p); defs.appendChild(m);
+  });
+  const lv = document.getElementById("levels");
+  const LEVEL_NAME = ["Start och ingångar", "Menygrupper", "Sidor och listor", "Flikar, delsidor, detaljer", "Popupar, steg, avsnitt", "Djupare"];
+  for (let l = 0; l <= maxLevel; l++) {
+    const lab = document.createElement("label"); lab.className = "row";
+    const box = document.createElement("input"); box.type = "checkbox"; box.checked = true;
+    box.addEventListener("change", () => { state.levels[l] = box.checked; render(true); });
+    const txt = document.createElement("span"); txt.textContent = "Nivå " + l + " – " + (LEVEL_NAME[l] || LEVEL_NAME[5]);
+    const cnt = document.createElement("span"); cnt.className = "count"; cnt.textContent = DATA.nodes.filter((n) => n.level === l).length;
+    lab.append(box, txt, cnt); lv.appendChild(lab);
+  }
+  document.querySelectorAll("input[data-kind]").forEach((box) => { box.checked = state.kinds[box.dataset.kind]; box.addEventListener("change", () => { state.kinds[box.dataset.kind] = box.checked; render(true); }); });
+  document.getElementById("items").addEventListener("change", (ev) => { state.showItems = ev.target.checked; render(true); if (panel.classList.contains("open") && !state.selected) showOverview(); });
+  document.getElementById("shared").addEventListener("change", (ev) => { state.shared = ev.target.checked; render(); });
+  document.querySelectorAll("input[name=cond]").forEach((r) => r.addEventListener("change", () => { state.cond = r.value; render(); }));
+  document.querySelectorAll("input[name=role]").forEach((r) => r.addEventListener("change", () => { state.role = r.value; render(true); }));
+  document.querySelectorAll("[data-role-count]").forEach((c) => { c.textContent = (s.byRole || {})[c.dataset.roleCount] || ""; });
+  document.querySelectorAll("input[name=device]").forEach((r) => r.addEventListener("change", () => { state.device = r.value; render(); }));
+  const types = document.getElementById("types");
+  [...new Set(DATA.nodes.filter((n) => n.kind !== "service").map((n) => n.type))].forEach((t) => { const c = document.createElement("span"); c.className = "chip"; const i = document.createElement("i"); i.style.background = typeVar(t); c.append(i, document.createTextNode(TYPE_LABEL[t] || t)); types.appendChild(c); });
+  if ((DATA.serviceOwners || []).length) {
+    document.getElementById("services-legend").hidden = false;
+    document.getElementById("service-kind").hidden = false;
+    const owners = document.getElementById("owners");
+    DATA.serviceOwners.forEach((o) => { const c = document.createElement("span"); c.className = "chip"; c.title = o.note; const i = document.createElement("i"); i.style.background = typeVar(o.type); c.append(i, document.createTextNode(o.label)); owners.appendChild(c); });
+  }
+
+  // Synlighet.
+  // Visa som (2026-10-24): only what the role reaches; "all" shows every way.
+  // Visa som följer robotens rollprov där roboten provade (appRoles), annars koden.
+  const rolesOf = (x) => (OBSV && state.followRobot && x.appRoles ? x.appRoles : x.roles);
+  const roleHas = (x) => { const r = rolesOf(x); return state.role === "all" || !r || r.includes(state.role); };
+  // Visa: Allt · Provat i appen · Bara i koden (menygrupper och ingångar står alltid kvar).
+  const seenVisible = (x) => state.seen === "all" || x.tested === undefined || x.kind === "group" || x.kind === "entry" || (state.seen === "tested" ? wasTested(x) : !wasTested(x));
+  const nodeVisible = (n) => state.levels[n.level] !== false && (state.kinds[n.kind] !== false) && (state.showItems || !n.item) && roleHas(n) && seenVisible(n);
+  const isHiddenItem = (id) => { const n = byId.get(id); return Boolean(n && n.item && !state.showItems); };
+  // Närmaste synliga förälder (för en dold enskild post: listan den öppnas från).
+  function visibleAncestor(id) { let p = id, hops = 0; while (p && hops++ < 30) { if (visible.has(p)) return p; p = (byId.get(p) || {}).parent; } return null; }
+  let viaList = [];
+  // "Arbetsordrar → (öppna Arbetsorder (ett jobb)) → Kund"
+  function viaText(w) {
+    const lab = (id) => (byId.get(id) || {}).label || id;
+    const parts = [lab(visibleAncestor(w.from))];
+    if (isHiddenItem(w.from)) parts.push("(öppna " + lab(w.from) + ")");
+    if (isHiddenItem(w.to)) parts.push("(öppna " + lab(w.to) + ")");
+    parts.push(lab(visibleAncestor(w.to)));
+    return parts.join(" → ");
+  }
+  function edgeDevice(e) { if (e.device) return e.device; if (e.cat === "menu") return "desktop"; if (e.cat === "phone") return "phone"; return "both"; }
+  function edgeVisible(e, vis) {
+    if (!state.cats[e.cat] || !roleHas(e) || !seenVisible(e)) return false;
+    if (e.cond && state.cond === "hide") return false;
+    const d = edgeDevice(e);
+    if (state.device === "desktop" && d === "phone") return false;
+    if (state.device === "phone" && d === "desktop") return false;
+    return vis.has(e.from) && vis.has(e.to);
+  }
+
+  // Placering: ett träd med en kolumn per nivå. Många blad under samma förälder delas i 2–4 underkolumner, och avståndet
+  // mellan nivåerna räknas från fönstrets bredd så att kartan fyller bredden (2026-10-24: "dra ut det rejält på bredden").
+  let pos = new Map(), visible = new Set(), height = 0, levelStart = [], levelWidth = [], totalWidth = 0;
+  const SUBW = W + 14, MIN_GAP = 48, READ_K = 0.85;
+  function layout() {
+    visible = new Set(DATA.nodes.filter(nodeVisible).map((n) => n.id));
+    const kids = new Map(), roots = [];
+    for (const n of DATA.nodes) {
+      if (!visible.has(n.id)) continue;
+      let p = n.parent;
+      while (p && !visible.has(p)) p = (byId.get(p) || {}).parent;
+      if (p) { if (!kids.has(p)) kids.set(p, []); kids.get(p).push(n.id); } else roots.push(n.id);
+    }
+    const rank = (id) => { const i = ROOT_ORDER.indexOf(id); return i < 0 ? 99 : i; };
+    roots.sort((a, b) => rank(a) - rank(b));
+    for (const list of kids.values()) list.sort((a, b) => (KIND_ORDER[byId.get(a).kind] ?? 9) - (KIND_ORDER[byId.get(b).kind] ?? 9));
+    // Underkolumner: så många som ryms när kartan visas i läsbar storlek (READ_K), till de nivåer som har flest rutor.
+    const levels = [...Array(maxLevel + 1).keys()].filter((l) => state.levels[l]);
+    const perLevel = {}; visible.forEach((id) => { const l = byId.get(id).level; perLevel[l] = (perLevel[l] || 0) + 1; });
+    const stageW = Math.max(600, (svg.getBoundingClientRect().width || 1200) - 40);
+    let extra = Math.floor((stageW / READ_K - levels.length * W - Math.max(0, levels.length - 1) * MIN_GAP) / SUBW);
+    const cap = {}; levels.forEach((l) => { cap[l] = 1; });
+    while (extra-- > 0) {
+      const best = levels.filter((l) => cap[l] < 4 && (perLevel[l] || 0) > cap[l] * 8).sort((a, b) => (perLevel[b] || 0) / cap[b] - (perLevel[a] || 0) / cap[a])[0];
+      if (best === undefined) break; cap[best] += 1;
+    }
+    const meta = new Map(); let y = TOP;
+    const place = (id) => {
+      const ch = kids.get(id) || [];
+      if (!ch.length) { meta.set(id, { y, sub: 0 }); y += ROW; return; }
+      const branches = ch.filter((c) => (kids.get(c) || []).length), leaves = ch.filter((c) => !(kids.get(c) || []).length);
+      branches.forEach(place);
+      if (leaves.length) {
+        const cols = Math.max(1, Math.min(cap[byId.get(leaves[0]).level] || 1, Math.ceil(leaves.length / 6)));
+        const rows = Math.ceil(leaves.length / cols);
+        leaves.forEach((c, j) => meta.set(c, { y: y + (j % rows) * ROW, sub: Math.floor(j / rows) }));
+        y += rows * ROW;
+      }
+      const ys = ch.map((c) => meta.get(c).y);
+      meta.set(id, { y: (Math.min(...ys) + Math.max(...ys)) / 2, sub: 0 });
+    };
+    roots.forEach((r) => { place(r); y += ROW * 0.7; });
+    height = y;
+    // Bredden: varje nivå så bred som sina underkolumner, och resten av fönstrets bredd delas mellan nivåerna.
+    const subs = {};
+    meta.forEach((m, id) => { const l = byId.get(id).level; subs[l] = Math.max(subs[l] || 1, m.sub + 1); });
+    levelWidth = []; levels.forEach((l) => { levelWidth[l] = (subs[l] || 1) * SUBW - 14; });
+    const sum = levels.reduce((t, l) => t + levelWidth[l], 0);
+    const gap = Math.max(MIN_GAP, levels.length > 1 ? (stageW - sum) / (levels.length - 1) : 0);
+    const order = state.dir === "rtl" ? [...levels].reverse() : levels;
+    levelStart = []; let x = 20;
+    order.forEach((l) => { levelStart[l] = x; x += levelWidth[l] + gap; });
+    totalWidth = x - gap + 20;
+    pos = new Map();
+    meta.forEach((m, id) => pos.set(id, { x: levelStart[byId.get(id).level] + m.sub * SUBW, y: m.y }));
+  }
+
+  // Ritning.
+  const gEdges = document.getElementById("edges"), gNodes = document.getElementById("nodes"), gCols = document.getElementById("cols");
+  const svg = document.getElementById("svg"), vp = document.getElementById("vp");
+  let edgeEls = [], nodeEls = new Map();
+  const truncate = (t, max) => (t.length > max ? t.slice(0, max - 1) + "…" : t);
+  // Linjen går i trädets riktning: ut på rutans framsida (höger vid vänster → höger, vänster vid höger → vänster).
+  function edgePath(a, b) {
+    const s = state.dir === "rtl" ? -1 : 1;
+    const x1 = s > 0 ? a.x + W : a.x, y1 = a.y + H / 2, x2 = s > 0 ? b.x : b.x + W, y2 = b.y + H / 2;
+    if ((x2 - x1) * s > 10) { const dx = s * Math.max(40, Math.abs(x2 - x1) / 2); return "M" + x1 + "," + y1 + " C" + (x1 + dx) + "," + y1 + " " + (x2 - dx) + "," + y2 + " " + x2 + "," + y2; }
+    const bend = s * (70 + Math.min(160, Math.abs(y2 - y1) / 12));
+    return "M" + x1 + "," + y1 + " C" + (x1 + bend) + "," + y1 + " " + (x2 - bend) + "," + y2 + " " + x2 + "," + y2;
+  }
+  const colX = (level) => levelStart[level] ?? 20;
+  function render(relayout) {
+    if (relayout || !pos.size) layout();
+    gCols.textContent = ""; gEdges.textContent = ""; gNodes.textContent = "";
+    for (let l = 0; l <= maxLevel; l++) {
+      if (!state.levels[l]) continue;
+      const t = document.createElementNS(NS, "text"); t.setAttribute("class", "colhead"); t.setAttribute("x", colX(l)); t.setAttribute("y", 18); t.textContent = "Nivå " + l + " · " + (LEVEL_NAME[l] || LEVEL_NAME[5]); gCols.appendChild(t);
+      const ln = document.createElementNS(NS, "line"); ln.setAttribute("class", "colline"); ln.setAttribute("x1", colX(l) - 10); ln.setAttribute("x2", colX(l) - 10); ln.setAttribute("y1", 26); ln.setAttribute("y2", height); gCols.appendChild(ln);
+    }
+    edgeEls = [];
+    viaList = [];
+    const viaMap = new Map();
+    DATA.edges.forEach((e, i) => {
+      const sources = state.shared && e.also ? [e.from, ...e.also] : [e.from];
+      sources.forEach((from) => {
+        const ed = from === e.from ? e : Object.assign({}, e, { from });
+        // En väg in i eller ut från en dold enskild post ritas från/till närmaste synliga förälder (linjesorten "via").
+        if (!state.showItems && e.cat !== "tree" && (isHiddenItem(ed.from) || isHiddenItem(ed.to))) {
+          const vf = visibleAncestor(ed.from), vt = visibleAncestor(ed.to);
+          if (!vf || !vt || vf === vt || !state.cats.via || !state.cats[e.cat] || !roleHas(e) || !seenVisible(e)) return;
+          if (e.cond && state.cond === "hide") return;
+          const d = edgeDevice(e);
+          if ((state.device === "desktop" && d === "phone") || (state.device === "phone" && d === "desktop")) return;
+          const key = vf + "|" + vt;
+          if (!viaMap.has(key)) viaMap.set(key, { from: vf, to: vt, cat: "via", ways: [], cond: e.cond || null });
+          const v = viaMap.get(key);
+          if (!e.cond) v.cond = null;
+          v.ways.push({ edge: e, from: ed.from, to: ed.to });
+          return;
+        }
+        if (!edgeVisible(ed, visible)) return;
+        const a = pos.get(ed.from), b = pos.get(ed.to);
+        if (!a || !b) return;
+        const c = CAT.get(e.cat);
+        const p = document.createElementNS(NS, "path");
+        p.setAttribute("d", edgePath(a, b));
+        let cls = "edge cat-" + e.cat;
+        if (e.cond && state.cond === "mark") cls += " cond-mark";
+        if (e.dead) cls += " dead";
+        if (anomEdgeKey.has(ed.from + "|" + ed.to)) cls += " anom-edge";
+        p.setAttribute("class", cls);
+        p.setAttribute("stroke", c.color);
+        if (c.dash) p.setAttribute("stroke-dasharray", c.dash);
+        p.setAttribute("marker-end", "url(#arrow-" + e.cat + ")");
+        p.dataset.i = i; p.dataset.from = ed.from; p.dataset.to = ed.to;
+        gEdges.appendChild(p); edgeEls.push(p);
+      });
+    });
+    const vc = CAT.get("via");
+    viaMap.forEach((v) => {
+      const a = pos.get(v.from), b = pos.get(v.to);
+      if (!a || !b) return;
+      const p = document.createElementNS(NS, "path");
+      p.setAttribute("d", edgePath(a, b));
+      p.setAttribute("class", "edge cat-via" + (v.cond && state.cond === "mark" ? " cond-mark" : ""));
+      p.setAttribute("stroke", vc.color); p.setAttribute("stroke-dasharray", vc.dash);
+      p.setAttribute("stroke-width", String(Math.min(4, 1.2 + Math.log2(v.ways.length) * 0.6)));
+      p.setAttribute("marker-end", "url(#arrow-via)");
+      p.dataset.via = viaList.length; p.dataset.from = v.from; p.dataset.to = v.to;
+      viaList.push(v);
+      gEdges.appendChild(p); edgeEls.push(p);
+    });
+    const vcount = document.getElementById("via-count"); if (vcount) vcount.textContent = viaList.length;
+    nodeEls = new Map();
+    for (const id of visible) {
+      const n = byId.get(id), at = pos.get(id);
+      if (!at) continue;
+      const g = document.createElementNS(NS, "g");
+      g.setAttribute("class", "node k-" + n.kind + (anomNodes.has(id) ? " has-anom" : ""));
+      g.setAttribute("transform", "translate(" + at.x + "," + at.y + ")");
+      g.style.setProperty("--c", typeVar(n.type));
+      g.dataset.id = id;
+      const ring = document.createElementNS(NS, "rect"); ring.setAttribute("class", "ring"); ring.setAttribute("x", -4); ring.setAttribute("y", -4); ring.setAttribute("width", W + 8); ring.setAttribute("height", H + 8); ring.setAttribute("rx", 9);
+      const r = document.createElementNS(NS, "rect"); r.setAttribute("class", "box"); r.setAttribute("width", W); r.setAttribute("height", H); r.setAttribute("rx", 6);
+      const tags = [];
+      if (n.service) tags.push(DIRECTION_TAG[n.service.direction] || "");
+      if (n.robotOnly) tags.push("ROBOT");
+      if (n.cond && COND_TAG[n.cond]) tags.push(COND_TAG[n.cond]);
+      if (n.phoneHidden) tags.push("DATOR");
+      if (n.old) tags.unshift("GAMMAL");
+      const tagText = tags.join(" ");
+      const t = document.createElementNS(NS, "text"); t.setAttribute("x", 9); t.setAttribute("y", 19);
+      t.textContent = truncate(n.label, Math.floor((W - 18 - tagText.length * 6.2) / 7.1));
+      g.append(ring, r, t);
+      if (OBSV && n.tested !== undefined) { const bar =document.createElementNS(NS, "rect"); const k = n.robotOnly ? "robot" : wasTested(n) ? "yes" : "no"; bar.setAttribute("class", "seen " + k); bar.dataset.seen = k; bar.setAttribute("x", 1.5); bar.setAttribute("y", 5); bar.setAttribute("width", 4); bar.setAttribute("height", H - 10); bar.setAttribute("rx", 2); if (k === "robot") bar.style.fill = (CAT.get("robot") || {}).color; g.appendChild(bar); }
+      if (tagText) { const tg = document.createElementNS(NS, "text"); tg.setAttribute("class", "tag"); tg.setAttribute("x", W - 6); tg.setAttribute("y", 18); tg.setAttribute("text-anchor", "end"); tg.textContent = tagText; g.appendChild(tg); }
+      if (anomNodes.has(id)) {
+        const codes = [...new Set(anomNodes.get(id).map((a) => a.code))].join("");
+        const b = document.createElementNS(NS, "g"); b.setAttribute("class", "badge"); b.setAttribute("transform", "translate(" + (W - 4 - codes.length * 7) + ",-9)");
+        const br = document.createElementNS(NS, "rect"); br.setAttribute("width", 8 + codes.length * 7); br.setAttribute("height", 14); br.setAttribute("rx", 7);
+        const bt = document.createElementNS(NS, "text"); bt.setAttribute("x", 4); bt.setAttribute("y", 10.5); bt.textContent = codes;
+        b.append(br, bt); g.appendChild(b);
+      }
+      gNodes.appendChild(g); nodeEls.set(id, g);
+    }
+    svg.classList.toggle("anom", state.anom);
+    applyFocus();
+    applySearch();
+  }
+
+  // Markering: en vald ruta tänder sina linjer in och ut.
+  function applyFocus() {
+    const id = state.selected;
+    svg.classList.toggle("focus", Boolean(id));
+    nodeEls.forEach((g) => g.classList.remove("hi", "sel"));
+    edgeEls.forEach((p) => p.classList.remove("hi"));
+    if (!id) return;
+    const hit = new Set([id]);
+    edgeEls.forEach((p) => { if (p.dataset.from === id || p.dataset.to === id) { p.classList.add("hi"); hit.add(p.dataset.from); hit.add(p.dataset.to); } });
+    hit.forEach((h) => nodeEls.get(h) && nodeEls.get(h).classList.add("hi"));
+    const own = nodeEls.get(id); if (own) own.classList.add("sel");
+  }
+  // Sök.
+  const search = document.getElementById("search");
+  let matches = [], matchAt = -1;
+  function applySearch() {
+    const q = state.search.trim().toLowerCase();
+    svg.classList.toggle("searching", Boolean(q));
+    matches = [];
+    nodeEls.forEach((g, id) => {
+      const n = byId.get(id);
+      const hay = [n.label, n.id, n.address || "", n.view || "", ...(n.refs || []).map((r) => r.file)].join(" ").toLowerCase();
+      const ok = q && hay.includes(q);
+      g.classList.toggle("match", Boolean(ok));
+      if (ok) matches.push(id);
+    });
+  }
+  search.addEventListener("input", () => { state.search = search.value; matchAt = -1; applySearch(); });
+  search.addEventListener("keydown", (ev) => { if (ev.key === "Enter" && matches.length) { matchAt = (matchAt + 1) % matches.length; select(matches[matchAt], true); } });
+
+  // Zoom och panorering.
+  let view = { x: 0, y: 0, k: 1 };
+  const applyView = () => vp.setAttribute("transform", "translate(" + view.x + "," + view.y + ") scale(" + view.k + ")");
+  const stage = document.getElementById("stage");
+  stage.addEventListener("wheel", (ev) => {
+    ev.preventDefault();
+    // Mushjulet rullar upp och ned (Skift: i sidled); med Ctrl (eller nyp på styrplattan) zoomar det.
+    if (!ev.ctrlKey && !ev.metaKey) { if (ev.shiftKey) view.x -= ev.deltaY; else { view.x -= ev.deltaX; view.y -= ev.deltaY; } applyView(); hideTip(); return; }
+    const rect = svg.getBoundingClientRect(), mx = ev.clientX - rect.left, my = ev.clientY - rect.top;
+    const k = Math.min(3, Math.max(0.08, view.k * Math.exp(-ev.deltaY * 0.0015)));
+    view.x = mx - (mx - view.x) * (k / view.k); view.y = my - (my - view.y) * (k / view.k); view.k = k; applyView();
+  }, { passive: false });
+  let drag = null;
+  stage.addEventListener("pointerdown", (ev) => { drag = { x: ev.clientX, y: ev.clientY, vx: view.x, vy: view.y, moved: false }; stage.setPointerCapture(ev.pointerId); });
+  stage.addEventListener("pointermove", (ev) => {
+    if (drag) { const dx = ev.clientX - drag.x, dy = ev.clientY - drag.y; if (Math.abs(dx) + Math.abs(dy) > 4) { drag.moved = true; stage.classList.add("dragging"); } view.x = drag.vx + dx; view.y = drag.vy + dy; if (drag.moved) { applyView(); hideTip(); return; } }
+    tipFor(ev);
+  });
+  stage.addEventListener("pointerup", (ev) => {
+    const wasDrag = drag && drag.moved; drag = null; stage.classList.remove("dragging");
+    if (wasDrag) return;
+    const el = document.elementFromPoint(ev.clientX, ev.clientY);
+    const g = el && el.closest ? el.closest(".node") : null;
+    if (g) select(g.dataset.id, false); else if (el && el.closest && el.closest(".edge")) { const p = el.closest(".edge"); if (p.dataset.via !== undefined) showVia(viaList[+p.dataset.via]); else showEdge(DATA.edges[+p.dataset.i]); } else { state.selected = null; applyFocus(); panel.classList.remove("open"); }
+  });
+  stage.addEventListener("pointerleave", hideTip);
+  // all = hela kartan i fönstret; annars full bredd från toppen (start).
+  function fit(all) {
+    const rect = svg.getBoundingClientRect();
+    const width = totalWidth || 1200;
+    // Bredden styr (2026-10-24): texten ska gå att läsa direkt; höjden rullar man.
+    view = { k: Math.max(READ_K, Math.min(1, rect.width / width)), x: 4, y: 8 };
+    applyView();
+  }
+  const zoomBy = (f) => { const rect = svg.getBoundingClientRect(), mx = rect.width / 2, my = rect.height / 2, k = Math.min(3, Math.max(0.08, view.k * f)); view.x = mx - (mx - view.x) * (k / view.k); view.y = my - (my - view.y) * (k / view.k); view.k = k; applyView(); };
+  document.getElementById("zin").addEventListener("click", () => zoomBy(1.25));
+  document.getElementById("zout").addEventListener("click", () => zoomBy(0.8));
+  document.getElementById("fit").addEventListener("click", () => fit(true));
+  function panTo(id) {
+    const at = pos.get(id); if (!at) return;
+    const rect = svg.getBoundingClientRect();
+    if (view.k < 0.6) view.k = 0.85;
+    view.x = rect.width / 2 - (at.x + W / 2) * view.k; view.y = rect.height / 2 - (at.y + H / 2) * view.k; applyView();
+  }
+
+  // Verktygstips.
+  const tip = document.getElementById("tip");
+  function hideTip() { tip.style.display = "none"; }
+  function refText(r) { return r ? r.file + (r.line ? ":" + r.line : "") : ""; }
+  function tipFor(ev) {
+    const el = ev.target;
+    const g = el.closest && el.closest(".node");
+    const p = el.closest && el.closest(".edge");
+    if (!g && !p) { hideTip(); return; }
+    tip.textContent = "";
+    const b = document.createElement("b");
+    const line = (text, cls) => { const d = document.createElement("div"); if (cls) d.className = cls; d.textContent = text; tip.appendChild(d); };
+    if (g) {
+      const n = byId.get(g.dataset.id);
+      b.textContent = n.label; tip.appendChild(b);
+      line(KIND_LABEL[n.kind] + (n.address ? " · " + n.address : ""));
+      if (n.service) { line(n.service.purpose); line(n.service.directionLabel + " · " + n.service.ownerLabel + ": " + n.service.key); }
+      if (OBSV && n.tested !== undefined) line(testedText(n));
+      (n.refs || []).slice(0, 3).forEach((r) => line(refText(r), "file"));
+      if (anomNodes.has(n.id)) anomNodes.get(n.id).forEach((a) => line("Avvikelse: " + a.text));
+    } else if (p.dataset.via !== undefined) {
+      const v = viaList[+p.dataset.via];
+      b.textContent = "Via en enskild post · " + v.ways.length + (v.ways.length === 1 ? " väg" : " vägar"); tip.appendChild(b);
+      v.ways.slice(0, 5).forEach((w) => { line(viaText(w)); const r = (w.edge.refs || [])[0]; if (r) line(refText(r), "file"); });
+      if (v.ways.length > 5) line("… och " + (v.ways.length - 5) + " till (klicka på linjen)");
+    } else {
+      const e = DATA.edges[+p.dataset.i];
+      b.textContent = (byId.get(p.dataset.from) || {}).label + " → " + (byId.get(e.to) || {}).label; tip.appendChild(b);
+      line(CAT.get(e.cat).label + (e.label ? " · " + e.label : "") + (e.cond ? " · villkor: " + e.cond : "") + (e.dead ? " · DÖD: " + e.reason : ""));
+      if (OBSV && e.tested !== undefined) line(testedText(e));
+      (e.refs || []).slice(0, 4).forEach((r) => line(refText(r), "file"));
+    }
+    tip.style.display = "block";
+    const x = Math.min(window.innerWidth - tip.offsetWidth - 8, ev.clientX + 14), y = Math.min(window.innerHeight - tip.offsetHeight - 8, ev.clientY + 14);
+    tip.style.left = x + "px"; tip.style.top = y + "px";
+  }
+
+  // Sidopanelen.
+  const panel = document.getElementById("panel");
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
+  const nodeLink = (id) => { const n = byId.get(id) || { label: id, type: "neutral" }; const a = el("a", "", n.label); const dot = el("span", "dotc"); dot.style.background = typeVar(n.type); a.prepend(dot); a.addEventListener("click", () => select(id, true)); return a; };
+  function edgeItem(e, otherId, dir) {
+    const li = el("li");
+    li.append(el("span", "", dir === "in" ? "från " : "till "), nodeLink(otherId));
+    const c = CAT.get(e.cat);
+    const pill = el("span", "pill", c.key === "tree" ? "träd" : c.label.split(" (")[0]); pill.style.borderColor = c.color; pill.style.color = c.color; li.appendChild(pill);
+    if (e.cond) li.appendChild(el("span", "pill c", e.cond));
+    if (e.device) li.appendChild(el("span", "pill", e.device === "phone" ? "telefon" : e.device === "desktop" ? "dator" : "båda"));
+    if (e.dead) li.appendChild(el("span", "pill bad", "död"));
+    if (e.label) li.appendChild(el("div", "hint", e.label));
+    if (OBSV && e.tested !== undefined) li.appendChild(el("div", "hint", testedText(e)));
+    (e.refs || []).slice(0, 4).forEach((r) => li.appendChild(el("div", "file", refText(r) + (r.text ? "  " + r.text : ""))));
+    if (e.also && e.also.length) li.appendChild(el("div", "hint", "Delad fil, också från: " + e.also.map((x) => (byId.get(x) || {}).label || x).join(", ")));
+    return li;
+  }
+  // Panelen ligger ovanpå kartan: den öppnas av en vald ruta, en linje, Iakttagelser och Visa avvikelser.
+  function clearPanel() {
+    panel.textContent = "";
+    const x = el("button", "panel-close", "×"); x.type = "button"; x.setAttribute("aria-label", "Stäng panelen");
+    x.addEventListener("click", () => { panel.classList.remove("open"); state.selected = null; applyFocus(); });
+    panel.appendChild(x); panel.classList.add("open");
+  }
+  function select(id, pan) {
+    state.selected = id; applyFocus(); if (pan) panTo(id); showNode(id);
+  }
+  function showNode(id) {
+    const n = byId.get(id); if (!n) return;
+    clearPanel();
+    panel.append(el("div", "title", n.label), el("div", "sub", KIND_LABEL[n.kind] + " · nivå " + n.level + " · " + (n.service ? n.service.ownerLabel : TYPE_LABEL[n.type] || n.type)));
+    const dl = el("dl", "kv");
+    const kv = (k, v) => { if (v === undefined || v === null || v === "") return; dl.append(el("dt", "", k), el("dd", "", String(v))); };
+    // Externa tjänster: vad den används till, riktning, vems nyckel och var den administreras – aldrig ett nyckelvärde.
+    const kvList = (k, items, mono) => { if (!items || !items.length) return; const dd = el("dd"); items.forEach((x) => dd.appendChild(el("div", mono ? "file" : "", x))); dl.append(el("dt", "", k), dd); };
+    const svc = n.service;
+    if (svc) {
+      kv("Används till", svc.purpose); kv("Riktning", svc.directionLabel); kv("Nyckel", svc.ownerLabel + ": " + svc.key);
+      kvList("Nycklarnas namn", svc.fields); kv("Företagets nyckel", svc.company); kvList("Administreras", svc.admin); kvList("Används i", svc.usedBy);
+      kvList("Anropar Workflow", svc.incoming, true);
+      if (svc.hosts.length) kvList("Adresser ut", svc.hosts, true); else kv("Adresser ut", svc.via);
+      kvList("Moduler", svc.modules, true);
+    }
+    kv("Adress", n.address); kv("Vy", n.view); kv("Villkor", n.cond); kv("Når", n.reach);
+    if (!svc) kv("Roller", (n.roles || []).map((r) => ROLE_TEXT[r]).join(", ") || "Ingen");
+    if (OBSV && n.tested !== undefined) kv("Provat", testedText(n));
+    if (n.appRoles && n.appRoles.join() !== (n.roles || []).join()) kv("I appen", n.appRoles.map((r) => ROLE_TEXT[r]).join(", ") || "Ingen");
+    if (n.probe) kv("Rollprov", Object.entries(n.probe).map(([r, v]) => ROLE_TEXT[r] + ": " + v).join(" · "));
+    if (n.phoneHidden) kv("Telefon", "Dold i appvyn (NATIVE_HIDDEN_VIEWS), bara med Visa mer");
+    if (n.valid === false) kv("validViews", "Saknas i app/page.tsx");
+    if (n.inDemo) kv("Demo", "Finns i demon");
+    if (!svc) kv("Not", n.note);
+    if (n.parent) { dl.append(el("dt", "", "Förälder")); const dd = el("dd"); dd.appendChild(nodeLink(n.parent)); dl.appendChild(dd); }
+    panel.appendChild(dl);
+    const own = TRIED.filter((t) => t.id === id);
+    if (own.length) { panel.appendChild(el("h2", "", "Provat i appen")); const ul = el("ul", "list"); own.forEach((t) => { const li = el("li", "", t.title); li.appendChild(el("span", "pill " + (t.status === "öppet" ? "bad" : t.status === "rättat" || t.status === "inget fel" ? "ok" : ""), t.status)); if (t.runs.length) li.appendChild(el("div", "hint", runsText(t.runs))); ul.appendChild(li); }); panel.appendChild(ul); }
+    if (anomNodes.has(id)) { panel.appendChild(el("h2", "", "Avvikelser")); const ul = el("ul", "list"); anomNodes.get(id).forEach((a) => ul.appendChild(el("li", "", a.text))); panel.appendChild(ul); }
+    if (n.refs && n.refs.length) { panel.appendChild(el("h2", "", "Definieras i")); const ul = el("ul", "list"); n.refs.forEach((r) => { const li = el("li"); li.appendChild(el("div", "file", refText(r))); if (r.text) li.appendChild(el("div", "hint", r.text)); ul.appendChild(li); }); panel.appendChild(ul); }
+    const incoming = DATA.edges.filter((e) => e.to === id || false), outgoing = DATA.edges.filter((e) => e.from === id || (e.also || []).includes(id));
+    const group = (title, list, dir) => {
+      panel.appendChild(el("h2", "", title + " (" + list.length + ")"));
+      if (!list.length) { panel.appendChild(el("div", "hint", "Inga.")); return; }
+      const ul = el("ul", "list");
+      list.sort((a, b) => (a.cat === "tree") - (b.cat === "tree")).forEach((e) => ul.appendChild(edgeItem(e, dir === "in" ? e.from : e.to, dir)));
+      panel.appendChild(ul);
+    };
+    group("Vägar hit", incoming, "in");
+    group("Vägar härifrån", outgoing, "out");
+    const via = viaList.filter((v) => v.from === id || v.to === id);
+    if (via.length) {
+      panel.appendChild(el("h2", "", "Via enskilda poster (" + via.reduce((t, v) => t + v.ways.length, 0) + ")"));
+      const ul = el("ul", "list");
+      via.forEach((v) => v.ways.forEach((w) => { const li = el("li"); li.appendChild(el("div", "", viaText(w))); const r = (w.edge.refs || [])[0]; if (r) li.appendChild(el("div", "file", refText(r))); ul.appendChild(li); }));
+      panel.appendChild(ul);
+    }
+  }
+  function showEdge(e) {
+    clearPanel();
+    panel.append(el("div", "title", CAT.get(e.cat).label), el("div", "sub", (e.label || "") + (e.cond ? " · villkor: " + e.cond : "")));
+    const ul = el("ul", "list"); ul.appendChild(edgeItem(e, e.from, "in")); ul.appendChild(edgeItem(Object.assign({}, e, { refs: [] }), e.to, "out")); panel.appendChild(ul);
+  }
+  // Iakttagelserna räknas på hela kartan (också enskilda poster) och står alltid i panelen.
+  const OBS_KIND = { old: "Länk till gammal adress", multi: "Dubbel väg från menyn", device: "Bara på en enhet", noin: "Ingen inkommande länk", redirectOnly: "Vy som bara nås som omdirigering", same: "Samma namn", dead: "Död länk" };
+  function observations() {
+    const rows = [];
+    (A.oldAddress || []).forEach((x) => rows.push({ kind: "old", id: x.from, text: "→ ?view=" + ((byId.get(x.to) || {}).view || x.to), refs: x.refs }));
+    A.multiMenu.forEach((x) => rows.push({ kind: "multi", id: x.id, text: x.device + (x.byDefault ? " (med standardval)" : " (bara med egna val)") + ": " + x.ways.join(" · ") }));
+    A.oneDevice.forEach((x) => rows.push({ kind: "device", id: x.id, text: x.device + ": " + x.note, refs: (byId.get(x.id) || {}).refs }));
+    A.noIncoming.forEach((x) => rows.push({ kind: /gammal adress/.test(x.note) ? "redirectOnly" : "noin", id: x.id, text: x.note, refs: (byId.get(x.id) || {}).refs }));
+    (A.sameName || []).forEach((x) => rows.push({ kind: "same", id: x.id, text: x.note, refs: x.refs }));
+    A.dead.forEach((x) => rows.push({ kind: "dead", id: x.from, text: "→ " + ((byId.get(x.to) || {}).label || x.to) + ": " + x.reason, refs: x.refs }));
+    return rows;
+  }
+  // Markerar rutan, eller – om den ligger bland de dolda enskilda posterna – närmaste synliga förälder.
+  function selectVisible(id) {
+    if (visible.has(id)) { select(id, true); return; }
+    const up = visibleAncestor(id);
+    if (up) { select(up, true); const note = el("div", "hint", "Iakttagelsen gäller " + ((byId.get(id) || {}).label || id) + " (i en enskild post – kryssa Visa enskilda poster för att se den)."); panel.insertBefore(note, panel.children[2] || null); }
+  }
+  function showOverview() {
+    clearPanel();
+    panel.append(el("div", "title", "Översikt"), el("div", "sub", "Klicka på en ruta eller linje för detaljer. Visa avvikelser sätter märken på rutorna: 0 ingen väg in · 2 dubbel väg · D bara dator · T bara telefon · X död · G gammal adress · N samma namn."));
+    const dl = el("dl", "kv");
+    [["Sidor", s.pages], ["Rutor", s.nodes], ["Linjer", s.edges], ["Popupar", s.modals], ["Externa tjänster", s.services || 0], ["Filer lästa", s.scannedFiles], ["Dynamiska", s.dynamicLinks + " adresser med ?view=${…} (ritas inte)"]].forEach(([k, v]) => dl.append(el("dt", "", k), el("dd", "", String(v))));
+    panel.appendChild(dl);
+    if (OBSV) {
+      const c = OBSV.counts;
+      panel.appendChild(el("h2", "", "Provat i appen (" + TRIED.length + ")"));
+      panel.appendChild(el("div", "hint", "Klickroboten " + (OBSV.date || "") + " mot " + (OBSV.target || "QA") + "; kartan från " + (OBSV.commit || "?") + ". Fynd: " + c.fixed + " rättade, " + c.open + " öppna, " + c.dismissed + " avfärdade."));
+      const tl = el("ul", "list"); tl.id = "tried";
+      TRIED.forEach((t) => {
+        const li = el("li"); li.dataset.status = t.status;
+        const head = el("div", "hint", "Provat i appen · " + (SEEN_KIND[t.kind] || t.kind));
+        head.appendChild(el("span", "pill " + (t.status === "öppet" ? "bad" : t.status === "rättat" || t.status === "inget fel" ? "ok" : ""), t.status));
+        if (t.commit) head.appendChild(el("span", "pill", t.commit));
+        li.appendChild(head);
+        const n = byId.get(t.id) || { label: t.id, type: "neutral" };
+        const a = el("a", "", n.label); const dot = el("span", "dotc"); dot.style.background = typeVar(n.type); a.prepend(dot);
+        a.addEventListener("click", () => selectVisible(t.id)); li.appendChild(a);
+        li.appendChild(el("div", "", t.title));
+        if (t.note) li.appendChild(el("div", "hint", t.note));
+        if (t.runs.length) li.appendChild(el("div", "hint", runsText(t.runs)));
+        if (t.address) li.appendChild(el("div", "file", t.address + (t.also && t.also.length > 1 ? " och " + (t.also.length - 1) + " adresser till" : "")));
+        tl.appendChild(li);
+      });
+      panel.appendChild(tl);
+    }
+    const rows = observations();
+    panel.appendChild(el("h2", "", "Iakttagelser i koden (" + rows.length + ")"));
+    const ul = el("ul", "list");
+    rows.forEach((r) => {
+      const li = el("li");
+      li.appendChild(el("div", "hint", OBS_KIND[r.kind]));
+      const n = byId.get(r.id) || { label: r.id, type: "neutral" };
+      const a = el("a", "", n.label); const dot = el("span", "dotc"); dot.style.background = typeVar(n.type); a.prepend(dot);
+      a.addEventListener("click", () => selectVisible(r.id));
+      li.appendChild(a);
+      if (n.item && !state.showItems) li.appendChild(el("div", "hint", "(i en enskild post – kryssa Visa enskilda poster för att se den)"));
+      if (r.text) li.appendChild(el("div", "", r.text));
+      (r.refs || []).filter(Boolean).slice(0, 3).forEach((ref) => li.appendChild(el("div", "file", refText(ref))));
+      ul.appendChild(li);
+    });
+    if (!rows.length) ul.appendChild(el("li", "hint", "Inga."));
+    panel.appendChild(ul);
+    panel.appendChild(el("div", "hint", "Generera om: node scripts/sitemap/generate.cjs --html <fil> (i repot). Kartan läses ur " + DATA.repo + "."));
+  }
+  function showVia(v) {
+    clearPanel();
+    panel.append(el("div", "title", "Via en enskild post"), el("div", "sub", v.ways.length + " " + (v.ways.length === 1 ? "väg" : "vägar") + " från " + (byId.get(v.from) || {}).label + " till " + (byId.get(v.to) || {}).label));
+    const ul = el("ul", "list");
+    v.ways.forEach((w) => { const li = el("li"); li.appendChild(el("div", "", viaText(w))); const c = CAT.get(w.edge.cat); li.appendChild(el("div", "hint", c.label + (w.edge.label ? " · " + w.edge.label : ""))); (w.edge.refs || []).slice(0, 3).forEach((r) => li.appendChild(el("div", "file", refText(r)))); ul.appendChild(li); });
+    panel.appendChild(ul);
+  }
+  document.getElementById("anom").addEventListener("click", (ev) => {
+    state.anom = !state.anom; ev.currentTarget.setAttribute("aria-pressed", String(state.anom));
+    svg.classList.toggle("anom", state.anom); render(); if (state.anom) showOverview();
+  });
+  document.getElementById("open-legend").addEventListener("click", (ev) => {
+    const narrow = window.matchMedia("(max-width: 900px)").matches;
+    if (narrow) { document.getElementById("legend").classList.toggle("open"); return; }
+    const main = document.querySelector(".main"); main.classList.toggle("no-legend");
+    ev.currentTarget.setAttribute("aria-expanded", String(!main.classList.contains("no-legend")));
+    render(true); fit();
+  });
+  document.getElementById("open-panel").addEventListener("click", () => { if (panel.classList.contains("open") && !state.selected) panel.classList.remove("open"); else { state.selected = null; applyFocus(); showOverview(); } });
+  document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") { state.selected = null; applyFocus(); panel.classList.remove("open"); } });
+
+  // Riktning (2026-10-24): höger → vänster som förval, valet sparas per webbläsare.
+  const dirSel = document.getElementById("dir");
+  try { const saved = localStorage.getItem("wfmap-dir"); if (saved === "ltr" || saved === "rtl") state.dir = saved; } catch (e) { }
+  dirSel.value = state.dir;
+  dirSel.addEventListener("change", () => {
+    state.dir = dirSel.value === "ltr" ? "ltr" : "rtl";
+    try { localStorage.setItem("wfmap-dir", state.dir); } catch (e) { }
+    render(true); fit(); if (state.selected) panTo(state.selected);
+  });
+
+  let resizeTimer = 0;
+  window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { render(true); fit(); }, 150); });
+  document.getElementById("open-panel").textContent = "Iakttagelser (" + (observations().length + TRIED.length) + ")";
+  if (OBSV) {
+    const seenSel = document.getElementById("seen"); seenSel.hidden = false;
+    seenSel.addEventListener("change", () => { state.seen = seenSel.value; render(true); });
+    document.getElementById("seen-legend").hidden = false;
+    const c = OBSV.counts;
+    document.getElementById("seen-summary").textContent = "Robotens omgång " + (OBSV.date || "?") + " (karta " + (OBSV.commit || "?") + "): " + c.boxesTested + " av " + c.boxes + " rutor och " + c.edgesTested + " av " + c.edges + " linjer provade; " + c.robotNodes + " rutor och " + c.robotEdges + " vägar fanns bara hos roboten.";
+    document.getElementById("robot-key").style.background = (CAT.get("robot") || {}).color;
+    const follow = document.getElementById("follow-robot");
+    const counts = () => document.querySelectorAll("[data-role-count]").forEach((x) => { x.textContent = ((state.followRobot ? OBSV.byRole : s.byRole) || {})[x.dataset.roleCount] || ""; });
+    follow.addEventListener("change", () => { state.followRobot = follow.checked; counts(); render(true); });
+    counts();
+  }
+  render(true);
+  fit();
+  window.__wfmap = { state, render, select, data: DATA };
+})();
+</script>
+</body>
+</html>

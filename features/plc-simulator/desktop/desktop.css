@@ -1,0 +1,218 @@
+/*
+ * PLC-simulatorn, skrivbordet (2026-11-04). The product owner's chrome: a light grey engineering tool, thin 1 px dividers, 12-13 px
+ * system type, no rounded cards and no shadows. A documented variant of the shared UI rules (docs/ui-system.md, "PLC-simulatorns
+ * skrivbord"): the Light theme is the given values, the Dark theme the same roles in dark. Everything here reads these tokens.
+ */
+.plc-chrome, .dockview-theme-plc {
+  --plc-bg: #f0f0f0;
+  --plc-panel: #f6f6f6;
+  --plc-header: #e6e6e6;
+  --plc-line: #c6c6c6;
+  --plc-ink: #1b1b1b;
+  --plc-muted: #5a5a5a;
+  --plc-hover: #dcdcdc;
+  --plc-pressed: #c9d9ec;
+  --plc-accent: #1a5fa8;
+  --plc-field: #ffffff;
+  --plc-canvas: #fafafa;
+  --plc-grid: #e2e2e2;
+  --plc-grid-major: #d0d0d0;
+  --plc-run: #15803d;
+  --plc-prog: #b45309;
+  --plc-fault: #c81e1e;
+  --plc-live: #15803d;
+  /* The trend's pens: a categorical order run through the validator against this surface and the dark one. */
+  --plc-pen-1: #2a78d6; --plc-pen-2: #eb6834; --plc-pen-3: #1baf7a; --plc-pen-4: #eda100; --plc-pen-5: #e87ba4; --plc-pen-6: #008300; --plc-pen-7: #6250d6; --plc-pen-8: #e34948;
+  color: var(--plc-ink);
+  background: var(--plc-bg);
+  font: 400 12px/1.35 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+[data-theme="dark"] .plc-chrome, [data-theme="dark"] .dockview-theme-plc {
+  --plc-bg: #26282b;
+  --plc-panel: #2c2f33;
+  --plc-header: #33373c;
+  --plc-line: #474c52;
+  --plc-ink: #e8e8e8;
+  --plc-muted: #a7acb2;
+  --plc-hover: #3d4248;
+  --plc-pressed: #2f4a68;
+  --plc-accent: #7cb4ee;
+  --plc-field: #1e2023;
+  --plc-canvas: #1f2124;
+  --plc-grid: #2e3135;
+  --plc-grid-major: #393d42;
+  --plc-run: #4ade80;
+  --plc-prog: #fbbf24;
+  --plc-fault: #f87171;
+  --plc-live: #4ade80;
+  --plc-pen-1: #3987e5; --plc-pen-2: #d95926; --plc-pen-3: #199e70; --plc-pen-4: #c98500; --plc-pen-5: #d55181; --plc-pen-6: #008300; --plc-pen-7: #9085e9; --plc-pen-8: #e66767;
+}
+
+/* The drawing surface and the palette are dark in both themes (the owner's decision 2026-11-04), so lamps and components stand out. */
+.plc-chrome, .dockview-theme-plc, .plc-sheet { --plc-sheet: #0d1626; --plc-sheet-grid: #1b2a3f; --plc-sheet-line: #2b3d57; --plc-sheet-ink: #e6edf6; --plc-sheet-muted: #94a6bd; }
+.plc-sheet { color: var(--plc-sheet-ink); background: var(--plc-sheet); --plc-ink: var(--plc-sheet-ink); --plc-muted: var(--plc-sheet-muted); --plc-line: var(--plc-sheet-line); --plc-hover: #1c2b42; --plc-pressed: #24405f; --plc-header: #14213a; --plc-field: #0a111c; --plc-accent: #7cb4ee; }
+/* The whole window is the program: the page keeps no scrollbar and no room for one. */
+html:has(.plc-desktop), html:has(.plc-desktop) body { overflow: hidden; scrollbar-gutter: auto; }
+.plc-desktop { position: fixed; inset: 0; display: flex; flex-direction: column; overflow: hidden; }
+.plc-chrome *:focus-visible { outline: 2px solid var(--plc-accent); outline-offset: -2px; }
+.plc-chrome button { font: inherit; color: inherit; }
+
+/* The menu bar. */
+.plc-menubar { display: flex; flex: none; align-items: stretch; height: 24px; padding: 0 2px; background: var(--plc-bg); border-bottom: 1px solid var(--plc-line); }
+.plc-menu-trigger { padding: 0 8px; background: none; border: 0; cursor: default; }
+.plc-menu-trigger[data-state="open"], .plc-menu-trigger:hover { background: var(--plc-hover); }
+.plc-menu-content { --plc-ink-menu: var(--plc-ink); z-index: 60; min-width: 210px; padding: 2px; }
+.plc-menu-item { display: flex; align-items: center; gap: 8px; min-height: 22px; padding: 2px 10px 2px 6px; cursor: default; outline: none; user-select: none; }
+.plc-menu-item[data-highlighted] { background: var(--plc-pressed); }
+.plc-menu-item[data-disabled] { color: var(--plc-muted); opacity: 0.7; }
+.plc-menu-item svg { width: 14px; height: 14px; flex: none; }
+.plc-menu-slot { display: inline-flex; width: 14px; flex: none; }
+.plc-menu-hint { margin-left: auto; padding-left: 18px; color: var(--plc-muted); }
+.plc-menu-separator { height: 1px; margin: 2px 0; background: var(--plc-line); }
+.plc-menu-box { background: var(--plc-panel); border: 1px solid var(--plc-line); }
+
+/* The toolbar: one row; what does not fit scrolls inside the row, never the page. */
+.plc-toolbar { display: flex; flex: none; align-items: center; gap: 2px; min-height: 30px; padding: 1px 4px; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; background: var(--plc-bg); border-bottom: 1px solid var(--plc-line); }
+.plc-tool { display: inline-flex; flex: none; align-items: center; justify-content: center; gap: 3px; min-width: 24px; height: 24px; padding: 0 4px; background: none; border: 1px solid transparent; cursor: default; }
+.plc-tool svg { width: 16px; height: 16px; flex: none; }
+.plc-tool:hover:not(:disabled) { background: var(--plc-hover); border-color: var(--plc-line); }
+.plc-tool[aria-pressed="true"], .plc-tool[data-on="true"] { background: var(--plc-pressed); border-color: var(--plc-accent); }
+.plc-tool:disabled { opacity: 0.45; }
+.plc-tool-sep { flex: none; width: 1px; height: 18px; margin: 0 3px; background: var(--plc-line); }
+.plc-tool-label { flex: none; padding: 0 2px; color: var(--plc-muted); }
+.plc-mode { display: inline-flex; flex: none; align-items: center; gap: 6px; height: 22px; padding: 0 6px; background: var(--plc-panel); border: 1px solid var(--plc-line); }
+.plc-mode-item { display: inline-flex; align-items: center; gap: 3px; color: var(--plc-muted); }
+.plc-mode-item[data-on="true"] { color: var(--plc-ink); font-weight: 600; }
+.plc-lamp { display: inline-block; flex: none; width: 9px; height: 9px; border: 1px solid var(--plc-muted); border-radius: 50%; background: transparent; }
+.plc-lamp[data-tone="run"][data-on="true"] { background: var(--plc-run); border-color: var(--plc-run); }
+.plc-lamp[data-tone="prog"][data-on="true"] { background: var(--plc-prog); border-color: var(--plc-prog); }
+.plc-lamp[data-tone="fault"][data-on="true"] { background: var(--plc-fault); border-color: var(--plc-fault); }
+
+/* Small form controls in the chrome. */
+.plc-input, .plc-select { height: 22px; padding: 0 4px; color: var(--plc-ink); background: var(--plc-field); border: 1px solid var(--plc-line); border-radius: 0; font: inherit; min-width: 0; }
+.plc-input:focus, .plc-select:focus { outline: 1px solid var(--plc-accent); outline-offset: -1px; }
+.plc-textarea { padding: 3px 4px; color: var(--plc-ink); background: var(--plc-field); border: 1px solid var(--plc-line); border-radius: 0; font: 12px/1.45 ui-monospace, SFMono-Regular, Consolas, monospace; resize: vertical; width: 100%; }
+.plc-button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-height: 22px; padding: 0 8px; color: var(--plc-ink); background: var(--plc-header); border: 1px solid var(--plc-line); cursor: default; white-space: nowrap; }
+.plc-button svg { width: 14px; height: 14px; flex: none; }
+.plc-button:hover:not(:disabled) { background: var(--plc-hover); }
+.plc-button:disabled { opacity: 0.5; }
+.plc-button[data-tone="danger"] { color: var(--plc-fault); }
+.plc-button[data-tone="primary"] { color: #fff; background: var(--plc-accent); border-color: var(--plc-accent); }
+[data-theme="dark"] .plc-button[data-tone="primary"] { color: #101214; }
+.plc-field { display: grid; gap: 1px; min-width: 0; }
+.plc-field > span { color: var(--plc-muted); }
+.plc-help { color: var(--plc-muted); }
+.plc-note { padding: 3px 6px; background: var(--plc-header); border: 1px solid var(--plc-line); }
+.plc-table { width: 100%; border-collapse: collapse; }
+.plc-table th { position: sticky; top: 0; z-index: 1; padding: 2px 5px; text-align: left; font-weight: 600; background: var(--plc-header); border-bottom: 1px solid var(--plc-line); white-space: nowrap; }
+.plc-table td { padding: 1px 5px; border-bottom: 1px solid var(--plc-grid); }
+.plc-table tr[data-selected="true"] td { background: var(--plc-pressed); }
+
+/* Hjälp. */
+.plc-help-tabs { display: flex; flex: none; flex-wrap: wrap; gap: 1px; padding: 2px; background: var(--plc-header); border-bottom: 1px solid var(--plc-line); }
+.plc-help-tab { min-height: 22px; padding: 1px 7px; color: var(--plc-ink); background: transparent; border: 1px solid transparent; }
+.plc-help-tab:hover { background: var(--plc-hover); }
+.plc-help-tab[aria-selected="true"] { font-weight: 600; background: var(--plc-panel); border-color: var(--plc-line); }
+.plc-help-part { display: grid; gap: 4px; }
+.plc-help-step { display: flex; gap: 6px; padding: 4px; border: 1px solid var(--plc-grid); }
+.plc-help-step[data-current="true"] { background: var(--plc-pressed); }
+.plc-help-number { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 18px; height: 18px; font-weight: 600; color: #fff; background: var(--plc-accent); border-radius: 50%; }
+[data-theme="dark"] .plc-help-number { color: #101214; }
+.plc-help-flow { display: flex; flex-wrap: wrap; gap: 3px; align-items: center; }
+.plc-help-flow li { display: inline-flex; gap: 3px; align-items: center; }
+.plc-help-flow-box { padding: 1px 6px; background: var(--plc-header); border: 1px solid var(--plc-line); }
+.plc-help-list { padding-left: 16px; list-style: disc; }
+.plc-help-steps { padding-left: 18px; list-style: decimal; }
+.plc-help-list li, .plc-help-steps li { margin-top: 2px; }
+.plc-help-code { padding: 4px 6px; overflow-x: auto; font-family: ui-monospace, Consolas, monospace; font-size: 11px; line-height: 1.35; white-space: pre; background: var(--plc-header); border: 1px solid var(--plc-line); }
+[data-testid="plc-palette-item"][data-guide="true"] { outline: 2px dashed var(--plc-accent); outline-offset: -2px; }
+
+/* The status bar. */
+.plc-statusbar { display: flex; flex: none; align-items: center; height: 22px; padding: 0 2px; overflow: hidden; color: var(--plc-ink); background: var(--plc-header); border-top: 1px solid var(--plc-line); white-space: nowrap; }
+.plc-status-cell { display: inline-flex; flex: none; align-items: center; gap: 4px; padding: 0 8px; border-right: 1px solid var(--plc-line); font-variant-numeric: tabular-nums; }
+.plc-status-cell:last-child { border-right: 0; margin-left: auto; }
+
+/* The dock. */
+.plc-dock-area { position: relative; flex: 1 1 0; min-height: 0; isolation: isolate; }
+.dockview-theme-plc {
+  --dv-group-view-background-color: var(--plc-panel);
+  --dv-tabs-and-actions-container-background-color: var(--plc-header);
+  --dv-tabs-and-actions-container-height: 24px;
+  --dv-tabs-and-actions-container-font-size: 12px;
+  --dv-tabs-container-scrollbar-color: var(--plc-line);
+  --dv-activegroup-visiblepanel-tab-background-color: var(--plc-panel);
+  --dv-activegroup-visiblepanel-tab-color: var(--plc-ink);
+  --dv-activegroup-hiddenpanel-tab-background-color: var(--plc-header);
+  --dv-activegroup-hiddenpanel-tab-color: var(--plc-muted);
+  --dv-inactivegroup-visiblepanel-tab-background-color: var(--plc-panel);
+  --dv-inactivegroup-visiblepanel-tab-color: var(--plc-ink);
+  --dv-inactivegroup-hiddenpanel-tab-background-color: var(--plc-header);
+  --dv-inactivegroup-hiddenpanel-tab-color: var(--plc-muted);
+  --dv-tab-divider-color: var(--plc-line);
+  --dv-separator-border: var(--plc-line);
+  --dv-paneview-header-border-color: var(--plc-line);
+  --dv-drag-over-background-color: color-mix(in srgb, var(--plc-accent) 25%, transparent);
+  --dv-drag-over-border-color: var(--plc-accent);
+  --dv-active-sash-color: var(--plc-accent);
+  --dv-border-radius: 0;
+  --dv-background-color: var(--plc-line);
+  --dv-sash-color: var(--plc-line);
+  height: 100%;
+}
+/* The app's rule for tabs on small screens (44 px) must not push the dock's tabs out of their row; a finger gets a taller row instead. */
+.dockview-theme-plc .dv-tab { min-height: 0; }
+@media (pointer: coarse) { .dockview-theme-plc { --dv-tabs-and-actions-container-height: 34px; } }
+@media (min-width: 768px) { .plc-chrome .plc-tool[role="radio"] { min-width: 0; min-height: 0; } }
+.plc-tab { display: flex; align-items: center; gap: 4px; height: 100%; padding: 0 2px 0 7px; white-space: nowrap; font: 400 12px/1 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.plc-tab svg { width: 13px; height: 13px; flex: none; }
+.plc-tab-close { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; padding: 0; background: none; border: 0; color: var(--plc-muted); }
+.plc-tab-close:hover { color: var(--plc-ink); background: var(--plc-hover); }
+.plc-tab-close svg { width: 12px; height: 12px; }
+.plc-group-actions { display: flex; align-items: center; height: 100%; padding-right: 2px; }
+.plc-group-action { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; padding: 0; background: none; border: 0; color: var(--plc-muted); }
+.plc-group-action:hover { color: var(--plc-ink); background: var(--plc-hover); }
+.plc-group-action[aria-pressed="true"] { color: var(--plc-accent); }
+.plc-group-action svg { width: 13px; height: 13px; }
+.plc-panel { display: flex; flex-direction: column; width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: hidden; background: var(--plc-panel); color: var(--plc-ink); font: 400 12px/1.35 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+.plc-scroll { flex: 1 1 0; min-height: 0; overflow: auto; scrollbar-width: thin; }
+
+/* Under 768 px: one column, the panels as tabs. */
+.plc-phone-tabs { display: flex; flex: none; overflow-x: auto; scrollbar-width: thin; background: var(--plc-header); border-bottom: 1px solid var(--plc-line); }
+.plc-phone-tab { flex: none; min-height: 44px; padding: 0 10px; background: none; border: 0; border-bottom: 2px solid transparent; color: var(--plc-muted); white-space: nowrap; }
+.plc-phone-tab[aria-selected="true"] { color: var(--plc-ink); border-bottom-color: var(--plc-accent); background: var(--plc-panel); }
+.plc-phone-panel { flex: 1 1 0; min-height: 0; overflow: hidden; }
+@media (max-width: 767px) {
+  .plc-tool { min-width: 44px; height: 44px; }
+  .plc-toolbar { min-height: 46px; }
+  .plc-menubar { height: 44px; }
+  .plc-input, .plc-select { height: 44px; }
+  .plc-button { min-height: 44px; }
+  .plc-menu-item { min-height: 44px; }
+  .plc-tree-row { min-height: 44px; }
+}
+
+/* From 768 px this is a dense desktop tool: the app's invisible, grown tap areas would lie over the neighbouring controls (a tab's X, the next
+   tool), and its 44 px rule for menu items would push the menu row into the toolbar. A finger gets taller rows instead. */
+@media (min-width: 768px) {
+  :is(.plc-chrome, .dockview-theme-plc) :is(button, [role="button"], [role="tab"], [role="switch"], [role="radio"], [role="checkbox"], a[href], label)::after { content: none !important; }
+  .plc-menubar .plc-menu-trigger { min-height: 0; }
+}
+@media (min-width: 768px) and (pointer: coarse) {
+  .plc-menubar { height: 36px; }
+  .plc-tool { min-width: 34px; height: 34px; }
+  .plc-button { min-height: 34px; }
+  .plc-tree-row { min-height: 34px; }
+}
+
+/* The project tree. */
+.plc-tree { padding: 2px 0; }
+.plc-tree-row { display: flex; align-items: center; gap: 4px; min-height: 20px; width: 100%; padding: 1px 4px; background: none; border: 0; text-align: left; cursor: default; user-select: none; }
+.plc-tree-row svg { width: 14px; height: 14px; flex: none; }
+.plc-tree-row:hover { background: var(--plc-hover); }
+.plc-tree-row[aria-selected="true"], .plc-tree-row[data-on="true"] { background: var(--plc-pressed); }
+[data-testid="plc-palette-search"] { padding-left: 22px; }
+
+/* PLC-apparater (2026-11-06): a designed picture with the state view "Roterar" turns slowly while the device is on. */
+.plc-design-spin { animation: plc-design-spin 2.4s linear infinite; transform-box: view-box; }
+@keyframes plc-design-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .plc-design-spin { animation: none; } }

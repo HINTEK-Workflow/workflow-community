@@ -1,0 +1,529 @@
+"use client";
+
+import type { CSSProperties, ReactNode } from "react";
+import { ClipboardList, Copy, Plus, Trash2, Wrench } from "lucide-react";
+import { Fragment, useEffect, useId, useRef } from "react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+import { NEEDS_LIMIT_TEXT, decimalText, formRowTechnicianJudged, formRowWithCell, technicianJudgedText, formBand, formColumnLabelParts, formLimitFor, formLimitLevel, formRowComplete, formRowLabel, formRowPending, LABEL_PLACEMENTS, newFormRow, type FormColumn, type FormDocument, type FormEvaluation, type FormTableBlock, type FormValues } from "@/lib/workflow/form-document";
+import { formatFormulaValue, formatResultValue } from "@/lib/workflow/form-formula";
+import { bandClass, CameraButton, ImagePicker, LimitHint, ScaleSelect, SuggestionChips, YesNo, type FormAttachment, type FormMedia } from "./form-inputs";
+import type { FormActions } from "./form-renderer";
+import { FormIcon } from "./form-card";
+import { formRowElementId } from "./form-row-id";
+import { DeviationOrder, UNSAVED_REASON } from "./deviation-order";
+import { focusTarget } from "./flow-guide";
+import { indicatorBadge, indicatorText } from "./indicator-tone";
+import { useNativeMode } from "./use-detail-level";
+import { IconButton } from "@/components/ui/icon-button";
+import { RemoveButton } from "@/components/ui/remove-button";
+
+type TableRow = FormValues["tables"][string][number];
+/**
+ * The person's own settings that the control already has (2026-09-27): new rows on top and the example row button.
+ * `focusRow`: the row a finished work order leads back to (`&row=` in the address, 2026-10-06).
+ */
+export type FormRowOptions = { rowsOnTop?: boolean; showExamples?: boolean; focusRow?: string };
+/** A unique id for a row added by the person filling in the form. */
+const newRowId = (count: number) => `row-${Date.now().toString(36)}-${count}`;
+// Relative column widths of measurement rows on screen, the control's own by kind of answer, unless the column says.
+const WEIGHT: Record<FormColumn["input"], number> = { text: 2.3, textarea: 2.4, number: 1, choice: 1.05, yesno: 1.4, formula: 1, date: 1.2, images: 1, check: 0.8, assessment: 0.8, scale: 1.4 };
+const TRACK = /^(\d+(\.\d+)?(fr|rem|px|%)|minmax\([^()]{1,40}\)|auto)$/;
+
+/** The layout on screen: the PDF's, or the table's own choice for the task (the RCD test: cards in the PDF, two-line rows on screen). */
+export const tableScreenLayout = (block: FormTableBlock) => block.taskLayout === "same" ? block.layout : block.taskLayout;
+export const tableItemName = (block: FormTableBlock) => block.itemLabel || "Objekt";
+export const tableItemPlural = (block: FormTableBlock) => block.itemLabelPlural || tableItemName(block).toLowerCase();
+export const tableHasExample = (block: FormTableBlock, values: FormValues) => (values.tables[block.key] ?? []).some((row) => row.example);
+
+/**
+ * A new row with the columns' default values – or, for "Kopiera", another row's values except its pictures and free
+ * texts (an observation belongs to one object) – placed first with "nya rader överst", like the control.
+ */
+export function addTableRow(block: FormTableBlock, values: FormValues, rowOptions?: FormRowOptions, copyFrom?: TableRow): FormValues {
+  const rows = values.tables[block.key] ?? [];
+  // A limit column starts with the protocol's limit – the company's value or the facility's (2026-10-06).
+  const fresh = newFormRow(block, newRowId(rows.length + 1), { limitValue: (key) => { const limit = values.limits[key]; return limit ? limit.high ?? limit.low ?? null : null; } }) as TableRow;
+  if (copyFrom) for (const [key, value] of Object.entries(copyFrom.cells)) { const input = block.columns.find((column) => column.key === key)?.input ?? ""; if (["images", "textarea"].includes(input)) continue; fresh.cells[key] = value as string; }
+  return { ...values, tables: { ...values.tables, [block.key]: rowOptions?.rowsOnTop ? [fresh, ...rows] : [...rows, fresh] } };
+}
+
+export function addExampleRow(block: FormTableBlock, values: FormValues, rowOptions?: FormRowOptions): FormValues {
+  const rows = values.tables[block.key] ?? [];
+  const row = newFormRow(block, newRowId(rows.length + 1), { example: true }) as TableRow;
+  return { ...values, tables: { ...values.tables, [block.key]: rowOptions?.rowsOnTop ? [row, ...rows] : [...rows, row] } };
+}
+
+type TableProps = {
+  block: FormTableBlock; values: FormValues; evaluation: FormEvaluation; onChange: (values: FormValues) => void; readOnly: boolean; attachments: FormAttachment[]; media?: FormMedia;
+  labelOverride?: ReactNode; deviationKeys: Set<string>; rowOptions?: FormRowOptions;
+  /** The table is named like its section, so its own heading is only for screen readers (2026-09-27). */
+  quietLabel?: boolean;
+  /** The section's panel carries the heading and the add button (the control's measurement panels), so the table draws none. */
+  chrome?: "panel";
+  /** Whether required columns are marked with an asterisk. */
+  marks?: boolean;
+  /** The form, for its configurable limits (2026-09-28). */
+  document?: FormDocument;
+  actions?: FormActions;
+};
+
+/**
+ * A table (2026-09-26/27): a grid of rows, object cards where each row is one object with its fields, results
+ * and pictures together, or compact measurement rows exactly like the control's – with Godkänd, tick boxes, scales,
+ * example rows and suggestions.
+ */
+export function FormTable(props: TableProps) {
+  const { block, values, evaluation, onChange, readOnly, labelOverride, rowOptions, quietLabel, chrome, marks = true } = props;
+  const tableRows = values.tables[block.key];
+  const rows = tableRows ?? [];
+  const setRows = (next: TableRow[]) => onChange({ ...values, tables: { ...values.tables, [block.key]: next } });
+  const setCell = (rowId: string, key: string, value: FormValues["fields"][string]) => setRows(rows.map((item) => item.id === rowId ? formRowWithCell(item, key, value) : item));
+  // A new row is brought into view and its first field gets focus (2026-10-12: on a phone the row landed under the
+  // screen's edge). The scroll is the nearest one and the focus does not scroll again, so the keyboard opens where the row is.
+  const freshRow = useRef<string | null>(null);
+  const addRow = (copyFrom?: TableRow) => {
+    const next = addTableRow(block, values, rowOptions, copyFrom);
+    const had = new Set(rows.map((row) => row.id));
+    freshRow.current = (next.tables[block.key] ?? []).find((row) => !had.has(row.id))?.id ?? null;
+    onChange(next);
+  };
+  useEffect(() => {
+    const id = freshRow.current;
+    if (!id) return;
+    freshRow.current = null;
+    const element = document.getElementById(formRowElementId(block.id, id));
+    if (!element) return;
+    element.scrollIntoView({ block: "nearest" });
+    element.querySelector<HTMLElement>("input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea:not([disabled])")?.focus({ preventScroll: true });
+  }, [tableRows, block.id]);
+  const addExample = () => onChange(addExampleRow(block, values, rowOptions));
+  const context: CellContext = { ...props, rows, setRows, setCell, marks };
+  const layout = tableScreenLayout(block);
+  const quiet = Boolean(quietLabel || chrome);
+  const title = <p className={cn("text-sm font-semibold", quiet && "sr-only")}>{labelOverride ?? block.label}{block.required && marks ? <span aria-hidden="true" className="text-destructive"> *</span> : null}</p>;
+  // Object cards show their help in the empty state, like the risk assessment; other layouts under the heading.
+  const heading = <>{title}{block.help && !quiet && layout !== "cards" ? <p className="text-xs text-muted-foreground">{block.help}</p> : null}</>;
+  const canAdd = block.rowMode === "free" && !readOnly;
+  const examples = rows.flatMap((row, index) => row.example ? [index + 1] : []);
+  const exampleNotice = examples.length ? <p className={cn("rounded-lg border px-3 py-2 text-xs", indicatorBadge("warning"))} data-testid="form-example-notice">Exempeldata i rad {examples.join(", ")} – exempelraden räknas inte och måste tas bort före slutförande. Ersätt den med verkliga värden.</p> : null;
+  const exampleButton = canAdd && block.allowExample && rowOptions?.showExamples && !examples.length && !chrome
+    ? <Button type="button" size="sm" variant="outline" onClick={addExample}><ClipboardList />Exempelrad</Button> : null;
+  const totals = evaluation.totals[block.key];
+  // One list of suggestions per column, shared by all rows.
+  const suggestionLists = block.columns.filter((column) => column.suggestions.length && ["text", "number"].includes(column.input)).map((column) => <datalist key={column.id} id={`form-${block.id}-${column.key}-suggestions`}>{column.suggestions.map((item) => <option key={item} value={item} />)}</datalist>);
+  const totalsLine = totals ? <p className="text-xs text-muted-foreground">{block.columns.filter((column) => column.key in totals).map((column) => `${column.label}: ${formatFormulaValue(totals[column.key], column.unit) || "–"}`).join(" · ")}</p> : null;
+  const itemName = tableItemName(block);
+  // A draft without a work order (kundresan 2026-11-07, H3): the add button stays, grey with the reason, beside the way to link it.
+  const lockedAdd = readOnly && block.rowMode === "free" && props.actions?.lockedAdd ? props.actions.lockedAdd : null;
+  const lockedAddRow = (label: string) => lockedAdd ? <div className="mt-3 flex flex-wrap items-center justify-center gap-2" data-testid="form-add-locked">
+    <Button type="button" size="sm" disabledReason={lockedAdd.reason}><Plus />{label}</Button>
+    {/* A link, not a button: the locked protocol's fieldset disables its buttons, never the way on. */}
+    {lockedAdd.action ? <Button asChild size="sm" variant="outline"><Link href={lockedAdd.action.href} data-stays-on-page="">{lockedAdd.action.label}</Link></Button> : null}
+    <p className="w-full text-xs text-muted-foreground">{lockedAdd.reason}</p>
+  </div> : null;
+
+  if (layout === "rows") return <div className="form-rows @container min-w-0 space-y-2" id={`form-${block.id}`} data-testid="form-rows">
+    {chrome ? null : <div className="flex flex-wrap items-end justify-between gap-2"><div className="min-w-0">{heading}</div>
+      {canAdd ? <div className="flex gap-1.5">{exampleButton}<Button type="button" size="sm" variant="outline" onClick={() => addRow()} aria-label={`Lägg till rad i ${block.label}`}><Plus />Lägg till rad<span className="ml-0.5 rounded-full bg-secondary px-1.5 text-[11px]">{rows.length}</span></Button></div> : null}
+    </div>}
+    {exampleNotice}{suggestionLists}
+    {rows.length ? <MeasurementRows context={context} onCopy={addRow} /> : <div className="py-6 text-center"><p className="text-sm text-muted-foreground">{block.emptyTitle || "Inga rader ännu. Lägg till din första rad."}</p>{lockedAddRow("Lägg till rad")}</div>}
+    {totalsLine}
+  </div>;
+
+  if (layout === "cards") {
+    return <div className="min-w-0 space-y-3" id={`form-${block.id}`} data-testid="form-cards">
+      {heading}
+      {exampleNotice}{suggestionLists}
+      {rows.map((row, index) => <ObjectCard key={row.id} context={context} row={row} index={index} canAdd={canAdd} onCopy={addRow} />)}
+      {!rows.length ? <div className="rounded-xl border border-dashed bg-muted/20 px-5 py-6 text-center" data-testid="form-cards-empty">
+        {block.emptyIcon ? <FormIcon icon={block.emptyIcon} className="mx-auto size-7 text-primary" /> : <ClipboardList className="mx-auto size-7 text-primary" />}
+        <p className="mt-3 text-sm font-semibold">{block.emptyTitle || `Inga ${tableItemPlural(block)} ännu`}</p>
+        {block.help ? <p className="mx-auto mt-1 max-w-lg text-xs leading-5 text-muted-foreground">{block.help}</p> : null}
+        {canAdd ? <Button type="button" className="mt-3" size="sm" onClick={() => addRow()}><Plus />{block.emptyAction || `Lägg till ${itemName.toLowerCase()}`}</Button> : lockedAddRow(block.emptyAction || `Lägg till ${itemName.toLowerCase()}`)}
+      </div> : null}
+      {totalsLine}
+      {canAdd && rows.length && !chrome ? <div className="flex flex-wrap gap-1.5"><Button type="button" size="sm" variant="outline" onClick={() => addRow()}><Plus />Lägg till {itemName.toLowerCase()}</Button>{exampleButton}</div> : null}
+    </div>;
+  }
+
+  return <div className="min-w-0 space-y-2">{heading}
+    {exampleNotice}{suggestionLists}
+    <div className="overflow-x-auto rounded-lg border" id={`form-${block.id}`}>
+      <table className="w-full min-w-[32rem] border-collapse text-sm tabular-nums">
+        <thead><tr className="bg-[var(--panel-header)] text-left text-xs">{block.rowMode === "fixed" ? <th className="border-b px-3 py-2 font-semibold">Rad</th> : null}{block.columns.map((column) => <th key={column.id} className="border-b px-3 py-2 font-semibold" title={column.help || undefined}>{column.label}{column.unit ? ` (${column.unit})` : ""}</th>)}{canAdd ? <th className="w-10 border-b" aria-label="Åtgärder" /> : null}</tr></thead>
+        <tbody>{rows.map((row, rowIndex) => {
+          const rowDeviation = props.deviationKeys.has(`${block.key}:${row.id}`);
+          // A deviating row's work order on a line of its own under the row (2026-10-06).
+          const withOrder = !row.example && (Boolean(row.workOrderId) || (rowDeviation && Boolean(context.actions?.createWorkOrder) && !readOnly));
+          return <Fragment key={row.id}><tr id={formRowElementId(block.id, row.id)} data-deviation-target={row.id} className={cn("border-b last:border-b-0", withOrder && "border-b-0", rowDeviation && indicatorBadge("danger"), row.example && indicatorBadge("warning"))} data-example={row.example || undefined}>
+            {block.rowMode === "fixed" ? <th scope="row" className="px-3 py-1.5 text-left font-medium">{row.label}</th> : null}
+            {block.columns.map((column) => { const judged = cellLimit(context, row, column); return <td key={column.id} className={cn(column.input === "formula" ? "px-3 py-1.5" : "px-2 py-1", judged?.level === "alarm" && indicatorBadge("danger"), judged?.level === "warning" && indicatorBadge("warning"))} title={judged?.level === "alarm" ? "Utanför larmgränsen" : judged?.level === "warning" ? "Utanför varningsgränsen" : undefined}>{cellControl(context, row, rowIndex, column, true)}</td>; })}
+            {canAdd ? <td className="px-1"><RemoveButton label={`Ta bort rad ${rowIndex + 1}`} onClick={() => setRows(rows.filter((item) => item.id !== row.id))} /></td> : null}
+          </tr>
+          {withOrder ? <tr className={cn("border-b last:border-b-0", rowDeviation && indicatorBadge("danger"))}><td colSpan={block.columns.length + (block.rowMode === "fixed" ? 1 : 0) + (canAdd ? 1 : 0)} className="px-3 pb-2"><RowWorkOrder context={context} row={row} index={rowIndex} /></td></tr> : null}
+          </Fragment>;
+        })}</tbody>
+        {totals ? <tfoot><tr className="bg-muted/40 text-xs font-semibold">{block.rowMode === "fixed" ? <td className="px-3 py-2">Summering</td> : null}{block.columns.map((column, index) => <td key={column.id} className="px-3 py-2">{column.key in totals ? formatFormulaValue(totals[column.key], column.unit) || "–" : index === 0 && block.rowMode === "free" ? "Summering" : ""}</td>)}{canAdd ? <td /> : null}</tr></tfoot> : null}
+      </table>
+    </div>
+    {canAdd && !chrome ? <div className="flex flex-wrap gap-1.5"><Button type="button" size="sm" variant="outline" onClick={() => addRow()} aria-label={`Lägg till rad i ${block.label}`}><Plus />Lägg till rad</Button>{exampleButton}</div> : null}
+  </div>;
+}
+
+type CellContext = TableProps & { rows: TableRow[]; setRows: (next: TableRow[]) => void; setCell: (rowId: string, key: string, value: FormValues["fields"][string]) => void; marks: boolean };
+
+/**
+ * Godkänd of a row: decided by the condition (shown, not editable) or ticked by hand. `failed`: the condition has judged a
+ * complete row and it is not approved – "Ej godkänd" in red (rapportprinciper; simulation 2026-10-10: 0,3 MΩ against the
+ * limit 1 MΩ looked like a row not judged yet). A row still being filled in, or waiting for its limit, is never red.
+ */
+function assessmentState(context: CellContext, row: TableRow, column: FormColumn) {
+  const byCondition = column.mode === "auto" || (column.mode === "switch" && context.values.fields[column.switchKey] === "YES");
+  const cell = context.evaluation.cells[context.block.key]?.[row.id]?.[column.key];
+  const approved = cell === true;
+  // A row that is not judged yet (2026-10-06) says what it waits for and leads to that field.
+  const judged = rowJudgedShown(context, row, column);
+  const pending = judged ?? (byCondition && !approved ? formRowPending(context.block, column, row, context.values, context.evaluation) : null);
+  const failed = byCondition && cell === false && !pending && !row.example && formRowComplete(context.block, row, context.values);
+  return { byCondition, approved, pending, failed };
+}
+
+/** A row the technician judged because the limit is missing (beslut 7): shown in the place of what it waited for, with its word. */
+function rowJudgedShown(context: CellContext, row: TableRow, column: FormColumn) {
+  return row.judged && formRowTechnicianJudged(context.block, column, row, context.evaluation) ? { text: technicianJudgedText(row.judged.approved), column: null } : null;
+}
+
+/** "Ej bedömd – ange gräns": not red, and a press moves to the field the row waits for. */
+function Pending({ context, row, pending, part = "all" }: { context: CellContext; row: TableRow; pending: { text: string; column: FormColumn | null }; part?: "all" | "status" | "choice" }) {
+  const target = pending.column;
+  const judge = (approved: boolean | null) => context.setRows(context.rows.map((item) => {
+    if (item.id !== row.id) return item;
+    const { judged: _earlier, ...rest } = item;
+    void _earlier;
+    return approved === null ? rest : { ...rest, judged: { approved, by: "", at: null } };
+  }));
+  // Beslut 7 (2026-11-01): the row is judged by a person while the limit is missing, and the word can be taken back.
+  if (row.judged) return part === "status" ? null : <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+    <span data-testid="form-row-judged" className={cn("text-xs font-medium", indicatorText(row.judged.approved ? "success" : "danger"))}>{pending.text}</span>
+    {context.readOnly ? null : <button type="button" className="text-xs underline underline-offset-2 in-data-[native]:min-h-11 in-data-[native]:min-w-11" onClick={(event) => { event.preventDefault(); judge(null); }} data-testid="form-row-judge-undo">Ändra</button>}
+  </span>;
+  const needsLimit = pending.text === NEEDS_LIMIT_TEXT && !context.readOnly;
+  const judgeButton = (approved: boolean, label: string) => <Button type="button" size="sm" variant="outline" aria-label={technicianJudgedText(approved)} className="h-7 px-2 text-xs in-data-[native]:h-11" onClick={(event) => { event.preventDefault(); judge(approved); }} data-testid={approved ? "form-row-judge-pass" : "form-row-judge-fail"}>{label}</Button>;
+  const waiting = <button type="button" data-testid="form-row-pending" className={cn("text-left text-xs font-medium underline-offset-2 hover:underline in-data-[native]:min-h-11 in-data-[native]:py-2", indicatorText("warning"))}
+    onClick={() => {
+      const rowElement = document.getElementById(formRowElementId(context.block.id, row.id));
+      const field = [...(rowElement?.querySelectorAll("input, select, textarea") ?? [])].find((item) => target && item.getAttribute("aria-label")?.endsWith(`, ${target.label}`));
+      if (field instanceof HTMLElement) { field.scrollIntoView({ block: "center", behavior: "smooth" }); field.focus({ preventScroll: true }); }
+      else focusTarget(formRowElementId(context.block.id, row.id));
+    }}>{pending.text}</button>;
+  const choice = needsLimit ? <><span className="text-[0.6875rem] text-muted-foreground">eller bedöm själv:</span><span className="flex flex-wrap gap-1">{judgeButton(true, "Godkänd")}{judgeButton(false, "Ej godkänd")}</span></> : null;
+  if (part === "choice") return <>{waiting}{choice}</>;
+  if (!choice || part === "status") return waiting;
+  return <span className="inline-flex flex-col items-start gap-1">{waiting}{choice}</span>;
+}
+
+/** The result shown on an object card: Godkänd or a deviation. */
+function RowResult({ context, row }: { context: CellContext; row: TableRow }) {
+  const column = context.block.columns.find((item) => item.input === "assessment");
+  if (column) {
+    const { approved, pending, failed } = assessmentState(context, row, column);
+    if (pending) return <Pending context={context} row={row} pending={pending} />;
+    return <span className={cn("rounded-full border px-2 py-0.5 text-[11px] font-medium", indicatorBadge(approved ? "success" : failed ? "danger" : "neutral"))} data-testid={failed ? "form-row-failed" : undefined}>{approved ? "Godkänd" : "Ej godkänd"}</span>;
+  }
+  return context.deviationKeys.has(`${context.block.key}:${row.id}`) ? <span className={cn("rounded-full border px-2 py-0.5 text-[11px] font-medium", indicatorBadge("danger"))}>Avvikelse</span> : null;
+}
+
+/** A formula column's result with its level as text and colour ("15 · Hög"). */
+/** A level column (bands, e.g. the risk's "Före") whose inputs are not chosen yet (kundresan 2026-11-07, H4: never "1 · Låg" before anyone judged it). */
+const NOT_ASSESSED = "Inte bedömd";
+function formulaResult(context: CellContext, row: TableRow, column: FormColumn) {
+  const result = context.evaluation.cells[context.block.key]?.[row.id]?.[column.key] ?? null;
+  return { result, band: formBand(column.bands, result), text: formatResultValue(result, column.unit, column.passCondition) };
+}
+
+/** One cell's input by its kind; the label is the column's, with the row, for screen readers. */
+function cellControl(context: CellContext, row: TableRow, index: number, column: FormColumn, compact: boolean, id?: string): ReactNode {
+  const { block, readOnly, setCell } = context;
+  const label = `${block.label}, ${formRowLabel(block, row, index)}, ${column.label}`;
+  const cell = row.cells[column.key];
+  if (column.input === "formula") {
+    const { result, band, text } = formulaResult(context, row, column);
+    if (band) return <span aria-label={label} className={cn("inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold", bandClass(band))}>{text}{band.label ? ` · ${band.label}` : ""}</span>;
+    const pending = rowJudgedShown(context, row, column) ?? (column.passCondition ? formRowPending(block, column, row, context.values, context.evaluation) : null);
+    if (pending) return <Pending context={context} row={row} pending={pending} />;
+    return <span aria-label={label} className={cn("font-semibold", column.passCondition && result === true && indicatorText("success"), column.passCondition && result === false && indicatorText("danger"), !text && column.bands.length && "font-normal text-muted-foreground")}>{text || (column.bands.length ? NOT_ASSESSED : "–")}</span>;
+  }
+  if (column.input === "assessment") {
+    const { byCondition, approved, pending, failed } = assessmentState(context, row, column);
+    if (pending) return <span className="inline-flex items-center gap-2 in-data-[native]:min-h-11"><Checkbox id={id} aria-label={label} checked={false} disabled className="measurement-auto-result" /><Pending context={context} row={row} pending={pending} /></span>;
+    return <label className="inline-flex items-center gap-2 text-xs in-data-[native]:min-h-11" data-testid={failed ? "form-row-failed" : undefined}>
+      <Checkbox id={id} aria-label={label} checked={approved} disabled={readOnly || byCondition} className={byCondition && !readOnly ? "measurement-auto-result" : undefined} onCheckedChange={(checked) => setCell(row.id, column.key, checked === true)} />
+      <span className={cn(compact && !failed && "@3xl:sr-only", approved ? indicatorText("success") : failed ? cn("font-semibold", indicatorText("danger")) : "text-muted-foreground")}>{byCondition ? (approved ? "Godkänd" : "Ej godkänd") : "Godkänd"}</span>
+    </label>;
+  }
+  if (column.input === "check") return <label className={cn("inline-flex items-center gap-2", compact ? "h-9 text-xs" : "h-[var(--control-h)] text-sm text-foreground", "in-data-[native]:h-11")}><Checkbox id={id} aria-label={label} checked={cell === true} disabled={readOnly} onCheckedChange={(checked) => setCell(row.id, column.key, checked === true)} /><span className={cn(compact && "@3xl:sr-only")}>{column.label}</span></label>;
+  if (column.input === "scale") return <ScaleSelect id={id} label={label} value={cell} steps={column.options} compact={compact} disabled={readOnly} onChange={(next) => setCell(row.id, column.key, next)} />;
+  // A stored value that is no longer among the options (an older protocol's or a copy's, e.g. the RCD row's TN/IT and TT
+  // since 2026-10-10) is still shown as it is, never as an empty choice.
+  if (column.input === "choice") return <select id={id} aria-label={label} title={typeof cell === "string" && cell ? cell : undefined} className={cn("form-select", compact && "h-9")} value={typeof cell === "string" ? cell : ""} disabled={readOnly} onChange={(event) => setCell(row.id, column.key, event.target.value || null)}><option value="">{compact ? "–" : "Välj"}</option>{column.options.map((option) => <option key={option} value={option}>{option}</option>)}{typeof cell === "string" && cell && !column.options.includes(cell) ? <option value={cell}>{cell}</option> : null}</select>;
+  if (column.input === "yesno") return <YesNo compact={compact} label={label} value={typeof cell === "string" ? cell : null} allowNotApplicable disabled={readOnly} onChange={(next) => setCell(row.id, column.key, next)} />;
+  if (column.input === "textarea") return <div className="grid gap-1">
+    <textarea id={id} aria-label={label} className={cn("form-textarea", compact ? "min-h-9 py-1.5" : "min-h-16")} rows={compact ? 1 : 2} placeholder={column.placeholder || undefined} value={typeof cell === "string" ? cell : ""} disabled={readOnly} onChange={(event) => setCell(row.id, column.key, event.target.value)} />
+    {!compact ? <SuggestionChips suggestions={column.suggestions} disabled={readOnly} onPick={(value) => setCell(row.id, column.key, value)} /> : null}
+  </div>;
+  if (column.input === "images") return <ImagePicker compact={compact} label={label} accept="images" selected={Array.isArray(cell) ? cell : []} attachments={context.attachments} media={context.media} readOnly={readOnly} onChange={(next) => setCell(row.id, column.key, next)} />;
+  const list = column.suggestions.length ? `form-${block.id}-${column.key}-suggestions` : undefined;
+  return <Input id={id} aria-label={label} list={list} placeholder={column.placeholder || undefined} className={compact ? "h-9" : undefined} type={column.input === "date" ? "date" : "text"} inputMode={column.input === "number" ? "decimal" : undefined} value={cell === null || cell === undefined || Array.isArray(cell) ? "" : typeof cell === "number" ? decimalText(cell) : String(cell)} disabled={readOnly} onChange={(event) => setCell(row.id, column.key, event.target.value)} />;
+}
+
+const cellLabel = (column: FormColumn) => `${column.label}${column.unit && column.input !== "formula" ? ` (${column.unit})` : ""}`;
+
+/**
+ * A column's label on one row, following what is chosen on it (2026-10-05, the RCD test as in V1): a "label"
+ * column's text in place of the label ("Uc ≤ 25 Vac") and a "hint" column's text beside it ("1× ≤ 400 ms, 5× ≤ 40 ms").
+ */
+function rowLabel(context: CellContext, row: TableRow, column: FormColumn, fallback = cellLabel(column)) {
+  const parts = formColumnLabelParts(context.block, context.evaluation.cells[context.block.key]?.[row.id], column);
+  // The hint is read after a pause ("Standard, gräns saknas", QA 2026-10-10), and on a phone at level 1 it has a line of its own.
+  return { text: parts.label || fallback, hint: parts.hint ? <span className="form-label-hint ml-1.5 font-normal text-muted-foreground [overflow-wrap:normal]" data-testid="form-label-hint"><span className="sr-only">, </span>{parts.hint}</span> : null };
+}
+/** A choice whose options are long ("IEC 60364-4-41 TN/IT") takes the whole width on a phone, so the chosen value is read in full. */
+const longChoice = (column: FormColumn) => column.input === "choice" && column.options.some((option) => option.length > 12);
+
+/**
+ * One object card (the risk assessment's risk, the thermography's object): the number and name, badges with the
+ * results the author put in the title row ("Före: 15 · Hög → Efter: 5 · Måttlig"), then the fields – in named groups
+ * ("Före skyddsåtgärd") where the author grouped them – with the widths the author chose.
+ */
+function ObjectCard({ context, row, index, canAdd, onCopy }: { context: CellContext; row: TableRow; index: number; canAdd: boolean; onCopy: (row: TableRow) => void }) {
+  const { block, rows, setRows, marks, readOnly } = context;
+  const name = formRowLabel(block, row, index);
+  const rowDeviation = context.deviationKeys.has(`${block.key}:${row.id}`);
+  const header = block.columns.filter((column) => column.placement === "header" && column.input === "formula");
+  const body = block.columns.filter((column) => column.placement === "body");
+  const span = (column: FormColumn) => {
+    const width = column.cardWidth === "auto" ? (column.input === "textarea" ? "full" : column.input === "images" ? "images" : ["text", "choice", "scale"].includes(column.input) ? "text" : "quarter") : column.cardWidth;
+    return width === "full" ? "col-span-2 @3xl:col-span-4" : width === "half" ? "col-span-2" : width === "images" ? "col-span-2 @md:col-span-1 @3xl:col-span-2" : width === "text" ? "col-span-2 @md:col-span-1" : "col-span-1";
+  };
+  const mark = (column: FormColumn) => column.required && marks ? <span aria-hidden="true" className="text-destructive"> *</span> : null;
+  const label = (column: FormColumn) => { const shown = rowLabel(context, row, column, column.cardLabel || cellLabel(column)); return <>{shown.text}{mark(column)}{shown.hint}</>; };
+  // Consecutive columns with the same group name share one framed group, like the risk assessment's Före/Efter.
+  const items: ({ kind: "column"; column: FormColumn } | { kind: "group"; name: string; columns: FormColumn[] })[] = [];
+  for (const column of body) {
+    const last = items.at(-1);
+    if (column.group && last?.kind === "group" && last.name === column.group) last.columns.push(column);
+    else if (column.group) items.push({ kind: "group", name: column.group, columns: [column] });
+    else items.push({ kind: "column", column });
+  }
+  return <article id={formRowElementId(block.id, row.id)} data-deviation-target={row.id} aria-label={name} data-testid="form-card" data-example={row.example || undefined} className={cn("rounded-xl border bg-card p-3 transition-colors focus-within:border-primary/40 sm:p-4", rowDeviation && "border-destructive/50", row.example && indicatorBadge("warning"))}>
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold"><span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-secondary text-[11px] font-semibold text-secondary-foreground" aria-hidden="true">{index + 1}</span><span className="truncate">{name}</span></h3>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {header.map((column, position) => {
+          const { band, text } = formulaResult(context, row, column);
+          return <span key={column.id} className="contents">
+            {position ? <span className="text-muted-foreground" aria-hidden="true">→</span> : null}
+            <span className={cn("rounded-full border px-2.5 py-1 text-xs font-medium", bandClass(band))} aria-label={`${column.label}: ${text}${band?.label ? ` ${band.label}` : ""}`}>{column.cardLabel || column.label}: {text || (column.bands.length ? NOT_ASSESSED : "–")}{band?.label ? ` · ${band.label}` : ""}</span>
+          </span>;
+        })}
+        <RowResult context={context} row={row} />
+        {row.source ? <span className="rounded-full border px-2 py-0.5 text-[11px] text-muted-foreground" title="Registrerad från en kontrollpunkt">Från kontrollpunkt</span> : null}
+        {canAdd && block.copyRows ? <Button type="button" size="sm" variant="ghost" onClick={() => onCopy(row)} aria-label={`Kopiera ${name}`}><Copy />Kopiera</Button> : null}
+        {canAdd ? <RemoveButton label={`Ta bort ${name}`} onClick={() => setRows(rows.filter((item) => item.id !== row.id))} /> : null}
+      </div>
+    </div>
+    <div className="@container"><div className="mt-3 grid grid-cols-2 gap-3 @3xl:grid-cols-4">
+      {items.map((item) => item.kind === "group"
+        ? <fieldset key={item.name} className="field-group col-span-2 min-w-0 rounded-lg border px-3 pb-3 pt-1"><legend className="px-1 text-xs font-semibold text-foreground">{item.name}</legend>
+          {/* The group's fields are laid out like the card's others (2026-10-01, Handlingsplan): the label above,
+              the field under it, and a check box level with the inputs beside it with its own label only. */}
+          <div className="grid grid-cols-2 items-start gap-x-3 gap-y-3">{item.columns.map((column) => <div key={column.id} className="field-stack min-w-0">
+            {column.input === "check" ? <span aria-hidden="true">&nbsp;</span> : <span>{label(column)}</span>}
+            {column.input === "formula" ? <div className="flex min-h-[var(--control-h)] items-center rounded-md border bg-muted/30 px-2.5 py-1 text-sm">{cellControl(context, row, index, column, false)}</div> : cellControl(context, row, index, column, false)}
+          </div>)}</div>
+        </fieldset>
+        : <div key={item.column.id} className={cn("field-stack", span(item.column))}>
+          {/* A check box carries its own label beside it; the empty line keeps it level with the inputs (2026-09-29). */}
+          {item.column.input === "check" ? <span aria-hidden="true">&nbsp;</span> : <span>{label(item.column)}</span>}
+          {item.column.input === "formula" ? <div className="flex min-h-[var(--control-h)] items-center rounded-md border bg-muted/30 px-2.5 py-1 text-sm">{cellControl(context, row, index, item.column, false)}</div> : cellControl(context, row, index, item.column, false)}
+          {item.column.help && !readOnly ? <span className="text-[11px] font-normal text-muted-foreground">{item.column.help}</span> : null}
+          {(() => { const judged = cellLimit(context, row, item.column); return judged?.limit ? <LimitHint limit={judged.limit} level={judged.level} /> : null; })()}
+        </div>)}
+    </div></div>
+    <WorkOrderFooter context={context} row={row} index={index} />
+  </article>;
+}
+
+/**
+ * Measurement rows (2026-09-27) drawn with the control's own classes, so they look exactly like the control:
+ * on a wide form one compact line per row under shared column headings – number and camera first, Godkänd and delete
+ * last – and on a phone every value with its label. A table whose columns sit on two lines (the RCD test) draws the
+ * control's two-line rows with the labels above each value and the note under them.
+ */
+function MeasurementRows({ context, onCopy }: { context: CellContext; onCopy: (row: TableRow) => void }) {
+  const { block, rows, setRows, readOnly, marks } = context;
+  const inputs = block.columns.filter((column) => column.input !== "images" && column.input !== "assessment" && column.placement !== "note" && !LABEL_PLACEMENTS.includes(column.placement));
+  const camera = block.columns.find((column) => column.input === "images");
+  const assessment = block.columns.find((column) => column.input === "assessment");
+  const notes = block.columns.filter((column) => column.placement === "note" && column.input === "formula");
+  const twoLine = inputs.some((column) => column.line === 2);
+  const track = (column: FormColumn) => TRACK.test(column.screenWidth) ? column.screenWidth : `minmax(0,${WEIGHT[column.input]}fr)`;
+  const tools = readOnly ? "0" : block.copyRows ? "4.5rem" : "2rem";
+  const first = inputs.filter((column) => column.line !== 2);
+  const second = inputs.filter((column) => column.line === 2);
+  const single = { "--measurement-columns": ["3.5rem", ...first.map(track), ...(assessment ? ["3.75rem"] : []), tools].join(" ") } as CSSProperties;
+  const top = { "--line-columns": ["3.5rem", ...first.map(track)].join(" ") } as CSSProperties;
+  const bottom = { "--line-columns": ["3.5rem", ...second.map(track), ...(assessment ? ["3.75rem"] : []), tools].join(" ") } as CSSProperties;
+  const cell = (row: TableRow, index: number, column: FormColumn) => {
+    const id = `form-${block.id}-${row.id}-${column.key}`;
+    if (column.input === "check") {
+      const label = `${block.label}, ${formRowLabel(block, row, index)}, ${column.label}`;
+      return <label key={column.id} className="measurement-check"><span>{rowLabel(context, row, column, column.label).text}</span>
+        <Checkbox aria-label={label} checked={row.cells[column.key] === true} disabled={readOnly} onCheckedChange={(checked) => context.setCell(row.id, column.key, checked === true)} />
+      </label>;
+    }
+    // A free text on a measurement row is one line, like the control's Kommentar.
+    const compactColumn = column.input === "textarea" ? { ...column, input: "text" as const } : column;
+    const judged = cellLimit(context, row, column);
+    const shown = rowLabel(context, row, column);
+    return <div key={column.id} data-limit={judged?.level ?? undefined} title={judged?.level === "alarm" ? "Utanför larmgränsen" : judged?.level === "warning" ? "Utanför varningsgränsen" : undefined} className={cn("grid min-w-0 gap-1.5 rounded-[10px]", (["text", "textarea"].includes(column.input) || longChoice(column)) && "measurement-wide", judged?.level === "alarm" && "ring-2 ring-red-500/70", judged?.level === "warning" && "ring-2 ring-amber-500/70")}>
+      <label htmlFor={id} className="field-label flex-wrap text-xs font-medium">{shown.text}{column.required && marks ? <span aria-hidden="true" className="text-destructive"> *</span> : null}{shown.hint}</label>
+      {cellControl(context, row, index, compactColumn, true, id)}
+    </div>;
+  };
+  const judgeOnLine = (row: TableRow, pendingText: string) => Boolean(row.judged) || (pendingText === NEEDS_LIMIT_TEXT && !readOnly);
+  const approval = (row: TableRow, index: number) => {
+    if (!assessment) return null;
+    const { byCondition, approved, pending, failed } = assessmentState(context, row, assessment);
+    // Not judged yet (2026-10-06): the same place and size as Godkänd, only the words change. Judged and not approved:
+    // "Ej godkänd" in red (simulation 2026-10-10), so it never reads like a row that waits.
+    // The technician's own word and the choice stand on the row's line below (beslut 7): the narrow Godkänd column holds neither.
+    return <label className="measurement-check" title={pending?.text ?? (failed ? "Ej godkänd" : undefined)} data-testid={failed ? "form-row-failed" : undefined}>{pending && !judgeOnLine(row, pending.text) ? <Pending context={context} row={row} pending={pending} part="status" />
+      : failed ? <span className={cn("font-semibold", indicatorText("danger"))}>Ej godkänd</span>
+      : <span className={approved ? "text-emerald-700" : "text-muted-foreground"}>{assessment.label}</span>}
+      <Checkbox aria-label={`${assessment.label}, rad ${index + 1}`} checked={approved} className={byCondition && !readOnly ? "measurement-auto-result" : undefined} disabled={byCondition || readOnly} onCheckedChange={(checked) => context.setCell(row.id, assessment.key, checked === true)} />
+    </label>;
+  };
+  // Nivå 1 på mobil (QA 2026-10-10): Kopiera and Ta bort with their words, never a lone icon at the foot of the row.
+  const native = useNativeMode();
+  const remove = (row: TableRow, index: number) => readOnly ? <span /> : native ? <div className="measurement-remove flex flex-wrap items-center gap-1">
+    {block.copyRows ? <Button type="button" variant="ghost" className="h-11" aria-label={`Kopiera rad ${index + 1}`} onClick={() => onCopy(row)}><Copy />Kopiera raden</Button> : null}
+    <Button type="button" variant="ghost" className="h-11 text-destructive" aria-label={`Ta bort rad ${index + 1}`} onClick={() => setRows(rows.filter((item) => item.id !== row.id))}><Trash2 />Ta bort raden</Button>
+  </div> : <div className="measurement-remove flex items-center gap-0.5">
+    {block.copyRows ? <IconButton label={`Kopiera rad ${index + 1}`} title="Kopiera raden" onClick={() => onCopy(row)}><Copy className="size-4" /></IconButton> : null}
+    <RemoveButton label={`Ta bort rad ${index + 1}`} onClick={() => setRows(rows.filter((item) => item.id !== row.id))} />
+  </div>;
+  return <div className="measurement-list" data-testid="form-row-list">
+    {!twoLine ? <div className="measurement-head measurement-grid" style={single} aria-hidden="true">
+      <span />{first.map((column) => <span key={column.id} title={column.help || undefined}>{cellLabel(column)}</span>)}{assessment ? <span className="text-center">{assessment.label}</span> : null}<span />
+    </div> : null}
+    {rows.map((row, index) => {
+      const rowDeviation = context.deviationKeys.has(`${block.key}:${row.id}`);
+      const judged = assessment ? assessmentState(context, row, assessment) : null;
+      const failing = judged ? !judged.approved : rowDeviation;
+      const toolsCell = <div className="measurement-tools">
+        <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground" aria-label={`Rad ${index + 1}`}>{index + 1}</span>
+        {camera ? <RowCamera context={context} row={row} column={camera} index={index} /> : null}
+      </div>;
+      return <fieldset key={row.id} id={formRowElementId(block.id, row.id)} data-deviation-target={row.id} disabled={readOnly} data-example={row.example || undefined} data-testid="form-row" aria-label={`${block.label}, rad ${index + 1}${row.example ? ", exempeldata" : ""}`}
+        className={cn("measurement-row", twoLine && "measurement-rcd", (judged ? judged.failed : rowDeviation) && indicatorBadge("danger"))} data-failed={judged?.failed || undefined}>
+        {twoLine ? <>
+          <div className="rcd-top" style={top}>{toolsCell}{first.map((column) => cell(row, index, column))}</div>
+          <div className="rcd-bottom" style={bottom}><span className="rcd-indent" />{second.map((column) => cell(row, index, column))}{approval(row, index)}{remove(row, index)}</div>
+        </> : <div className="measurement-grid" style={single}>{toolsCell}{first.map((column) => cell(row, index, column))}{approval(row, index)}{remove(row, index)}</div>}
+        {judged?.pending && judgeOnLine(row, judged.pending.text) ? <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-3 pb-2 pt-1 @3xl:justify-end" data-testid="form-row-judge-line"><Pending context={context} row={row} pending={judged.pending} part="choice" /></div> : null}
+        {notes.map((column) => { const { text } = formulaResult(context, row, column); return text ? <p key={column.id} className="rcd-guidance text-xs leading-5 text-muted-foreground">{text}</p> : null; })}
+        {/* A complete row that is not approved gets its work order (2026-10-06). */}
+        {!row.example && (row.workOrderId || (failing && (!assessment || formRowComplete(block, row, context.values)) && context.actions?.createWorkOrder && !readOnly))
+            ? <div className="flex flex-wrap items-center gap-2 px-3 pb-3"><RowWorkOrder context={context} row={row} index={index} /></div> : null}
+      </fieldset>;
+    })}
+  </div>;
+}
+
+/**
+ * "Skapa arbetsorder" for a deviating row (2026-10-06: from every control and form, not only rounds): the row's
+ * deviation as the fault, priority Hög, and the row as the order's origin, so the finished order leads back here.
+ */
+function RowWorkOrder({ context, row, index, reasonId }: { context: CellContext; row: TableRow; index: number; reasonId?: string }) {
+  const { block } = context;
+  const name = formRowLabel(block, row, index);
+  const onLinked = (id: string) => context.setRows(context.rows.map((item) => item.id === row.id ? { ...item, workOrderId: id } : item));
+  // A card of a table of remarks is itself the deviation: its own words, responsible person, date and severity.
+  if (block.workOrders) {
+    const card = cardOrder(block, row);
+    return <DeviationOrder actions={context.actions} readOnly={context.readOnly} targetId={row.id} existing={row.workOrderId} title={`Åtgärda: ${name}`} description={card.description}
+      fault={card.order.deviation.fault} order={card.order} onLinked={onLinked} reasonId={reasonId} />;
+  }
+  const messages = context.evaluation.deviations.filter((item) => item.key === block.key && item.rowId === row.id && item.kind !== "assessment").map((item) => item.message);
+  const fault = messages.join(" ") || `${block.label}, ${name} är inte godkänd.`;
+  return <DeviationOrder actions={context.actions} readOnly={context.readOnly} targetId={row.id} existing={row.workOrderId} title={`Åtgärda: ${block.label}, ${name}`}
+    description={`${fault} Åtgärda felet och för in den nya mätningen i protokollet.`} fault={fault} onLinked={onLinked} reasonId={reasonId} />;
+}
+
+/** What a card of a table of remarks brings to its work order (simulation 2026-10-02, Underhåll 2026-10-06): its text, responsible person, date and severity. */
+function cardOrder(block: FormTableBlock, row: TableRow) {
+  const texts = block.columns.filter((column) => ["text", "textarea", "choice", "date"].includes(column.input)).map((column) => {
+    const value = row.cells[column.key];
+    return typeof value === "string" && value.trim() ? `${column.label}: ${value.trim()}` : null;
+  }).filter((item): item is string => Boolean(item));
+  const named = (key: string) => { const value = row.cells[key]; return typeof value === "string" ? value.trim() : ""; };
+  const due = named("klart");
+  const severity = block.columns.find((column) => column.input === "choice" && column.deviationOptions?.length);
+  return {
+    description: texts.join("\n"),
+    order: { assignedToName: named("ansvarig").slice(0, 120), dueDate: /^\d{4}-\d{2}-\d{2}$/.test(due) ? due : "",
+      deviation: { fault: (named("beskrivning") || texts.join("\n")).slice(0, 2000), severity: severity ? named(severity.key) : "", severityOptions: severity?.options ?? [], seriousOptions: severity?.deviationOptions ?? [] } },
+  };
+}
+
+/** The row's camera: takes or chooses a picture and places it on the row in one step, with the number of pictures. */
+function RowCamera({ context, row, column, index }: { context: CellContext; row: TableRow; column: FormColumn; index: number }) {
+  const selected = Array.isArray(row.cells[column.key]) ? row.cells[column.key] as string[] : [];
+  if (!context.media?.upload || context.readOnly) return selected.length ? <span className="text-xs text-muted-foreground">{selected.length} {selected.length === 1 ? "bild" : "bilder"}</span> : null;
+  // A button, not a label (2026-09-28): the measurement row hides its field labels on a wide screen, which hid the camera.
+  return <CameraButton label={`${column.label} för rad ${index + 1}`} count={selected.length} onUpload={async (file) => { const id = await context.media!.upload!(file); if (id) context.setCell(row.id, column.key, [...selected, id]); }} />;
+}
+
+/**
+ * The work order of a deviation card (2026-09-28): the card's last line (2026-09-29: not among the card's tools),
+ * after the remark, the action and the responsible person it is made from. The card becomes a work order linked back
+ * here (with the protocol's project, when it has one); once made, the line says so and opens it. Where the company keeps
+ * a self-inspection programme the card can go to the deviation log too – the same buttons as a measurement row's
+ * (simulation 2026-10-10: a brist in Fortlöpande kontroll could never reach the log).
+ */
+function WorkOrderFooter({ context, row, index }: { context: CellContext; row: TableRow; index: number }) {
+  const reasonId = useId();
+  const { block, actions, readOnly } = context;
+  if (row.example) return null;
+  // A table of remarks (block.workOrders) offers it on every card, any other table when the card deviates (2026-10-06).
+  const offered = block.workOrders || context.deviationKeys.has(`${block.key}:${row.id}`);
+  const logged = actions?.loggedDeviation?.(row.id);
+  if (!row.workOrderId && !logged && !(offered && actions?.createWorkOrder && !readOnly)) return null;
+  // The work order's state follows it here (2026-09-30), so the protocol shows what has been done about the row.
+  const state = row.workOrderId ? actions?.workOrderStatus?.(row.workOrderId) : undefined;
+  const waiting = !row.workOrderId && !readOnly && actions?.canCreateWorkOrder === false;
+  const text = state ? `Arbetsorder: ${state.label}${state.status === "COMPLETED" ? " – åtgärden är utförd" : ""}`
+    : row.workOrderId ? "Arbetsorder skapad från anmärkningen."
+    : waiting ? UNSAVED_REASON
+    : logged ? "Avvikelsen finns i avvikelseloggen."
+    : actions?.logDeviation ? "Avvikelsen kan åtgärdas som en arbetsorder och föras till avvikelseloggen." : "Avvikelsen kan åtgärdas som en arbetsorder.";
+  return <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t pt-3">
+    <p id={reasonId} className="flex items-center gap-2 text-xs text-muted-foreground" data-testid={waiting ? "disabled-reason" : undefined}><Wrench className="size-3.5" />{text}</p>
+    <RowWorkOrder context={context} row={row} index={index} reasonId={reasonId} />
+  </div>;
+}
+
+/** A cell's configurable limit: the level and a short text, shown under the value. */
+function cellLimit(context: CellContext, row: TableRow, column: FormColumn) {
+  if (!column.limitKey || !context.document) return null;
+  const limit = formLimitFor(context.document, context.values, column.limitKey);
+  const value = column.input === "formula" ? context.evaluation.cells[context.block.key]?.[row.id]?.[column.key] : row.cells[column.key];
+  const number = typeof value === "number" ? value : typeof value === "string" && value.trim() && Number.isFinite(Number(value.replace(",", "."))) ? Number(value.replace(",", ".")) : null;
+  return { limit, level: formLimitLevel(limit, number) };
+}
