@@ -2,7 +2,7 @@
 
 import { useCallback, useState, type ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
-import { Archive, Bell, BookOpen, Calculator, ClipboardCheck, ClipboardList, Clock3, FolderKanban, Info, Lightbulb, Network, Repeat, ShieldAlert, Sparkles, ToggleRight } from "lucide-react";
+import { Archive, Bell, BookOpen, Bot, Calculator, ClipboardCheck, ClipboardList, Clock3, FolderKanban, Info, Lightbulb, Network, Repeat, ShieldAlert, Sparkles, ToggleRight } from "lucide-react";
 import { ListEmpty, ListGroup, ListRow, NativeMenuPage, NativeScreenIndex, NativeSearch, useNativeScreen, useNativeTopBar } from "@/components/native";
 import { helpPlainText, searchHelpEntries, type HelpHit } from "@/lib/workflow/help-search";
 import { currentAppVersion } from "@/lib/release-notes";
@@ -37,6 +37,8 @@ export const HELP_GROUPS: { title?: string; rows: HelpScreen[] }[] = [
     { key: "kalkylator", title: "Kalkylator", icon: Calculator, type: "neutral", words: "trefas effekt ström spänning räkna" },
     // Workflow AI (UX-granskningen C4, 2026-10-22): what AI does and never does, and the aliases; only with AI in the installation.
     { key: "ai", title: "Workflow AI", subtitle: "Vad AI gör och aldrig gör", icon: Sparkles, type: "neutral", words: "ai assistent alias" },
+    // Din egen AI-app (2026-11-27): ChatGPT, Claude and Copilot over MCP; in every installation.
+    { key: "egen-ai", title: "Din egen AI-app", subtitle: "ChatGPT, Claude eller Copilot via MCP", icon: Bot, type: "neutral", words: "mcp chatgpt claude copilot oauth nyckel koppla ansluta egen ai" },
   ] },
   { rows: [{ key: "om", title: "Om Workflow", subtitle: "Version, villkor och licenser", icon: Info, type: "neutral", words: "villkor integritet licenser källor karta" }] },
 ];

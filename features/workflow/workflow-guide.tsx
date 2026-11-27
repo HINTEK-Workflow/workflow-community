@@ -81,7 +81,8 @@ export function WorkflowGuide() {
   </div>;
 }
 
-function StepRow({ step }: { step: Step }) {
+/** One step of a guide under Hjälp (Gör, Val, Resultat); also the chapter Din egen AI-app (features/ai/own-ai-help.tsx). */
+export function StepRow({ step }: { step: Step }) {
   return <li className="rounded-lg border p-3">
     <p className="font-semibold">{step.name}</p>
     <p className="mt-1"><span className="text-muted-foreground">Gör: </span>{step.what}</p>

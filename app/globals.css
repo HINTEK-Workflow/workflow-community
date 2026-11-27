@@ -713,6 +713,28 @@ body:has(.public-page) :is([role="dialog"], [role="alertdialog"], [data-testid="
   .landing-film-side-button { width: 2.75rem; padding-inline: 0; justify-content: center; flex-shrink: 0; }
   .landing-film-side-button .landing-film-label { display: none; }
 }
+/* Mobilanpassad (2026-11-27: "I mobilen blir filmen inte mobilanpassad"). Upright phone: a line under the film says to turn it.
+   Phone on its side (low and wide): the film takes the whole height, and the bar (Dela, Stäng) and the buttons stand in a narrow column
+   to its right instead of above and under it, which left a 16:9 film less than half the screen's width. */
+.landing-film-rotate { display: none; }
+@media (max-width: 639px) and (orientation: portrait) {
+  .landing-film-rotate { display: block; margin: 0; padding-inline: .75rem; text-align: center; font-size: .875rem; color: rgb(255 255 255 / .75); }
+}
+@media (orientation: landscape) and (max-height: 520px) {
+  .landing-lightbox.landing-film-dialog { padding: calc(env(safe-area-inset-top) + .5rem) calc(env(safe-area-inset-right) + .5rem) calc(env(safe-area-inset-bottom) + .5rem) calc(env(safe-area-inset-left) + .5rem); }
+  .landing-film-dialog-box { display: grid; width: 100%; height: 100%; min-width: 0; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr); grid-template-areas: "stage bar" "stage controls"; gap: .5rem; }
+  .landing-film-dialog-bar { grid-area: bar; flex-direction: column; align-items: stretch; padding-inline: 0; }
+  .landing-film-dialog-bar > p { display: none; }
+  .landing-film-dialog-bar > div { flex-direction: column; align-items: stretch; }
+  .landing-film-dialog-stage { grid-area: stage; display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 0; }
+  .landing-film-dialog-video { width: auto; height: 100%; max-width: 100%; border-radius: .375rem; }
+  .landing-film-dialog-controls { grid-area: controls; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; padding-inline: 0; }
+  .landing-film-dialog-side, .landing-film-dialog-skip { flex-direction: column; }
+  .landing-film-dialog-side:empty { display: none; }
+  .landing-film-side-button { width: 2.75rem; padding-inline: 0; justify-content: center; flex-shrink: 0; }
+  .landing-film-side-button .landing-film-label { display: none; }
+  .landing-film-share-manual { grid-column: 1 / -1; padding-inline: 0; }
+}
 /* Anchors land under the sticky top (65 px, + 52 px when the light bar is shown). */
 html:has(.landing-header) { scroll-padding-top: 5rem; }
 html:has(.landing-sub) { scroll-padding-top: 8rem; }

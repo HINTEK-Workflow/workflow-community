@@ -62,7 +62,9 @@ type Options = { projects: { id: string; name: string }[]; rounds: { id: string;
 type Mission = MissionDraft & { id: string; ownerName: string; mine: boolean; status: string; pausedReason: string | null; nextRunAt: string | null; scheduleText: string; lastRunAt: string | null;
   lastOutcomeLabel: string | null; firstRunPending: boolean; cost: "rules" | "ai"; version: number; templateName: string; updatedAt?: string };
 type Run = { id: string; trigger: string; status: string; statusLabel: string; tone: "success" | "neutral" | "warning" | "danger"; createdAt: string; read: Record<string, number>; actions: RunAction[];
-  report: RunReport; feedback: Record<string, unknown>; cost: string; chargedCredits: number; message: string | null };
+  report: RunReport; feedback: Record<string, unknown>; cost: string; chargedCredits: number; message: string | null;
+  /** Vem som betalar (2026-11-27): Ingår, "Krediter: n" or Företagets nyckel (lib/ai/payer.ts). */
+  payerText?: string };
 type SystemAgentView = { id: string; name: string; does: string; never: string; uses: "model" | "rules"; when: { key: string; label: string }[]; whenChosen?: string; on: boolean; focus: string; level: AdvisorLevel; standard: boolean };
 type Overview = { missions: Mission[]; templates: AgentTemplate[]; options: Options; system: SystemAgentView[]; demo?: boolean; me?: string };
 type Preview = { read: Record<string, number>; report: RunReport; effects: { kind: string; title: string; lines: string[]; decision: string; reasons: string[]; linkText: string }[]; nothing: boolean; skip: string | null; fail: string | null;
@@ -771,7 +773,7 @@ function RunRow({ run, open, canResend, busy, onResend, onDecide }: { run: Run; 
         <span className="tabular-nums">{formatSwedish(run.createdAt, WHEN)}</span>
         <StatusPill tone={status.tone}>{run.statusLabel}</StatusPill>
         <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">{run.report?.summary || run.message || ""}</span>
-        <span className="text-xs text-muted-foreground">{run.cost === "ai" ? `${run.chargedCredits} krediter` : "Ingår"}{run.trigger === "manual" ? " · Kört en gång" : ""}</span>
+        <span className="text-xs text-muted-foreground" data-testid="agents-run-payer">{run.payerText ?? (run.cost === "ai" ? `Krediter: ${run.chargedCredits}` : "Ingår")}{run.trigger === "manual" ? " · Kört en gång" : ""}</span>
       </div>}>
       <div className="space-y-2 text-sm">
         <p className="text-xs text-muted-foreground">Läste {Object.entries(run.read ?? {}).map(([what, count]) => `${count} ${what}`).join(", ") || "inget"}.</p>

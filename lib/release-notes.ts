@@ -27,6 +27,21 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "0.90.0",
+    date: "2026-11-27",
+    summary: "Använd företagets egen AI-nyckel och koppla din egen AI-app.",
+    items: [
+      "Nu kan företaget använda sin egen AI-nyckel från Azure eller OpenAI. Det slår du på under Inställningar › Arbetssätt › Workflow AI. Slutar nyckeln fungera pausas AI med ett besked tills den är rättad.",
+      "Under Hjälp finns guiden Din egen AI-app, som visar hur du kopplar ChatGPT, Claude eller Copilot till Workflow.",
+      "Under Användning ser du om en AI-körning ingår, drar krediter eller går på företagets nyckel.",
+      "I telefonen får filmen hela höjden när du vrider telefonen. Underhållets Historik visar varje tillfälle i driftronden som en egen rad.",
+    ],
+    highlights: [
+      "Företagets egen AI-nyckel",
+      "Guiden Din egen AI-app",
+    ],
+  },
+  {
     version: "0.89.0",
     date: "2026-11-27",
     summary: "Gör underhållet i driftronden och logga in med telefonen.",

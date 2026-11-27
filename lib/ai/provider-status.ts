@@ -7,6 +7,7 @@ import { azureCommonProblem, azureProblem } from "@/lib/ai/azure-settings";
 import { azureSettings } from "@/lib/ai/azure-settings-server";
 import { standardProvider } from "@/lib/ai/provider-choice-server";
 import { AI_MODEL_ROUTES } from "@/lib/ai/model-catalog";
+import { companyKeyOn } from "@/lib/ai/company-key-server";
 
 export type AiProviderStatus = {
   enabled: boolean;
@@ -71,7 +72,13 @@ async function azureProviderStatus(): Promise<AiProviderStatus> {
   };
 }
 
-export async function aiProviderStatus(): Promise<AiProviderStatus> {
+/**
+ * With `organizationId`: a company that uses its own AI key does not need Workflow's provider at all (2026-11-27), so the model
+ * counts as on for it; whether its own key may be used is the company's own refusal (euRefusal), with the reason.
+ */
+export async function aiProviderStatus(organizationId?: string): Promise<AiProviderStatus> {
+  if (organizationId && publicInstance().features.ai && (await companyKeyOn(organizationId)))
+    return { ...NO_AI_PROVIDER, enabled: true, requested: true, configured: true, dpaApproved: true, providerEvalApproved: true, provider: "COMPANY_KEY", problem: null };
   const status: AiProviderStatus = (await standardProvider()) === "AZURE_OPENAI"
     ? await azureProviderStatus()
     : await openAiProviderStatus().then((provider) => ({ ...provider, models: [...provider.models] }));

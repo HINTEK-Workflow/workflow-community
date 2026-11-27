@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { Bot, Bug, CreditCard, KeyRound, LogIn, Mail, Map as MapIcon, Plug, Plus, RefreshCw, Store, ShieldCheck, Trash2, type LucideIcon, History, Link2 } from "lucide-react";
 import { sameSectionStatus, ServerKeyStatusReport, serverKeySectionAnchor, type ServerKeyGroupId, type ServerKeySectionId, type ServerKeySectionStatus, type ServiceToggle } from "./server-key-status";
 import { KeyOverview, type OverviewCategory } from "./key-overview";
@@ -204,6 +205,7 @@ export function IntegrationKeys({ notify, part = "api", providers, title = "Nyck
           <p>Tjänsten kan ligga utanför EU. Den ser riktiga namn och värden, så långt personen själv får se dem. Ert företag ansvarar för vad som delas och för avtalet med tjänsten.</p>
           <p>Läsa ingår alltid. Skapa och ändra, fakturaunderlag och ta bort eller arkivera väljs för varje nyckel och app. Slutföra, signera och radera för gott går aldrig.</p>
           <p>Var och en kopplar från sina appar under Mina inställningar → Anslutna appar. Här kopplar du från alla. Allt loggas.</p>
+          <p>Så kopplar ni ChatGPT, Claude eller Copilot: <Link href="/?view=help&step=egen-ai" className="text-primary underline" data-testid="mcp-guide-link">Hjälp → Din egen AI-app</Link>.</p>
         </div>
       </div>
       {issuedList("MCP")}

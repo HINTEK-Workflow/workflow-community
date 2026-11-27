@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { aiSharingPolicySchema, getAiSharingPolicy } from "@/lib/ai/sharing-policy";
 import { ApiError, body, checkOrigin, context, failure } from "@/lib/kfid/server";
 import { azureSettings } from "@/lib/ai/azure-settings-server";
+import { parseCompanyKey } from "@/lib/ai/company-key";
 
 export const dynamic = "force-dynamic";
 
@@ -36,9 +37,15 @@ export async function POST(request: Request) {
     // F4 (2026-11-21): a Cloud company that switches AI on without having chosen a profile gets EU, the safest default.
     const euByDefault = !publicInstance().community && sent.enabled && !before.enabled && !profileChosen && azureOn;
     // The MCP switch is changed only under API och MCP: this page keeps what is saved, whatever it sends.
-    // So is the company's own weekly quota, which only the superadmin sets.
-    const policy = { ...sent, profile: euByDefault ? "eu" as const : sent.profile, profileChosen, mcpAllowed: before.mcpAllowed, weeklyQuotaKr: before.weeklyQuotaKr, continueOnCredits: before.continueOnCredits };
+    // So is the company's own weekly quota, which only the superadmin sets, and the company's own AI key (its own card and endpoint).
+    const policy = { ...sent, profile: euByDefault ? "eu" as const : sent.profile, profileChosen, mcpAllowed: before.mcpAllowed, weeklyQuotaKr: before.weeklyQuotaKr, continueOnCredits: before.continueOnCredits, ownKey: before.ownKey };
 
+    // EU-kravet med egen AI-nyckel (2026-11-27): the requirement switched on pauses an OpenAI key or an unattested Azure resource; the
+    // history says so, and every AI call says it too.
+    const own = parseCompanyKey(before.ownKey);
+    const ownKeyEuStop = policy.requireEu && !before.requireEu && own.on
+      ? own.provider === "openai" ? "egen AI-nyckel pausad: OpenAI är spärrad med EU-kravet" : !own.euAttested ? "egen AI-nyckel pausad tills Azure-resursen intygas ligga i EU" : null
+      : null;
     await prisma.$transaction(async (tx) => {
       await tx.workspaceSettings.upsert({
         where: { organizationId: ctx.organizationId },
@@ -51,12 +58,12 @@ export async function POST(request: Request) {
           organizationId: ctx.organizationId,
           action: "ai_sharing_policy_updated",
           detail: policy.enabled
-            ? `Uppdaterade företagets val för delning med Workflow AI (AI-profil ${policy.profile === "eu" ? "EU" : "Standard"}${policy.requireEu ? ", kräver EU" : ""}).`
+            ? `Uppdaterade företagets val för delning med Workflow AI (AI-profil ${policy.profile === "eu" ? "EU" : "Standard"}${policy.requireEu ? ", kräver EU" : ""}${ownKeyEuStop ? `; ${ownKeyEuStop}` : ""}).`
             : "Stängde av företagets delning med Workflow AI.",
         },
       });
     });
-    return NextResponse.json({ policy });
+    return NextResponse.json({ policy, ...(ownKeyEuStop ? { notice: `Företagets ${ownKeyEuStop}.` } : {}) });
   } catch (error) {
     return failure(error);
   }

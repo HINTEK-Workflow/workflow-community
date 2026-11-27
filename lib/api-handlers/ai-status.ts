@@ -11,6 +11,7 @@ import { companyWeeklyQuota } from "@/lib/ai/weekly-quota-server";
 import { aiAvailable } from "@/lib/ai/availability";
 import { prisma } from "@/lib/db";
 import { chatMediaStatus } from "@/lib/ai/chat-media-server";
+import { companyKeyChoice } from "@/lib/ai/company-key-server";
 import { mayBuildForms } from "@/lib/kfid/form-server";
 
 export const dynamic = "force-dynamic";
@@ -46,20 +47,24 @@ async function chatMediaFor(organizationId: string, available: boolean) {
 export async function GET(request: Request) {
   try {
     const ctx = await context({ skipLegal: true });
-    const provider = await aiProviderStatus();
+    // A company on its own AI key needs no model at Workflow (2026-11-27); its own key's state is the company's refusal.
+    const provider = await aiProviderStatus(ctx.organizationId);
     const assistant = getWorkflowAgent("workflow-assistant");
     const policy = await getAiSharingPolicy(ctx.organizationId);
+    const own = await companyKeyChoice(ctx.organizationId, policy);
     const stored = await readCreditWalletInvariant(prisma, ctx.organizationId);
     // No wallet yet (2026-10-08: reads no longer create one) reads as the empty wallet it used to be: zero and consistent.
     const ledger = stored.walletId ? stored : { ...stored, walletBalanceMatchesLots: true, purchasedBalanceMatchesLots: true, walletBalanceMatchesLedger: true, healthy: true };
     const conditions = {
       provider: {
-        ready: provider.enabled && provider.configured && assistant?.lifecycle === "ENABLED",
+        ready: provider.enabled && provider.configured && assistant?.lifecycle === "ENABLED" && own?.use !== "none",
         configured: provider.configured,
         evaluationApproved: provider.providerEvalApproved,
         // Why the model is not on: the exact server setting for Workflow's superadmin, a plain sentence for everyone else
-        // (2026-10-02: "Inte påslagen än" said nothing about what was missing).
-        reason: providerReason(provider, assistant?.lifecycle === "ENABLED", ctx.user.role === "SUPERADMIN"),
+        // (2026-10-02: "Inte påslagen än" said nothing about what was missing). With the company's own key: its own reason.
+        reason: own?.use === "none" ? own.reason : providerReason(provider, assistant?.lifecycle === "ENABLED", ctx.user.role === "SUPERADMIN"),
+        /** The company uses its own AI key (2026-11-27). */
+        companyKey: Boolean(own),
       },
       sharingPolicy: {
         ready: policy.enabled && policy.shareChatContent,

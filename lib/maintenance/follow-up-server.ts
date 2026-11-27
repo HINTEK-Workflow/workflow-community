@@ -8,7 +8,7 @@ import { deviationReadWhere } from "@/lib/self-inspection/incidents";
 import { ITEM_SOURCE_LABELS, ITEM_STATUS_LABELS, PART_LIMIT, subtreeIds, type ItemSource, type ItemStatus, type MaintenanceCaller } from "./model";
 import { PLACE_ALL, PLACE_NONE } from "./place-model";
 import { partsAtPlace } from "./place-server";
-import { daysLate, FOLLOW_UP_DAYS, followUpText, isDormant, itemOccurrenceState, occurrenceState, planFollowUp, type FollowUpOccurrence, type PlanFollowUp, type PlanOccurrenceState } from "./plan-model";
+import { checklistText, daysLate, FOLLOW_UP_DAYS, readChecklist, followUpText, isDormant, itemOccurrenceState, occurrenceState, planFollowUp, type FollowUpOccurrence, type PlanFollowUp, type PlanOccurrenceState } from "./plan-model";
 import { requireMaintenance } from "./server";
 
 /**
@@ -130,9 +130,12 @@ export async function partHistory(caller: MaintenanceCaller, partId: string, now
       where: { organizationId, kind: "WORK_ORDER", OR: [{ machinePartId: { in: ids } }, { maintenanceItems: { some: { partId: { in: ids } } } }] },
       orderBy: { updatedAt: "desc" }, take: HISTORY_LIMIT * 2,
       select: {
-        id: true, title: true, status: true, createdAt: true, completedAt: true, maintenancePlanId: true, maintenanceDue: true, maintenanceActivatedAt: true, roundScheduleId: true,
+        id: true, title: true, status: true, createdAt: true, completedAt: true, maintenancePlanId: true, maintenanceDue: true, maintenanceActivatedAt: true, roundScheduleId: true, machinePartId: true,
         _count: { select: { attachments: true } },
-        maintenanceItems: { where: { partId: { in: ids } }, select: { type: true, source: true, stoppedAt: true, restoredAt: true, status: true, fault: true, part: { select: { name: true } } }, take: 20 },
+        maintenanceItems: {
+          where: { partId: { in: ids } }, orderBy: { createdAt: "desc" }, take: 60,
+          select: { id: true, type: true, source: true, stoppedAt: true, restoredAt: true, status: true, fault: true, completedAt: true, maintenancePlanId: true, planDue: true, checklist: true, part: { select: { name: true } }, maintenancePlan: { select: { name: true } } },
+        },
       },
     }),
     prisma.maintenanceItem.findMany({ where: { organizationId, partId: { in: ids }, workOrderId: null }, orderBy: { createdAt: "desc" }, take: 30, select: { id: true, status: true, type: true, fault: true, source: true, createdAt: true, part: { select: { name: true } } } }),
@@ -145,10 +148,27 @@ export async function partHistory(caller: MaintenanceCaller, partId: string, now
   }) : [];
   const entries: HistoryEntry[] = [];
   for (const order of shown) {
-    const types = [...new Set(order.maintenanceItems.map((item) => item.type).filter(Boolean))].map((type) => MAINTENANCE_TYPE_LABELS[type as MaintenanceType] ?? "").filter(Boolean);
-    const sources = [...new Set(order.maintenanceItems.map((item) => ITEM_SOURCE_LABELS[item.source as ItemSource] ?? "").filter(Boolean))];
-    const downtime = order.maintenanceItems.reduce((sum, item) => sum + (maintenanceDowntimeMinutes({ stoppedAt: item.stoppedAt?.toISOString() ?? null, restoredAt: item.restoredAt?.toISOString() ?? null }) ?? 0), 0);
-    const parts = [...new Set(order.maintenanceItems.map((item) => item.part.name))];
+    // Underhåll i driftronden (2026-11-27): each plan occurrence in the round's work order is its own row – Klar on the day it was
+    // done, else on its planned day once that has come (a coming one has not happened). The round's work order, open for a year,
+    // is shown itself only when it holds other maintenance on the part or is the part's own.
+    const planItems = order.maintenanceItems.filter((item) => item.maintenancePlanId && item.planDue);
+    const items = order.maintenanceItems.filter((item) => !(item.maintenancePlanId && item.planDue));
+    for (const item of planItems) {
+      const due = item.planDue as string;
+      if (item.status === "OPEN" && due > today) continue;
+      const checklist = readChecklist(item.checklist);
+      entries.push({
+        kind: "item", id: item.id, at: item.completedAt ? iso(item.completedAt) : `${due}T12:00:00.000Z`, title: `Underhåll · ${item.maintenancePlan?.name || item.fault || "Planerat underhåll"}`,
+        status: ITEM_STATUS_LABELS[item.status as ItemStatus] ?? item.status, tone: item.status === "DONE" ? "success" : item.status === "CANCELLED" ? "neutral" : due < today ? "warning" : "info",
+        workOrderId: order.id, itemId: item.id, deviationId: null,
+        line: [item.part.name, "Driftrond", order.title, `Planerat ${due}`, checklistText(checklist)].filter(Boolean).join(" · "),
+      });
+    }
+    if (!items.length && !(order.machinePartId && ids.includes(order.machinePartId)) && planItems.length) continue;
+    const types = [...new Set(items.map((item) => item.type).filter(Boolean))].map((type) => MAINTENANCE_TYPE_LABELS[type as MaintenanceType] ?? "").filter(Boolean);
+    const sources = [...new Set(items.map((item) => ITEM_SOURCE_LABELS[item.source as ItemSource] ?? "").filter(Boolean))];
+    const downtime = items.reduce((sum, item) => sum + (maintenanceDowntimeMinutes({ stoppedAt: item.stoppedAt?.toISOString() ?? null, restoredAt: item.restoredAt?.toISOString() ?? null }) ?? 0), 0);
+    const parts = [...new Set(items.map((item) => item.part.name))];
     const status = ORDER_STATUS[order.status] ?? { label: order.status, tone: "neutral" as const };
     entries.push({
       kind: "order", id: order.id, at: iso(order.completedAt ?? order.createdAt), title: order.title, status: status.label, tone: status.tone, workOrderId: order.id, itemId: null, deviationId: null,

@@ -22,6 +22,13 @@ import { enabledModules } from "@/lib/workflow/modules";
 import { WORKFLOW_PERMISSION_ACTIONS, WORKFLOW_PERMISSION_SUBJECTS } from "@/lib/workflow/permissions";
 import { DEVIATION_SEVERITIES, DEVIATION_SEVERITY_STEP, deviationSeverity, isIncidentType, mayReadDeviation } from "@/lib/self-inspection/incidents";
 import { newsTargetAvailable, NEWS_BODY_MAX, NEWS_TITLE_MAX } from "./news-target";
+import { isCompanyKeyPause } from "@/lib/ai/company-key";
+
+/**
+ * Why the text was not written, and – when the company's own AI key is missing or refused (2026-11-27) – a pause of the
+ * mission with that reason, so a scheduled mission waits for the admin instead of failing every run, and never moves to Workflow's key.
+ */
+const textFail = (reason: string) => ({ message: `Texten skrevs inte: ${reason}`, ...(isCompanyKeyPause(reason) ? { pause: true } : {}) });
 
 /**
  * What each template does in one run, in the owner's own context (lib/agents/server.ts runs it under the owner's principal, so
@@ -183,7 +190,7 @@ async function weeklyNewsDraft(ctx: Context, env: RunEnv): Promise<RunPlan> {
   const alias = new AliasMap();
   for (const task of done) { alias.add("Kund", task.customer?.name); alias.add("Projekt", task.project?.name); alias.add("Person", task.assignedToName); }
   const written = await write(ctx, env, "Skriv ett kort inlägg till sociala medier om veckans färdiga arbeten, som en veckonyhet.", { arbeten: done.map((task) => ({ rubrik: task.title, beskrivning: task.description.slice(0, 300) })) }, alias);
-  if (!written.ok) return { read: { arbetsordrar: done.length }, report: empty("Utkast till veckonyhet", `Texten skrevs inte: ${written.reason}`), effects: [], nothing: true, fail: { message: `Texten skrevs inte: ${written.reason}` } };
+  if (!written.ok) return { read: { arbetsordrar: done.length }, report: empty("Utkast till veckonyhet", `Texten skrevs inte: ${written.reason}`), effects: [], nothing: true, fail: textFail(written.reason) };
   return { read: { arbetsordrar: done.length }, report: { title: written.text.heading || "Veckonyhet", summary: written.text.caption, sections: [] }, ai: written.ai,
     effects: [{ kind: "post", text: written.text, sensitive: sensitiveOf(done), basisCount: done.length, uncertain: written.uncertain }], nothing: false };
 }
@@ -387,7 +394,7 @@ async function custom(ctx: Context, env: RunEnv): Promise<RunPlan> {
   if (!loop.used) {
     // Without the model the rules' part still stands: the lists with their links, and the reason the judgement is missing.
     const report = fillReport(templateKey, { title: env.missionName, summary: `Workflow AI kunde inte bedöma underlaget: ${loop.reason}`, facts: factsOf(fetched.read), sections: fetched.sections });
-    return { read: fetched.read, report, effects: [], nothing: false, fail: /krediter/.test(loop.reason) ? { message: `Texten skrevs inte: ${loop.reason}` } : undefined };
+    return { read: fetched.read, report, effects: [], nothing: false, fail: isCompanyKeyPause(loop.reason) || /krediter/.test(loop.reason) ? textFail(loop.reason) : undefined };
   }
   const first = loop.text.split(/(?<=[.!?])\s/)[0] ?? loop.text;
   const report = fillReport(templateKey, { title: env.missionName, summary: first, facts: factsOf(fetched.read), sections: fetched.sections, ai: loop.text,
@@ -427,7 +434,8 @@ async function alarmNotice(ctx: Context, env: RunEnv): Promise<RunPlan> {
     material: { larm: { kod: alarm.code, text: alarm.text, nivå: alarm.severity }, senaste: recent.map((item) => ({ kod: item.code, text: item.text, nivå: item.severity, dag: day(item.occurredAt) })) } });
   const report = fillReport("general", { title: `Maskinlarm: ${alarm.text || alarm.code}`.slice(0, 120), summary: loop.used ? (loop.text.split(/(?<=[.!?])\s/)[0] ?? loop.text) : `Larm ${alarm.code}: ${alarm.text}`, facts: [{ label: "Händelser senaste veckan", value: String(recent.length) }],
     sections: [{ heading: "Larmet", rows: [{ title: `${alarm.code} ${alarm.text}`.trim(), detail: alarm.severity, href: "/?view=maintenance" }] }], ai: loop.used ? loop.text : null });
-  return { read: { händelser: recent.length }, report, ai: loop.used ? { runId: loop.runId, credits: loop.credits } : null, effects: [], nothing: false };
+  return { read: { händelser: recent.length }, report, ai: loop.used ? { runId: loop.runId, credits: loop.credits } : null, effects: [], nothing: false,
+    ...(!loop.used && isCompanyKeyPause(loop.reason) ? { fail: textFail(loop.reason) } : {}) };
 }
 
 async function customText(ctx: Context, env: RunEnv): Promise<RunPlan> {
@@ -440,7 +448,7 @@ async function customText(ctx: Context, env: RunEnv): Promise<RunPlan> {
   for (const task of all) { alias.add("Kund", task.customer?.name); alias.add("Projekt", task.project?.name); alias.add("Person", task.assignedToName); }
   const written = await write(ctx, env, env.instruction.slice(0, 800), { klara: done.map((task) => ({ rubrik: task.title })), kommande: coming.map((task) => ({ rubrik: task.title })) }, alias);
   const read = { arbetsordrar: all.length };
-  if (!written.ok) return { read, report: empty(env.missionName, `Texten skrevs inte: ${written.reason}`), effects: [], nothing: true, fail: { message: `Texten skrevs inte: ${written.reason}` } };
+  if (!written.ok) return { read, report: empty(env.missionName, `Texten skrevs inte: ${written.reason}`), effects: [], nothing: true, fail: textFail(written.reason) };
   const report: RunReport = { title: written.text.heading || env.missionName, summary: written.text.caption || written.text.body, sections: [] };
   const base = { sensitive: sensitiveOf(all), basisCount: all.length, uncertain: written.uncertain };
   if (env.target.kind === "post") return { read, report, ai: written.ai, effects: [{ kind: "post", text: written.text, ...base }], nothing: false };

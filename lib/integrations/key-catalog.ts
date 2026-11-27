@@ -59,9 +59,11 @@ export type KeyScope = (typeof KEY_SCOPES)[IssuedKind][number]["key"];
  * is shown under Övriga nycklar until it is removed.
  */
 export const EXTERNAL_PROVIDERS = [
-  { key: "openai", label: "OpenAI", offered: false, connection: null, use: "Används inte: Workflow AI använder inga egna AI-nycklar. Ta bort den när den inte behövs." },
-  { key: "anthropic", label: "Anthropic", offered: false, connection: null, use: "Används inte: Workflow AI använder inga egna AI-nycklar. Ta bort den när den inte behövs." },
-  { key: "azure-openai", label: "Azure OpenAI", offered: false, connection: null, use: "Används inte: Workflow AI använder inga egna AI-nycklar. Ta bort den när den inte behövs." },
+  // Använd företagets egen AI-nyckel (2026-11-27): the OpenAI and Azure OpenAI keys are added, replaced and removed on their own
+  // card under Inställningar → Arbetssätt → Workflow AI (lib/ai/company-key-server.ts), not in the list here.
+  { key: "openai", label: "OpenAI", offered: false, connection: "ai", use: "Används när Använd företagets egen AI-nyckel är påslaget med OpenAI (Inställningar → Arbetssätt → Workflow AI)." },
+  { key: "anthropic", label: "Anthropic", offered: false, connection: null, use: "Används inte: företagets egen AI-nyckel kan vara Azure OpenAI eller OpenAI. Ta bort den när den inte behövs." },
+  { key: "azure-openai", label: "Azure OpenAI", offered: false, connection: "ai", use: "Används när Använd företagets egen AI-nyckel är påslaget med företagets egen Azure OpenAI (Inställningar → Arbetssätt → Workflow AI)." },
   { key: "microsoft-365", label: "Microsoft 365 / Graph", offered: false, connection: null, use: "Används inte: Workflow har ingen koppling till Microsoft 365. Ta bort den när den inte behövs." },
   // Beslut 16 (2026-11-01): no new Fortnox key until a real connection exists; one saved earlier keeps its row and can be removed.
   { key: "fortnox", label: "Fortnox", offered: FORTNOX_CONNECTION_READY, connection: "accounting", use: FORTNOX_CONNECTION_READY ? "Används när en offert eller ett fakturaunderlag skickas till Fortnox." : "Används inte. Ta bort den när den inte behövs." },
@@ -72,7 +74,7 @@ export const EXTERNAL_PROVIDERS = [
   { key: "other", label: "Annan tjänst", offered: false, connection: null, use: "Används inte – ta bort när den inte behövs." },
 ] as const satisfies readonly { key: string; label: string; offered: boolean; connection: KeyConnection | null; use: string }[];
 /** The areas of Kopplingar that hold a pasted key. */
-export type KeyConnection = "accounting" | "payroll";
+export type KeyConnection = "accounting" | "payroll" | "ai";
 /** The providers a new external key may be added for (the API refuses the others). */
 export const OFFERED_EXTERNAL_PROVIDERS = EXTERNAL_PROVIDERS.filter((item) => item.offered).map((item) => item.key);
 export type ExternalProvider = (typeof EXTERNAL_PROVIDERS)[number]["key"];

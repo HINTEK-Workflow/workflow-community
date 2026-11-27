@@ -36,6 +36,8 @@ import { panelAreaOfView } from "@/lib/workflow/panel-area";
 import { FeatureSettings, ModuleSettings } from "@/features/workflow/feature-settings";
 import { moduleInList, normalizeDisabledModules, organizationModuleOn } from "@/lib/workflow/modules";
 import { AiRulesHelp } from "@/features/ai/ai-rules-help";
+import { OwnAiHelp } from "@/features/ai/own-ai-help";
+import { OWN_AI_GUIDE_KEY } from "@/lib/help/own-ai-guide";
 import { featureSettingsOf } from "@/lib/workflow/feature-settings";
 import { clientExtensions } from "@ee/client";
 import { Profile } from "./profile";
@@ -1416,6 +1418,8 @@ export function Workspace({
       </div></NativeScreen>
       {/* Workflow AI (C4, 2026-10-22): the rules that were information panels under Arbetssätt; Arbetssätt links here. */}
       {instance.features.ai && SharingPolicyPanel ? <NativeScreen show={["ai"]} lead><div className="mt-6"><AiRulesHelp /></div></NativeScreen> : null}
+      {/* Din egen AI-app (2026-11-27): ChatGPT, Claude or Copilot over MCP – in every installation, with or without Workflow AI. */}
+      <NativeScreen show={[OWN_AI_GUIDE_KEY]} lead><div className="mt-6"><OwnAiHelp /></div></NativeScreen>
       {/* Om Workflow (2026-10-04): the sources the app uses, with the map's attribution as CC BY 4.0 asks. Since A5
           (2026-10-21) also the version and the installation's legal links, which left the menu and the footer. */}
       <NativeScreen show={["om"]} lead><div className="mt-6"><Panel icon={Info} title="Om Workflow" description="Version, juridiska dokument, källor och licenser.">

@@ -64,6 +64,17 @@ test("the common how-to questions are answered surely, with the right page", () 
   }
 });
 
+test("Din egen AI-app (2026-11-27): ChatGPT, Claude and Copilot over MCP lead to the guide under Hjälp", () => {
+  for (const question of ["hur kopplar jag chatgpt till workflow", "hur kopplar jag claude", "hur ansluter jag copilot", "mcp-nyckel schemalagt"]) {
+    const answer = searchHelp(question, { filmsPage: films });
+    assert.ok(answer.hits.some((hit) => hit.href === "/?view=help&step=egen-ai"), `${question} → ${answer.hits.map((hit) => hit.href).join(", ")}`);
+  }
+  // The guide's own words: no provider's text, the three steps, and both ways to connect.
+  const docs = helpCorpus().filter((doc) => doc.href === "/?view=help&step=egen-ai");
+  assert.ok(docs.some((doc) => /Tillåt egna AI-appar/.test(doc.title)));
+  assert.ok(docs.some((doc) => /OAuth/.test(doc.title)) && docs.some((doc) => /MCP-nyckel/.test(doc.title)));
+});
+
 test("a question the help does not cover is not sure, so the model (or nothing) answers it", () => {
   assert.equal(searchHelp("hur gör man en blorfmätning", { filmsPage: films }).confident, false);
   assert.equal(searchHelp("hur", {}).hits.length, 0);

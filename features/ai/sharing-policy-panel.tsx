@@ -10,6 +10,7 @@ import { PageHeader } from "@/components/page-shell";
 import { AdvancedFold } from "@/features/workflow/section-tabs";
 import { AiProfileChoice } from "@/features/ai/ai-profile-choice";
 import { AiUsagePanel } from "@/features/ai/ai-usage-panel";
+import { CompanyKeyPanel } from "@/features/ai/company-key-panel";
 import { useInstance } from "@/components/instance-provider";
 
 type Policy = {
@@ -29,7 +30,7 @@ type Policy = {
 };
 type AbilityKey = "chatProposals" | "moreToolCalls" | "teamOverview" | "riskTogether";
 type ShareKey = "shareChatContent" | "shareWork" | "shareCustomers" | "shareDocuments" | "shareConversationHistory";
-type Status = { conditions: { provider: { ready: boolean; reason?: string }; availableCredits: { available: boolean; balance: number } }; weeklyQuota?: { usedPercent: number; warn: boolean; full: boolean; quota: boolean } };
+type Status = { conditions: { provider: { ready: boolean; reason?: string; companyKey?: boolean }; availableCredits: { available: boolean; balance: number } }; weeklyQuota?: { usedPercent: number; warn: boolean; full: boolean; quota: boolean } };
 
 // What AI may read, at Workflow's level rather than per task type (2026-10-01: Workflow began as Kontroll före
 // idrifttagning and now has many kinds of tasks). Each choice governs its own sources on the server.
@@ -112,7 +113,7 @@ export function AiSharingPolicyPanel({ embedded = false }: { embedded?: boolean 
       {/* One chat (2026-11-21): no tile tells direct answers from AI answers; the week's quota stands where credits stood. */}
       <div className={cn("grid gap-3 sm:grid-cols-2", quota ? "xl:grid-cols-3" : "xl:grid-cols-2")} data-testid="ai-permissions-status">
         <StatusTile label="Företagets AI" ok={policy.enabled && policy.shareChatContent} text={policy.enabled && policy.shareChatContent ? "På" : "Av"} />
-        <StatusTile label="AI-modellen på servern" ok={modelOn} text={status ? (modelOn ? "Påslagen" : "Inte påslagen än") : "…"} hint={modelOn ? undefined : status?.conditions.provider.reason} />
+        <StatusTile label={status?.conditions.provider.companyKey ? "Företagets egen AI-nyckel" : "AI-modellen på servern"} ok={modelOn} text={status ? (modelOn ? "Påslagen" : "Inte påslagen än") : "…"} hint={modelOn ? undefined : status?.conditions.provider.reason} />
         {quota ? <StatusTile label="Veckans kvot" ok={!quota.warn} text={quota.full ? "Slut – öppnar måndag 00:00" : `${quota.usedPercent} % använd`} /> : null}
       </div>
 
@@ -120,11 +121,13 @@ export function AiSharingPolicyPanel({ embedded = false }: { embedded?: boolean 
         <div className="divide-y">
           <SwitchRow id="ai-enabled" testId="ai-enabled" title="Slå på Workflow AI för företaget" text={credits ? "Vanliga frågor och förslag ingår i abonnemanget upp till veckans kvot." : "Frågor som kräver tolkning besvaras av AI-modellen."}
             checked={policy.enabled} disabled={locked} onCheckedChange={(on) => void change({ enabled: on, ...(on ? { shareChatContent: true } : {}) })} />
-          <SwitchRow id="ai-requireEu" testId="ai-requireEu" title="Uppgifterna måste behandlas inom EU" text="Då används bara AI-modeller i EU. Finns ingen sådan är AI avstängd."
+          <SwitchRow id="ai-requireEu" testId="ai-requireEu" title="Uppgifterna måste behandlas inom EU" text="Då används bara AI-modeller i EU. Med egen AI-nyckel gäller bara företagets egen Azure-resurs som du intygat ligger i EU. Finns ingen sådan är AI avstängd."
             checked={Boolean(policy.requireEu)} disabled={locked} onCheckedChange={(on) => void change({ requireEu: on })} />
         </div>
       </Panel>
       <AiProfileChoice key={String(Boolean(policy.requireEu))} requireEu={Boolean(policy.requireEu)} locked={locked} onChoose={(profile) => change({ profile })} />
+      {/* Använd företagets egen AI-nyckel (2026-11-27): the admin's own card; it reads the EU choice again when that changes. */}
+      {canManage ? <CompanyKeyPanel key={`own-key-${Boolean(policy.requireEu)}`} /> : null}
       {/* Användning (2026-11-21): the one place to follow Workflow AI; ?section=ai-usage leads here from the chat. */}
       {quota || credits ? <div id="ai-usage"><AiUsagePanel /></div> : null}
 

@@ -44,12 +44,14 @@ test("API och MCP: on with keys or apps, off without, needs action when a key ha
 test("every key beside its connection (2026-11-03): Fortnox on Bokföring, the payroll system's on Lön; older rows are Övriga nycklar until removed", () => {
   assert.deepEqual(connectionProviders("accounting"), ["fortnox"]);
   assert.deepEqual(connectionProviders("payroll"), ["payroll-sftp", "payroll-api"]);
-  for (const provider of ["openai", "anthropic", "azure-openai", "microsoft-365", "other", null, "unknown"]) assert.equal(isOtherKeyProvider(provider), true, String(provider));
+  // Företagets egen AI-nyckel (2026-11-27): the OpenAI and Azure OpenAI keys are on their own card under Workflow AI.
+  assert.deepEqual(connectionProviders("ai"), ["openai", "azure-openai"]);
+  for (const provider of ["anthropic", "microsoft-365", "other", null, "unknown"]) assert.equal(isOtherKeyProvider(provider), true, String(provider));
   for (const provider of ["fortnox", "payroll-sftp", "payroll-api"]) assert.equal(isOtherKeyProvider(provider), false, provider);
-  const keys = [key("EXTERNAL", null, { name: "Gammal", provider: "openai" }), key("EXTERNAL", null, { name: "Fortnox", provider: "fortnox" }), key("EXTERNAL", null, { name: "Lön", provider: "payroll-sftp" }),
+  const keys = [key("EXTERNAL", null, { name: "Gammal", provider: "anthropic" }), key("EXTERNAL", null, { name: "Fortnox", provider: "fortnox" }), key("EXTERNAL", null, { name: "Lön", provider: "payroll-sftp" }),
     key("EXTERNAL", null, { name: "Borttagen", provider: "other", revokedAt: now.toISOString() }), key("EXTERNAL", null, { name: "Annan" }), key("API", null)];
   assert.deepEqual(otherKeys(keys).map((item) => item.name), ["Gammal", "Annan"], "a removed row is history, a connection's key is not Övriga");
-  assert.deepEqual(activeExternalProviders(keys), ["openai", "fortnox", "payroll-sftp", "other"], "Bokföring shows the Fortnox card while a row exists");
+  assert.deepEqual(activeExternalProviders(keys), ["anthropic", "fortnox", "payroll-sftp", "other"], "Bokföring shows the Fortnox card while a row exists");
   assert.equal(apiAreaStatus(keys, 0, now).detail, "1 API-nyckel", "Övriga nycklar never count in API och MCP's status");
 });
 

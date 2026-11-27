@@ -9,6 +9,7 @@ import {
 } from "@/lib/ai/cost-policy";
 import { routeAiModel, type AiModelPolicy, type AiTaskKind } from "@/lib/ai/model-catalog";
 import { expireDueLots, lockedWallet } from "@/lib/kfid/purchased-credits";
+import { AI_PAYER_LABEL, aiRunPayer } from "@/lib/ai/payer";
 
 type AiTransaction = Prisma.TransactionClient;
 
@@ -179,7 +180,10 @@ export type ReserveAiRunInput = {
   minimumCredits?: number;
   /** What one credit is worth (öre) in the active price version; stored on the run (creditFloorValueOre). The catalog's when left out. */
   creditValueOre?: number;
-  /** Without credits (the community edition): nothing is reserved and nothing is charged; the run is still recorded. */
+  /**
+   * Nothing is reserved and nothing is charged; the run is still recorded. Who pays is told as Ingår or Företagets nyckel, never as
+   * "free" (lib/ai/payer.ts): the subscription, the installation's own key, or the company's own AI key.
+   */
   free?: boolean;
   requestKey: string;
   /** Where in Workflow the run was asked for ("chat", "tip", "summary", "import"), for cost per place. */
@@ -332,6 +336,8 @@ export async function reserveAiRun(input: ReserveAiRunInput, now = new Date()) {
         actorId: input.actorId,
         action: "credits_reserved",
         data: {
+          // Vem som betalar (2026-11-27): Ingår, Krediter or Företagets nyckel, never "free" (lib/ai/payer.ts).
+          payer: AI_PAYER_LABEL[aiRunPayer(run)],
           reservedCredits: run.reservedCredits,
           model: run.model,
           pricingVersion: run.pricingVersion,

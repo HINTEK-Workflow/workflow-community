@@ -6,10 +6,12 @@ import { parseAiCreditSettings } from "@/lib/ai/credit-settings";
 import { getAiSharingPolicy } from "@/lib/ai/sharing-policy";
 import { quotaAlarmAction, quotaAlarmText, quotaDecision, quotaView, quotaWeek, weeklyQuotaOre, type QuotaDecision, type QuotaView } from "@/lib/ai/weekly-quota";
 import { sendOpsAlarm } from "@/lib/ai/ai-alarms-run";
+import { COMPANY_KEY_PRICING_PREFIX } from "@/lib/ai/payer";
 
 /** The provider's cost (öre) of a company's runs this week, from the AI log. */
 async function spentThisWeek(organizationId: string, now: Date) {
-  const sum = await prisma.aiRun.aggregate({ where: { organizationId, completedAt: { gte: quotaWeek(now).start }, providerCostOre: { not: null } }, _sum: { providerCostOre: true } });
+  // A run on the company's own AI key (2026-11-27) is paid at the company's provider: never a part of Workflow's quota.
+  const sum = await prisma.aiRun.aggregate({ where: { organizationId, completedAt: { gte: quotaWeek(now).start }, providerCostOre: { not: null }, NOT: { pricingVersion: { startsWith: COMPANY_KEY_PRICING_PREFIX } } }, _sum: { providerCostOre: true } });
   return sum._sum.providerCostOre ?? 0;
 }
 

@@ -10,6 +10,8 @@ import { creditsChargedIn, fxSnapshot, marginBpsOf, minimumCreditsFor, parseAiCr
 import { companyWeeklyQuota } from "@/lib/ai/weekly-quota-server";
 import { publicInstance } from "@/lib/instance";
 import { serverExtensions } from "@/lib/extensions/server";
+import { companyKeyPolicy } from "@/lib/ai/company-key";
+import { companyKeyChoice } from "@/lib/ai/company-key-server";
 
 /** Whether AI runs are paid with credits; without Workflow's credit system they are free with the installation's own key. */
 export const aiCreditsCharged = () => publicInstance().features.credits;
@@ -59,6 +61,8 @@ export async function aiRunPolicy(taskKind: AiTaskKind, organizationId?: string)
   }
   const { choice, azure } = await providerChoiceFor(organizationId);
   if (choice.use === "none") throw new Error(choice.reason);
+  // Företagets egen AI-nyckel (2026-11-27): the company's model, recorded at (almost) no cost to Workflow, as Företagets nyckel.
+  if (choice.use === "company") return companyKeyPolicy(route, choice);
   if (choice.use === "azure" && azure) return azureRoutePolicy(route, azure, choice.profile);
   return openAiRoutePolicy(route, await openAiModelCards());
 }
@@ -72,6 +76,14 @@ export const aiCreditsChargedFor = (mode: AiChargeMode) => creditsChargedIn(mode
  * provider's exact cost; "agent" (the coming agentläge) is charged the cost plus the markup.
  */
 export async function aiRunPricing(taskKind: AiTaskKind, organizationId?: string, asked?: AiChargeMode) {
+  // Företagets egen AI-nyckel (2026-11-27): the company pays its own provider – no credits, no weekly quota, never Workflow's key.
+  const own = organizationId ? await companyKeyChoice(organizationId) : null;
+  if (own) {
+    if (own.use === "none") throw new Error(own.reason);
+    const [settings, creditValueOre] = await Promise.all([readAiCreditSettings(), aiCreditValueOre()]);
+    const policy: AiModelPolicy = Object.freeze({ ...companyKeyPolicy(routeAiModel(taskKind), own), targetGrossMarginBps: marginBpsOf(settings) });
+    return { minimumCredits: minimumCreditsFor(taskKind, settings), fx: fxSnapshot(settings), free: true, creditValueOre, policy, mode: "included" as AiChargeMode, companyKey: true };
+  }
   const [settings, creditValueOre, routed, quota] = await Promise.all([
     readAiCreditSettings(), aiCreditValueOre(), aiRunPolicy(taskKind, organizationId),
     organizationId && !asked ? companyWeeklyQuota(organizationId) : Promise.resolve(null),
@@ -81,5 +93,5 @@ export async function aiRunPricing(taskKind: AiTaskKind, organizationId?: string
   const mode: AiChargeMode = asked ?? (quota?.decision.mode === "credits" ? "credits" : "included");
   // Påslaget is the product owner's one setting for every provider (2026-10-24); the run stores it.
   const policy: AiModelPolicy = Object.freeze({ ...routed, targetGrossMarginBps: marginBpsOf(settings) });
-  return { minimumCredits: minimumCreditsFor(taskKind, settings), fx: fxSnapshot(settings), free: !aiCreditsChargedFor(mode), creditValueOre, policy, mode };
+  return { minimumCredits: minimumCreditsFor(taskKind, settings), fx: fxSnapshot(settings), free: !aiCreditsChargedFor(mode), creditValueOre, policy, mode, companyKey: false };
 }

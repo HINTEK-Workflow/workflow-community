@@ -14,6 +14,7 @@ import { compensateFailedAiRun, markAiRunStarted, reserveAiRun, settleAiRun, typ
 import { getAiSharingPolicy, type AiSharingPolicy } from "@/lib/ai/sharing-policy";
 import { assistantTaskLimits, estimateAssistantInputTokens } from "@/lib/ai/task-router";
 import { prisma } from "@/lib/db";
+import { companyKeyErrorReason } from "@/lib/ai/company-key-server";
 
 export type AgentRunOutcome<T> =
   | { used: true; output: T; chargedCredits: number; model: string; runId: string }
@@ -53,7 +54,7 @@ export async function runStructuredAgent<T>(input: {
   chargeMode?: AiChargeMode;
 }): Promise<AgentRunOutcome<T>> {
   const agent = getWorkflowAgent(input.agentId);
-  const provider = await aiProviderStatus();
+  const provider = await aiProviderStatus(input.organizationId);
   if (!provider.enabled || !provider.configured || agent?.lifecycle !== "ENABLED") return { used: false, reason: "AI-modellen är inte påslagen på servern ännu." };
   const policy = await getAiSharingPolicy(input.organizationId);
   if (!policy.enabled || !input.shared(policy)) return { used: false, reason: "Företagets admin har inte slagit på det här för Workflow AI (Inställningar → Arbetssätt → Workflow AI)." };
@@ -92,9 +93,10 @@ export async function runStructuredAgent<T>(input: {
       cacheKey: `hwf-${input.agentId}`,
       instructions: input.instructions, input: input.input, schema: input.schema, schemaName: input.schemaName,
     });
-  } catch {
+  } catch (error) {
     await compensateFailedAiRun({ organizationId: input.organizationId, runId: reserved.run.id, actorId: input.actorId, failureCode: "PROVIDER_FAILED" });
-    return { used: false, reason: "AI-leverantören kunde inte slutföra svaret. Reservationen är återförd." };
+    // The company's own key said no: its reason, so the admin knows what to fix (and a mission pauses on it).
+    return { used: false, reason: companyKeyErrorReason(error) ?? "AI-leverantören kunde inte slutföra svaret. Reservationen är återförd." };
   }
   try {
     const settled = await settleAiRun({ organizationId: input.organizationId, runId: reserved.run.id, actorId: input.actorId, providerResponseId: result.providerResponseId, usage: result.usage });

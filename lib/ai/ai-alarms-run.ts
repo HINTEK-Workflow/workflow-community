@@ -12,6 +12,7 @@ import {
   type AiAlarmState,
 } from "@/lib/ai/ai-alarms";
 import { addSwedishDays, startOfSwedishDay, startOfSwedishMonth, swedishDayKey } from "@/lib/swedish-time";
+import { COMPANY_KEY_PRICING_PREFIX } from "@/lib/ai/payer";
 
 const escape = (text: string) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
@@ -39,7 +40,8 @@ async function sendAlarm(mail: { subject: string; text: string }) {
 
 /** The provider's cost (öre) of the runs completed since a moment, from the AI log. */
 async function costSince(from: Date, to?: Date) {
-  const sum = await prisma.aiRun.aggregate({ where: { completedAt: { gte: from, ...(to ? { lt: to } : {}) }, providerCostOre: { not: null } }, _sum: { providerCostOre: true } });
+  // A run on a company's own AI key (2026-11-27) is paid by the company: never a part of Workflow's budget.
+  const sum = await prisma.aiRun.aggregate({ where: { completedAt: { gte: from, ...(to ? { lt: to } : {}) }, providerCostOre: { not: null }, NOT: { pricingVersion: { startsWith: COMPANY_KEY_PRICING_PREFIX } } }, _sum: { providerCostOre: true } });
   return sum._sum.providerCostOre ?? 0;
 }
 

@@ -1966,7 +1966,7 @@ function route(request: Request): Json | unknown {
     case "/api/ai/digest": if (get) return { digest: null }; break;
     case "/api/ai/profiles": if (get) return { profiles: [], chosen: "standard", requireEu: false, canManage: false }; break;
     // Användning (2026-11-21): an empty week, no credits; the switch is never offered (canManage false).
-    case "/api/ai/usage": if (get) return { canManage: false, usage: { week: { usedPercent: 0, warn: false, full: false, opensAt: new Date(Date.now() + 7 * 86_400_000).toISOString() }, continueOnCredits: false, weeks: [], credits: { system: false, balance: 0, usedThisWeek: 0 }, people: [], askers: 0 } }; break;
+    case "/api/ai/usage": if (get) return { canManage: false, usage: { week: { usedPercent: 0, warn: false, full: false, opensAt: new Date(Date.now() + 7 * 86_400_000).toISOString() }, continueOnCredits: false, weeks: [], credits: { system: false, balance: 0, usedThisWeek: 0 }, people: [], askers: 0, payers: { included: 0, credits: 0, company: 0 } } }; break;
     case "/api/import": if (get) return { files: [] }; break;
     case "/api/forms/admin": if (get && request.url.searchParams.has("resume")) return { id: null }; break;
     // Historik och lagring is a part of Företaget since 2026-10-15: the demo reads "Tills vidare" quietly; saving and

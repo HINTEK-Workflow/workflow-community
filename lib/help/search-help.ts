@@ -3,6 +3,7 @@ import { RELEASE_NOTES } from "@/lib/release-notes";
 import { WORKFLOW_KNOWLEDGE_PARTS } from "@/lib/ai/knowledge/workflow-knowledge";
 import { GUIDE_SECTIONS, GUIDE_WORK_ORDER, GUIDE_WORK_ORDER_KEY, type GuideStep } from "@/lib/help/guide-steps";
 import { FILM_TEXTS } from "@/lib/help/film-texts";
+import { OWN_AI_APPS, OWN_AI_GUIDE_KEY, OWN_AI_STEPS, OWN_AI_WAYS } from "@/lib/help/own-ai-guide";
 
 /**
  * Hjälpsökningen search_help (Workflow AI-utredningen 2026-11-21, hjälpare 12 "Hur gör jag i Workflow?"): a rule-based search –
@@ -71,6 +72,12 @@ export function helpCorpus(): HelpDoc[] {
   for (const command of SEARCH_COMMANDS) docs.push({ id: `page:${command.id}`, source: "page", title: command.label, text: `Öppna sidan ${command.label}.`, words: command.keywords, href: command.href, weight: 1.1 });
   for (const step of GUIDE_WORK_ORDER) docs.push({ id: `guide:${GUIDE_WORK_ORDER_KEY}:${step.name}`, source: "guide", title: `Arbetsordern: ${step.name.replace(/^\d+\.\s*/, "")}`, text: stepText(step), href: pageHref(GUIDE_WORK_ORDER_KEY), weight: 1 });
   for (const section of GUIDE_SECTIONS) for (const step of section.steps) docs.push({ id: `guide:${section.key}:${step.name}`, source: "guide", title: `${section.title}: ${step.name}`, text: stepText(step), href: pageHref(section.key), weight: 1 });
+  // Din egen AI-app (2026-11-27): the steps, OAuth or an MCP key, and the apps.
+  const ownAi = pageHref(OWN_AI_GUIDE_KEY);
+  const ownAiWords = "mcp egen ai-app chatgpt claude copilot";
+  for (const step of OWN_AI_STEPS) docs.push({ id: `guide:${OWN_AI_GUIDE_KEY}:${step.name}`, source: "guide", title: `Din egen AI-app: ${step.name.replace(/^\d+\.\s*/, "")}`, text: stepText(step), words: ownAiWords, href: ownAi, weight: 1 });
+  for (const way of OWN_AI_WAYS) docs.push({ id: `guide:${OWN_AI_GUIDE_KEY}:${way.title}`, source: "guide", title: `Din egen AI-app: ${way.title}`, text: way.text, words: ownAiWords, href: ownAi, weight: 1 });
+  for (const app of OWN_AI_APPS) docs.push({ id: `guide:${OWN_AI_GUIDE_KEY}:${app.name}`, source: "guide", title: `Koppla ${app.name} till Workflow`, text: app.text, words: ownAiWords, href: ownAi, weight: 1 });
   WORKFLOW_KNOWLEDGE_PARTS.slice(1).forEach((part, index) => docs.push({ id: `knowledge:${index}`, source: "knowledge", title: knowledgeTitle(part), text: part, href: pageHref("modell"), weight: 0.9 }));
   // Only the newest versions: an old note may say how it used to be. The newest count most.
   RELEASE_NOTES.slice(0, RELEASE_NOTES_SEARCHED).forEach((note, order) => note.items.forEach((item, index) => docs.push({

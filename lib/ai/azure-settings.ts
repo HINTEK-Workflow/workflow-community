@@ -343,7 +343,9 @@ export const azureProbeInputSchema = z.object({
  * back to another profile or provider.
  */
 export type StandardProviderId = "OPENAI" | "AZURE_OPENAI";
-export type ProviderChoice = { use: "openai" } | { use: "azure"; profile: AiProfileId } | { use: "none"; reason: string };
+export type ProviderChoice = { use: "openai" } | { use: "azure"; profile: AiProfileId } | { use: "none"; reason: string }
+  // Företagets egen AI-nyckel (2026-11-27, lib/ai/company-key.ts): the company's own provider, never Workflow's.
+  | { use: "company"; provider: "azure-openai" | "openai"; endpoint: string; model: string; region: AiModelPolicy["processingRegion"] };
 export function chooseProvider(input: {
   requireEu: boolean; profile?: AiProfileId; standardProvider: StandardProviderId;
   /** What stops each Azure profile (azureProblem), or null when it is ready. */

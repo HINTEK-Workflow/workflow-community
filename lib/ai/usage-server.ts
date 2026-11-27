@@ -4,6 +4,7 @@ import { publicInstance } from "@/lib/instance";
 import { addSwedishDays } from "@/lib/swedish-time";
 import { quotaWeek } from "@/lib/ai/weekly-quota";
 import { companyWeeklyQuota } from "@/lib/ai/weekly-quota-server";
+import { aiRunPayer, type AiPayer } from "@/lib/ai/payer";
 
 /** Weeks shown on Användning, this one included. */
 export const USAGE_WEEKS = 8;
@@ -17,6 +18,8 @@ export type AiUsageView = {
   /** This week's questions per person (counts only, never a question); `self` for a member, everyone for the admin, none for the superadmin. */
   people: { name: string; questions: number; self: boolean }[];
   askers: number;
+  /** This week's AI runs by who pays: Ingår, Krediter, Företagets nyckel (lib/ai/payer.ts). */
+  payers: Record<AiPayer, number>;
 };
 
 /**
@@ -31,7 +34,7 @@ export async function companyAiUsage(organizationId: string, viewer: { userId: s
   const [quota, answers, runs, wallet, questions] = await Promise.all([
     companyWeeklyQuota(organizationId, now),
     prisma.aiMessage.findMany({ where: { organizationId, role: "ASSISTANT", createdAt: { gte: from } }, select: { createdAt: true }, take: 50_000 }),
-    prisma.aiRun.findMany({ where: { organizationId, completedAt: { gte: from } }, select: { completedAt: true, providerCostOre: true, chargedCredits: true }, take: 50_000 }),
+    prisma.aiRun.findMany({ where: { organizationId, completedAt: { gte: from } }, select: { completedAt: true, providerCostOre: true, chargedCredits: true, pricingVersion: true, reservedCredits: true }, take: 50_000 }),
     prisma.creditWallet.findUnique({ where: { organizationId }, select: { balance: true } }),
     prisma.aiMessage.groupBy({ by: ["authorId"], where: { organizationId, role: "USER", createdAt: { gte: thisWeek }, authorId: { not: null } }, _count: { _all: true } }),
   ]);
@@ -39,11 +42,15 @@ export async function companyAiUsage(organizationId: string, viewer: { userId: s
   const weekIndex = (at: Date) => { for (let index = starts.length - 1; index >= 0; index--) if (at >= starts[index]) return index; return -1; };
   const weeks = starts.map((start) => ({ start: start.toISOString(), answers: 0, cost: 0, credits: 0 }));
   for (const answer of answers) { const index = weekIndex(answer.createdAt); if (index >= 0) weeks[index].answers++; }
+  const payers: Record<AiPayer, number> = { included: 0, credits: 0, company: 0 };
   for (const run of runs) {
     if (!run.completedAt) continue;
     const index = weekIndex(run.completedAt);
     if (index < 0) continue;
-    weeks[index].cost += run.providerCostOre ?? 0;
+    const payer = aiRunPayer(run);
+    if (index === starts.length - 1) payers[payer] += 1;
+    // A run on the company's own key is paid by the company at its provider: never a part of Workflow's weekly quota.
+    if (payer !== "company") weeks[index].cost += run.providerCostOre ?? 0;
     weeks[index].credits += run.chargedCredits ?? 0;
   }
   // Earlier weeks against this week's quota: the share is what the customer sees, the cost only the superadmin.
@@ -65,5 +72,6 @@ export async function companyAiUsage(organizationId: string, viewer: { userId: s
     credits: { system: publicInstance().features.credits, balance: wallet?.balance ?? 0, usedThisWeek: weeks[weeks.length - 1].credits },
     people,
     askers: questions.length,
+    payers,
   };
 }

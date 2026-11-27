@@ -7,6 +7,8 @@ import type { RouteContext, RouteHandlers } from "@/lib/extensions/types";
 export const coreRoutes = {
   "ai/evals": () => import("@/lib/api-handlers/ai-evals"),
   "ai/chat": () => import("@/lib/api-handlers/ai-chat"),
+  // Använd företagets egen AI-nyckel (2026-11-27): the company admin's switch, provider, model, EU statement and key.
+  "ai/company-key": () => import("@/lib/api-handlers/ai-company-key"),
   "ai/conversations": () => import("@/lib/api-handlers/ai-conversations"),
   "ai/digest": () => import("@/lib/api-handlers/ai-digest"),
   "ai/memory": () => import("@/lib/api-handlers/ai-memory"),

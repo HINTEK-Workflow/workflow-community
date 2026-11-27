@@ -10,6 +10,7 @@ import { formatSwedish } from "@/lib/swedish-time";
 import { useLoadEffect } from "@/lib/use-load-effect";
 import { quotaKrText, quotaWarnText, QUOTA_FULL_REASON } from "@/lib/ai/weekly-quota";
 import type { AiUsageView } from "@/lib/ai/usage-server";
+import { AI_PAYER_LABEL, AI_PAYERS } from "@/lib/ai/payer";
 
 const weekLabel = (start: string) => `v. ${formatSwedish(start, { day: "numeric", month: "short" })}`;
 const opens = (at: string) => formatSwedish(at, { weekday: "long", hour: "2-digit", minute: "2-digit" });
@@ -75,6 +76,8 @@ export function AiUsagePanel({ mode = "company", organizationId, notify }: { mod
           <thead><tr><th scope="col">Vecka</th><th scope="col">Svar</th><th scope="col">Av kvoten</th>{usage.credits.system ? <th scope="col">Krediter</th> : null}</tr></thead>
           <tbody>{[...usage.weeks].reverse().map((item) => <tr key={item.start}><td>{weekLabel(item.start)}</td><td className="tabular-nums">{item.answers}</td><td className="tabular-nums">{item.usedPercent} %</td>{usage.credits.system ? <td className="tabular-nums">{item.credits}</td> : null}</tr>)}</tbody>
         </table></div>
+        {/* Vem som betalar (2026-11-27): this week's AI runs as Ingår, Krediter and Företagets nyckel, never "gratis". */}
+        {usage.payers ? <p className="mt-1 text-xs text-muted-foreground" data-testid="ai-usage-payers">AI-körningar den här veckan: {AI_PAYERS.filter((payer) => payer !== "credits" || usage.credits.system).map((payer) => `${AI_PAYER_LABEL[payer]} ${usage.payers[payer]}`).join(" · ")}.</p> : null}
       </section>
       {usage.credits.system ? <section aria-label="Krediter" className="grid gap-1" data-testid="ai-usage-credits">
         <p className="font-medium">Krediter</p>

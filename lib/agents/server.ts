@@ -14,6 +14,7 @@ import { aiProviderStatus } from "@/lib/ai/provider-status";
 import { euRefusal } from "@/lib/ai/assistant-provider";
 import { getAiSharingPolicy, sharesWork } from "@/lib/ai/sharing-policy";
 import { runStructuredAgent } from "@/lib/ai/agent-run";
+import { aiPayerText, aiRunPayer, type AiPayer } from "@/lib/ai/payer";
 import { enabledModules } from "@/lib/workflow/modules";
 import { canReadRounds, hasWorkflowPermission, normalizeWorkflowPermissionProfile, WORKFLOW_PERMISSION_ACTIONS, WORKFLOW_PERMISSION_SUBJECTS } from "@/lib/workflow/permissions";
 import { resolveRecipients, type Colleague } from "./recipients";
@@ -51,7 +52,7 @@ const missionSelect = {
 type MissionRow = Prisma.AgentMissionGetPayload<{ select: typeof missionSelect }>;
 const runSelect = {
   id: true, organizationId: true, missionId: true, runKey: true, trigger: true, slotAt: true, status: true, attempts: true, read: true, actions: true, report: true, feedback: true,
-  cost: true, chargedCredits: true, message: true, createdAt: true, startedAt: true, finishedAt: true, event: true,
+  cost: true, chargedCredits: true, aiRunId: true, message: true, createdAt: true, startedAt: true, finishedAt: true, event: true,
 } satisfies Prisma.AgentRunSelect;
 type RunRow = Prisma.AgentRunGetPayload<{ select: typeof runSelect }>;
 
@@ -78,7 +79,7 @@ export async function missionFacts(ctx: Context, options: { excludeMissionId?: s
   const organizationId = ctx.organizationId;
   const [count, policy, provider, euStop, wallet, meta, linkedin, projects, rounds, members] = await Promise.all([
     prisma.agentMission.count({ where: { organizationId, deletedAt: null, ...(options.excludeMissionId ? { id: { not: options.excludeMissionId } } : {}) } }),
-    getAiSharingPolicy(organizationId), aiProviderStatus(), euRefusal(organizationId).catch(() => null),
+    getAiSharingPolicy(organizationId), aiProviderStatus(organizationId), euRefusal(organizationId).catch(() => null),
     prisma.creditWallet.findUnique({ where: { organizationId }, select: { balance: true } }),
     prisma.metaConnection.findUnique({ where: { organizationId }, select: { pageId: true, pageName: true, instagramId: true, instagramUsername: true, status: true, publishingApproved: true } }),
     prisma.linkedInConnection.findUnique({ where: { organizationId }, select: { status: true, authorName: true, authorId: true, publishingApproved: true } }),
@@ -93,7 +94,8 @@ export async function missionFacts(ctx: Context, options: { excludeMissionId?: s
     now: new Date(), server: ctx.organization.storageMode === "HINTEK_CLOUD", ownerActive: true, admin: ctx.admin,
     modulesOn: enabledModules(ctx.organization.disabledModules), rights, missionCount: count,
     ai: { ready: aiReady, reason: aiReady ? null : euStop ?? (!provider.enabled || !provider.configured ? "AI-modellen är inte påslagen ännu. Mallen behöver Workflow AI för att skriva texten." : "Workflow AI är inte påslaget för företaget, eller får inte läsa arbetet. Slå på det under Inställningar › Arbetssätt › Workflow AI.") },
-    credits: { system: publicInstance().features.credits, balance: wallet?.balance ?? 0 },
+    // Företagets egen AI-nyckel (2026-11-27): the text is written on the company's own key, never with credits.
+    credits: { system: publicInstance().features.credits, balance: wallet?.balance ?? 0, companyKey: provider.provider === "COMPANY_KEY" },
     connections: {
       facebook: { connected: metaWorks, publishing: metaWorks && Boolean(meta?.publishingApproved), name: meta?.pageName ?? null },
       instagram: { connected: metaWorks && Boolean(meta?.instagramId), publishing: metaWorks && Boolean(meta?.instagramId && meta.publishingApproved), name: meta?.instagramUsername ? `@${meta.instagramUsername}` : null },
@@ -130,13 +132,16 @@ export const factsOptions = (facts: MissionFacts) => ({
 // ---------- views ----------
 
 export type RunView = ReturnType<typeof runView>;
-function runView(row: RunRow) {
+function runView(row: RunRow, payers: ReadonlyMap<string, AiPayer> = new Map()) {
+  // Vem som betalar (2026-11-27): Ingår, Krediter or Företagets nyckel, from the run's AI log (lib/ai/payer.ts).
+  const payer: AiPayer = row.cost === "ai" ? (row.aiRunId ? payers.get(row.aiRunId) : undefined) ?? (row.chargedCredits > 0 ? "credits" : "included") : "included";
   const status = (row.status in RUN_STATUS_LABEL ? row.status : "queued") as RunStatus;
   return {
     id: row.id, trigger: row.trigger, status, statusLabel: RUN_STATUS_LABEL[status].label, tone: RUN_STATUS_LABEL[status].tone,
     // A waiting change's tool input stays on the server; the page shows its lines.
     createdAt: row.createdAt.toISOString(), finishedAt: row.finishedAt?.toISOString() ?? null, read: row.read as Record<string, number>, actions: ((row.actions as RunAction[]) ?? []).map((item) => { const shown = { ...item }; delete shown.args; return shown; }),
     report: row.report as RunReport, feedback: row.feedback as FeedbackState, cost: row.cost, chargedCredits: row.chargedCredits, message: row.message,
+    payer, payerText: aiPayerText(payer, row.chargedCredits),
     preview: row.trigger === "preview",
   };
 }
@@ -175,7 +180,16 @@ export async function getMission(ctx: Context, id: string) {
     prisma.agentRun.findMany({ where: { missionId: row.id, organizationId: ctx.organizationId }, orderBy: { createdAt: "desc" }, take: 30, select: runSelect }),
     people(ctx.organizationId, [row.ownerId]),
   ]);
-  return { mission: missionView(row, { ownerName: names.get(row.ownerId) ?? "Tidigare medlem", mine: row.ownerId === ctx.user.id }), runs: runs.map(runView) };
+  const payers = await runPayers(ctx.organizationId, runs);
+  return { mission: missionView(row, { ownerName: names.get(row.ownerId) ?? "Tidigare medlem", mine: row.ownerId === ctx.user.id }), runs: runs.map((run) => runView(run, payers)) };
+}
+
+/** Who paid for each run's model call, read from the AI log of the company's own runs. */
+async function runPayers(organizationId: string, runs: readonly RunRow[]) {
+  const ids = runs.flatMap((run) => (run.aiRunId ? [run.aiRunId] : []));
+  if (!ids.length) return new Map<string, AiPayer>();
+  const rows = await prisma.aiRun.findMany({ where: { organizationId, id: { in: ids } }, select: { id: true, pricingVersion: true, reservedCredits: true } });
+  return new Map(rows.map((row) => [row.id, aiRunPayer(row)] as const));
 }
 
 // ---------- Tolka, Kontrollera ----------

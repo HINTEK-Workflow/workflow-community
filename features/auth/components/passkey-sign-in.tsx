@@ -118,6 +118,6 @@ export function PasskeySignIn({ returnTo, busy, onError, onPending, label, prima
   if (!phone) return button;
   return <div className="space-y-1.5">
     {button}
-    <p id={`${id}-help`} className="text-center text-xs leading-5 text-muted-foreground">Skanna QR-koden med telefonen och godkänn med ansikte eller finger.</p>
+    <p id={`${id}-help`} className="text-center text-xs leading-5 text-muted-foreground">Skanna QR-koden med telefonen och godkänn med ansikte eller finger. Datorn behöver Bluetooth påslaget.</p>
   </div>;
 }

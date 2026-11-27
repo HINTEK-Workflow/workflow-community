@@ -119,6 +119,8 @@ export type MediaSupport = { ready: boolean; reason: string | null };
 const off = (reason: string): MediaSupport => ({ ready: false, reason });
 const ON: MediaSupport = { ready: true, reason: null };
 export const VOICE_NEEDS_AZURE = "Tal till text kräver en Azure-driftsättning för tal till text.";
+export const COMPANY_KEY_IMAGES_OFF = "Bilder i chatten fungerar inte ännu med företagets egen AI-nyckel.";
+export const COMPANY_KEY_VOICE_OFF = "Tal till text fungerar inte ännu med företagets egen AI-nyckel.";
 
 /**
  * Whether the chat's image and microphone buttons work for a company (2026-11-21): the same provider choice as every answer
@@ -133,6 +135,8 @@ export function chatMediaSupport(input: { choice: ProviderChoice; azure: AzureSe
     : off(kind === "images" ? `Bilder är inte klara hos ${operator} ännu.` : `Tal till text är inte klart hos ${operator} ännu.`);
   const { choice } = input;
   if (choice.use === "none") return { images: off(choice.reason), voice: off(choice.reason) };
+  // Företagets egen AI-nyckel (2026-11-27): photos and speech are not sent to the company's own provider in this round.
+  if (choice.use === "company") return { images: off(COMPANY_KEY_IMAGES_OFF), voice: off(COMPANY_KEY_VOICE_OFF) };
   if (choice.use === "openai") {
     const card = input.openAiCards.find((item) => item.deployment === input.level);
     return { images: plain(azureModelReadsImages(card) ? null : IMAGES_OFF, "images"), voice: off(VOICE_NEEDS_AZURE) };

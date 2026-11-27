@@ -15,6 +15,8 @@ import { aiCreditsChargedFor, aiRunPricing } from "@/lib/ai/credit-settings-serv
 import { assistantTaskLimits, estimateAssistantInputTokens } from "@/lib/ai/task-router";
 import { IMPORT_TARGETS, TARGET_FIELDS, type Detection, type ExtractedFile, type ImportTarget } from "@/lib/import/detect";
 import { ALIAS_INSTRUCTION, AliasMap, aliasLabelledLines, type AliasKind } from "@/lib/ai/alias";
+import { companyKeyErrorReason } from "@/lib/ai/company-key-server";
+import { aiPayerText, aiRunPayer } from "@/lib/ai/payer";
 
 /** What the AI may say about a file: a kind, how sure, which column holds which field, and for a text, the rows it reads. */
 const aiResultSchema = z.object({
@@ -33,7 +35,7 @@ export type AiImportOutcome =
 
 /** Whether this company may send a file to the AI model right now, and why not. */
 export async function aiImportAvailability(ctx: Context) {
-  const provider = await aiProviderStatus();
+  const provider = await aiProviderStatus(ctx.organizationId);
   const agent = getWorkflowAgent("document-import");
   const policy = await getAiSharingPolicy(ctx.organizationId);
   if (!policy.enabled || !policy.shareDocuments) return { ok: false as const, reason: "Företagets admin har inte slagit på delning av dokument med Workflow AI (Inställningar → Arbetssätt → Workflow AI)." };
@@ -137,14 +139,15 @@ export async function analyzeWithAi(ctx: Context, file: ExtractedFile, detection
     parsed = { ...restored, reason: alias.restore(restored.reason), rows: restored.rows.map((row) => ({ ...row, section: alias.restore(row.section), title: alias.restore(row.title), description: alias.restore(row.description) })) };
     responseId = response.providerResponseId;
     usage = response.usage;
-  } catch {
+  } catch (error) {
     await compensateFailedAiRun({ organizationId: ctx.organizationId, runId: reserved.run.id, actorId: ctx.user.id, failureCode: "PROVIDER_FAILED" });
-    return { used: false, reason: "AI-leverantören kunde inte analysera filen. Reservationen är återförd. Reglerna gör analysen." };
+    const ownKey = companyKeyErrorReason(error);
+    return { used: false, reason: ownKey ? `${ownKey} Reglerna gör analysen.` : "AI-leverantören kunde inte analysera filen. Reservationen är återförd. Reglerna gör analysen." };
   }
   try {
     const settled = await settleAiRun({ organizationId: ctx.organizationId, runId: reserved.run.id, actorId: ctx.user.id, providerResponseId: responseId, usage });
     const chargedCredits = settled.run.chargedCredits ?? 0;
-    await prisma.administrationEvent.create({ data: { actorId: ctx.user.id, organizationId: ctx.organizationId, action: "import_ai_analysis", detail: `AI-analys av importfil (${file.kind}), ${chargedCredits} krediter.` } });
+    await prisma.administrationEvent.create({ data: { actorId: ctx.user.id, organizationId: ctx.organizationId, action: "import_ai_analysis", detail: `AI-analys av importfil (${file.kind}), ${aiPayerText(aiRunPayer(settled.run), chargedCredits)}.` } });
     return { used: true, result: parsed, chargedCredits, model: policy.model };
   } catch {
     await compensateFailedAiRun({ organizationId: ctx.organizationId, runId: reserved.run.id, actorId: ctx.user.id, failureCode: "SETTLEMENT_FAILED" });

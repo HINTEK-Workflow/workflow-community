@@ -26,7 +26,8 @@ export type MissionFacts = {
   /** Other missions in the company that are not removed. */
   missionCount: number;
   ai: { ready: boolean; reason: string | null };
-  credits: { system: boolean; balance: number };
+  /** `companyKey`: the company uses its own AI key (2026-11-27), so the model's text costs no credits. */
+  credits: { system: boolean; balance: number; companyKey?: boolean };
   connections: Record<PostChannel, { connected: boolean; publishing: boolean; name: string | null }>;
   /** Interna nyheter exists in this build (lib/agents/news-target.ts). */
   news: boolean;
@@ -79,8 +80,9 @@ export function ownerStillMeets(template: { needs: { admin?: boolean; rights?: r
   return null;
 }
 
-export function costText(kind: "rules" | "ai", credits: { system: boolean }) {
+export function costText(kind: "rules" | "ai", credits: { system: boolean; companyKey?: boolean }) {
   if (kind === "rules") return "Ingår. Agenten räknar och listar med Workflows egna regler och kostar inget.";
+  if (credits.companyKey) return "Företagets nyckel. AI skriver texten med företagets egen AI-nyckel och drar inga krediter.";
   return credits.system ? "Drar AI-krediter när Workflow AI skriver texten, oftast 1–3 krediter per körning." : "Workflow AI skriver texten med företagets egen AI-nyckel.";
 }
 

@@ -45,6 +45,7 @@ import { runTool } from "@/lib/tools/registry";
 import { WORKFLOW_KNOWLEDGE_VERSION } from "@/lib/ai/knowledge/workflow-knowledge";
 import { readCachedResult, resultCacheKey, storeCachedResult } from "@/lib/ai/result-cache";
 import { configuredAssistantProvider, euRefusal } from "@/lib/ai/assistant-provider";
+import { companyKeyErrorReason } from "@/lib/ai/company-key-server";
 import type { AssistantLive } from "@/lib/ai/workflow-assistant";
 import { aiMay, getAiSharingPolicy, sharesWork, sourceAllowed } from "@/lib/ai/sharing-policy";
 import { readLimitedUpload } from "@/lib/security/limited-body";
@@ -253,7 +254,7 @@ async function answer(request: Request, live?: AssistantLive) {
     }
 
     // 2. AI: only when it is switched on for the company, allowed by its sharing choices and paid by its credits.
-    const provider = await aiProviderStatus();
+    const provider = await aiProviderStatus(ctx.organizationId);
     const agent = getWorkflowAgent("workflow-assistant");
     const sharingPolicy = await getAiSharingPolicy(ctx.organizationId);
     // The company's AI-profil and EU choice (2026-10-24): a profile that is not ready refuses AI, never another provider.
@@ -458,6 +459,9 @@ async function answer(request: Request, live?: AssistantLive) {
         failureCode: aborted ? "CLIENT_ABORTED" : "PROVIDER_FAILED",
       });
       if (aborted) throw new ApiError(409, "Svaret avbröts. Reservationen har återförts.");
+      // The company's own AI key said no (2026-11-27): its own reason, never a quiet move to Workflow's key.
+      const ownKey = companyKeyErrorReason(error);
+      if (ownKey) throw new ApiError(502, ownKey);
       throw new ApiError(502, "AI-leverantören kunde inte slutföra svaret. Reservationen har återförts.");
     }
 

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { AI_PROFILE_IDS } from "@/lib/ai/azure-settings";
+import { companyKeySchema } from "@/lib/ai/company-key";
 
 /**
  * Vad Workflow AI får göra (2026-10-09: "Vad AI får göra är en admin-inställning, men ju mer den kan desto
@@ -50,6 +51,8 @@ export const aiSharingPolicySchema = z.object({
   continueOnCredits: z.boolean().default(false),
   // The company's own weekly quota in kr (the superadmin's, under Kundföretag); none = the installation's. Kept by the admin's saves.
   weeklyQuotaKr: z.number().int().min(0).max(10_000).optional(),
+  // Använd företagets egen AI-nyckel (2026-11-27): written only by lib/ai/company-key-server.ts; kept by the other saves.
+  ownKey: companyKeySchema.optional().catch(undefined),
   allowedModules: z.array(z.enum(["KFID"])).max(1).default([]),
   abilities: abilitiesSchema.default(allAiAbilities),
 });

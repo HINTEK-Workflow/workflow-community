@@ -7,6 +7,7 @@ import { parseAiCreditSettings } from "@/lib/ai/credit-settings";
 import { openAiCardsProblem } from "@/lib/ai/openai-models";
 import { openAiModelCards } from "@/lib/ai/provider-settings-server";
 import { getAiSharingPolicy } from "@/lib/ai/sharing-policy";
+import { companyKeyChoice } from "@/lib/ai/company-key-server";
 
 /**
  * Leverantör för Standard (2026-11-21, F7): Azure in Cloud whatever is saved; the product owner's choice in Community
@@ -24,7 +25,11 @@ export async function standardProvider(): Promise<StandardProviderId> {
  * call always agree.
  */
 export async function providerChoiceFor(organizationId: string): Promise<{ choice: ProviderChoice; azure: AzureSettings | null }> {
-  const [policy, provider] = await Promise.all([getAiSharingPolicy(organizationId), standardProvider()]);
+  const policy = await getAiSharingPolicy(organizationId);
+  // Använd företagets egen AI-nyckel (2026-11-27): the company's own provider, or AI paused with the reason – never Workflow's.
+  const own = await companyKeyChoice(organizationId, policy);
+  if (own) return { choice: own, azure: null };
+  const provider = await standardProvider();
   const needsAzure = policy.requireEu || policy.profile === "eu" || provider === "AZURE_OPENAI";
   const [azure, cards] = await Promise.all([needsAzure ? azureSettings() : Promise.resolve(null), openAiModelCards()]);
   const unused = "Azure behövs inte för företagets val.";

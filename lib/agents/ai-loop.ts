@@ -8,6 +8,7 @@ import { quoteAiRun } from "@/lib/ai/cost-policy";
 import { aiRunPricing } from "@/lib/ai/credit-settings-server";
 import { routeAiModel } from "@/lib/ai/model-catalog";
 import { aiProviderStatus } from "@/lib/ai/provider-status";
+import { companyKeyErrorReason } from "@/lib/ai/company-key-server";
 import { compensateFailedAiRun, markAiRunStarted, reserveAiRun, settleAiRun } from "@/lib/ai/run-ledger";
 import { getAiSharingPolicy, sharesWork } from "@/lib/ai/sharing-policy";
 import { assistantTaskLimits, estimateAssistantInputTokens } from "@/lib/ai/task-router";
@@ -37,7 +38,7 @@ const LOOP_RULES = [
 
 export async function runAgentLoop(ctx: Context, input: { missionId: string; runKey: string; dryRun: boolean; instruction: string; material: unknown; tools: readonly ToolName[]; focus?: string; needs?: "machines" }): Promise<LoopOutcome> {
   const agent = getWorkflowAgent("workflow-assistant");
-  const provider = await aiProviderStatus();
+  const provider = await aiProviderStatus(ctx.organizationId);
   if (!provider.enabled || !provider.configured || agent?.lifecycle !== "ENABLED") return { used: false, reason: "AI-modellen är inte påslagen ännu." };
   const policy = await getAiSharingPolicy(ctx.organizationId);
   if (!policy.enabled || !sharesWork(policy)) return { used: false, reason: "Workflow AI är inte påslaget för företaget, eller får inte läsa arbetet." };
@@ -80,9 +81,9 @@ export async function runAgentLoop(ctx: Context, input: { missionId: string; run
       history: [{ role: "USER", content: question }], sources: [], memory: { company: LOOP_RULES, user: "" }, alias,
       ...(tools.length ? { tools: { definitions: tools.map((name) => ({ name, description: TOOL_CATALOG[name].description, parameters: strictToolParameters(name) })), maxToolCalls: maxCalls, callTool, citations: new Map() } } : {}),
     });
-  } catch {
+  } catch (error) {
     await compensateFailedAiRun({ organizationId: ctx.organizationId, runId: reserved.run.id, actorId: ctx.user.id, failureCode: "PROVIDER_FAILED" });
-    return { used: false, reason: "AI-leverantören kunde inte slutföra svaret. Reservationen är återförd." };
+    return { used: false, reason: companyKeyErrorReason(error) ?? "AI-leverantören kunde inte slutföra svaret. Reservationen är återförd." };
   }
   try {
     const settled = await settleAiRun({ organizationId: ctx.organizationId, runId: reserved.run.id, actorId: ctx.user.id, providerResponseId: result.providerResponseId, usage: result.usage });
