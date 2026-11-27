@@ -1,0 +1,158 @@
+import { actionAnswer, formatRuleAnswer, GREETING_ANSWER, helpAnswer, nearestRulePlan, OUTSIDE_ANSWER, planAnswer, singleMatch, THANKS_ANSWER, todayAnswer, type RuleCitation, type RulePlan } from "@/lib/ai/assistant-rules";
+import { ToolError } from "@/lib/tools/call-route";
+import { runTool } from "@/lib/tools/registry";
+import type { AliasMap } from "@/lib/ai/alias";
+import { swedishDayKey } from "@/lib/swedish-time";
+
+type Row = Record<string, unknown>;
+type RuleAnswer = { answer: string; citations: RuleCitation[] };
+
+const DETAIL_TOOL = { project: "get_project", customer: "get_customer", task: "get_task" } as const;
+const DETAIL_ID = { project: "projectId", customer: "customerId", task: "taskId" } as const;
+
+/**
+ * The rule-first half of Workflow AI (2026-09-30): runs the same tools as the API and MCP in the person's own
+ * session, so the answer holds exactly what the person may see. No AI model, no credits, nothing leaves Workflow.
+ * Since 2026-10-01 a lookup by name answers with the details of one project, customer or task when the search has
+ * one clear match, and otherwise with the search results.
+ */
+export async function answerWithRules(plan: Exclude<RulePlan, { kind: "ai" }>, options: { proposals?: boolean } = {}): Promise<RuleAnswer> {
+  if (plan.kind === "help") return { answer: helpAnswer(Boolean(options.proposals)), citations: [] };
+  if (plan.kind === "greeting") return { answer: GREETING_ANSWER, citations: [] };
+  if (plan.kind === "thanks") return { answer: THANKS_ANSWER, citations: [] };
+  if (plan.kind === "outside") return { answer: OUTSIDE_ANSWER, citations: [] };
+  if (plan.kind === "today") return { answer: todayAnswer(), citations: [] };
+  if (plan.kind === "action") return actionAnswer(plan.what);
+  try {
+    if (plan.kind === "lookup") return await lookup(plan.query, plan.prefer, plan.heading);
+    const result = await runTool(plan.tool, plan.input);
+    return formatRuleAnswer(plan.tool, plan.heading, result as Row);
+  } catch (error) {
+    if (error instanceof ToolError) return { answer: error.status === 403 ? "Du har inte behörighet att se det här i Workflow." : error.message, citations: [] };
+    throw error;
+  }
+}
+
+/** One thing by name: the shared search, then the details of the one clear match, otherwise the search results. */
+export async function lookup(query: string, prefer: "project" | "customer" | "task" | "any", heading: string): Promise<RuleAnswer> {
+  const found = await runTool("search", { query: query.slice(0, 100) }) as Row;
+  const match = singleMatch(query, found, prefer);
+  if (match) {
+    try {
+      const detail = await runTool(DETAIL_TOOL[match.kind], { [DETAIL_ID[match.kind]]: match.id }) as Row;
+      return formatRuleAnswer(DETAIL_TOOL[match.kind], heading, detail);
+    } catch (error) {
+      if (!(error instanceof ToolError)) throw error;
+    }
+  }
+  // A customer or project asked for by name but not found by the broad search: the list tools match more loosely.
+  if (prefer === "customer") return formatRuleAnswer("list_customers", heading, await runTool("list_customers", { query, limit: 10 }) as Row);
+  if (prefer === "project") return formatRuleAnswer("list_projects", heading, await runTool("list_projects", { state: "ongoing", query }) as Row);
+  return formatRuleAnswer("search", heading, found);
+}
+
+export { planAnswer };
+
+/**
+ * Hur gör jag (2026-11-21): the help search's own answer and whether the rules judge it sure enough to give without the AI model.
+ * When it is not, the model answers with search_help among its tools, and without the model this answer is still the best one.
+ */
+export async function helpSearchAnswer(plan: Extract<RulePlan, { kind: "tool" }>): Promise<{ confident: boolean; direct: RuleAnswer }> {
+  try {
+    const result = await runTool("search_help", plan.input) as Row;
+    return { confident: Boolean(result.confident), direct: formatRuleAnswer("search_help", plan.heading, result) };
+  } catch (error) {
+    if (error instanceof ToolError) return { confident: false, direct: { answer: error.message, citations: [] } };
+    throw error;
+  }
+}
+
+/** Sources for an AI answer: the same search tool, minimised to title, a short description and the link. */
+export async function searchSources(query: string | null) {
+  if (!query || query.length < 2) return [];
+  try {
+    const { citations } = formatRuleAnswer("search", "Sök", await runTool("search", { query: query.slice(0, 100) }) as Row);
+    return citations.slice(0, 6);
+  } catch (error) {
+    if (error instanceof ToolError) return [];
+    throw error;
+  }
+}
+
+/**
+ * The best the rules can do with an open question when the AI model is off: the one clear match's details, otherwise
+ * what the search found on the question's words.
+ */
+export async function answerWithoutAi(searchQuery: string | null, reason: string, question = ""): Promise<RuleAnswer> {
+  const intro = `Den här frågan behöver AI för att tolkas. ${reason}`;
+  // What the question is about, answered directly (projects, delays, time, tasks …), before a search on its words.
+  const nearest = question ? nearestRulePlan(question) : null;
+  if (nearest) {
+    const direct = await answerWithRules(nearest);
+    return { answer: [intro, direct.answer].join("\n"), citations: direct.citations };
+  }
+  if (!searchQuery) return { answer: `${intro} Pröva en kortare fråga, t.ex. ”mina uppgifter”, ”vad är förfallet” eller ”status på <projekt>”. Skriv ”hjälp” för fler.`, citations: [] };
+  try {
+    const found = await lookup(searchQuery, "any", "Det här hittade jag på orden i frågan");
+    if (found.citations.length) return { answer: `${intro}\n${found.answer}`, citations: found.citations };
+  } catch (error) {
+    if (!(error instanceof ToolError)) throw error;
+  }
+  return { answer: `${intro} Pröva en kortare fråga, t.ex. ”mina uppgifter”, ”vad är förfallet” eller ”sök …”. Skriv ”hjälp” för fler.`, citations: [] };
+}
+
+const WORK_KIND: Record<string, string> = { WORK_ORDER: "arbetsorder", RISK_ASSESSMENT: "riskbedömning", FORM: "protokoll" };
+
+/**
+ * The person's own work for the AI model (2026-10-01: "Jag saknar åtkomst till uppgifter om dina
+ * arbetsordrar"): counts per state and kind and the ten most recent open items, read with the same tool as Mina
+ * uppgifter in the person's own session. Projects are registered as aliases first, so the model sees placeholders. Only sent when the company shares tasks with Workflow AI.
+ */
+export async function workContext(alias: AliasMap) {
+  try {
+    // The five reads run side by side (2026-10-05: they ran one after another before every such answer).
+    const kinds = [["arbetsordrar", "arbetsorder"], ["kontroller", "kontroll"], ["riskbedömningar", "riskbedömning"]] as const;
+    const [open, projects, ...byKind] = await Promise.all([
+      runTool("list_my_work", { filter: "open" }) as Promise<Row>,
+      runTool("list_projects", { state: "ongoing" }) as Promise<Row>,
+      ...kinds.map(([, query]) => runTool("list_my_work", { filter: "open", query }) as Promise<Row>),
+    ]);
+    const countsByKind: Record<string, unknown> = Object.fromEntries(kinds.map(([label], index) => [label, byKind[index].counts]));
+    const mostRecent = ((open.items as Row[]) ?? []).slice(0, 10).map((row) => {
+      const kind = String(row.kind ?? "");
+      if (row.projectName) alias.add("Projekt", String(row.projectName));
+      return { kind: WORK_KIND[kind] ?? "uppgift", title: String(row.title), status: String(row.status), project: row.projectName || null, progress: row.progress ?? null };
+    });
+    // The ongoing projects too (2026-10-01: "sammanfatta läget i mina projekt" had no projects to go on): name as an
+    // alias, frame and status – never the responsible person's name.
+    const today = swedishDayKey(new Date());
+    const ongoingProjects = ((projects.projects as Row[]) ?? []).slice(0, 10).map((row) => {
+      alias.add("Projekt", String(row.name));
+      const status = row.status as Row | string | null | undefined;
+      return { name: String(row.name), startDate: row.startDate || null, dueDate: row.dueDate || null, pastDueDate: Boolean(row.dueDate && String(row.dueDate) < today), status: status && typeof status === "object" ? status.label ?? null : status ?? null };
+    });
+    return { today, counts: open.counts, countsByKind, mostRecentOpen: mostRecent, ongoingProjects, ongoingProjectCount: Number(projects.total ?? ongoingProjects.length) };
+  } catch (error) {
+    if (error instanceof ToolError) return undefined;
+    throw error;
+  }
+}
+
+/** The step the person stands on, from the progress line: what the page sent, checked and short. */
+export type PageContext = { kind: string; label?: string; step: string | null; hint: string | null; steps: { label: string; state: string }[]; tip: string | null; missing?: string[]; source?: "tip" | "page" | "summary"; draft?: string; taskId?: string };
+
+/** Help with the current step without the AI model: the step, what to do and the tip, straight from Workflow's rules. */
+export function answerForPage(page: PageContext, reason: string): RuleAnswer {
+  const marks: Record<string, string> = { done: "klart", current: "nu", upcoming: "kommer", skipped: "hoppades över" };
+  const current = page.steps.findIndex((step) => step.state === "current");
+  const lines = [
+    page.step ? `${page.label ? `${page.label}: d` : "D"}u står i steg ${current + 1} av ${page.steps.length}, ${page.step}.` : `${page.label ? `${page.label}: a` : "A"}lla steg är klara.`,
+    ...(page.hint ? [page.hint] : []),
+    ...(page.missing?.length ? ["Kvar innan den kan slutföras:", ...page.missing.slice(0, 8).map((item) => `• ${item}`), ...(page.missing.length > 8 ? [`… och ${page.missing.length - 8} till.`] : [])] : []),
+    ...(page.tip ? [`Tips: ${page.tip}`] : []),
+    `Stegen: ${page.steps.map((step) => `${step.label} (${marks[step.state] ?? step.state})`).join(" → ")}.`,
+    "Klicka på ett steg på linjen eller på Färdigställ, så leder Workflow dig till det som saknas.",
+    ...(reason ? [reason] : []),
+  ];
+  return { answer: lines.join("\n"), citations: reason ? [{ resourceType: "VIEW", resourceId: "ai-settings", title: "Workflow AI-behörigheter", description: "", href: "/?view=company_features&section=ai", citationLabel: "Workflow AI-behörigheter" }] : [] };
+}

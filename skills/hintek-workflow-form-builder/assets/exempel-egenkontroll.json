@@ -1,0 +1,96 @@
+{
+  "format": "hintek-workflow-forms",
+  "formatVersion": 1,
+  "exportedAt": "2026-11-24T08:00:00.000Z",
+  "exportedBy": { "name": "Extern AI", "hintek": false },
+  "forms": [
+    {
+      "sourceTemplateId": "ai-egenkontroll-arbetsplats-q4m8t1",
+      "sourceVersion": null,
+      "publisherName": "Extern AI",
+      "meta": {
+        "name": "Egenkontroll arbetsplats",
+        "displayName": "Egenkontroll arbetsplats",
+        "description": "Rundvandring på arbetsplatsen med brister, bilder och signering.",
+        "color": "blue",
+        "icon": "shield-check",
+        "category": "SAFETY",
+        "allowStandalone": true,
+        "allowInProject": true
+      },
+      "document": {
+        "schema": 2,
+        "report": { "title": "Egenkontroll", "code": "EK-1", "taskFacts": true },
+        "task": { "layout": "panel", "titleKey": "", "requiredMarks": true, "newTitle": "Ny egenkontroll", "tagline": "Gå igenom arbetsplatsen och notera det som behöver åtgärdas." },
+        "limits": [],
+        "blocks": [
+          {
+            "id": "avsnitt-uppgifter",
+            "type": "section",
+            "title": "Uppgifter",
+            "description": "",
+            "blocks": [
+              { "id": "falt-kund", "type": "field", "key": "kund", "label": "Kund", "input": "text", "prefill": "customer", "width": "half" },
+              { "id": "falt-plats", "type": "field", "key": "plats", "label": "Plats", "input": "text", "prefill": "facility", "width": "half" },
+              { "id": "falt-datum", "type": "field", "key": "datum", "label": "Datum och tid", "input": "datetime", "required": true, "width": "half" },
+              { "id": "falt-ansvarig", "type": "field", "key": "ansvarig", "label": "Ansvarig", "input": "text", "prefill": "assignee", "width": "half" },
+              { "id": "falt-arbetstyp", "type": "field", "key": "arbetstyp", "label": "Typ av arbete", "input": "choice", "options": ["Nybyggnad", "Ombyggnad", "Service"], "required": true, "width": "half" },
+              { "id": "falt-risker", "type": "field", "key": "risker", "label": "Särskilda risker", "input": "choice", "multiple": true, "options": ["Arbete på höjd", "Heta arbeten", "Trånga utrymmen", "Inga särskilda"], "width": "half" }
+            ]
+          },
+          {
+            "id": "avsnitt-rundvandring",
+            "type": "section",
+            "title": "Rundvandring",
+            "description": "Bedöm varje punkt. Det som inte är OK läggs som en brist.",
+            "blocks": [
+              { "id": "text-instruktion", "type": "text", "text": "Ta en bild när något inte är OK och registrera bristen i tabellen nedan." },
+              { "id": "lista-ordning", "type": "checklist", "key": "ordning", "label": "Ordning och skydd", "mode": "assessment", "required": true, "photos": true, "deviationTable": "brister",
+                "items": [
+                  { "id": "ordning-1", "text": "Gångvägar är fria" },
+                  { "id": "ordning-2", "text": "Skyddsutrustning finns och används" },
+                  { "id": "ordning-3", "text": "Verktyg och maskiner är hela" }
+                ] },
+              { "id": "falt-utrymning", "type": "field", "key": "utrymning", "label": "Utrymningsvägar är fria", "input": "yesno", "required": true, "deviationOn": "NO", "allowNotApplicable": false, "remarks": true },
+              { "id": "falt-fler_lag", "type": "field", "key": "fler_lag", "label": "Arbetar fler lag på platsen?", "input": "yesno" },
+              { "id": "falt-lag", "type": "field", "key": "lag", "label": "Vilka lag?", "input": "textarea", "showIf": { "key": "fler_lag", "op": "eq", "value": "YES" } },
+              { "id": "falt-helhet", "type": "field", "key": "helhet", "label": "Helhetsintryck", "input": "choice", "options": ["Bra", "Godtagbart", "Behöver åtgärdas"], "deviationOptions": ["Behöver åtgärdas"] },
+              { "id": "lista-avslut", "type": "checklist", "key": "avslut", "label": "Innan du lämnar", "mode": "check", "required": false,
+                "items": [ { "id": "avslut-1", "text": "Avspärrningar är kvar" }, { "id": "avslut-2", "text": "Arbetsledaren är informerad" } ] }
+            ]
+          },
+          {
+            "id": "avsnitt-brister",
+            "type": "section",
+            "title": "Brister",
+            "description": "",
+            "blocks": [
+              { "id": "tabell-brister", "type": "table", "key": "brister", "label": "Brister", "rowMode": "free", "layout": "cards", "itemLabel": "Brist", "itemLabelPlural": "Brister", "startEmpty": true,
+                "emptyTitle": "Inga brister registrerade", "emptyAction": "Lägg till brist", "cardTitle": "{beskrivning}", "workOrders": true,
+                "columns": [
+                  { "id": "kol-beskrivning", "key": "beskrivning", "label": "Beskrivning", "input": "text", "required": true },
+                  { "id": "kol-atgard", "key": "atgard", "label": "Åtgärd", "input": "choice", "options": ["Åtgärdad direkt", "Åtgärdas senare", "Åtgärdas omgående"], "deviationOptions": ["Åtgärdas omgående"] },
+                  { "id": "kol-klart", "key": "klart", "label": "Klart senast", "input": "date" },
+                  { "id": "kol-bilder", "key": "bilder", "label": "Bilder", "input": "images" },
+                  { "id": "kol-kvitterad", "key": "kvitterad", "label": "Kvitterad", "input": "check" }
+                ] },
+              { "id": "bilder-oversikt", "type": "images", "key": "oversikt", "label": "Översiktsbilder", "accept": "images", "minCount": 0, "pdfInline": true }
+            ]
+          },
+          {
+            "id": "avsnitt-signering",
+            "type": "section",
+            "title": "Signering",
+            "description": "",
+            "newPage": true,
+            "blocks": [
+              { "id": "block-sammanfattning", "type": "summary", "label": "Sammanfattning / avvikelser" },
+              { "id": "signatur-utford", "type": "signature", "key": "utford_av", "label": "Utförd av", "required": true, "role": "performer", "statement": "Jag har gått igenom arbetsplatsen.", "width": "half" },
+              { "id": "signatur-granskad", "type": "signature", "key": "granskad_av", "label": "Granskad av", "required": false, "role": "reviewer", "distinctFrom": "utford_av", "width": "half" }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

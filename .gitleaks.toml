@@ -1,0 +1,18 @@
+# Gitleaks settings for the release gate's secret scan (review P5, 2026-11-24; scripts/qa/lib/supply-chain.cjs).
+# Gitleaks' own rules apply in full. The allowed paths below hold only synthetic test values (made-up keys and passwords
+# that look like secrets); the review checked every finding in them on 2026-11-24 (31 in the files, 36 in the history,
+# all synthetic). A real secret is never allowed by adding its file here: remove it, rotate it, and record it.
+title = "HINTEK Workflow"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Synthetic test values"
+paths = [
+  '''(^|/)tests/''',
+  '''(^|/)ee/tests/''',
+  # A drill with a made-up password, and the alphabet of the page keys (not a key).
+  '''(^|/)ee/scripts/secrets/key-vault-import-drill\.ts$''',
+  '''(^|/)lib/operator/settings-server\.ts$''',
+]

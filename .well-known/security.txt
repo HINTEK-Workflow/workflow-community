@@ -1,0 +1,7 @@
+# Security contact for the Workflow Community Edition source code (RFC 9116).
+# An installation of Workflow is run by its own operator: report a problem with a running installation to them.
+Contact: https://github.com/HINTEK-Workflow/workflow-community/security/advisories/new
+Contact: https://hintekwork.com/legal/support
+Expires: 2027-11-20T00:00:00.000Z
+Preferred-Languages: sv, en
+Policy: https://github.com/HINTEK-Workflow/workflow-community/blob/main/SECURITY.md

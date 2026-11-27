@@ -1,0 +1,132 @@
+import { NextResponse } from "next/server";
+import { publicInstance } from "@/lib/instance";
+import { ApiError, context, failure } from "@/lib/kfid/server";
+import { aiProviderStatus } from "@/lib/ai/provider-status";
+import { AI_MODEL_ROUTES } from "@/lib/ai/model-catalog";
+import { getWorkflowAgent } from "@/lib/ai/agent-registry";
+import { aiMay, getAiSharingPolicy } from "@/lib/ai/sharing-policy";
+import { readCreditWalletInvariant } from "@/lib/credits/wallet-invariant";
+import { aiCreditsChargedFor } from "@/lib/ai/credit-settings-server";
+import { companyWeeklyQuota } from "@/lib/ai/weekly-quota-server";
+import { aiAvailable } from "@/lib/ai/availability";
+import { prisma } from "@/lib/db";
+import { chatMediaStatus } from "@/lib/ai/chat-media-server";
+import { mayBuildForms } from "@/lib/kfid/form-server";
+
+export const dynamic = "force-dynamic";
+
+const routeLabels = {
+  SIMPLE_CHAT: "Enkla frågor",
+  WORKFLOW_SEARCH: "Sökning i Workflow",
+  DOCUMENT_ANALYSIS: "Dokumentanalys",
+  WORKFLOW_PROPOSAL: "Förslag till ändringar",
+  KFID_CONTROL_REVIEW: "Teknisk granskning av kontroll före idrifttagning",
+  WRITING: "Texter och förslag",
+} as const;
+
+type Provider = Awaited<ReturnType<typeof aiProviderStatus>>;
+function providerReason(provider: Provider, assistantOn: boolean, superadmin: boolean) {
+  if (provider.enabled && provider.configured && assistantOn) return undefined;
+  // The installation's own name (Cloud: Workflow), never Workflow's in another installation (2026-11-10).
+  if (!superadmin) return `${publicInstance().operator} slår på AI-modellen. Tills dess svarar ${publicInstance().operator} AI bara direkt ur Workflow.`;
+  if (!assistantOn) return "Assistenten är inte påslagen i agentregistret.";
+  return `${provider.problem ? provider.problem : "AI är avstängt i den här installationen."} Ställs in under Installation → Tjänster och nycklar.`;
+}
+
+/** The chat's media buttons: off with the same reason while the AI model is off for the company; never breaks the status. */
+async function chatMediaFor(organizationId: string, available: boolean) {
+  const offline = { ready: false, reason: "Workflow AI är av för företaget." };
+  if (!available) return { images: offline, voice: offline };
+  try { return await chatMediaStatus(organizationId); } catch {
+    const later = { ready: false, reason: "Går inte att använda just nu." };
+    return { images: later, voice: later };
+  }
+}
+
+export async function GET(request: Request) {
+  try {
+    const ctx = await context({ skipLegal: true });
+    const provider = await aiProviderStatus();
+    const assistant = getWorkflowAgent("workflow-assistant");
+    const policy = await getAiSharingPolicy(ctx.organizationId);
+    const stored = await readCreditWalletInvariant(prisma, ctx.organizationId);
+    // No wallet yet (2026-10-08: reads no longer create one) reads as the empty wallet it used to be: zero and consistent.
+    const ledger = stored.walletId ? stored : { ...stored, walletBalanceMatchesLots: true, purchasedBalanceMatchesLots: true, walletBalanceMatchesLedger: true, healthy: true };
+    const conditions = {
+      provider: {
+        ready: provider.enabled && provider.configured && assistant?.lifecycle === "ENABLED",
+        configured: provider.configured,
+        evaluationApproved: provider.providerEvalApproved,
+        // Why the model is not on: the exact server setting for Workflow's superadmin, a plain sentence for everyone else
+        // (2026-10-02: "Inte påslagen än" said nothing about what was missing).
+        reason: providerReason(provider, assistant?.lifecycle === "ENABLED", ctx.user.role === "SUPERADMIN"),
+      },
+      sharingPolicy: {
+        ready: policy.enabled && policy.shareChatContent,
+      },
+      creditLedger: {
+        healthy: ledger.healthy,
+        walletBalanceMatchesLots: ledger.walletBalanceMatchesLots,
+        purchasedBalanceMatchesLots: ledger.purchasedBalanceMatchesLots,
+        walletBalanceMatchesLedger: ledger.walletBalanceMatchesLedger,
+      },
+      availableCredits: {
+        available: ledger.balance > 0,
+        balance: ledger.balance,
+      },
+    } as const;
+    // Credits decide only where they exist (lib/ai/availability.ts): with its own key an installation needs none.
+    // Ordinary Workflow AI is included in the subscription (2026-11-21): no credits are needed for it, only for agentläge.
+    const available = aiAvailable(conditions, aiCreditsChargedFor("included"));
+    // Veckokvot (2026-11-21): the share only, never the provider's cost; the chat shows one line from it, never per answer.
+    const quota = await companyWeeklyQuota(ctx.organizationId);
+    const weeklyQuota = { quota: quota.view.quotaOre > 0, usedPercent: quota.view.usedPercent, warn: quota.view.warn, full: quota.view.full, opensAt: quota.view.opensAt, paused: quota.decision.mode === "paused", onCredits: quota.decision.mode === "credits" };
+    // Bilder och röst (2026-11-21): whether the chat's image and microphone buttons work, with a plain reason when they do not.
+    const media = await chatMediaFor(ctx.organizationId, available);
+    const details = new URL(request.url).searchParams.get("details") === "admin";
+    if (details && ctx.user.role !== "SUPERADMIN")
+      throw new ApiError(403, "Bara superadmin får se teknisk AI-status.");
+    return NextResponse.json({
+      lifecycle: available ? "READY" : "EXECUTION_LOCKED",
+      available,
+      // Rule-first (2026-09-30): direct answers from Workflow's own tools work in every Cloud company, without
+      // AI and without credits; "available" is whether the AI model can also be used.
+      chatAvailable: ctx.organization.storageMode === "HINTEK_CLOUD",
+      role: ctx.user.role === "SUPERADMIN"
+        ? "SUPERADMIN"
+        : ctx.admin ? "ADMIN" : "MEMBER",
+      conditions,
+      weeklyQuota,
+      media,
+      // Formulär med Workflow AI (2026-11-25): offered beside the external AI only when the chat can really do it – the AI model, the
+      // company's AI and its proposals on, and a person who may edit forms (2026-11-26: the forms route's own rule,
+      // mayBuildForms, not one of its own). The server checks it again in the chat and in Skapa utkast.
+      formAi: available && mayBuildForms(ctx) && policy.enabled && policy.shareChatContent && aiMay(policy, "chatProposals"),
+      sharingPolicy: policy,
+      historyLocation: "WORKFLOW",
+      ...(details ? {
+        provider: {
+          adapter: provider.provider === "AZURE_OPENAI" ? "AZURE_OPENAI_RESPONSES" : "OPENAI_RESPONSES",
+          architecture: "PROVIDER_NEUTRAL",
+          enabled: provider.enabled,
+          requested: provider.requested,
+          evalEnabled: provider.evalEnabled,
+          configured: provider.configured,
+          dpaApproved: provider.dpaApproved,
+          processingMode: provider.processingMode,
+          euDataControlsApproved: provider.euDataControlsApproved,
+          providerEvalApproved: provider.providerEvalApproved,
+          processingRegion: provider.processingRegion,
+          providerStateStored: provider.providerStateStored,
+        },
+        routes: Object.values(AI_MODEL_ROUTES).map((route) => ({
+          taskKind: route.taskKind,
+          label: routeLabels[route.taskKind],
+          model: route.model,
+        })),
+      } : {}),
+    });
+  } catch (error) {
+    return failure(error);
+  }
+}

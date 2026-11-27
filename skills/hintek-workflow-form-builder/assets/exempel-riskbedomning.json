@@ -1,0 +1,93 @@
+{
+  "format": "hintek-workflow-forms",
+  "formatVersion": 1,
+  "exportedAt": "2026-11-24T08:00:00.000Z",
+  "exportedBy": { "name": "Extern AI", "hintek": false },
+  "forms": [
+    {
+      "sourceTemplateId": "ai-riskbedomning-arbetsmoment-k9w3d5",
+      "sourceVersion": null,
+      "publisherName": "Extern AI",
+      "meta": {
+        "name": "Riskbedömning arbetsmoment",
+        "displayName": "",
+        "description": "Risker före och efter skyddsåtgärd, med riskmatris och åtgärder.",
+        "color": "amber",
+        "icon": "shield-alert",
+        "category": "SAFETY",
+        "allowStandalone": true,
+        "allowInProject": true
+      },
+      "document": {
+        "schema": 2,
+        "report": { "title": "Riskbedömning", "code": "RB-1", "taskFacts": true },
+        "task": { "layout": "inline", "titleKey": "arbetsmoment", "requiredMarks": true, "newTitle": "Ny riskbedömning", "tagline": "Beskriv arbetsmomentet och bedöm riskerna." },
+        "limits": [],
+        "blocks": [
+          {
+            "id": "avsnitt-arbetsmoment",
+            "type": "section",
+            "title": "Arbetsmoment",
+            "description": "",
+            "blocks": [
+              { "id": "falt-arbetsmoment", "type": "field", "key": "arbetsmoment", "label": "Arbetsmoment", "input": "text", "required": true, "maxLength": 120, "placeholder": "Till exempel byte av belysning i trapphus", "width": "two_thirds" },
+              { "id": "falt-start", "type": "field", "key": "start", "label": "Planerad start", "input": "date", "width": "third" },
+              { "id": "falt-projekt", "type": "field", "key": "projekt", "label": "Projekt", "input": "text", "prefill": "project", "highlight": true, "width": "half" },
+              { "id": "falt-deltagare", "type": "field", "key": "deltagare", "label": "Antal deltagare", "input": "number", "decimals": 0, "width": "quarter" },
+              { "id": "falt-beskrivning", "type": "field", "key": "beskrivning", "label": "Beskrivning", "input": "textarea", "help": "Vad ska göras, var och med vilken utrustning?" }
+            ]
+          },
+          {
+            "id": "avsnitt-risker",
+            "type": "section",
+            "title": "Risker",
+            "description": "",
+            "blocks": [
+              { "id": "tabell-risker", "type": "table", "key": "risker", "label": "Risker", "rowMode": "free", "layout": "cards", "itemLabel": "Risk", "itemLabelPlural": "Risker", "startEmpty": true,
+                "emptyTitle": "Inga risker identifierade ännu", "emptyAction": "Lägg till risk", "cardTitle": "{risk}", "workOrders": true, "copyRows": true,
+                "columns": [
+                  { "id": "kol-risk", "key": "risk", "label": "Risk", "input": "text", "required": true, "cardWidth": "full" },
+                  { "id": "kol-sannolikhet", "key": "sannolikhet", "label": "Sannolikhet", "input": "scale", "options": ["Mycket låg", "Låg", "Medel", "Hög", "Mycket hög"], "required": true, "group": "Före skyddsåtgärd", "cardWidth": "half" },
+                  { "id": "kol-konsekvens", "key": "konsekvens", "label": "Konsekvens", "input": "scale", "options": ["Mycket liten", "Liten", "Måttlig", "Stor", "Mycket stor"], "required": true, "group": "Före skyddsåtgärd", "cardWidth": "half" },
+                  { "id": "kol-riskvarde", "key": "riskvarde", "label": "Riskvärde", "input": "formula", "formula": "[sannolikhet] * [konsekvens]", "placement": "header", "cardLabel": "Före",
+                    "bands": [ { "from": 1, "label": "Låg", "tone": "success" }, { "from": 5, "label": "Medel", "tone": "warning" }, { "from": 10, "label": "Hög", "tone": "danger" } ] },
+                  { "id": "kol-atgard", "key": "atgard", "label": "Skyddsåtgärd", "input": "textarea", "cardWidth": "full" },
+                  { "id": "kol-atgard_tips", "key": "atgard_tips", "label": "Riskvärde före", "input": "formula", "formula": "SAMMANFOGA(\"Riskvärde före: \"; [riskvarde])", "placement": "hint", "labelFor": "atgard" },
+                  { "id": "kol-kvar", "key": "kvar", "label": "Kvarstår efter åtgärd", "input": "yesno" },
+                  { "id": "kol-status", "key": "status", "label": "Status", "input": "choice", "options": ["Planerad", "Utförd", "Ej möjlig"], "deviationOptions": ["Ej möjlig"], "notFilledOptions": [] },
+                  { "id": "kol-klar", "key": "klar", "label": "Klar senast", "input": "date" },
+                  { "id": "kol-bild", "key": "bild", "label": "Bild", "input": "images" }
+                ] },
+              { "id": "formel-hogsta", "type": "computed", "key": "hogsta_risk", "label": "Högsta riskvärde", "formula": "MAX(risker.riskvarde)", "width": "half",
+                "bands": [ { "from": 1, "label": "Låg", "tone": "success" }, { "from": 5, "label": "Medel", "tone": "warning" }, { "from": 10, "label": "Hög", "tone": "danger" } ] },
+              { "id": "formel-antal", "type": "computed", "key": "antal_risker", "label": "Antal risker", "formula": "ANTAL(risker.risk)", "width": "half" }
+            ]
+          },
+          {
+            "id": "avsnitt-stod",
+            "type": "section",
+            "title": "Stöd vid bedömning",
+            "description": "",
+            "collapsed": true,
+            "pdfStyle": "chapter",
+            "blocks": [
+              { "id": "matris-risk", "type": "matrix", "label": "Riskmatris 5 × 5", "size": 5, "xLabel": "Sannolikhet", "yLabel": "Konsekvens", "tall": true, "width": "half",
+                "bands": [ { "from": 1, "label": "Låg", "tone": "success" }, { "from": 5, "label": "Medel", "tone": "warning" }, { "from": 10, "label": "Hög", "tone": "danger" } ] },
+              { "id": "kort-nivaer", "type": "note", "title": "Om nivåerna", "text": "Nivåerna i matrisen är ett exempel. Företaget bestämmer sina egna nivåer.", "style": "folded", "width": "half" }
+            ]
+          },
+          {
+            "id": "avsnitt-signering",
+            "type": "section",
+            "title": "Signering",
+            "description": "",
+            "blocks": [
+              { "id": "signatur-bedomd", "type": "signature", "key": "bedomd_av", "label": "Bedömd av", "required": true, "role": "performer", "statement": "Jag har gått igenom riskerna med de som deltar.", "width": "half" },
+              { "id": "signatur-godkand", "type": "signature", "key": "godkand_av", "label": "Godkänd av", "required": false, "role": "approver", "distinctFrom": "bedomd_av", "width": "half" }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

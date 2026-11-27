@@ -1,0 +1,47 @@
+services:
+  app:
+    image: ${APP_IMAGE:-workflow-community:local}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ${CONTAINER_PREFIX:-workflow}-app
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      # Node's file and crypto work shares a pool of 4 threads by default. Large uploads and file reads on slow or network
+      # storage can fill it so other requests wait; 16 threads keep the app answering.
+      UV_THREADPOOL_SIZE: ${UV_THREADPOOL_SIZE:-16}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${APP_PORT:-3000}:3000"
+    volumes:
+      - ${STORAGE_PATH:-./storage}:/app/storage
+      # Your own legal texts (legal/README.md), read directly so a change needs no rebuild.
+      - ./legal:/app/legal:ro
+    restart: unless-stopped
+
+  postgres:
+    # Locked to a digest (the multi-platform index), so every installation of this version runs the same database image.
+    # A new version of Workflow brings a new digest when PostgreSQL 16 gets a fix; your data stays in the volume below.
+    image: postgres:16-alpine@sha256:f2f98726820d0342055351c6e9d36e705f5bfffb3dd53ff556325114b08afb6d
+    container_name: ${CONTAINER_PREFIX:-workflow}-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - workflow_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  workflow_postgres_data:

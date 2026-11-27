@@ -1,0 +1,61 @@
+{
+  "format": "hintek-workflow-forms",
+  "formatVersion": 1,
+  "exportedAt": "2026-11-24T08:00:00.000Z",
+  "exportedBy": { "name": "Extern AI", "hintek": false },
+  "forms": [
+    {
+      "sourceTemplateId": "ai-grundmall-x7k2p9",
+      "sourceVersion": null,
+      "publisherName": "Extern AI",
+      "meta": {
+        "name": "Nytt formulär",
+        "displayName": "",
+        "description": "En grundmall att bygga vidare på.",
+        "color": "green",
+        "icon": "clipboard-check",
+        "category": "OTHER",
+        "allowStandalone": true,
+        "allowInProject": true
+      },
+      "document": {
+        "schema": 2,
+        "report": { "title": "Protokoll", "code": "", "taskFacts": true },
+        "limits": [],
+        "blocks": [
+          {
+            "id": "avsnitt-grund",
+            "type": "section",
+            "title": "Grunduppgifter",
+            "description": "",
+            "blocks": [
+              { "id": "falt-objekt", "type": "field", "key": "objekt", "label": "Objekt", "input": "text", "required": true, "placeholder": "Vad som kontrolleras", "width": "half" },
+              { "id": "falt-datum", "type": "field", "key": "datum", "label": "Datum", "input": "date", "required": true, "prefill": "today", "width": "half" }
+            ]
+          },
+          {
+            "id": "avsnitt-kontroll",
+            "type": "section",
+            "title": "Kontroll",
+            "description": "",
+            "blocks": [
+              { "id": "lista-punkter", "type": "checklist", "key": "kontrollpunkter", "label": "Kontrollpunkter", "mode": "assessment", "required": true,
+                "items": [ { "id": "punkt-1", "text": "Första kontrollpunkten" }, { "id": "punkt-2", "text": "Andra kontrollpunkten" } ] },
+              { "id": "falt-anmarkning", "type": "field", "key": "anmarkning", "label": "Anmärkningar", "input": "textarea" }
+            ]
+          },
+          {
+            "id": "avsnitt-signering",
+            "type": "section",
+            "title": "Signering",
+            "description": "",
+            "blocks": [
+              { "id": "block-sammanfattning", "type": "summary", "label": "Sammanfattning / avvikelser" },
+              { "id": "signatur-utford", "type": "signature", "key": "utford_av", "label": "Utförd av", "required": true, "role": "performer", "width": "half" }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

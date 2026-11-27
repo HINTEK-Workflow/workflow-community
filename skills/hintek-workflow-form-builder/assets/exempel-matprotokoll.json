@@ -1,0 +1,112 @@
+{
+  "format": "hintek-workflow-forms",
+  "formatVersion": 1,
+  "exportedAt": "2026-11-24T08:00:00.000Z",
+  "exportedBy": { "name": "Extern AI", "hintek": false },
+  "forms": [
+    {
+      "sourceTemplateId": "ai-matprotokoll-temperatur-r2v6n3",
+      "sourceVersion": null,
+      "publisherName": "Extern AI",
+      "meta": {
+        "name": "Mätprotokoll temperatur",
+        "displayName": "",
+        "description": "Temperatur i fasta mätpunkter, med gränser från företagets värden och trend över tid.",
+        "color": "cyan",
+        "icon": "thermometer",
+        "category": "ROUNDS",
+        "allowStandalone": true,
+        "allowInProject": true
+      },
+      "document": {
+        "schema": 2,
+        "report": { "title": "Mätprotokoll", "code": "MP-T1", "taskFacts": true },
+        "moments": { "label": "Mätmoment", "requireOne": false, "placement": "top" },
+        "task": { "layout": "panel", "titleKey": "", "requiredMarks": true, "newTitle": "Ny mätning", "tagline": "" },
+        "limits": [
+          { "key": "temperatur_max", "label": "Högsta temperatur", "unit": "°C", "low": null, "high": null, "warnLow": null, "warnHigh": null, "source": "Anges av teknikern eller i företagets värden", "help": "" },
+          { "key": "omgivning", "label": "Omgivningstemperatur", "unit": "°C", "low": null, "high": null, "warnLow": null, "warnHigh": null, "source": "Anges av teknikern eller i företagets värden", "help": "" }
+        ],
+        "limitObjectKey": "",
+        "blocks": [
+          {
+            "id": "avsnitt-instrument",
+            "type": "section",
+            "title": "Instrument och förhållanden",
+            "description": "",
+            "blocks": [
+              { "id": "falt-instrument", "type": "field", "key": "instrument", "label": "Instrument", "input": "text", "prefill": "instrument", "width": "third" },
+              { "id": "falt-serienummer", "type": "field", "key": "serienummer", "label": "Serienummer", "input": "text", "prefill": "instrumentSerial", "width": "third" },
+              { "id": "falt-kalibrerad", "type": "field", "key": "kalibrerad", "label": "Kalibrerat", "input": "date", "prefill": "instrumentCalibration", "width": "third" },
+              { "id": "falt-inomhus", "type": "field", "key": "inomhus", "label": "Mätningen görs inomhus", "input": "yesno", "required": true, "defaultValue": "YES", "width": "half" },
+              { "id": "falt-autobedomning", "type": "field", "key": "autobedomning", "label": "Autobedömning", "input": "yesno", "momentSwitch": true, "defaultValue": "YES", "help": "Ja: varje mätpunkt bedöms mot gränsen. Nej: du bedömer själv.", "width": "half" },
+              { "id": "kort-granser", "type": "note", "title": "Gränser", "text": "Gränserna fylls i från företagets värden eller av teknikern. Formuläret innehåller inga egna gränsvärden.", "style": "notice" }
+            ]
+          },
+          {
+            "id": "avsnitt-omgivning",
+            "type": "section",
+            "title": "Utomhus",
+            "description": "Visas bara när mätningen görs utomhus.",
+            "showIf": { "key": "inomhus", "op": "eq", "value": "NO" },
+            "blocks": [
+              { "id": "falt-omgivning", "type": "field", "key": "omgivningstemp", "label": "Omgivningstemperatur", "input": "number", "unit": "°C", "decimals": 1, "limitKey": "omgivning", "trend": true, "width": "half" },
+              { "id": "falt-vader", "type": "field", "key": "vader", "label": "Väder", "input": "choice", "options": ["Sol", "Moln", "Regn", "Snö"], "width": "half" }
+            ]
+          },
+          {
+            "id": "avsnitt-matning",
+            "type": "section",
+            "title": "Mätning",
+            "description": "",
+            "optional": true,
+            "defaultOn": true,
+            "blocks": [
+              { "id": "rubrik-matpunkter", "type": "heading", "text": "Mätpunkter", "level": 3 },
+              { "id": "tabell-matpunkter", "type": "table", "key": "matpunkter", "label": "Mätpunkter", "rowMode": "fixed", "fixedRows": ["Punkt 1", "Punkt 2", "Punkt 3"], "layout": "rows", "required": true,
+                "columns": [
+                  { "id": "kol-uppmatt", "key": "uppmatt", "label": "Uppmätt", "input": "number", "unit": "°C", "decimals": 1, "required": true, "trend": true },
+                  { "id": "kol-grans", "key": "grans", "label": "Gräns (°C)", "input": "number", "unit": "°C", "limitDefault": "temperatur_max" },
+                  { "id": "kol-godkand", "key": "godkand", "label": "Godkänd", "input": "assessment", "mode": "switch", "switchKey": "autobedomning", "formula": "[uppmatt] <= [grans]" },
+                  { "id": "kol-kommentar", "key": "kommentar", "label": "Kommentar", "input": "text" }
+                ] },
+              { "id": "formel-hogsta", "type": "computed", "key": "hogsta", "label": "Högsta uppmätta", "formula": "MAX(matpunkter.uppmatt)", "unit": "°C", "limitKey": "temperatur_max", "trend": true, "width": "half" },
+              { "id": "formel-antal", "type": "computed", "key": "antal_matta", "label": "Antal mätta punkter", "formula": "ANTAL(matpunkter.uppmatt)", "width": "half" },
+              { "id": "sidbrytning-1", "type": "pagebreak" }
+            ]
+          },
+          {
+            "id": "avsnitt-jamforelse",
+            "type": "section",
+            "title": "Jämförelse före och efter",
+            "description": "",
+            "optional": true,
+            "defaultOn": false,
+            "blocks": [
+              { "id": "falt-annan_metod", "type": "field", "key": "annan_metod", "label": "Mätt med en annan metod än vanligt?", "input": "yesno" },
+              { "id": "falt-metod", "type": "field", "key": "metod", "label": "Vilken metod?", "input": "text", "showIf": { "key": "annan_metod", "op": "eq", "value": "YES" } },
+              { "id": "tabell-jamforelse", "type": "table", "key": "jamforelse", "label": "Före och efter", "rowMode": "free", "layout": "grid", "itemLabel": "Mätning",
+                "columns": [
+                  { "id": "kol-plats", "key": "plats", "label": "Plats", "input": "text", "required": true },
+                  { "id": "kol-fore", "key": "fore", "label": "Före", "input": "number", "unit": "°C", "decimals": 1 },
+                  { "id": "kol-efter", "key": "efter", "label": "Efter", "input": "number", "unit": "°C", "decimals": 1 },
+                  { "id": "kol-skillnad", "key": "skillnad", "label": "Skillnad", "input": "formula", "formula": "[efter] - [fore]", "unit": "°C", "total": "avg" },
+                  { "id": "kol-motivering", "key": "motivering", "label": "Motivering", "input": "textarea", "required": true, "requiredIf": "annan_metod" }
+                ] }
+            ]
+          },
+          {
+            "id": "avsnitt-signering",
+            "type": "section",
+            "title": "Signering",
+            "description": "",
+            "blocks": [
+              { "id": "block-sammanfattning", "type": "summary", "label": "Sammanfattning / avvikelser" },
+              { "id": "signatur-utford", "type": "signature", "key": "utford_av", "label": "Mätt av", "required": true, "role": "performer", "width": "half" }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

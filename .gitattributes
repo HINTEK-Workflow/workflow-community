@@ -1,0 +1,4 @@
+*.sh text eol=lf
+*.yml text eol=lf
+# A migration's bytes are its checksum in every database that ran it (2026-11-02): git never touches its line endings.
+prisma/migrations/** -text

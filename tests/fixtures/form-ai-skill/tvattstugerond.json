@@ -1,0 +1,104 @@
+{
+  "format": "hintek-workflow-forms",
+  "formatVersion": 1,
+  "exportedAt": "2026-11-24T10:15:00.000Z",
+  "exportedBy": { "name": "Extern AI", "hintek": false },
+  "forms": [
+    {
+      "sourceTemplateId": "ai-tvattstugerond-m5c8z2",
+      "sourceVersion": null,
+      "publisherName": "Extern AI",
+      "meta": {
+        "name": "Månadsrond tvättstuga",
+        "displayName": "",
+        "description": "Maskiner, torkskåpets temperatur, golvbrunn och städning i tvättstugan.",
+        "color": "violet",
+        "icon": "wrench",
+        "category": "PROPERTY",
+        "allowStandalone": true,
+        "allowInProject": true
+      },
+      "document": {
+        "schema": 2,
+        "report": { "title": "Månadsrond tvättstuga", "code": "", "taskFacts": true },
+        "limits": [
+          { "key": "torkskap_max", "label": "Högsta temperatur i torkskåp", "unit": "°C", "low": null, "high": null, "warnLow": null, "warnHigh": null, "source": "Anges i företagets värden", "help": "" }
+        ],
+        "blocks": [
+          {
+            "id": "avsnitt-rond",
+            "type": "section",
+            "title": "Rond",
+            "description": "",
+            "blocks": [
+              { "id": "falt-tvattstuga", "type": "field", "key": "tvattstuga", "label": "Tvättstuga", "input": "text", "prefill": "facility", "required": true, "width": "half" },
+              { "id": "falt-manad", "type": "field", "key": "manad", "label": "Månad", "input": "choice", "required": true, "width": "half",
+                "options": ["Januari", "Februari", "Mars", "April", "Maj", "Juni", "Juli", "Augusti", "September", "Oktober", "November", "December"] }
+            ]
+          },
+          {
+            "id": "avsnitt-maskiner",
+            "type": "section",
+            "title": "Maskiner",
+            "description": "",
+            "blocks": [
+              { "id": "lista-maskiner", "type": "checklist", "key": "maskiner", "label": "Maskiner", "mode": "assessment", "required": true, "photos": true, "deviationTable": "fel",
+                "items": [
+                  { "id": "maskin-tvatt", "text": "Tvättmaskiner" },
+                  { "id": "maskin-tork", "text": "Torktumlare" },
+                  { "id": "maskin-torkskap", "text": "Torkskåp" }
+                ] }
+            ]
+          },
+          {
+            "id": "avsnitt-torkskap",
+            "type": "section",
+            "title": "Torkskåp",
+            "description": "",
+            "blocks": [
+              { "id": "falt-temperatur", "type": "field", "key": "temperatur", "label": "Temperatur i torkskåpet", "input": "number", "unit": "°C", "decimals": 0, "limitKey": "torkskap_max", "trend": true, "width": "half" }
+            ]
+          },
+          {
+            "id": "avsnitt-lokalen",
+            "type": "section",
+            "title": "Lokalen",
+            "description": "",
+            "blocks": [
+              { "id": "falt-golvbrunn", "type": "field", "key": "golvbrunn", "label": "Golvbrunnen är rensad", "input": "yesno", "required": true, "deviationOn": "NO", "width": "half" },
+              { "id": "falt-stadning", "type": "field", "key": "stadning", "label": "Städning", "input": "choice", "required": true, "options": ["Bra", "Godkänd", "Dålig"], "deviationOptions": ["Dålig"], "width": "half" },
+              { "id": "falt-bokningstavla", "type": "field", "key": "bokningstavla_hel", "label": "Bokningstavlan fungerar", "input": "yesno", "width": "half" },
+              { "id": "falt-bokningsfel", "type": "field", "key": "bokningsfel", "label": "Vad är fel på bokningstavlan?", "input": "textarea", "showIf": { "key": "bokningstavla_hel", "op": "eq", "value": "NO" } }
+            ]
+          },
+          {
+            "id": "avsnitt-fel",
+            "type": "section",
+            "title": "Fel på maskiner",
+            "description": "",
+            "blocks": [
+              { "id": "tabell-fel", "type": "table", "key": "fel", "label": "Fel på maskiner", "rowMode": "free", "layout": "cards", "itemLabel": "Fel", "itemLabelPlural": "Fel", "startEmpty": true,
+                "emptyTitle": "Inga fel registrerade", "emptyAction": "Lägg till fel", "cardTitle": "{maskin}", "workOrders": true,
+                "columns": [
+                  { "id": "kol-maskin", "key": "maskin", "label": "Maskin", "input": "text", "required": true },
+                  { "id": "kol-felet", "key": "felet", "label": "Vad är fel", "input": "textarea", "required": true },
+                  { "id": "kol-bild", "key": "bild", "label": "Bild", "input": "images" }
+                ] }
+            ]
+          },
+          {
+            "id": "avsnitt-signering",
+            "type": "section",
+            "title": "Signering",
+            "description": "",
+            "blocks": [
+              { "id": "falt-anteckning", "type": "field", "key": "anteckning", "label": "Anteckning", "input": "textarea" },
+              { "id": "block-sammanfattning", "type": "summary", "label": "Sammanfattning / avvikelser" },
+              { "id": "signatur-skotare", "type": "signature", "key": "fastighetsskotare", "label": "Fastighetsskötare", "required": true, "role": "performer", "width": "half" }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

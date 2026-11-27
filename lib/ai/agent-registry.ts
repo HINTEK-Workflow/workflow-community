@@ -1,0 +1,251 @@
+import { z } from "zod";
+import type { WorkflowModuleId } from "@/lib/modules";
+import { ASSISTANT_MAX_TOOL_CALLS, ASSISTANT_READ_TOOLS, strictToolParameters } from "@/lib/ai/assistant-tools";
+import { TOOL_CATALOG } from "@/lib/tools/catalog";
+import { ASSISTANT_WORK_MAX_TOOL_CALLS, CHAT_PROPOSAL_DEFINITIONS, CHAT_PROPOSAL_TOOLS } from "@/lib/ai/chat-proposals";
+import { FORM_AI_DEFINITION } from "@/lib/ai/form-ai";
+
+export const WORKFLOW_AGENT_IDS = [
+  "workflow-assistant",
+  "kfid-control-review",
+  "document-import",
+  "workflow-writer",
+  "daily-digest",
+  "machine-analysis",
+] as const;
+export type WorkflowAgentId = (typeof WORKFLOW_AGENT_IDS)[number];
+
+const toolSchema = z.object({
+  name: z.string().regex(/^[a-z][a-z0-9_]{2,63}$/),
+  description: z.string().min(10).max(500),
+  effect: z.enum(["READ", "PROPOSE", "MUTATE"]),
+  strict: z.literal(true),
+  parameters: z.object({
+    type: z.literal("object"),
+    properties: z.record(z.string(), z.unknown()),
+    required: z.array(z.string()),
+    additionalProperties: z.literal(false),
+  }),
+});
+
+const agentSchema = z.object({
+  id: z.enum(WORKFLOW_AGENT_IDS),
+  moduleId: z.custom<WorkflowModuleId>().nullable(),
+  name: z.string().min(1),
+  purpose: z.string().min(20),
+  lifecycle: z.enum(["DESIGN_ONLY", "ENABLED"]),
+  dataPolicy: z.object({
+    allowed: z.array(z.string()).min(1),
+    prohibited: z.array(z.string()).min(1),
+  }),
+  limits: z.object({
+    maxToolCalls: z.number().int().positive().max(10),
+    // 20 000 since Formulär med Workflow AI (2026-11-25): the chat's form mode writes a whole form in one turn, up to three turns.
+    maxOutputTokens: z.number().int().positive().max(20_000),
+    requiresPositiveCredits: z.boolean(),
+  }),
+  // 40 since 2026-11-21: the help search and the read tools for quotes, invoicing, maintenance and alarms joined the chat's.
+  tools: z.array(toolSchema).max(40),
+});
+
+export type WorkflowAgentDefinition = z.infer<typeof agentSchema>;
+
+const definitions: readonly WorkflowAgentDefinition[] = [
+  agentSchema.parse({
+    id: "workflow-assistant",
+    moduleId: null,
+    name: "Workflow AI",
+    purpose:
+      "Besvara personliga Workflow-frågor, läsa tenantverifierad information med läsverktyg i flera steg och ta fram förslag som personen bekräftar med Använd – utan att själv ändra verksamhetsdata.",
+    lifecycle: "ENABLED",
+    dataPolicy: {
+      allowed: [
+        "användarens personliga Workflow-konversation",
+        "minimerade tenantverifierade sökresultat",
+      ],
+      prohibited: [
+        "andra organisationers data",
+        "autentiseringsuppgifter eller hemligheter",
+        "direkt mutation av verksamhetsdata",
+        "bilageinnehåll innan separat uttryckligt stöd byggts",
+      ],
+    },
+    limits: {
+      // 3 per answer, 5 for a work request when the company allows it (AI-beslut 2, 2026-10-09).
+      maxToolCalls: Math.max(ASSISTANT_MAX_TOOL_CALLS, ASSISTANT_WORK_MAX_TOOL_CALLS),
+      // Every turn of an answer with tools has its own output; the sum is what the run reserves.
+      // Formulär med Workflow AI (2026-11-25): a whole form is one turn's output, up to three turns (lib/ai/form-ai.ts).
+      maxOutputTokens: 20_000,
+      requiresPositiveCredits: true,
+    },
+    // The read tools of the shared tool layer (the same as the API and MCP), run in the person's own session.
+    tools: [...ASSISTANT_READ_TOOLS.map((name) => ({
+      name,
+      description: TOOL_CATALOG[name].description,
+      effect: "READ" as const,
+      strict: true as const,
+      parameters: strictToolParameters(name),
+    })),
+    // Förslag från chatten (AI-beslut 1 och 4): each only saves a proposal; the person applies it with the ordinary tool.
+    ...CHAT_PROPOSAL_TOOLS.map((name) => ({ name, description: CHAT_PROPOSAL_DEFINITIONS[name].description.slice(0, 500), effect: "PROPOSE" as const, strict: true as const, parameters: CHAT_PROPOSAL_DEFINITIONS[name].parameters })),
+    // Formulär med Workflow AI (2026-11-25): only in form mode, and only a proposal; Skapa utkast saves it as a draft.
+    { name: FORM_AI_DEFINITION.name, description: FORM_AI_DEFINITION.description.slice(0, 500), effect: "PROPOSE" as const, strict: true as const, parameters: FORM_AI_DEFINITION.parameters }],
+  }),
+  agentSchema.parse({
+    id: "kfid-control-review",
+    moduleId: "kfid",
+    name: "Granskare",
+    purpose:
+      "Granska ett redan sparat protokoll eller en kontroll och peka på det som bör kontrolleras, utan att ändra något och utan att fatta säkerhetsbeslut.",
+    lifecycle: "ENABLED",
+    dataPolicy: {
+      allowed: [
+        "det aktuella protokollets eller kontrollens tekniska värden",
+        "reglernas eget valideringsresultat",
+        "antal bilagor utan filinnehåll",
+      ],
+      prohibited: [
+        "andra organisationers data",
+        "autentiseringsuppgifter eller hemligheter",
+        "bilageinnehåll innan separat uttryckligt stöd byggts",
+      ],
+    },
+    limits: {
+      maxToolCalls: 2,
+      maxOutputTokens: 2_000,
+      requiresPositiveCredits: true,
+    },
+    // The server reads the protocol in the person's own session and sends the technical values; the reviewer has no
+    // tools and cannot read or change anything itself (fas 3, 2026-10-02).
+    tools: [],
+  }),
+  // The Import page (2026-10-01): the AI only classifies an uploaded file and maps its columns or lines to
+  // Workflow's fields; the person confirms, and the ordinary tools create the data.
+  agentSchema.parse({
+    id: "document-import",
+    moduleId: null,
+    name: "Importanalys",
+    purpose:
+      "Avgöra vad en uppladdad fil innehåller och hur dess kolumner eller rader ska bli kunder, projekt, arbetsordrar, planering eller kontrollpunkter – utan att ändra något.",
+    lifecycle: "ENABLED",
+    dataPolicy: {
+      allowed: [
+        "den uppladdade filens rubriker, ett urval rader eller ett textutdrag",
+        "regelmotorns egen bedömning av filen",
+      ],
+      prohibited: [
+        "andra organisationers data",
+        "autentiseringsuppgifter eller hemligheter",
+        "direkt mutation av verksamhetsdata",
+        "filer som företaget inte tillåtit att dela",
+      ],
+    },
+    limits: {
+      maxToolCalls: 1,
+      maxOutputTokens: 4_000,
+      requiresPositiveCredits: true,
+    },
+    tools: [],
+  }),
+  // Skribenten (fas 2): writes a text or a proposal from material the server prepared. It has no tools at all: it
+  // cannot read anything on its own and cannot change anything. What it writes is checked against a schema and, for a
+  // proposal, against the input schema of the ordinary tool that carries it out once the person has confirmed.
+  agentSchema.parse({
+    id: "workflow-writer",
+    moduleId: null,
+    name: "Skribent",
+    purpose:
+      "Skriva sammanfattningar, utkast och förslag utifrån ett underlag som servern har tagit fram – utan att läsa eller ändra något själv.",
+    lifecycle: "ENABLED",
+    dataPolicy: {
+      allowed: [
+        "det underlag servern skickar för just den uppgiften eller det projektet, med namn som alias",
+      ],
+      prohibited: [
+        "andra organisationers data",
+        "autentiseringsuppgifter eller hemligheter",
+        "direkt mutation av verksamhetsdata",
+        "säkerhetstekniska avgöranden",
+      ],
+    },
+    limits: {
+      maxToolCalls: 1,
+      maxOutputTokens: 1_500,
+      requiresPositiveCredits: true,
+    },
+    tools: [],
+  }),
+  // Dagsammanställningen (fas 4): the rules count the day's events; this agent only writes the short text.
+  agentSchema.parse({
+    id: "daily-digest",
+    moduleId: null,
+    name: "Dagsammanställning",
+    purpose:
+      "Skriva en kort, saklig sammanställning av dagens arbete utifrån siffror och rader som reglerna har räknat fram.",
+    lifecycle: "ENABLED",
+    dataPolicy: {
+      allowed: [
+        "dagens antal och korta rader per projekt och uppgiftstyp, med namn som alias",
+      ],
+      prohibited: [
+        "andra organisationers data",
+        "autentiseringsuppgifter eller hemligheter",
+        "direkt mutation av verksamhetsdata",
+        "personers namn eller prestationer",
+      ],
+    },
+    limits: {
+      maxToolCalls: 1,
+      maxOutputTokens: 800,
+      requiresPositiveCredits: true,
+    },
+    tools: [],
+  }),
+  // Maskinanalys (0.19.0): the rules find the observation; this agent only words a short, careful explanation of it.
+  agentSchema.parse({
+    id: "machine-analysis",
+    moduleId: null,
+    name: "Maskinanalys",
+    purpose:
+      "Förklara i få meningar vad en observation från reglerna kan betyda för en maskin, med de siffror reglerna gett, och föreslå vad en person kan kontrollera.",
+    lifecycle: "ENABLED",
+    dataPolicy: {
+      allowed: [
+        "observationens art, larmkod, antal och tider, maskinens egen korta text, källan som alias",
+      ],
+      prohibited: [
+        "andra organisationers data",
+        "autentiseringsuppgifter eller hemligheter",
+        "direkt mutation av verksamhetsdata",
+        "säkerhetsbeslut: en människa bedömer alltid om en maskin är säker",
+      ],
+    },
+    limits: {
+      maxToolCalls: 1,
+      maxOutputTokens: 800,
+      requiresPositiveCredits: true,
+    },
+    tools: [],
+  }),
+];
+
+export const workflowAgents = definitions;
+
+export function getWorkflowAgent(id: string) {
+  return workflowAgents.find((definition) => definition.id === id) ?? null;
+}
+
+export function executableWorkflowAgents() {
+  return workflowAgents.filter((definition) => definition.lifecycle === "ENABLED");
+}
+
+export function assertAgentToolAllowed(
+  agent: WorkflowAgentDefinition,
+  toolName: string,
+) {
+  const tool = agent.tools.find((candidate) => candidate.name === toolName);
+  if (!tool) throw new Error("AI-verktyget är inte tillåtet för den här agenten.");
+  if (tool.effect === "MUTATE")
+    throw new Error("Muterande AI-verktyg kräver ett separat bekräftelseflöde.");
+  return tool;
+}
