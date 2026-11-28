@@ -20,7 +20,10 @@ WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 # npm never asks the registry for a newer npm (review G-31): nothing in the image contacts anyone by itself.
 ENV NPM_CONFIG_UPDATE_NOTIFIER=false
+# apt-get upgrade (K4.3, 2026-11-28): Debian's security fixes are taken in at every build even before the locked node image
+# is rebuilt upstream, so the mandatory Trivy image scan does not stop on fixed system packages (libpam, libzstd).
 RUN apt-get update \
+  && apt-get upgrade -y --no-install-recommends \
   && apt-get install -y --no-install-recommends openssl ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 

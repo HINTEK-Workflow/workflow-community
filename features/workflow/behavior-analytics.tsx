@@ -12,7 +12,7 @@ import { useConfirm } from "@/features/kfid/confirm";
 import { Panel } from "@/features/kfid/ui";
 import { GrowBar, Sparkline, Trend } from "@/features/overview/viz";
 import { StatisticsSkeleton } from "@/components/skeleton";
-import { addReportDays, changePercent, periodTotals, type PeriodTotals, type RankedRow, type Report } from "@/lib/analytics/report";
+import { addReportDays, changePercent, periodTotals, type AiServicesReport, type PeriodTotals, type RankedRow, type Report } from "@/lib/analytics/report";
 import { demoInsights, type Insights, rankByCount, siteInsights } from "@/lib/analytics/insights";
 import type { AnalyticsSettings } from "@/lib/analytics/settings-model";
 import { formatSwedish, swedishDayKey } from "@/lib/swedish-time";
@@ -96,6 +96,29 @@ function RankedList({ title, rows, testId, color = "bg-[var(--viz-1)]", empty = 
         <GrowBar value={row.count} max={max} fill={color} />
       </li>)}
     </ul> : <p className="text-sm text-muted-foreground">{empty}</p>}
+  </div>;
+}
+
+/**
+ * Från AI-tjänster (Growth Engine paket 2, 2026-11-28): visits from AI assistants per service, and the same per week and service
+ * in a table (the services with a visit in the period as columns), like the tables under the charts.
+ */
+function AiServices({ report }: { report: AiServicesReport }) {
+  const columns = report.services;
+  return <div className="min-w-0 space-y-3" data-testid="analytics-site-ai">
+    <RankedList title="Från AI-tjänster" rows={report.services} testId="analytics-site-ai-services" color="bg-[var(--viz-2)]" empty="Inga besök från AI-tjänster under perioden. Det räknas från 28 nov 2026." />
+    {report.total ? <details className="text-sm">
+      <summary className="cursor-pointer text-xs font-medium text-primary">Visa per vecka</summary>
+      <div className="mt-2 max-h-72 overflow-auto rounded-lg border">
+        <table className="w-full text-left text-xs" data-testid="analytics-site-ai-weeks">
+          <caption className="sr-only">Besök från AI-tjänster per vecka och tjänst</caption>
+          <thead className="sticky top-0 bg-secondary"><tr><th scope="col" className="px-3 py-2">Vecka</th>{columns.map((column) => <th key={column.key} scope="col" className="px-3 py-2 text-right">{column.label}</th>)}<th scope="col" className="px-3 py-2 text-right">Totalt</th></tr></thead>
+          <tbody>{report.weekly.map((week) => <tr key={week.date} className="border-t"><th scope="row" className="px-3 py-1.5 font-normal">{week.label} ({day(week.date)})</th>
+            {columns.map((column) => <td key={column.key} className="px-3 py-1.5 text-right tabular-nums">{number(week.counts[column.key] ?? 0)}</td>)}
+            <td className="px-3 py-1.5 text-right font-medium tabular-nums">{number(week.total)}</td></tr>)}</tbody>
+        </table>
+      </div>
+    </details> : null}
   </div>;
 }
 
@@ -244,6 +267,7 @@ export function BehaviorAnalytics({ notify }: { notify: (text: string, error?: b
                 <RankedList title="Mest tryckta knappar" rows={rankByCount(report.landing.clicks)} testId="analytics-site-clicks" color="bg-[var(--viz-2)]" />
                 <RankedList title="Varifrån besökarna kom" rows={report.landing.sources} testId="analytics-site-sources" />
                 <RankedList title="Skärm" rows={report.landing.devices} testId="analytics-site-devices" color="bg-[var(--viz-2)]" />
+                <AiServices report={report.landing.aiServices} />
               </div></div>
               <p className="text-sm" data-testid="analytics-site-newsletter">Nyhetsbrevet: <strong className="tabular-nums">{number(report.landing.newsletter.requested)}</strong> anmälningar, <strong className="tabular-nums">{number(report.landing.newsletter.confirmed)}</strong> bekräftade.</p>
               <p className="text-xs text-muted-foreground">Bara webbplatsens namn sparas, aldrig hela adressen. Besök inom webbplatsen räknas inte som en väg in.</p>

@@ -60,7 +60,9 @@ export function releaseNotesView(notes: readonly ReleaseNote[], current: string,
 export function siteAnalyticsView(report: Report & { previous: PeriodTotals & { from: string; to: string } }, totals: PeriodTotals) {
   return {
     from: report.from, to: report.to, hasData: report.hasData, totals, previous: report.previous,
-    website: { views: report.landing.views, pages: report.landing.pages, clicks: report.landing.clicks, sources: report.landing.sources, devices: report.landing.devices, newsletter: report.landing.newsletter },
+    website: { views: report.landing.views, pages: report.landing.pages, clicks: report.landing.clicks, sources: report.landing.sources, devices: report.landing.devices, newsletter: report.landing.newsletter,
+      // Från AI-tjänster (2026-11-28): visits from AI assistants per service and per week, for Growth Engine.
+      aiServices: report.landing.aiServices },
     demo: { starts: report.demo.starts.total, startButtons: report.demo.starts.rows, sources: report.demo.sources, daily: report.demo.daily, time: report.demo.time, devices: report.demo.devices, views: report.demo.views },
     funnel: report.funnel, consent: report.consent, weekly: report.publicWeekly,
     note: "Räknarna är anonyma besök (sidladdningar), aldrig personer. Tratten räknar bara besökare som tillåtit statistik.",

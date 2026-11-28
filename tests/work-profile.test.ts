@@ -466,7 +466,9 @@ test("a profile never changes what the API allows", () => {
     if (entry.isDirectory()) { if (entry.name !== "node_modules") walk(path); } else if (/\.tsx?$/.test(entry.name) && /from "[^"]*work-profile"/.test(readFileSync(path, "utf8"))) readers.push(path);
   } };
   for (const dir of ["app/api", "lib", "ee"]) if (existsSync(dir)) walk(dir);
-  assert.deepEqual(readers.sort(), ["app/api/administration/route.ts", "app/api/superadmin/customer-companies/route.ts", "app/api/workspace/route.ts", "lib/auth/invitations.ts", "lib/kfid/preferences.ts", "lib/workflow/first-frame-server.ts", "lib/workflow/modules.ts"].sort(), "a new reader of the profile on the server must be looked at");
+  // lib/kfid/round-follow-up-server.ts (2026-11-27): only who gets the notice of a work order from the round (arbetsledare
+  // and admin); the notice shows only work orders the person may already read, so it grants nothing.
+  assert.deepEqual(readers.sort(), ["app/api/administration/route.ts", "app/api/superadmin/customer-companies/route.ts", "app/api/workspace/route.ts", "lib/auth/invitations.ts", "lib/kfid/preferences.ts", "lib/kfid/round-follow-up-server.ts", "lib/workflow/first-frame-server.ts", "lib/workflow/modules.ts"].sort(), "a new reader of the profile on the server must be looked at");
   // What those routes take from it: the company's areas, and the admin's save of the profile itself. Never a right.
   assert.doesNotMatch(readFileSync("app/api/workspace/route.ts", "utf8"), /(suggestedRights|readWorkProfile|WORK_PROFILE\b)/);
   assert.doesNotMatch(readFileSync("app/api/superadmin/customer-companies/route.ts", "utf8"), /(suggestedRights|readWorkProfile|WORK_PROFILE\b)/);

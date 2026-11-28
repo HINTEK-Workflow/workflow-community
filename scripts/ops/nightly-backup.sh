@@ -10,8 +10,8 @@
 #   BACKUP_ROOT (/opt/backups/workflow) · KEEP_DAILY (14) · KEEP_WEEKLY (8) · STATE_DIR (/var/lib/workflow)
 #   OFFSITE_TARGET (empty = no copy; e.g. backup@example-host:/srv/backups/workflow over ssh with a key)
 #   TAR_OPTIONS (--numeric-owner --acls --xattrs --one-file-system on Linux)
-#   BACKUP_AGE_RECIPIENT (empty = not encrypted; an age public key age1…, or BACKUP_AGE_RECIPIENTS_FILE with one key per
-#   line): after both files are read back, they are encrypted with age and only the .age files are kept, also in the copy
+#   BACKUP_AGE_RECIPIENT (required since K1.6, 2026-11-28, else read from ./.env; an age public key age1…, or
+#   BACKUP_AGE_RECIPIENTS_FILE with one key per line): after both files are read back, they are encrypted with age and only the .age files are kept, also in the copy
 #   to OFFSITE_TARGET. The private key must not be on this server (review P6, 2026-11-24). Restore: age -d -i <key file>.
 #   The database is the compose service, or db-server when the production .env sets APP_DATABASE_URL (db-source.sh).
 set -Eeuo pipefail
@@ -25,6 +25,12 @@ readonly KEEP_DAILY="${KEEP_DAILY:-14}"
 readonly KEEP_WEEKLY="${KEEP_WEEKLY:-8}"
 readonly STATE_DIR="${STATE_DIR:-/var/lib/workflow}"
 readonly OFFSITE_TARGET="${OFFSITE_TARGET:-}"
+# K1.6 (2026-11-28): the backup is always encrypted. Without BACKUP_AGE_RECIPIENT in the environment the line of that name
+# in ./.env (the installation folder the cron line cd's into; install.sh writes it there) is used – only that one line is
+# read. BACKUP_ALLOW_UNENCRYPTED=1 is for a throwaway test machine only and is said loudly.
+if [[ -z "${BACKUP_AGE_RECIPIENT:-}" && -z "${BACKUP_AGE_RECIPIENTS_FILE:-}" && -r ./.env ]]; then
+  BACKUP_AGE_RECIPIENT="$(sed -n 's/^BACKUP_AGE_RECIPIENT=//p' ./.env | tail -n 1 | tr -d '\r')"
+fi
 readonly BACKUP_AGE_RECIPIENT="${BACKUP_AGE_RECIPIENT:-}"
 readonly BACKUP_AGE_RECIPIENTS_FILE="${BACKUP_AGE_RECIPIENTS_FILE:-}"
 read -r -a TAR_FLAGS <<< "${TAR_OPTIONS:---numeric-owner --acls --xattrs --one-file-system}"
@@ -47,7 +53,9 @@ if [[ -n "$BACKUP_AGE_RECIPIENTS_FILE" ]]; then
   [[ -r "$BACKUP_AGE_RECIPIENTS_FILE" ]] || fail "BACKUP_AGE_RECIPIENTS_FILE cannot be read: $BACKUP_AGE_RECIPIENTS_FILE"
   AGE_ARGS+=(-R "$BACKUP_AGE_RECIPIENTS_FILE")
 fi
-if (( ${#AGE_ARGS[@]} )); then command -v age >/dev/null 2>&1 || fail "A BACKUP_AGE recipient is set but age is missing (install age)."; fi
+if (( ${#AGE_ARGS[@]} )); then command -v age >/dev/null 2>&1 || fail "A BACKUP_AGE recipient is set but age is missing (install age)."
+elif [[ "${BACKUP_ALLOW_UNENCRYPTED:-}" == 1 ]]; then echo "WARNING: BACKUP_ALLOW_UNENCRYPTED=1 – this backup is NOT encrypted (only for a throwaway test machine)." >&2
+else fail "The backup is always encrypted: set BACKUP_AGE_RECIPIENT=age1… (the public key; install.sh writes it to .env) and install age. See INSTALLATION.md, section 6."; fi
 [[ -d "$SOURCE_STORAGE" ]] || fail "Storage directory is missing: $SOURCE_STORAGE"
 [[ "$KEEP_DAILY" =~ ^[0-9]+$ && "$KEEP_WEEKLY" =~ ^[0-9]+$ && "$KEEP_DAILY" -ge 3 ]] || fail "Retention must keep at least 3 daily backups."
 source_db_ready || fail "PostgreSQL is not reachable."

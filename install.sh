@@ -10,9 +10,9 @@
 # Versions: it installs the newest released version (a tag vX.Y.Z), not whatever is on main. WORKFLOW_VERSION=vX.Y.Z picks
 # one; WORKFLOW_VERSION=main follows main as before. Before an update changes the database it stops the app, takes a backup
 # of the database and the files into backups/update-<time>/, restores the database copy into a temporary database to prove
-# it can be read, checks the file archive, and only then starts the new version (which runs the migrations). With
-# BACKUP_AGE_RECIPIENT in .env and the program age installed, the backup is encrypted to that key. INSTALLATION.md,
-# "Återställ", tells how to go back.
+# it can be read, checks the file archive, and only then starts the new version (which runs the migrations). The backup is
+# always encrypted with age to BACKUP_AGE_RECIPIENT in .env; without one a key pair is made in backup-key/ and the admin is
+# told to move the private key somewhere safe (age must be installed). INSTALLATION.md, "Återställ", tells how to go back.
 #
 # Optional: WORKFLOW_DIR (install folder), WORKFLOW_SOURCE (git repository to install from), WORKFLOW_VERSION, and
 # WORKFLOW_KEEP_BACKUPS (how many update backups are kept, 5). WORKFLOW_SKIP_BACKUP=1 skips the backup (not recommended).
@@ -170,10 +170,15 @@ backup_before_update() {
     count="select count(*) from information_schema.tables where table_schema = '\''public'\''"
     live=$(psql -X -At -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "$count")
     copy=$(psql -X -At -U "$POSTGRES_USER" -d "$check" -c "$count")
+    # The number of rows per table in the copy (names and numbers only), for the restore drill to compare with.
+    psql -X -At -U "$POSTGRES_USER" -d "$check" -c "select format('"'"'select %L || chr(9) || count(*) from %I.%I;'"'"', table_name, table_schema, table_name) from information_schema.tables where table_schema = '"'"'public'"'"' and table_type = '"'"'BASE TABLE'"'"' order by table_name" \
+      | psql -X -At -U "$POSTGRES_USER" -d "$check" > /tmp/workflow-update.rows
     dropdb -U "$POSTGRES_USER" "$check"
     rm -f /tmp/workflow-update.dump
     echo "$live $copy"' | tail -n 1) || return 1
   [[ -n "$tables_live" && "$tables_live" == "$tables_copy" ]] || { echo "Kopian har $tables_copy tabeller, databasen $tables_live." >&2; return 1; }
+  docker compose cp postgres:/tmp/workflow-update.rows "$target/ROWS" >/dev/null 2>&1 || true
+  docker compose exec -T postgres rm -f /tmp/workflow-update.rows >/dev/null 2>&1 || true
   echo "  läst tillbaka i en tillfällig databas: $tables_copy tabeller, samma som i databasen"
   echo "Filerna ..."
   read -r files_live files_copy < <(docker compose run --rm --no-deps -T -e HOST_ID="$(id -u):$(id -g)" -v "$target:/backup" app sh -c '
@@ -185,26 +190,52 @@ backup_before_update() {
     echo "$live $copy"' | tail -n 1) || return 1
   [[ -n "$files_live" && "$files_live" == "$files_copy" ]] || { echo "Arkivet har $files_copy poster, lagringen $files_live." >&2; return 1; }
   echo "  arkivet listat tillbaka: $files_copy filer och mappar"
+  # Always encrypted (K1.6, 2026-11-28): ensure_backup_encryption has made sure there is a recipient and age. The sums of the
+  # plain files are kept to check after decrypting; only the .age files stay.
   recipient="$(env_value BACKUP_AGE_RECIPIENT)"
-  if [[ -n "$recipient" ]]; then
-    if command -v age >/dev/null 2>&1; then
-      local file
-      for file in database.dump storage.tar.gz; do
-        age -r "$recipient" -o "$target/$file.age" "$target/$file" && rm -f "$target/$file" || return 1
-      done
-      echo "  krypterad med age till BACKUP_AGE_RECIPIENT"
-    else
-      warn "  BACKUP_AGE_RECIPIENT är satt men programmet age finns inte: backupen är OKRYPTERAD. Installera age."
-    fi
-  fi
-  ( cd "$target" && sha256 database.dump* storage.tar.gz* > SHA256SUMS ) || return 1
-  printf 'created=%s\nfrom=%s\ntables=%s\nfiles=%s\n' "$stamp" "${previous_version:-okänd}" "$tables_copy" "$files_copy" > "$target/MANIFEST"
+  [[ -n "$recipient" ]] && command -v age >/dev/null 2>&1 || { echo "Backupen krypteras alltid, men BACKUP_AGE_RECIPIENT eller programmet age saknas." >&2; rm -f "$target/database.dump" "$target/storage.tar.gz"; return 1; }
+  ( cd "$target" && sha256 database.dump storage.tar.gz > SHA256SUMS.plain ) || return 1
+  local file
+  for file in database.dump storage.tar.gz; do
+    age -r "$recipient" -o "$target/$file.age" "$target/$file" && [[ -s "$target/$file.age" ]] && rm -f "$target/$file" \
+      || { rm -f "$target/database.dump" "$target/storage.tar.gz"; return 1; }
+  done
+  echo "  krypterad med age till BACKUP_AGE_RECIPIENT"
+  ( cd "$target" && sha256 database.dump.age storage.tar.gz.age > SHA256SUMS ) || return 1
+  printf 'created=%s\nfrom=%s\ntables=%s\nfiles=%s\nencrypted=age\n' "$stamp" "${previous_version:-okänd}" "$tables_copy" "$files_copy" > "$target/MANIFEST"
+  [[ -s "$target/ROWS" ]] || rm -f "$target/ROWS"
   echo "Backup klar: $target"
   # Retention: the newest KEEP_BACKUPS update backups stay; only folders named like a stamp are removed.
   if [[ "$KEEP_BACKUPS" =~ ^[0-9]+$ ]] && (( KEEP_BACKUPS >= 1 )); then
     find "$DIR/backups" -mindepth 1 -maxdepth 1 -type d -name 'update-20[0-9][0-9][01][0-9][0-3][0-9]T[0-9][0-9][0-9][0-9][0-9][0-9]Z' \
       | sort -r | tail -n +"$((KEEP_BACKUPS + 1))" | while read -r old; do rm -rf -- "$old"; done
   fi
+}
+
+# The backups are always encrypted (K1.6, 2026-11-28). BACKUP_AGE_RECIPIENT in .env (or WORKFLOW_BACKUP_AGE_RECIPIENT the
+# first time) is the public key; the private key is best made on another computer (age-keygen -o workflow-backup.key). Without
+# one, a key pair is made here in backup-key/ (only this user can read it) and the admin is told to move a copy of the private
+# key somewhere safe: without it no backup can be opened. age is needed on this computer either way.
+age_hint="Installera age (Debian/Ubuntu: sudo apt install age, Fedora: sudo dnf install age, macOS: brew install age) och kör igen."
+ensure_backup_encryption() {
+  local recipient key
+  recipient="$(env_value BACKUP_AGE_RECIPIENT)"
+  if [[ -z "$recipient" && -n "${WORKFLOW_BACKUP_AGE_RECIPIENT:-}" ]]; then
+    recipient="$WORKFLOW_BACKUP_AGE_RECIPIENT"
+    set_value BACKUP_AGE_RECIPIENT "$recipient" "$DIR/.env"
+  fi
+  command -v age >/dev/null 2>&1 || fail "Backuperna krypteras alltid med age, men programmet age finns inte. $age_hint"
+  if [[ -z "$recipient" ]]; then
+    command -v age-keygen >/dev/null 2>&1 || fail "age-keygen saknas (det följer med age). $age_hint"
+    key="$DIR/backup-key/workflow-backup.agekey"
+    if [[ ! -s "$key" ]]; then
+      mkdir -p "$DIR/backup-key"; chmod 700 "$DIR/backup-key"
+      ( umask 077; age-keygen -o "$key" >/dev/null 2>&1 ) || fail "Kunde inte skapa en nyckel för backuperna i $DIR/backup-key."
+    fi
+    recipient="$(age-keygen -y "$key")" || fail "Kunde inte läsa den publika delen av $key."
+    set_value BACKUP_AGE_RECIPIENT "$recipient" "$DIR/.env"
+  fi
+  [[ "$recipient" =~ ^age1[0-9a-z]{58}$ ]] || fail "BACKUP_AGE_RECIPIENT i .env ska vara en publik age-nyckel som börjar med age1."
 }
 
 printf '\033[36mWorkflow Community Edition - installation\033[0m\n'
@@ -260,6 +291,9 @@ else
   echo "Workflow använder port $app_port (databasen $db_port)."
 fi
 app_port="$(env_value APP_PORT)"; admin_email="$(env_value INSTANCE_ADMIN_EMAIL)"
+step "Kontrollerar krypteringen av backuperna"
+ensure_backup_encryption
+echo "Backuperna krypteras med age till BACKUP_AGE_RECIPIENT i .env."
 
 if $updating; then
   # The new version is built while the old one keeps running; then the old one stops, the backup is taken and read back,
@@ -336,10 +370,11 @@ echo "  Starta igen:      docker compose up -d"
 echo "  Uppdatera:        kör installationsraden igen (tar en backup först)"
 echo "  Gå tillbaka:      INSTALLATION.md, avsnittet Återställ (backuperna ligger i $DIR/backups)"
 echo "  Ta bort allt:     docker compose down -v   (raderar även datan)"
-if [[ -z "$(env_value BACKUP_AGE_RECIPIENT)" ]]; then
-  echo
-  echo "Tips: kryptera backuperna med age. Skapa en nyckel på en annan dator (age-keygen -o workflow-backup.key),"
-  echo "skriv dess publika del i .env som BACKUP_AGE_RECIPIENT=age1... och installera age här (INSTALLATION.md)."
+if [[ -s "$DIR/backup-key/workflow-backup.agekey" ]]; then
+  printf '\n\033[33mViktigt: den privata nyckeln till backuperna ligger i %s\n' "$DIR/backup-key/workflow-backup.agekey"
+  echo "Kopiera den nu till en säker plats utanför den här datorn (en lösenordshanterare eller ett USB-minne i ett kassaskåp),"
+  echo "helst två ställen. Utan den går ingen backup att öppna. Ligger den bara här försvinner den med datorn."
+  printf 'Flytta den sedan härifrån, så att den som kommer åt datorn inte också kan läsa backuperna (INSTALLATION.md, avsnitt 6).\033[0m\n'
 fi
 if [[ -n "${WORKFLOW_NO_BROWSER:-}" ]]; then :
 elif command -v open >/dev/null; then open "$url"; elif command -v xdg-open >/dev/null; then xdg-open "$url" >/dev/null 2>&1 || true; fi

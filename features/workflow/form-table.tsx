@@ -8,13 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { NEEDS_LIMIT_TEXT, decimalText, formRowTechnicianJudged, formRowWithCell, technicianJudgedText, formBand, formColumnLabelParts, formLimitFor, formLimitLevel, formRowComplete, formRowLabel, formRowPending, LABEL_PLACEMENTS, newFormRow, type FormColumn, type FormDocument, type FormEvaluation, type FormTableBlock, type FormValues } from "@/lib/workflow/form-document";
+import { NEEDS_LIMIT_TEXT, decimalText, formRowFixedOnSite, formRowTechnicianJudged, formRowWithCell, technicianJudgedText, formBand, formColumnLabelParts, formLimitFor, formLimitLevel, formRowComplete, formRowLabel, formRowPending, LABEL_PLACEMENTS, newFormRow, type FormColumn, type FormDocument, type FormEvaluation, type FormTableBlock, type FormValues } from "@/lib/workflow/form-document";
 import { formatFormulaValue, formatResultValue } from "@/lib/workflow/form-formula";
 import { bandClass, CameraButton, ImagePicker, LimitHint, ScaleSelect, SuggestionChips, YesNo, type FormAttachment, type FormMedia } from "./form-inputs";
 import type { FormActions } from "./form-renderer";
 import { FormIcon } from "./form-card";
 import { formRowElementId } from "./form-row-id";
-import { DeviationOrder, UNSAVED_REASON } from "./deviation-order";
+import { DeviationLogButton, DeviationOrder, UNSAVED_REASON } from "./deviation-order";
+import { RoundOrderButtons } from "./round-follow-up-order";
 import { focusTarget } from "./flow-guide";
 import { indicatorBadge, indicatorText } from "./indicator-tone";
 import { useNativeMode } from "./use-detail-level";
@@ -455,6 +456,20 @@ function RowWorkOrder({ context, row, index, reasonId }: { context: CellContext;
   const name = formRowLabel(block, row, index);
   const onLinked = (id: string) => context.setRows(context.rows.map((item) => item.id === row.id ? { ...item, workOrderId: id } : item));
   // A card of a table of remarks is itself the deviation: its own words, responsible person, date and severity.
+  // Driftronden som tillsyn (2026-11-27): in a round protocol the brist gets Akut and Planerad arbetsorder instead, with its
+  // machine and photos; one fixed on the spot (Åtgärdad direkt) gets no work order, only its machine.
+  if (block.workOrders && context.actions?.roundProtocolId && !row.workOrderId) {
+    const card = cardOrder(block, row);
+    const imageIds = block.columns.filter((column) => column.input === "images").flatMap((column) => Array.isArray(row.cells[column.key]) ? row.cells[column.key] as string[] : []).slice(0, 20);
+    const withPart = (item: TableRow, partId: string | null | undefined) => { const { partId: _old, ...rest } = item; void _old; return partId ? { ...rest, partId } : rest; };
+    return <span className="inline-flex flex-wrap items-center gap-2">
+      <RoundOrderButtons actions={context.actions} readOnly={context.readOnly} targetId={row.id} fixedOnSite={formRowFixedOnSite(block, row)} reasonId={reasonId}
+        row={{ title: `Åtgärda: ${name}`, description: card.description, fault: card.order.deviation.fault, order: card.order, imageIds, partId: row.partId ?? null }}
+        onLinked={(id, partId) => context.setRows(context.rows.map((item) => item.id === row.id ? { ...withPart(item, partId ?? item.partId), workOrderId: id } : item))}
+        onPart={(partId) => context.setRows(context.rows.map((item) => item.id === row.id ? withPart(item, partId) : item))} />
+      {context.actions.logDeviation || context.actions.loggedDeviation?.(row.id) ? <DeviationLogButton actions={context.actions} targetId={row.id} title={`Åtgärda: ${name}`} description={card.description} reasonId={reasonId} /> : null}
+    </span>;
+  }
   if (block.workOrders) {
     const card = cardOrder(block, row);
     return <DeviationOrder actions={context.actions} readOnly={context.readOnly} targetId={row.id} existing={row.workOrderId} title={`Åtgärda: ${name}`} description={card.description}
@@ -508,9 +523,12 @@ function WorkOrderFooter({ context, row, index }: { context: CellContext; row: T
   // The work order's state follows it here (2026-09-30), so the protocol shows what has been done about the row.
   const state = row.workOrderId ? actions?.workOrderStatus?.(row.workOrderId) : undefined;
   const waiting = !row.workOrderId && !readOnly && actions?.canCreateWorkOrder === false;
+  const round = Boolean(actions?.roundProtocolId) && block.workOrders;
   const text = state ? `Arbetsorder: ${state.label}${state.status === "COMPLETED" ? " – åtgärden är utförd" : ""}`
     : row.workOrderId ? "Arbetsorder skapad från anmärkningen."
     : waiting ? UNSAVED_REASON
+    : round && formRowFixedOnSite(block, row) ? "Åtgärdad direkt. Räknas som hanterad i uppföljningen."
+    : round ? "Bristen kan bli en akut eller planerad arbetsorder."
     : logged ? "Avvikelsen finns i avvikelseloggen."
     : actions?.logDeviation ? "Avvikelsen kan åtgärdas som en arbetsorder och föras till avvikelseloggen." : "Avvikelsen kan åtgärdas som en arbetsorder.";
   return <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t pt-3">

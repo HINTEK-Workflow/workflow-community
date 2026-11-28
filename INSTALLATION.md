@@ -87,9 +87,18 @@ Första starten tar 5–10 minuter. Vill ni installera för hand, se *Manuell in
 `WORKFLOW_VERSION=v1.2.3` (Linux och macOS, före `bash` i raden) eller `$env:WORKFLOW_VERSION = "v1.2.3"` (PowerShell).
 Vilka versioner som finns ser ni under *Releases* på GitHub.
 
-**Kontrollera skriptet först (rekommenderas).** Varje version har en release på GitHub med versionstexten, en
-förteckning över paketen (`sbom-community-v….cdx.json`) och filen `SHA256SUMS`. Ladda ner skriptet för versionen,
-kontrollera kontrollsumman och kör det sedan:
+**Kontrollera skriptet först (rekommenderas).** Från och med 0.90.0 har varje version en release på GitHub under
+*Releases*, och äldre releaser och taggar tas aldrig bort. Releasen har de här filerna:
+
+| Fil | Vad det är |
+| --- | --- |
+| `workflow-community-v1.2.3.tar.gz` | Hela koden för versionen (samma filer som en klon av taggen) |
+| `install.sh`, `install.ps1` | Installationsskripten för versionen |
+| `sbom-community-v1.2.3.cdx.json` | Förteckningen över paketen i versionen (CycloneDX) |
+| `allowed_signers` | Den publika nyckeln som taggen är signerad med |
+| `SHA256SUMS` | Kontrollsummorna för filerna ovan |
+
+Ladda ner skriptet för versionen, kontrollera kontrollsumman och kör det sedan:
 
 ```bash
 curl -fsSLO https://github.com/HINTEK-Workflow/workflow-community/releases/download/v1.2.3/install.sh
@@ -98,6 +107,15 @@ sha256sum --check --ignore-missing SHA256SUMS && WORKFLOW_VERSION=v1.2.3 bash in
 ```
 
 I PowerShell: `Get-FileHash install.ps1 -Algorithm SHA256` och jämför med raden för `install.ps1` i `SHA256SUMS`.
+
+**Taggen är signerad.** Taggen `v1.2.3` är signerad med en SSH-nyckel, och GitHub visar den som *Verified*. Vill ni
+kontrollera själva, gör det i installationsmappen (eller i en klon) med `allowed_signers` från releasen:
+
+```bash
+git fetch origin tag v1.2.3 && git -c gpg.ssh.allowedSignersFile=allowed_signers verify-tag v1.2.3
+```
+
+Raden ska sluta med `Good "git" signature`. Versioner till och med 0.90.0 har ingen signerad tagg.
 
 ### Var Workflow hamnar
 
@@ -285,18 +303,31 @@ Inom fem minuter efter det ska `tail /var/log/workflow/monitor.log` visa `OK`.
 
   Övningen återställer till en tillfällig databas och mapp under `BACKUP_ROOT/work` (en annan mapp: `DRILL_WORK_ROOT`)
   och tar bort dem när den är klar. Rapporten ligger i övningens mapp under `BACKUP_ROOT`.
-- **Kryptera kopian (rekommenderas).** Utan kryptering innehåller kopian hela databasen och alla filer i klartext. Gör så
-  här en gång:
-  1. Installera `age` på servern (till exempel `apt install age`) och på en annan dator.
-  2. Skapa nyckeln på den andra datorn, inte på servern: `age-keygen -o workflow-backup.key`. Raden `Public key: age1…`
-     är den publika delen. Förvara nyckelfilen säkert, till exempel i en lösenordshanterare. Utan den går backupen inte
-     att läsa.
-  3. Lägg till `BACKUP_AGE_RECIPIENT=age1…` (den publika delen) överst i cron-filen i avsnitt 5 och i `.env`.
-  Då krypterar `nightly-backup.sh` databasen och filerna efter att de lästs tillbaka, och bara `.age`-filerna sparas och
-  skickas till `OFFSITE_TARGET`. Installationsskriptets backup före en uppdatering krypteras på samma sätt.
-  `SHA256SUMS.plain` har kontrollsummorna för de okrypterade filerna. Övningen ovan gäller okrypterade kopior; för en
-  krypterad kopia packar ni först upp den med `age -d -i workflow-backup.key` på den andra datorn.
-- Utan `BACKUP_AGE_RECIPIENT` är kopian **inte krypterad**. Förvara den då lika skyddat som servern.
+- **Backuperna krypteras alltid** med `age`. Programmet behövs på servern (till exempel `apt install age`,
+  `brew install age` eller `winget install FiloSottile.age`), och installationen stannar med ett besked om det saknas.
+  - Bäst är att skapa nyckeln på en annan dator, inte på servern: `age-keygen -o workflow-backup.key`. Raden
+    `Public key: age1…` är den publika delen. Lägg den i `.env` som `BACKUP_AGE_RECIPIENT=age1…` (eller ange den första
+    gången med `WORKFLOW_BACKUP_AGE_RECIPIENT=age1…` före installationsraden).
+  - Finns ingen `BACKUP_AGE_RECIPIENT` skapar installationsskriptet ett nyckelpar i `backup-key/workflow-backup.agekey` i
+    installationsmappen (bara er användare kan läsa den), skriver den publika delen i `.env` och säger var den privata
+    nyckeln ligger. **Kopiera den privata nyckeln till en säker plats utanför servern**, helst två (en lösenordshanterare
+    och ett USB-minne i ett kassaskåp), och ta sedan bort den från servern. Utan den går ingen backup att öppna.
+  - `nightly-backup.sh` läser `BACKUP_AGE_RECIPIENT` ur `.env` i mappen som cron-raden står i (eller ur cron-filen), och
+    vägrar ta en okrypterad backup. Bara `.age`-filerna sparas och skickas till `OFFSITE_TARGET`. `SHA256SUMS.plain` har
+    kontrollsummorna för de okrypterade filerna, och backupen före en uppdatering har dessutom `ROWS` (antalet rader per
+    tabell) och `MANIFEST`.
+- **Öva återställningen av en verklig backup en gång i månaden** med `scripts/ops/aterstallningsovning.sh`, på en dator som
+  har Docker och den privata nyckeln (gärna inte servern). Den återställer den senaste backupen i en tillfällig databas utan
+  nätverk, jämför kontrollsummorna och antalet rader per tabell med backupens förteckning, startar appen mot kopian och
+  kontrollerar att den svarar, och skriver ett protokoll i `aterstallning/aterstallning-ÅÅÅÅ-MM-DD.md`. Utan `--apply`
+  visar den bara vad den skulle göra:
+
+  ```bash
+  bash scripts/ops/aterstallningsovning.sh --backup-dir backups --key ~/workflow-backup.key \
+    --app-image "$(sed -n 's/^APP_IMAGE=//p' .env)" --apply
+  ```
+
+  Den dekrypterade kopian skrivs över och tas bort efteråt; den krypterade ligger kvar.
 - Hemligheterna i `.env` ingår inte i kopian. Spara `.env` separat och säkert, annars går de förseglade nycklarna inte
   att öppna efter en återställning.
 
@@ -312,7 +343,7 @@ Kör installationsraden igen. Skriptet gör så här:
 4. Startar den nya versionen, som uppdaterar databasen.
 
 - Inställningar och data behålls. De fem senaste backuperna från uppdateringar sparas (`WORKFLOW_KEEP_BACKUPS` ändrar
-  antalet). Med `BACKUP_AGE_RECIPIENT` i `.env` och `age` installerat krypteras de (avsnitt 6).
+  antalet). De krypteras alltid till `BACKUP_AGE_RECIPIENT` i `.env` (avsnitt 6).
 - Uppdaterar ni för hand (`git fetch --tags` och `git checkout v1.2.3` följt av `docker compose up -d --build`), ta
   först en backup med `scripts/ops/nightly-backup.sh`.
 
@@ -336,7 +367,7 @@ Byt `update-<tid>` mot backupens mapp och `v1.2.2` mot versionen ni hade (står 
 ```bash
 dir=backups/update-<tid>
 ( cd "$dir" && sha256sum --check SHA256SUMS )
-# Krypterad backup: packa upp först, på en dator som har nyckeln
+# Backupen är krypterad: packa upp först, på en dator som har nyckeln (kontrollera sedan med SHA256SUMS.plain)
 #   age -d -i workflow-backup.key -o "$dir/database.dump" "$dir/database.dump.age"
 #   age -d -i workflow-backup.key -o "$dir/storage.tar.gz" "$dir/storage.tar.gz.age"
 docker compose stop app

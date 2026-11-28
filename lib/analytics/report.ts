@@ -1,4 +1,4 @@
-import { DEMO_DEVICE_KEYS, DEMO_FLOW_KEYS, DEMO_SOURCE_KEYS, DEMO_START_KEYS, DEMO_TIME_KEYS, FUNNEL_LABELS, FUNNEL_STEPS, LANDING_CLICK_KEYS, LANDING_DEVICE_KEYS, demoKeyLabel, isFunnelStep, kindLabel, landingKeyLabel, type FunnelStep } from "./catalog";
+import { AI_SERVICE_KEYS, DEMO_DEVICE_KEYS, DEMO_FLOW_KEYS, DEMO_SOURCE_KEYS, DEMO_START_KEYS, DEMO_TIME_KEYS, FUNNEL_LABELS, FUNNEL_STEPS, LANDING_CLICK_KEYS, LANDING_DEVICE_KEYS, aiServiceLabel, demoKeyLabel, isFunnelStep, kindLabel, landingKeyLabel, type FunnelStep } from "./catalog";
 import { csvCell } from "../csv/cell";
 
 /**
@@ -39,6 +39,15 @@ export type LandingReport = {
   sources: RankedRow[];
   devices: RankedRow[];
   newsletter: { requested: number; confirmed: number };
+  /** Från AI-tjänster (2026-11-28): visits from AI assistants per service, and per week and service (the Monday of the week). */
+  aiServices: AiServicesReport;
+};
+export type AiServicesReport = {
+  total: number;
+  /** The services with visits in the period, the most first. */
+  services: RankedRow[];
+  /** Every week of the period, oldest first, with the visits per service key (`ai:<service>`) that had any. */
+  weekly: { date: string; label: string; total: number; counts: Record<string, number> }[];
 };
 /** The public pages per day or week (2026-11-11): the funnel's steps, the answers in the cookie box and the website's page loads. */
 export type PublicPoint = { date: string; label?: string; landing: number; pricing: number; register: number; checkout: number; statistics: number; necessary: number; demoStarts: number; landingViews: number };
@@ -96,7 +105,13 @@ export function buildReport(rows: CounterRowLike[], from: string, to: string): R
   const publicDay = new Map<string, Omit<PublicPoint, "date" | "label">>();
   const emptyPublic = () => ({ landing: 0, pricing: 0, register: 0, checkout: 0, statistics: 0, necessary: 0, demoStarts: 0, landingViews: 0 });
   const landingCounts = new Map<string, number>();
+  const aiWeeks = new Map<string, Record<string, number>>();
   for (const row of inRange) {
+    if (row.kind === "landing" && row.key.startsWith("ai:") && (AI_SERVICE_KEYS as readonly string[]).includes(row.key.slice(3))) {
+      const week = aiWeeks.get(monday(row.day)) ?? {};
+      week[row.key] = (week[row.key] ?? 0) + row.count;
+      aiWeeks.set(monday(row.day), week);
+    }
     const point = publicDay.get(row.day) ?? emptyPublic();
     if (row.kind === "funnel" && isFunnelStep(row.key)) point[row.key] += row.count;
     else if (row.kind === "consent" && (row.key === "statistics" || row.key === "necessary")) point[row.key] += row.count;
@@ -177,6 +192,15 @@ export function buildReport(rows: CounterRowLike[], from: string, to: string): R
     return keys.map((key) => { const count = landingCounts.get(`${group}:${key}`) ?? 0; return { key: `${group}:${key}`, label: landingKeyLabel(`${group}:${key}`), count, share: percent(count, total) ?? 0 }; });
   };
   const pageCounts = landingGroup("page");
+  const aiCounts = new Map([...landingGroup("ai")].filter(([key]) => (AI_SERVICE_KEYS as readonly string[]).includes(key.slice(3))));
+  const aiServices: AiServicesReport = {
+    total: [...aiCounts.values()].reduce((sum, value) => sum + value, 0),
+    services: landingRows(aiCounts, AI_SERVICE_KEYS.length).map((row) => ({ ...row, label: aiServiceLabel(row.key.slice(3)) })),
+    weekly: [...weeks.keys()].map((week) => {
+      const counts = aiWeeks.get(week) ?? {};
+      return { date: week, label: `v. ${isoWeek(week).week}`, total: Object.values(counts).reduce((sum, value) => sum + value, 0), counts };
+    }),
+  };
   const landing: LandingReport = {
     hasData: landingCounts.size > 0,
     views: [...pageCounts.values()].reduce((sum, value) => sum + value, 0),
@@ -185,6 +209,7 @@ export function buildReport(rows: CounterRowLike[], from: string, to: string): R
     sources: landingRows(landingGroup("ref"), 12),
     devices: landingFixed("device", LANDING_DEVICE_KEYS),
     newsletter: { requested: landingCounts.get("newsletter:requested") ?? 0, confirmed: landingCounts.get("newsletter:confirmed") ?? 0 },
+    aiServices,
   };
   return {
     demo, landing,

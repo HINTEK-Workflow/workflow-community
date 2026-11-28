@@ -39,7 +39,7 @@ export const UNSAVED_REASON = "Spara protokollet först, så kan avvikelsen kopp
  * programme's log with the protocol and row as its source, so the log leads back here. Once logged, it shows the
  * entry's number. Also on a completed protocol: the log is the programme's, not the protocol's.
  */
-function DeviationLogButton({ actions, targetId, title, description, reasonId }: { actions?: FormActions; targetId: string; title: string; description: string; reasonId?: string }) {
+export function DeviationLogButton({ actions, targetId, title, description, reasonId }: { actions?: FormActions; targetId: string; title: string; description: string; reasonId?: string }) {
   const [busy, setBusy] = useState(false);
   const logged = actions?.loggedDeviation?.(targetId);
   if (logged) return <Button size="sm" variant="outline" asChild data-testid="form-row-deviation-log"><Link href={logged.id ? deviationHref(logged.id) : "/?view=deviations"}><ClipboardList />Avvikelse {logged.number} i loggen</Link></Button>;

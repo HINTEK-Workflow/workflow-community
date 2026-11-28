@@ -10,6 +10,8 @@ import { PLACE_ALL, PLACE_NONE } from "./place-model";
 import { partsAtPlace } from "./place-server";
 import { checklistText, daysLate, FOLLOW_UP_DAYS, readChecklist, followUpText, isDormant, itemOccurrenceState, occurrenceState, planFollowUp, type FollowUpOccurrence, type PlanFollowUp, type PlanOccurrenceState } from "./plan-model";
 import { requireMaintenance } from "./server";
+import { partFindings } from "@/lib/kfid/round-follow-up-server";
+import { findingState, ROUND_FOLLOW_UP_LABELS, roundFollowUpOf } from "@/lib/workflow/round-follow-up";
 
 /**
  * Förfallet och i tid, and the part's history (2026-11-27, docs/beslut/underhall-cmms-2026-11-27.md): read when asked,
@@ -101,9 +103,11 @@ export async function planFollowUpOf(caller: MaintenanceCaller, scope: { partId:
 // ---------- the part's history ----------
 
 export type HistoryEntry = {
-  kind: "order" | "item" | "deviation"; id: string; at: string; title: string; line: string; status: string; tone: "success" | "info" | "warning" | "danger" | "neutral";
+  kind: "order" | "item" | "deviation" | "finding"; id: string; at: string; title: string; line: string; status: string; tone: "success" | "info" | "warning" | "danger" | "neutral";
   /** Where it opens: a work order, a maintenance item (Underhåll's own page) or the deviation log entry. */
   workOrderId: string | null; itemId: string | null; deviationId: string | null;
+  /** A brist from a driftrond (2026-11-27): the protocol it opens, its comment and its photos (the protocol's attachment ids). */
+  taskId?: string | null; comment?: string; images?: string[];
 };
 
 const ORDER_STATUS: Record<string, { label: string; tone: HistoryEntry["tone"] }> = {
@@ -130,7 +134,7 @@ export async function partHistory(caller: MaintenanceCaller, partId: string, now
       where: { organizationId, kind: "WORK_ORDER", OR: [{ machinePartId: { in: ids } }, { maintenanceItems: { some: { partId: { in: ids } } } }] },
       orderBy: { updatedAt: "desc" }, take: HISTORY_LIMIT * 2,
       select: {
-        id: true, title: true, status: true, createdAt: true, completedAt: true, maintenancePlanId: true, maintenanceDue: true, maintenanceActivatedAt: true, roundScheduleId: true, machinePartId: true,
+        id: true, title: true, status: true, createdAt: true, completedAt: true, maintenancePlanId: true, maintenanceDue: true, maintenanceActivatedAt: true, roundScheduleId: true, machinePartId: true, data: true,
         _count: { select: { attachments: true } },
         maintenanceItems: {
           where: { partId: { in: ids } }, orderBy: { createdAt: "desc" }, take: 60,
@@ -170,9 +174,11 @@ export async function partHistory(caller: MaintenanceCaller, partId: string, now
     const downtime = items.reduce((sum, item) => sum + (maintenanceDowntimeMinutes({ stoppedAt: item.stoppedAt?.toISOString() ?? null, restoredAt: item.restoredAt?.toISOString() ?? null }) ?? 0), 0);
     const parts = [...new Set(items.map((item) => item.part.name))];
     const status = ORDER_STATUS[order.status] ?? { label: order.status, tone: "neutral" as const };
+    // Från ronden (2026-11-27): a work order made from a brist in a round says so, Akut or Planerad.
+    const fromRound = roundFollowUpOf(order.data);
     entries.push({
       kind: "order", id: order.id, at: iso(order.completedAt ?? order.createdAt), title: order.title, status: status.label, tone: status.tone, workOrderId: order.id, itemId: null, deviationId: null,
-      line: [parts.join(", "), ...types, ...sources, order.roundScheduleId ? "Driftrond" : "", downtime ? `Stillestånd ${minutesText(downtime)}` : "", order._count.attachments ? `${order._count.attachments} ${order._count.attachments === 1 ? "fil" : "filer"}` : ""].filter(Boolean).join(" · "),
+      line: [parts.join(", "), ...types, ...sources, order.roundScheduleId ? "Driftrond" : "", fromRound ? `Från ronden, ${ROUND_FOLLOW_UP_LABELS[fromRound.kind].toLowerCase()}` : "", downtime ? `Stillestånd ${minutesText(downtime)}` : "", order._count.attachments ? `${order._count.attachments} ${order._count.attachments === 1 ? "fil" : "filer"}` : ""].filter(Boolean).join(" · "),
     });
   }
   for (const item of drafts) entries.push({
@@ -185,6 +191,16 @@ export async function partHistory(caller: MaintenanceCaller, partId: string, now
     kind: "deviation", id: deviation.id, at: iso(deviation.createdAt), title: `Avvikelse ${deviation.number}: ${deviation.title}`, status: deviation.status === "DONE" ? "Åtgärdad" : deviation.status === "IN_PROGRESS" ? "Pågår" : "Öppen",
     tone: deviation.status === "DONE" ? "success" : "warning", workOrderId: deviation.workOrderId, itemId: null, deviationId: deviation.id, line: `Åtgärdas i ${titles.get(deviation.workOrderId ?? "") ?? "arbetsordern"}`,
   });
+  // Brister från driftronden (2026-11-27): Åtgärdad direkt with its comment and photo, and the ones that became a work order.
+  for (const finding of await partFindings(caller, partId)) {
+    const state = findingState(finding);
+    entries.push({
+      kind: "finding", id: `${finding.protocolId}:${finding.rowId}`, at: finding.at, title: `Brist · ${finding.point || finding.description.split("\n")[0] || "Brist i ronden"}`,
+      status: state.label, tone: state.tone, workOrderId: finding.workOrderId, itemId: null, deviationId: null, taskId: finding.protocolId,
+      comment: finding.comment, images: finding.images,
+      line: [finding.partName, `Driftrond ${finding.day}`, finding.protocolTitle, finding.point ? finding.description : "", finding.severity].filter(Boolean).join(" · ").slice(0, 400),
+    });
+  }
   entries.sort((a, b) => b.at.localeCompare(a.at));
   return { entries: entries.slice(0, HISTORY_LIMIT), truncated: entries.length > HISTORY_LIMIT || orders.length >= HISTORY_LIMIT * 2 };
 }

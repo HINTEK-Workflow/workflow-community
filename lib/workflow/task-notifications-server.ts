@@ -16,6 +16,7 @@ import { periodLabel } from "@/lib/workflow/time-periods";
 import { FOLLOW_UP_DAYS, followUpNotifications, NOTIFICATION_DUE_DAYS, notificationToday, orderNotifications, taskNotifications, withoutAssignedDueSoon, type NotificationSource, type TaskNotification } from "@/lib/workflow/task-notifications";
 import { CLOSED_TASK_STATUSES } from "@/lib/workflow/task-cancel";
 import { NOT_DONE_NOTICE_CHANNEL, NOT_DONE_NOTICE_LIMIT, notDoneNotifications, parseNotDoneNoticeKey } from "@/lib/workflow/round-outcome";
+import { parseRoundFollowUpNoticeKey, ROUND_FOLLOW_UP_CHANNEL, ROUND_FOLLOW_UP_NOTICE_DAYS, ROUND_FOLLOW_UP_NOTICE_LIMIT, roundFollowUpNotifications } from "@/lib/workflow/round-follow-up";
 import { loadQuoteAnswerNotifications } from "@/lib/quotes/customer-link-server";
 import { loadCommentNotifications } from "@/lib/comments/server";
 import { loadTeamAbsence } from "@/lib/absence/server";
@@ -72,6 +73,8 @@ export async function loadCloudNotifications(ctx: Context, now = new Date(), opt
   const rounds = roundNotifications(roundViews, { id: ctx.user.id, admin: ctx.admin }, today).map((item) => othersRounds.has(item.id.split(":")[1]) ? { ...item, audience: "team" as const } : item);
   // Ej utfört (2026-10-28): the person's unread notices that someone recorded an occurrence of their round as not done.
   const notDone = on("rounds") ? await loadNotDoneNotifications(ctx, new Map(roundViews.map((view) => [view.id, view.title])), now) : [];
+  // Från ronden (2026-11-27): work orders made from a brist in a round, for arbetsledare and admin while they are open.
+  const roundFollowUps = readable && on("rounds") ? await loadRoundFollowUpNotifications(ctx, readable, now) : [];
   // Work orders from a deviation finished lately (flödesvåg 2): bounded to the last days and to readable tasks; the
   // protocol they came from must be readable and the reader's own (admins: the team's).
   const followUps = readable ? await (async () => {
@@ -124,7 +127,7 @@ export async function loadCloudNotifications(ctx: Context, now = new Date(), opt
   // Urgent work orders first, whatever kind of notice would otherwise come before them.
   const teamOnly = selfInspection.map((item) => item.id.startsWith("self-inspection:reportable:") ? { ...item, audience: "team" as const } : item);
   const reminders = withoutAssignedDueSoon(items, assigned).map((item) => teamTaskIds.has(item.id) ? { ...item, audience: "team" as const } : item);
-  const all = orderNotifications([...machineAlarms, ...machineNotes, ...assignedRows, ...obstacles, ...team, ...agents, ...comments, ...news, ...absenceConflicts, ...quoteAnswers, ...faultReports, ...operators, ...teamOnly, ...followUps, ...notDone, ...rounds, ...reminders]);
+  const all = orderNotifications([...machineAlarms, ...machineNotes, ...assignedRows, ...obstacles, ...team, ...agents, ...comments, ...news, ...absenceConflicts, ...quoteAnswers, ...faultReports, ...operators, ...teamOnly, ...followUps, ...roundFollowUps, ...notDone, ...rounds, ...reminders]);
   const marked = await applyReadMarks(ctx, all);
   return options.includeRead ? marked : marked.filter((item) => !item.read);
 }
@@ -286,6 +289,26 @@ async function loadObstacleNotifications(ctx: Context, readable: ReturnType<type
   const taskById = new Map(tasks.map((task) => [task.id, task]));
   const nameById = new Map(people.map((member) => [member.userId, member.user.name || member.user.email]));
   return obstacleNotifications(parsed.map((row) => ({ key: row.key, createdAt: row.createdAt, task: taskById.get(row.taskId) ?? null, byName: nameById.get(row.byUserId) ?? "" })));
+}
+
+/** The person's notices of work orders made from a round's brist (lib/workflow/round-follow-up.ts), only readable, open ones. */
+async function loadRoundFollowUpNotifications(ctx: Context, readable: ReturnType<typeof readableTaskWhere>, now: Date) {
+  const rows = await prisma.noticeDelivery.findMany({
+    where: { organizationId: ctx.organizationId, userId: ctx.user.id, channel: ROUND_FOLLOW_UP_CHANNEL, createdAt: { gte: new Date(now.getTime() - ROUND_FOLLOW_UP_NOTICE_DAYS * 86_400_000) } },
+    orderBy: { createdAt: "desc" }, take: ROUND_FOLLOW_UP_NOTICE_LIMIT, select: { key: true, createdAt: true },
+  });
+  const parsed = rows.flatMap((row) => { const key = parseRoundFollowUpNoticeKey(row.key); return key ? [{ ...row, ...key }] : []; });
+  if (!parsed.length) return [];
+  const orders = await prisma.workflowTask.findMany({
+    where: { organizationId: ctx.organizationId, kind: "WORK_ORDER", id: { in: [...new Set(parsed.map((row) => row.workOrderId))] }, status: { notIn: [...CLOSED_TASK_STATUSES] }, AND: [readable] },
+    select: { id: true, title: true, status: true, dueDate: true, plannedStartDate: true, data: true, createdBy: true },
+  });
+  const byId = new Map(orders.map((order) => [order.id, order]));
+  const people = orders.length ? await prisma.organizationMember.findMany({
+    where: { organizationId: ctx.organizationId, userId: { in: [...new Set(orders.map((order) => order.createdBy))] } }, select: { userId: true, user: { select: { name: true, email: true } } },
+  }) : [];
+  const names = new Map(people.map((member) => [member.userId, member.user.name || member.user.email]));
+  return roundFollowUpNotifications(parsed.map((row) => { const order = byId.get(row.workOrderId) ?? null; return { createdAt: row.createdAt, byName: order ? names.get(order.createdBy) ?? "" : "", order }; }), now);
 }
 
 /** The person's unread Ej utfört notices (lib/workflow/round-outcome.ts), only for rounds they may read (`titles`) and not revoked. */

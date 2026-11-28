@@ -98,8 +98,12 @@ export const PUBLIC_SITE_POST_PATHS = ["/api/analytics/event", "/api/csp-report"
 // The film page (/filmer, 2026-11-20, and each film's own address /filmer/<kortnamn>, 2026-11-24) and the news page (/nytt, 2026-11-21) the same way.
 // A personal film link (/film/<token>, 2026-11-26): 32 letters, digits, - and _.
 const PUBLIC_PAGES = [/^\/$/, /^\/legal\/[a-z-]+\/?$/, /^\/funktioner\/[a-z0-9-]+\/?$/, /^\/filmer(?:\/[a-z0-9-]{1,60})?\/?$/, /^\/nytt\/?$/, /^\/film\/[A-Za-z0-9_-]{32}\/?$/];
-/** Files the pages above need. Next's own files (/_next/…) always pass. */
-const PUBLIC_FILES = [/^\/_next\//, /^\/icons\//, /^\/brand\//, /^\/landing\//, /^\/landing-images\//, /^\/landing-films\//, /^\/fonts\//, /^\/picture\//, /^\/favicon\.ico$/, /^\/robots\.txt$/, /^\/sitemap\.xml$/, /^\/opengraph-image(?:-[\w-]+)?$/];
+/**
+ * Files the pages above need. Next's own files (/_next/…) always pass. llms.txt and IndexNow's key file /<key>.txt (2026-11-28,
+ * lib/seo/indexing.ts) are the site's own and decide on their own (404 unless the landing page is published and it is the own key).
+ */
+const PUBLIC_FILES = [/^\/_next\//, /^\/icons\//, /^\/brand\//, /^\/landing\//, /^\/landing-images\//, /^\/landing-films\//, /^\/fonts\//, /^\/picture\//, /^\/favicon\.ico$/, /^\/robots\.txt$/, /^\/sitemap\.xml$/, /^\/opengraph-image(?:-[\w-]+)?$/,
+  /^\/llms\.txt$/, /^\/[A-Za-z0-9-]{8,128}\.txt$/];
 /** Never on the public site: the API, OAuth/MCP discovery, the app's service worker and install manifest. security.txt (
  * 2026-11-20: also on the public site) is the one .well-known file that passes. */
 const PUBLIC_NOT_FOUND = [/^\/api(\/|$)/, /^\/\.well-known(?!\/security\.txt$)(\/|$)/, /^\/sw\.js$/, /^\/manifest\.webmanifest$/];

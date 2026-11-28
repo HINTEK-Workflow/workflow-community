@@ -152,6 +152,12 @@ export type ServerExtensions = {
    * (no block, only the line); null when nothing needs saying, and always without ee/.
    */
   cloudTierNotice(organizationId: string): Promise<string | null>;
+  /**
+   * Priset med egen AI-nyckel (2026-11-27): the company admin turned Använd företagets egen AI-nyckel on or off, so the Cloud
+   * subscription moves to the matching price of its version. Never throws; absent without ee/ (no billing). `note`: a plain line for
+   * the admin, e.g. that the price with the own key applies from the next price version.
+   */
+  ownAiKeyChanged?(input: { organizationId: string; actorId: string; on: boolean }): Promise<{ note?: string }>;
   /** Re-plans the notices about purchased credits that expire. */
   syncCreditExpiryNotices(organizationId: string): Promise<unknown>;
   /** Whether Workflow AI's control review can run and whether a model provider is configured (workspace overview). */
@@ -204,6 +210,13 @@ export type ServerExtensions = {
   landingNews?(input: { superadmin: boolean }): Promise<{ kind: "render"; node: ReactNode; seo: import("@/lib/site-metadata").FeaturePageSeo; indexable: boolean } | { kind: "hidden" }>;
   /** The addresses of the feature pages (the film page and the news page too) visitors may open, for the sitemap; empty while the landing page is hidden. */
   landingPagePaths?(): Promise<string[]>;
+  /**
+   * llms.txt (Growth Engine paket 2, 2026-11-28): the public site in short for AI services, made from the landing page or the
+   * owner's own text, with absolute links on `siteOrigin`; null while the landing page is hidden. Without ee/: the route answers 404.
+   */
+  landingLlmsTxt?(input: { siteOrigin: string; legalKeys: string[] }): Promise<string | null>;
+  /** IndexNow (2026-11-28): the public key while IndexNow is on and the landing page is published; null otherwise and without ee/. */
+  indexNowKey?(): Promise<string | null>;
   /** The page where a company admin approves an app that wants to use the MCP server (OAuth 2.1); hidden without ee/. */
   oauthAuthorize(params: Record<string, string | undefined>): Promise<LandingDecision>;
   /** Workflow's key vault copy, Kontrollera och synka and the emergency copy (CentralKeysExtension); absent without ee/. */

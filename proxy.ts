@@ -3,7 +3,7 @@
 // middleware); it runs in the Node.js runtime before the routes.
 import { NextResponse, type NextRequest } from "next/server";
 import { publicSite, routePublicSite, siteOfHost } from "@/lib/public-site";
-import { robotsHeaderFor } from "@/lib/seo/indexing";
+import { INDEXNOW_KEY_FILE, INDEXNOW_KEY_ROUTE, robotsHeaderFor } from "@/lib/seo/indexing";
 import { ADDRESS_HEADER } from "@/lib/workflow/first-frame";
 import { buildCspPolicy, createNonce, cspHeaderName, cspMode, reportingEndpoints, wantsPagePolicy } from "@/lib/security/csp";
 import { OPERATOR_ONLY_REFUSAL, operatorRequestRefused } from "@/lib/operator/guard";
@@ -19,6 +19,18 @@ export function proxy(request: NextRequest) {
   );
   if (decision.kind === "redirect") return NextResponse.redirect(decision.location, decision.status);
   if (decision.kind === "not-found") return new NextResponse(null, { status: 404 });
+  // IndexNow's key file (2026-11-28, lib/seo/indexing.ts): /<key>.txt is served by its own route, which answers only on the public
+  // site and only for the installation's own key. A plain text file: no page policy is needed.
+  const keyFile = INDEXNOW_KEY_FILE.exec(request.nextUrl.pathname);
+  if (keyFile) {
+    const target = request.nextUrl.clone();
+    target.pathname = `${INDEXNOW_KEY_ROUTE}${keyFile[1]}`;
+    target.search = "";
+    const rewritten = NextResponse.rewrite(target);
+    const tag = robotsHeaderFor(siteOfHost(request.headers.get("host"), site));
+    if (tag) rewritten.headers.set("X-Robots-Tag", tag);
+    return rewritten;
+  }
   // Rollen Operatör (2026-10-30, lib/operator/guard.ts): an operator session alone never reaches an /api route.
   if (operatorRequestRefused(request.nextUrl.pathname, request.cookies.getAll().map((cookie) => cookie.name)))
     return NextResponse.json({ error: OPERATOR_ONLY_REFUSAL }, { status: 403, headers: { "Cache-Control": "no-store" } });

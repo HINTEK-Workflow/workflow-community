@@ -32,6 +32,8 @@ import { claimFaultAlarm } from "@/lib/operator/on-call-store";
 import { claimClosedText, claimTakenText } from "@/lib/machine/alarm-notice";
 import { maintenanceFactsSchema, withoutStaleWaiting } from "@/lib/workflow/maintenance";
 import { deviationItem } from "@/lib/maintenance/server";
+import { applyRoundFollowUp, copyFollowUpImages, prepareRoundFollowUp, recordFollowUpNotices, roundOriginOf, type PreparedFollowUp } from "@/lib/kfid/round-follow-up-server";
+import { roundFollowUpInputSchema, withStoredRoundFollowUp } from "@/lib/workflow/round-follow-up";
 import { savedStatusForTask } from "@/lib/workflow/task-status-rule";
 import { taskScheduleError } from "@/lib/workflow/schedule";
 import { normalizeStage, startForNewJob } from "@/lib/workflow/job-planning";
@@ -299,7 +301,9 @@ export async function POST(request: Request) {
       // ten minutes share one entry in the history instead of one per pause in the typing.
       // `maintenance` (Underhåll, 2026-10-30): a new work order made from a protocol's deviation row sends the row's facts; the
       // order gets a maintenance item with them when the protocol is on a machine part (lib/maintenance/server.ts deviationItem).
-      z.object({ action: z.literal("save"), task: workflowTaskInputSchema, autosave: z.boolean().optional(), maintenance: maintenanceFactsSchema.optional() }),
+      // `roundFollowUp` (2026-11-27): the new work order is made from a brist in a driftrond with Akut or Planerad
+      // arbetsorder (lib/kfid/round-follow-up-server.ts): its machine, photos and the notice to arbetsledare and admin.
+      z.object({ action: z.literal("save"), task: workflowTaskInputSchema, autosave: z.boolean().optional(), maintenance: maintenanceFactsSchema.optional(), roundFollowUp: roundFollowUpInputSchema.optional() }),
       // `keepShort` (2026-10-12): the person answered "Spara ändå" for a timer under a minute, which is otherwise discarded.
       z.object({ action: z.literal("timer"), id: identifier, command: z.enum(["START", "PAUSE"]), keepShort: z.boolean().optional() }),
       z.object({ action: z.literal("reopen"), id: identifier }),
@@ -509,7 +513,7 @@ export async function POST(request: Request) {
     const task = input.task;
     // Idempotensnyckel (granskningen 2026-11-24): a new job sent again with the same Idempotency-Key gets the first answer.
     // The hash is taken of what was sent, before the save below fills in its own fields.
-    const idempotency = task.id ? null : idempotencyClaim(request, { organizationId: ctx.organizationId, userId: ctx.user.id }, "workflow-task:create", { task, maintenance: input.maintenance ?? null });
+    const idempotency = task.id ? null : idempotencyClaim(request, { organizationId: ctx.organizationId, userId: ctx.user.id }, "workflow-task:create", { task, maintenance: input.maintenance ?? null, ...(input.roundFollowUp ? { roundFollowUp: input.roundFollowUp } : {}) });
     // A protocol always uses its stored form version (never a document sent by the client), and follows its form's
     // permission area – Kontroll före idrifttagning and Riskbedömning as forms keep their own (2026-09-27).
     const form = await bindFormTask(ctx.organizationId, task);
@@ -517,6 +521,16 @@ export async function POST(request: Request) {
     requireWorkflowPermission(ctx, subject, task.id ? "edit" : "create");
     const replay = await replayedAnswer(idempotency);
     if (replay) return replay;
+    // Från ronden (2026-11-27): the round's own checks – a new work order from a brist without one, in a round protocol the
+    // person may read; the machine and photos are the company's and the protocol's.
+    let followUp: PreparedFollowUp | null = null;
+    if (input.roundFollowUp) {
+      requireModule(ctx, "rounds");
+      requireWorkflowPermission(ctx, "work-order", "create");
+      followUp = await prepareRoundFollowUp(ctx, task, input.roundFollowUp);
+    }
+    // Any other new work order from a round protocol is listed under Från ronden and tells arbetsledare and admin too.
+    const roundOrigin = !followUp && organizationModuleOn(ctx.organization, "rounds") && ctx.organization.storageMode === "HINTEK_CLOUD" ? await roundOriginOf(ctx, task) : null;
     // Driftrond i arbetsordern (2026-10-27, punkt 3): a protocol started from a round registers the occurrence in the
     // round's work order for the day – the one it came with, or the one whose period holds the day. Nothing is made here;
     // without such a work order the round is refused until a person has made it (lib/kfid/round-work-orders-server.ts).
@@ -539,6 +553,10 @@ export async function POST(request: Request) {
     await requireSavedTaskLevels(ctx.organizationId, ctx.user, { task, formTemplateId: form.formTemplateId, documented: workflowTaskHasDocumentation(task) });
     const now = new Date();
     const current = task.id ? await prisma.workflowTask.findFirst({ where: { id: task.id, organizationId: ctx.organizationId } }) : null;
+    // The round's mark on a work order is the server's: a save keeps the stored one, and a new order gets one only from a brist.
+    task.data = withStoredRoundFollowUp(task.data, current?.data);
+    if (followUp && task.data.kind === "WORK_ORDER") task.data = { ...task.data, details: { ...task.data.details, roundFollowUp: { kind: followUp.kind, roundOrderId: followUp.roundOrderId } } };
+    else if (roundOrigin && task.data.kind === "WORK_ORDER") task.data = { ...task.data, details: { ...task.data.details, roundFollowUp: { kind: "PLANNED", roundOrderId: roundOrigin.roundOrderId } } };
     // Företagets moduler (0.39.0): a job is never tied anew to a module that is off. What it already has stays, so it can still be
     // saved, and a linked task only takes what its work order holds. Without a customer, or on Eget företag, a job always works.
     if (!task.workOrderId) {
@@ -657,13 +675,19 @@ export async function POST(request: Request) {
       await recordAssignment(tx, { organizationId: ctx.organizationId, taskId: row.id, previousUserId: null, nextUserId: task.assignedToUserId, actorId: ctx.user.id });
       // Avvikelse ↔ arbetsorder (2026-10-10): a work order made from a protocol row takes the row's log entries.
       await linkDeviationsOnOrderSave(tx, { organizationId: ctx.organizationId, order: { id: row.id, kind: task.kind, title: task.title, status, data: task.data }, created: true, by: { id: ctx.user.id, name: ctx.user.name?.trim() || ctx.user.email }, now });
-      if (task.data.kind === "WORK_ORDER" && input.maintenance && ctx.organization.storageMode === "HINTEK_CLOUD" && organizationModuleOn(ctx.organization, "upkeep"))
-        await deviationItem(tx, { organizationId: ctx.organizationId, userId: ctx.user.id, workOrderId: row.id, sourceTaskId: task.data.details.source?.taskId, facts: input.maintenance });
+      if (followUp) await applyRoundFollowUp(tx, { organizationId: ctx.organizationId, userId: ctx.user.id, workOrderId: row.id, prepared: followUp, facts: input.maintenance ?? null, now });
+      else {
+        if (task.data.kind === "WORK_ORDER" && input.maintenance && ctx.organization.storageMode === "HINTEK_CLOUD" && organizationModuleOn(ctx.organization, "upkeep"))
+          await deviationItem(tx, { organizationId: ctx.organizationId, userId: ctx.user.id, workOrderId: row.id, sourceTaskId: task.data.details.source?.taskId, facts: input.maintenance });
+        if (roundOrigin) await recordFollowUpNotices(tx, ctx.organizationId, row.id, roundOrigin.recipients);
+      }
       await storeIdempotentAnswer(tx, idempotency, row);
       return row;
     }).catch((error) => { if (error instanceof IdempotencyTaken) return null; throw error; });
     // Another request with the same key made the job: its answer is this one's too.
     if (!created) return answerAfterTaken(idempotency!);
+    // The brist's photos follow into the work order (Från ronden, 2026-11-27); a photo that cannot be copied stays in the protocol.
+    if (followUp?.images.length) await copyFollowUpImages(ctx.organizationId, created.id, followUp.images);
     // A new work order for a round (2026-11-27): a plan done in the round that waited for one gets its item now.
     if (task.kind === "WORK_ORDER" && roundScheduleId) await refillPlan(ctx.organization, { id: created.id, roundScheduleId });
     recordFeature(`task_created_${task.kind}`, ctx.analytics);

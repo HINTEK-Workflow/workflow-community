@@ -5804,6 +5804,9 @@ model MaintenancePlan {
   /// Gör i driftronden (2026-11-27): the occurrences are done in this round's work order, as an item there, instead of
   /// a work order of their own. Null = a work order per occurrence as before.
   roundScheduleId  String?
+  /// Intervallet (2026-11-27, lib/maintenance/plan-model.ts INTERVAL_MODES): FIXED (Fast schema, the default for every plan)
+  /// or FROM_DONE (Räkna från senaste utförda). Only calendar time reads it (CHECK in the migration).
+  intervalMode     String         @default("FROM_DONE")
   version          Int            @default(1)
   createdById      String
   updatedById      String

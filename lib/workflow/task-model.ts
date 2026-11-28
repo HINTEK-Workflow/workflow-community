@@ -127,6 +127,9 @@ export const workOrderDataSchema = z.preprocess(liftWaiting, z.object({
   // Arbetsorder från offert (plan 1K, 2026-10-11): the accepted quote the order was made from, so its guided flow asks
   // for Ansvarig and Klart senast first (lib/workflow/task-flow.ts). Additive; the rows' `quoteRef` stay as they are.
   quote: z.object({ quoteId: z.string().min(1).max(100), label: z.string().trim().max(40).default(""), version: z.number().int().min(1).optional() }).optional(),
+  // Från ronden (2026-11-27, lib/workflow/round-follow-up.ts): a work order made from a brist in a driftrond – Akut or
+  // Planerad, and the round's work order it is listed in. Set only by the server when the order is made; a save keeps the stored one.
+  roundFollowUp: z.object({ kind: z.enum(["URGENT", "PLANNED"]), roundOrderId: z.string().min(1).max(100) }).optional(),
 }));
 
 export const riskAssessmentDataSchema = z.object({

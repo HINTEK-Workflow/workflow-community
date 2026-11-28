@@ -27,6 +27,22 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "0.91.0",
+    date: "2026-11-28",
+    summary: "Brister från driftronden blir arbetsordrar direkt, och uppföljningen syns på rondens arbetsorder.",
+    items: [
+      "Hittar du en brist i driftronden väljer du Akut arbetsorder eller Planerad arbetsorder. Maskinen är redan vald, och foto och kommentar följer med. Vid en akut brist får arbetsledare och admin ett meddelande direkt, även med e-post.",
+      "Rondens arbetsorder visar Från ronden, med varje uppföljning och om den är öppen eller klar. Det du åtgärdade direkt räknas som klart och syns i maskinens Historik.",
+      "En underhållsplan kan räkna nästa gång från när arbetet senast gjordes, som förut, eller följa ett fast schema.",
+      "Trycker du Klart med punkter som inte är avbockade frågar Workflow först om du vill markera det som klart ändå.",
+    ],
+    highlights: [
+      "Brister från ronden blir arbetsordrar",
+      "Uppföljningen syns på rondens arbetsorder",
+      "Fast schema eller räkna från senast utförda",
+    ],
+  },
+  {
     version: "0.90.0",
     date: "2026-11-27",
     summary: "Använd företagets egen AI-nyckel och koppla din egen AI-app.",

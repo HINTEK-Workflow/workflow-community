@@ -97,6 +97,8 @@ import { roundSafetyOf, roundSafetyRefusal, roundSafetyRequired, roundSafetyStat
 import { ROUND_SAFETY_TARGET, RoundSafetyPanel } from "./round-safety-panel";
 import { WorkOrderChoice, withChosenWorkOrder } from "./work-order-choice";
 import { LinkedTasksPanel } from "./linked-tasks-panel";
+import { followUpMessage, RoundFollowUpPanel } from "./round-follow-up-order";
+import { roundFollowUpOf } from "@/lib/workflow/round-follow-up";
 import { WorkOrderMaintenanceItems } from "@/features/maintenance/maintenance-item-editor";
 import { StoreMaterialRow } from "@/features/maintenance/store-material-row";
 import { storeRowLabel } from "@/lib/workflow/store-rows";
@@ -874,7 +876,8 @@ function WorkflowTaskEditorBody({ kind, taskId, projectId, customerId, customers
   // The same fact row as the control's header (2026-09-27): what the task holds, who and when.
   const overdue = isLateTask(task, swedishDayKey(new Date()));
   const openItems = task.data.kind === "WORK_ORDER" ? orderItems.filter((item) => item.status === "OPEN") : [];
-  const priority = highestPriority(openItems.map((item) => item.priority));
+  // Akut från ronden (2026-11-27): an Akut order without a machine has no item; its mark from the round makes it Akut while open.
+  const priority = highestPriority([...openItems.map((item) => item.priority), task.data.kind === "WORK_ORDER" && task.status !== "COMPLETED" && task.status !== "CANCELLED" && roundFollowUpOf(task.data)?.kind === "URGENT" ? "URGENT" : null]);
   const itemFault = openItems.map((item) => item.fault.trim()).find(Boolean) ?? "";
   const riskClass = !preview ? work.context?.riskClass ?? null : null;
   // Nivå 1 på mobil (2026-10-09): a saved job on a phone at level 1 is a menu of rows – Uppdraget, the steps and
@@ -2271,7 +2274,9 @@ function WorkflowTaskEditorBody({ kind, taskId, projectId, customerId, customers
     openWorkOrder: (id) => router.push(`/?view=workflow_task&taskId=${encodeURIComponent(id)}&taskType=WORK_ORDER`),
     workOrderStatus: (id) => linkedOrders[id] ? { status: linkedOrders[id].status, label: statusLabels[linkedOrders[id].status as WorkflowTaskStatus] ?? linkedOrders[id].status } : undefined,
     canCreateWorkOrder: Boolean(task.id),
-    createWorkOrder: async ({ title, description, assignedToName = "", dueDate = "", deviation, targetId }) => {
+    // Driftronden som tillsyn (2026-11-27): a saved round protocol in Cloud gives a brist Akut and Planerad arbetsorder.
+    ...(!local && task.id && task.data.kind === "FORM" && roundOfProtocolValues(task.data) && moduleIsOn("rounds") ? { roundProtocolId: task.id } : {}),
+    createWorkOrder: async ({ title, description, assignedToName = "", dueDate = "", deviation, targetId, followUp }) => {
       // The work order links back to a saved protocol (2026-10-02: the button waits for the first save, so no order is
       // left without its link and a second press cannot make a duplicate), and its Nästa steg leads back here.
       const protocolId = task.id;
@@ -2281,13 +2286,15 @@ function WorkflowTaskEditorBody({ kind, taskId, projectId, customerId, customers
       // The description is the row's own; where it came from is the source link in the order's facts (simulation 2026-10-10).
       const order = { id: undefined, version: 0, kind: "WORK_ORDER", title, description: (description.trim() || deviation?.fault?.trim() || "").slice(0, 5000), status: "PLANNED", progress: 0,
         projectId: task.projectId, customerId: selectedProject?.customerId ?? task.customerId, facilityId: task.facilityId ?? null,
-        assignedToUserId: member?.id ?? null, assignedToName: member?.name ?? assignedToName, dueDate, data: { ...(tempPlace ? { tempPlace } : {}), kind: "WORK_ORDER", details: { ...(base.details as object), source: { taskId: protocolId, title: task.title.slice(0, 200), kind: "FORM", ...(targetId ? { rowId: targetId } : {}) } } }, totalDurationSec: 0, timerRunning: false } as unknown as WorkflowTaskRecord;
+        assignedToUserId: member?.id ?? null, assignedToName: member?.name ?? assignedToName, dueDate, ...(followUp?.plannedStartDate ? { plannedStartDate: followUp.plannedStartDate } : {}),
+        data: { ...(tempPlace ? { tempPlace } : {}), kind: "WORK_ORDER", details: { ...(base.details as object), source: { taskId: protocolId, title: task.title.slice(0, 200), kind: "FORM", ...(targetId ? { rowId: targetId } : {}) } } }, totalDurationSec: 0, timerRunning: false } as unknown as WorkflowTaskRecord;
       // Underhåll (2026-10-30): when the protocol is on a machine part the server gives the order a maintenance item –
       // avhjälpande, the deviation as its fault and the priority from the row's severity or the one the form gave.
       const maintenance = maintenanceFromDeviation({ ...deviation, fault: deviation?.fault ?? description });
       try {
-        const result = local ? await local.save(order) : await api<{ id: string }>("/api/workflow-tasks", { method: "POST", body: JSON.stringify({ action: "save", task: order, maintenance }) });
-        setMessage("Arbetsordern är skapad och kopplad till raden. Spara protokollet så sparas kopplingen.");
+        const roundFollowUp = followUp && !local ? { kind: followUp.kind, imageIds: followUp.imageIds, ...(followUp.partId !== undefined ? { partId: followUp.partId } : {}) } : undefined;
+        const result = local ? await local.save(order) : await api<{ id: string }>("/api/workflow-tasks", { method: "POST", body: JSON.stringify({ action: "save", task: order, maintenance, ...(roundFollowUp ? { roundFollowUp } : {}) }) });
+        setMessage(followUp ? followUpMessage(followUp.kind) : "Arbetsordern är skapad och kopplad till raden. Spara protokollet så sparas kopplingen.");
         return result.id;
       } catch (issue) { setError((issue as Error).message); return null; }
     },
@@ -2746,6 +2753,8 @@ function WorkflowTaskEditorBody({ kind, taskId, projectId, customerId, customers
     // it is saved (2026-10-12: the create screen ran to 3 200 px with the summary, Historik and the attachments).
     part={nativeNew ? { keys: newFormKeys, first: true, last: false } : screen === "formular" && paged ? { keys: parts[part - 1].keys, first: part === 1, last: part === parts.length } : undefined} readOnly={task.status === "COMPLETED" || contentLocked || safetyLocksFill}
     onChange={(values) => { preview?.onValuesChange?.(values); const before = latestTask.current.data; if (before.kind === "FORM" && !preview) withdrawRowDeviations(before, { ...before, details: { ...before.details, values } }); setTask((current) => current.data.kind === "FORM" ? titled({ ...current, data: { ...current.data, details: { ...current.data.details, values } } }) : current); }} /> : null;
+  // Från ronden (2026-11-27): the round's work order lists the work orders made from its brister. Cloud only.
+  const roundFollowUpPanel = task.data.kind === "WORK_ORDER" && task.id && task.roundScheduleId && !task.roundOccurrence && !preview && !local && moduleIsOn("rounds") ? <RoundFollowUpPanel workOrderId={task.id} refreshKey={task.version} /> : null;
   const linkedTasksPanel = task.data.kind === "WORK_ORDER" && task.id && !preview ? <LinkedTasksPanel workOrder={{ id: task.id, title: task.title, status: task.status, projectId: task.projectId, customerId: task.customerId, facilityId: task.facilityId ?? null, roundScheduleId: task.roundScheduleId || null, roundOccurrence: task.roundOccurrence ?? null, plannedStartDate: task.plannedStartDate ?? "", dueDate: task.dueDate }} refreshKey={task.version} localRounds={local?.rounds}
     local={local ? local.tasks.filter((item) => item.workOrderId === task.id).map((item) => ({ id: item.id, kind: item.kind, title: item.title, status: item.status, progress: workflowTaskProgress(item), dueDate: item.dueDate, assignedToName: item.assignedToName, ...(roundOfProtocolValues(item.data) ? { occurrence: roundOfProtocolValues(item.data)!.occurrence } : {}), ...(linkedTaskFormName(item.data) ? { formName: linkedTaskFormName(item.data) } : {}) })) : undefined} /> : null;
   // Underhåll (2026-10-30): the maintenance items the work order holds like its tasks – type, priority, fault and
@@ -2874,7 +2883,7 @@ function WorkflowTaskEditorBody({ kind, taskId, projectId, customerId, customers
         case "plats": return <>{working(basicsPanel ? <NativeLead>{basicsPanel}</NativeLead> : <div className="space-y-4">{placeField()}{tempPlaceField}<div className="grid gap-4">{planningFields}</div></div>)}{assignmentPanel}</>;
         case "underhall": return <NativeLead>{maintenanceItemsPanel}</NativeLead>;
         case "bilagor": return <NativeLead>{attachmentsPanel}</NativeLead>;
-        case "kopplade": return <NativeLead>{linkedTasksPanel}</NativeLead>;
+        case "kopplade": return <NativeLead>{linkedTasksPanel}{roundFollowUpPanel}</NativeLead>;
         case "kommentarer": return commentPanel ? <NativeLead>{commentPanel}</NativeLead> : null;
         // Rapport och hantering: the page's own buttons as rows (their menus and dialogs are unchanged).
         case "rapport": return <>
@@ -3051,6 +3060,7 @@ function WorkflowTaskEditorBody({ kind, taskId, projectId, customerId, customers
     {/* Arbetsordern som hållare (2026-10-30): Grunduppgifter → Riskbedömning → Uppgifter → Utförande → Signering → Bilder →
         Rapport. The work order's tasks (with Lägg till uppgift) come right after its Riskbedömning. */}
     {linkedTasksPanel}
+    {roundFollowUpPanel}
     {/* Underhållsposter: held by the work order like its tasks, so right after Uppgifter. */}
     {maintenanceItemsPanel}
     {/* Not one fieldset around it: the work buttons in Utförande keep saying why they cannot be used (a finished, cancelled

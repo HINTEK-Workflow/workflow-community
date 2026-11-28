@@ -20,12 +20,22 @@ export const CLOSED_ROBOTS_TXT = "User-agent: *\nAllow: /login$\nDisallow: /\n";
  * lib/public-site.ts): a search engine needs the styles, scripts, fonts and pictures to see the page as a visitor does,
  * and a link preview needs the share picture. Everything else on the public site only redirects to the app.
  */
-// The film page and the news page (2026-11-21) are in the sitemap, so robots.txt lets them be crawled too.
-export const PUBLIC_CRAWL_ALLOW = ["/$", "/legal/", "/funktioner/", "/filmer$", "/nytt$", "/_next/", "/landing/", "/landing-images/", "/fonts/", "/picture/", "/icons/", "/brand/", "/opengraph-image", "/favicon.ico", "/sitemap.xml"] as const;
+// The film page and the news page (2026-11-21) are in the sitemap, so robots.txt lets them be crawled too. llms.txt (2026-11-28) too.
+export const PUBLIC_CRAWL_ALLOW = ["/$", "/legal/", "/funktioner/", "/filmer$", "/nytt$", "/_next/", "/landing/", "/landing-images/", "/fonts/", "/picture/", "/icons/", "/brand/", "/opengraph-image", "/favicon.ico", "/sitemap.xml", "/llms.txt$"] as const;
 
-/** robots.txt for the public site while the landing page is published, with the sitemap's address. */
-export function publicRobotsTxt(siteOrigin: string): string {
-  return ["User-agent: *", ...PUBLIC_CRAWL_ALLOW.map((path) => `Allow: ${path}`), "Disallow: /", "", `Sitemap: ${siteOrigin}/sitemap.xml`, ""].join("\n");
+/**
+ * IndexNow's key file on the public site (2026-11-28, ee/landing/indexnow.ts): /<key>.txt with 8–128 letters, digits and hyphens.
+ * proxy.ts sends such an address to the key file's route, which answers only for the installation's own key.
+ */
+export const INDEXNOW_KEY_FILE = /^\/([A-Za-z0-9-]{8,128})\.txt$/;
+/** The route the key file is served by (proxy.ts rewrites /<key>.txt to it; it answers 404 for any other key and on the app's address). */
+export const INDEXNOW_KEY_ROUTE = "/indexnow-key/";
+/** The key file's line for robots.txt (it is named only while IndexNow is on). */
+export const indexNowKeyAllow = (key: string) => `/${key}.txt$`;
+
+/** robots.txt for the public site while the landing page is published, with the sitemap's address; `extraAllow`: the IndexNow key file. */
+export function publicRobotsTxt(siteOrigin: string, extraAllow: readonly string[] = []): string {
+  return ["User-agent: *", ...[...PUBLIC_CRAWL_ALLOW, ...extraAllow].map((path) => `Allow: ${path}`), "Disallow: /", "", `Sitemap: ${siteOrigin}/sitemap.xml`, ""].join("\n");
 }
 
 /** The X-Robots-Tag of an answer: every answer on the app's address (or without a public site) says noindex; the public site decides in its pages. */

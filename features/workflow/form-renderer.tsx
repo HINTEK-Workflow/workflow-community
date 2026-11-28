@@ -80,7 +80,11 @@ export type FormActions = { /** False until the protocol has been saved once: an
   /** The row's fault and severity, for the order's maintenance facts (Underhåll, 2026-10-06); `priority` when the form judged the row itself. */
   deviation?: { fault?: string; severity?: string; severityOptions?: string[]; seriousOptions?: string[]; priority?: MaintenancePriority };
   /** The row, point or field the order is made from (2026-10-06), so the finished order leads back to it. */
-  targetId?: string }) => Promise<string | null>; openWorkOrder?: (id: string) => void;
+  targetId?: string;
+  /** Akut or Planerad arbetsorder from a round's brist (2026-11-27, lib/workflow/round-follow-up.ts): its machine, photos and suggested day. */
+  followUp?: { kind: "URGENT" | "PLANNED"; partId?: string | null; imageIds: string[]; plannedStartDate?: string } }) => Promise<string | null>; openWorkOrder?: (id: string) => void;
+  /** Driftronden som tillsyn (2026-11-27): the protocol is a saved round protocol, so a brist gets Akut and Planerad arbetsorder. */
+  roundProtocolId?: string;
   /** The state of a row's work order (2026-09-30), shown on the row: "Arbetsorder: Slutförd". */
   workOrderStatus?: (id: string) => { status: string; label: string } | undefined;
   /** Egenkontroll (etapp 2): a deviation to the programme's deviation log, linked back to the row; the number it got. */

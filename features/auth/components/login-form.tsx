@@ -222,7 +222,7 @@ export function LoginForm({
             <p className="text-base font-semibold">Bekräfta att det är du</p>
             <p className="text-sm leading-6 text-muted-foreground">{codeStep ? <>Tvåstegsverifiering är på för <span className="break-all font-medium text-foreground">{codeStep.email}</span>.</> : `Du loggade in med ${oauthCodeStep}, och tvåstegsverifiering är på för ditt konto.`}</p>
           </div>
-          <PasskeySignIn returnTo={returnTo} busy={pending || googlePending || microsoftPending} onError={setError} onPending={setPasskeyPending} primary label="Använd passkey (Face ID / fingeravtryck)" testId="login-code-passkey" />
+          <PasskeySignIn returnTo={returnTo} busy={pending || googlePending || microsoftPending} onError={setError} onPending={setPasskeyPending} primary testId="login-code-passkey" />
           {/* Logga in med telefonen (2026-11-27): one more choice; the passkey above and the code below stay as they are. */}
           <PasskeySignIn phone returnTo={returnTo} busy={pending || googlePending || microsoftPending} onError={setError} onPending={setPasskeyPending} testId="login-code-phone" />
           <div className="space-y-2 rounded-xl border bg-secondary/30 p-4">

@@ -262,3 +262,41 @@ test("the installers follow a release tag and take a backup that is read back be
   }
   assert.match(overlay("docker-compose.yml"), /image: postgres:16-alpine@sha256:[0-9a-f]{64}/, "the database image is locked to a digest");
 });
+
+// K1.6 (2026-11-28): the backups are always encrypted. The installers need age and a recipient, or make a key pair in
+// backup-key/ and say where the private key is; the plain files never stay; the nightly backup refuses to run unencrypted;
+// the restore drill (published) writes the same protocol for Community.
+test("Community backups are always encrypted, and the restore drill is published", () => {
+  const overlay = (file: string) => read(existsSync(`community/overlay/${file}`) ? `community/overlay/${file}` : file);
+  const sh = overlay("install.sh");
+  const ps = overlay("install.ps1");
+  assert.match(sh, /ensure_backup_encryption\(\) \{/);
+  assert.match(sh, /age-keygen -o "\$key"/);
+  assert.match(sh, /set_value BACKUP_AGE_RECIPIENT "\$recipient" "\$DIR\/\.env"/);
+  assert.ok(sh.indexOf("\nensure_backup_encryption\n") > 0 && sh.indexOf("\nensure_backup_encryption\n") < sh.indexOf("if $updating; then"), "checked before the update's backup");
+  assert.match(ps, /function EnsureBackupEncryption \{/);
+  assert.match(ps, /age-keygen -o \$key/);
+  const psCall = ps.replace(/\r/g, "").indexOf("\nEnsureBackupEncryption\n");
+  assert.ok(psCall > 0 && psCall < ps.replace(/\r/g, "").indexOf("if ($updating) {"), "checked before the update's backup");
+  for (const [name, script] of [["install.sh", sh], ["install.ps1", ps]] as const) {
+    assert.doesNotMatch(script, /OKRYPTERAD/, `${name}: never an unencrypted backup`);
+    assert.match(script, /SHA256SUMS\.plain/, `${name}: the plain sums are kept for after decrypting`);
+    assert.match(script, /workflow-update\.rows/, `${name}: rows per table for the drill`);
+    assert.match(script, /backup-key/, `${name}: the generated key's place is told`);
+  }
+  const nightly = read("scripts/ops/nightly-backup.sh");
+  assert.match(nightly, /else fail "The backup is always encrypted/);
+  assert.match(nightly, /sed -n 's\/\^BACKUP_AGE_RECIPIENT=\/\/p' \.\/\.env/);
+  const drill = read("scripts/ops/aterstallningsovning.sh");
+  for (const part of ["--key", "--internal", "rows-archive.tsv", "ROWS", "SHA256SUMS.plain", "/api/health/ready", "aterstallning-$(date +%Y-%m-%d).md", "**Resultat: godkänd.**"])
+    assert.ok(drill.includes(part), part);
+  // The operator's own names are built here so that this published test names none of them itself.
+  for (const name of [["hintek", "db"].join("-"), ["backups", "lokalt"].join("-"), ["HINTEK", "drift"].join("-")])
+    assert.ok(!drill.includes(name), "no names of the operator's own servers or folders");
+  for (const file of ["INSTALLATION.md", "INSTALLATION.en.md"]) {
+    const doc = overlay(file);
+    assert.match(doc, /scripts\/ops\/aterstallningsovning\.sh/, file);
+    assert.match(doc, /allowed_signers/, `${file}: how to check the signed tag`);
+    assert.match(doc, /verify-tag v1\.2\.3/, file);
+  }
+});

@@ -674,7 +674,10 @@ export const formValuesSchema = z.object({
     // Bedömd av tekniker (2026-11-01, beslut 7): a row without a limit that the technician judged. Counts only while the
     // limit is missing; a limit given later decides by itself. Name and time are set by the server when the task is saved.
     judged: z.object({ approved: z.boolean(), by: optionalText(160), at: z.iso.datetime().nullable().default(null) }).optional(),
-    source: z.object({ checklist: z.string().max(40), item: z.string().max(60) }).optional(), workOrderId: z.string().min(1).max(100).optional() })).max(FORM_LIMITS.rows)).default({}),
+    source: z.object({ checklist: z.string().max(40), item: z.string().max(60) }).optional(), workOrderId: z.string().min(1).max(100).optional(),
+    // Brist i ronden (2026-11-27, lib/workflow/round-follow-up.ts): the machine part the deviation is on, so it and its work
+    // order show in the machine's Historik. Only an id; the server reads the part within the company.
+    partId: z.string().min(1).max(100).optional() })).max(FORM_LIMITS.rows)).default({}),
   images: z.record(z.string(), z.array(z.string().min(1).max(100)).max(50)).default({}),
   signatures: z.record(z.string(), z.object({ name: optionalText(160), confirmed: z.boolean().default(false), signedAt: z.iso.datetime().nullable().default(null) })).default({}),
   /**
@@ -1296,6 +1299,19 @@ export function formRuleSummary(document: FormDocument, values: FormValues, eval
  * counts only when the severity is one of the table's deviation options; a table without one counts every filled row
  * (simulation 2026-10-02: "Ingen anmärkning" and "Bevaka" were counted as deviations).
  */
+/**
+ * Åtgärdad direkt (2026-11-27, the round as an inspection plus small fixes): a deviation row whose "fixed on the spot"
+ * tick is set – the column of the kind Kryss whose key is `direkt` (the built-in rounds) or whose name is "Åtgärdad direkt"
+ * (a company's own form). It counts as handled in the follow-up and needs no work order.
+ */
+export function formFixedOnSiteColumn(block: Pick<FormTableBlock, "columns">) {
+  return block.columns.find((column) => column.input === "check" && (column.key === "direkt" || column.label.trim().toLowerCase() === "åtgärdad direkt")) ?? null;
+}
+export function formRowFixedOnSite(block: Pick<FormTableBlock, "columns">, row: { cells: Record<string, unknown> }) {
+  const column = formFixedOnSiteColumn(block);
+  return Boolean(column && row.cells[column.key] === true);
+}
+
 export function formRowsWithoutOrder(document: FormDocument, values: FormValues) {
   let count = 0;
   for (const block of formLeafBlocks(document)) {
@@ -1303,6 +1319,8 @@ export function formRowsWithoutOrder(document: FormDocument, values: FormValues)
     const severity = block.columns.filter((column) => column.input === "choice" && column.deviationOptions.length);
     for (const row of values.tables[block.key] ?? []) {
       if (row.example || row.workOrderId) continue;
+      // Åtgärdad direkt (2026-11-27) is handled: it needs no work order.
+      if (formRowFixedOnSite(block, row)) continue;
       if (severity.length && !severity.some((column) => typeof row.cells[column.key] === "string" && column.deviationOptions.includes(row.cells[column.key] as string))) continue;
       if (Object.values(row.cells).some((value) => value !== null && value !== "" && value !== false && !(Array.isArray(value) && !value.length))) count++;
     }

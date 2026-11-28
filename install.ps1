@@ -9,9 +9,9 @@
 # Versions: it installs the newest released version (a tag vX.Y.Z), not whatever is on main. $env:WORKFLOW_VERSION picks one
 # (v1.2.3, or main to follow main as before). Before an update changes the database it stops the app, takes a backup of the
 # database and the files into backups\update-<time>\, restores the database copy into a temporary database to prove it can
-# be read, checks the file archive, and only then starts the new version (which runs the migrations). With
-# BACKUP_AGE_RECIPIENT in .env and age.exe installed, the backup is encrypted to that key. INSTALLATION.md, "Återställ",
-# tells how to go back.
+# be read, checks the file archive, and only then starts the new version (which runs the migrations). The backup is always
+# encrypted with age to BACKUP_AGE_RECIPIENT in .env; without one a key pair is made in backup-key\ and the admin is told to
+# move the private key somewhere safe (age.exe must be installed). INSTALLATION.md, "Återställ", tells how to go back.
 #
 # Optional: $env:WORKFLOW_DIR (install folder), $env:WORKFLOW_SOURCE (git repository to install from), $env:WORKFLOW_VERSION,
 # $env:WORKFLOW_KEEP_BACKUPS (how many update backups are kept, 5). $env:WORKFLOW_SKIP_BACKUP=1 skips the backup (not
@@ -222,6 +222,8 @@ function BackupBeforeUpdate {
     "count=`"select count(*) from information_schema.tables where table_schema = 'public'`"",
     "live=`$(psql -X -At -U `$POSTGRES_USER -d `$POSTGRES_DB -c `"`$count`")",
     "copy=`$(psql -X -At -U `$POSTGRES_USER -d `$check -c `"`$count`")",
+    # The number of rows per table in the copy (names and numbers only), for the restore drill to compare with.
+    "psql -X -At -U `$POSTGRES_USER -d `$check -c `"select format('select %L || chr(9) || count(*) from %I.%I;', table_name, table_schema, table_name) from information_schema.tables where table_schema = 'public' and table_type = 'BASE TABLE' order by table_name`" | psql -X -At -U `$POSTGRES_USER -d `$check > /tmp/workflow-update.rows",
     "dropdb -U `$POSTGRES_USER `$check",
     "rm -f /tmp/workflow-update.dump",
     "echo `$live `$copy",
@@ -230,6 +232,8 @@ function BackupBeforeUpdate {
   $tables = ContainerScript $check $InPostgres
   if (-not $tables -or ($tables -split " ").Count -ne 2 -or ($tables -split " ")[0] -ne ($tables -split " ")[1]) { Write-Host "Kopian av databasen stämmer inte: $tables"; return $false }
   Write-Host "  läst tillbaka i en tillfällig databas: $(($tables -split ' ')[1]) tabeller, samma som i databasen"
+  Succeeds { docker compose cp postgres:/tmp/workflow-update.rows (Join-Path $target "ROWS") } | Out-Null
+  Succeeds { docker compose exec -T postgres rm -f /tmp/workflow-update.rows } | Out-Null
   Write-Host "Filerna ..."
   $tar = @(
     "set -e",
@@ -242,25 +246,30 @@ function BackupBeforeUpdate {
   $files = ContainerScript $tar @("compose", "run", "--rm", "--no-deps", "-T", "-v", "$($target):/backup", "app") $target "/backup"
   if (-not $files -or ($files -split "\s+").Count -ne 2 -or ($files -split "\s+")[0] -ne ($files -split "\s+")[1]) { Write-Host "Arkivet med filerna stämmer inte: $files"; return $false }
   Write-Host "  arkivet listat tillbaka: $(($files -split '\s+')[1]) filer och mappar"
-  $recipient = EnvValue "BACKUP_AGE_RECIPIENT"
-  if ($recipient) {
-    if (Get-Command age -ErrorAction SilentlyContinue) {
-      foreach ($name in @("database.dump", "storage.tar.gz")) {
-        $plain = Join-Path $target $name
-        if (-not (Succeeds { age -r $recipient -o "$plain.age" $plain })) { return $false }
-        Remove-Item $plain -Force
-      }
-      Write-Host "  krypterad med age till BACKUP_AGE_RECIPIENT"
-    } else {
-      Warn "  BACKUP_AGE_RECIPIENT är satt men age.exe finns inte: backupen är OKRYPTERAD. Installera age."
-    }
-  }
-  $sums = Get-ChildItem $target -File | Where-Object { $_.Name -like "database.dump*" -or $_.Name -like "storage.tar.gz*" } |
-    ForEach-Object { "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)" }
+  # Always encrypted (K1.6, 2026-11-28): EnsureBackupEncryption has made sure there is a recipient and age.exe. The sums of
+  # the plain files are kept to check after decrypting; only the .age files stay.
   $utf8 = New-Object Text.UTF8Encoding($false)
+  $plainFiles = @("database.dump", "storage.tar.gz") | ForEach-Object { Join-Path $target $_ }
+  $recipient = EnvValue "BACKUP_AGE_RECIPIENT"
+  if (-not $recipient -or -not (Get-Command age -ErrorAction SilentlyContinue)) {
+    Write-Host "Backupen krypteras alltid, men BACKUP_AGE_RECIPIENT eller age.exe saknas."
+    $plainFiles | ForEach-Object { Remove-Item $_ -Force -ErrorAction SilentlyContinue }
+    return $false
+  }
+  $plainSums = $plainFiles | ForEach-Object { "$((Get-FileHash $_ -Algorithm SHA256).Hash.ToLower())  $(Split-Path $_ -Leaf)" }
+  [IO.File]::WriteAllText((Join-Path $target "SHA256SUMS.plain"), (($plainSums -join "`n") + "`n"), $utf8)
+  foreach ($plain in $plainFiles) {
+    if (-not (Succeeds { age -r $recipient -o "$plain.age" $plain }) -or -not (Test-Path "$plain.age") -or (Get-Item "$plain.age").Length -eq 0) {
+      $plainFiles | ForEach-Object { Remove-Item $_ -Force -ErrorAction SilentlyContinue }
+      return $false
+    }
+    Remove-Item $plain -Force
+  }
+  Write-Host "  krypterad med age till BACKUP_AGE_RECIPIENT"
+  $sums = @("database.dump.age", "storage.tar.gz.age") | ForEach-Object { "$((Get-FileHash (Join-Path $target $_) -Algorithm SHA256).Hash.ToLower())  $_" }
   [IO.File]::WriteAllText((Join-Path $target "SHA256SUMS"), (($sums -join "`n") + "`n"), $utf8)
   $from = if ($script:PreviousVersion) { $script:PreviousVersion } else { "okänd" }
-  [IO.File]::WriteAllText((Join-Path $target "MANIFEST"), "created=$stamp`nfrom=$from`ntables=$(($tables -split ' ')[1])`nfiles=$(($files -split '\s+')[1])`n", $utf8)
+  [IO.File]::WriteAllText((Join-Path $target "MANIFEST"), "created=$stamp`nfrom=$from`ntables=$(($tables -split ' ')[1])`nfiles=$(($files -split '\s+')[1])`nencrypted=age`n", $utf8)
   Write-Host "Backup klar: $target"
   # Retention: the newest WORKFLOW_KEEP_BACKUPS update backups stay; only folders named like a stamp are removed.
   if ($KeepBackups -ge 1) {
@@ -268,6 +277,39 @@ function BackupBeforeUpdate {
       Sort-Object Name -Descending | Select-Object -Skip $KeepBackups | ForEach-Object { Remove-Item $_.FullName -Recurse -Force }
   }
   return $true
+}
+
+# The backups are always encrypted (K1.6, 2026-11-28). BACKUP_AGE_RECIPIENT in .env (or $env:WORKFLOW_BACKUP_AGE_RECIPIENT
+# the first time) is the public key; the private key is best made on another computer (age-keygen -o workflow-backup.key).
+# Without one, a key pair is made here in backup-key\ (only this user can read it) and the admin is told to move a copy of
+# the private key somewhere safe: without it no backup can be opened. age.exe is needed on this computer either way.
+$AgeHint = "Installera age: winget install FiloSottile.age (öppna sedan ett nytt PowerShell-fönster) och kör igen."
+function EnsureBackupEncryption {
+  $envFile = Join-Path $Dir ".env"
+  $recipient = EnvValue "BACKUP_AGE_RECIPIENT"
+  if (-not $recipient -and $env:WORKFLOW_BACKUP_AGE_RECIPIENT) {
+    $recipient = $env:WORKFLOW_BACKUP_AGE_RECIPIENT.Trim()
+    $lines = SetValue (Get-Content $envFile) "BACKUP_AGE_RECIPIENT" $recipient
+    [IO.File]::WriteAllText($envFile, (($lines -join "`n") + "`n"), (New-Object Text.UTF8Encoding($false)))
+  }
+  if (-not (Get-Command age -ErrorAction SilentlyContinue)) { Fail "Backuperna krypteras alltid med age, men age.exe finns inte. $AgeHint" }
+  if (-not $recipient) {
+    if (-not (Get-Command age-keygen -ErrorAction SilentlyContinue)) { Fail "age-keygen.exe saknas (det följer med age). $AgeHint" }
+    $keyDir = Join-Path $Dir "backup-key"
+    $key = Join-Path $keyDir "workflow-backup.agekey"
+    if (-not (Test-Path $key) -or (Get-Item $key).Length -eq 0) {
+      New-Item -ItemType Directory -Force $keyDir | Out-Null
+      # Only this Windows user (and the system) may read the folder.
+      Succeeds { icacls $keyDir /inheritance:r /grant:r "$($env:USERNAME):(OI)(CI)F" "SYSTEM:(OI)(CI)F" } | Out-Null
+      if (-not (Succeeds { age-keygen -o $key })) { Fail "Kunde inte skapa en nyckel för backuperna i $keyDir." }
+    }
+    $previous = $ErrorActionPreference; $ErrorActionPreference = "Continue"
+    try { $recipient = "$(& age-keygen -y $key 2>$null)".Trim() } finally { $ErrorActionPreference = $previous }
+    if (-not $recipient) { Fail "Kunde inte läsa den publika delen av $key." }
+    $lines = SetValue (Get-Content $envFile) "BACKUP_AGE_RECIPIENT" $recipient
+    [IO.File]::WriteAllText($envFile, (($lines -join "`n") + "`n"), (New-Object Text.UTF8Encoding($false)))
+  }
+  if ($recipient -notmatch "^age1[0-9a-z]{58}$") { Fail "BACKUP_AGE_RECIPIENT i .env ska vara en publik age-nyckel som börjar med age1." }
 }
 
 Write-Host "Workflow Community Edition - installation" -ForegroundColor Cyan
@@ -328,6 +370,10 @@ if (Test-Path $envFile) {
   $newInstall = $true
   Write-Host "Workflow använder port $appPort (databasen $dbPort)."
 }
+
+Step "Kontrollerar krypteringen av backuperna"
+EnsureBackupEncryption
+Write-Host "Backuperna krypteras med age till BACKUP_AGE_RECIPIENT i .env."
 
 if ($updating) {
   # The new version is built while the old one keeps running; then the old one stops, the backup is taken and read back,
@@ -407,9 +453,12 @@ Write-Host "  Starta igen:      docker compose up -d"
 Write-Host "  Uppdatera:        kör installationsraden igen (tar en backup först)"
 Write-Host "  Gå tillbaka:      INSTALLATION.md, avsnittet Återställ (backuperna ligger i $Dir\backups)"
 Write-Host "  Ta bort allt:     docker compose down -v   (raderar även datan)"
-if (-not (EnvValue "BACKUP_AGE_RECIPIENT")) {
+$backupKey = Join-Path $Dir "backup-key\workflow-backup.agekey"
+if ((Test-Path $backupKey) -and (Get-Item $backupKey).Length -gt 0) {
   Write-Host ""
-  Write-Host "Tips: kryptera backuperna med age. Skapa en nyckel på en annan dator (age-keygen -o workflow-backup.key),"
-  Write-Host "skriv dess publika del i .env som BACKUP_AGE_RECIPIENT=age1... och installera age här (INSTALLATION.md)."
+  Write-Host "Viktigt: den privata nyckeln till backuperna ligger i $backupKey" -ForegroundColor Yellow
+  Write-Host "Kopiera den nu till en säker plats utanför den här datorn (en lösenordshanterare eller ett USB-minne i ett kassaskåp)," -ForegroundColor Yellow
+  Write-Host "helst två ställen. Utan den går ingen backup att öppna. Ligger den bara här försvinner den med datorn." -ForegroundColor Yellow
+  Write-Host "Flytta den sedan härifrån, så att den som kommer åt datorn inte också kan läsa backuperna (INSTALLATION.md, avsnitt 6)." -ForegroundColor Yellow
 }
 if (-not $env:WORKFLOW_NO_BROWSER) { Start-Process $url }

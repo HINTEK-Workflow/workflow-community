@@ -2,6 +2,7 @@ import { swedishDayKey } from "@/lib/swedish-time";
 import { FAULT_NOTICE_PREFIX } from "@/lib/operator/admin-notice";
 import { ABSENCE_CONFLICT_PREFIX, noticeKey } from "./notice-channels";
 import type { TaskNotification } from "./task-notifications";
+import { ROUND_FOLLOW_UP_URGENT_PREFIX } from "./round-follow-up";
 
 /**
  * Notislistan (beslut 4, 2026-11-01): one list with the tabs Till mig and Teamet, Oläst and Läst, and "Läs alla". "Kräver åtgärd"
@@ -32,7 +33,9 @@ export { ABSENCE_CONFLICT_PREFIX };
 export function requiresAction(item: Pick<TaskNotification, "id" | "kind" | "urgent">) {
   return Boolean(item.urgent) || item.kind === "OBSTACLE" || item.kind === "MACHINE_ALARM"
     || item.id.startsWith(FAULT_NOTICE_PREFIX) || item.id.startsWith(ABSENCE_CONFLICT_PREFIX)
-    || item.id.startsWith("self-inspection:reportable:") || item.id.startsWith("self-inspection:severe:");
+    || item.id.startsWith("self-inspection:reportable:") || item.id.startsWith("self-inspection:severe:")
+    // Akut från ronden (2026-11-27, lib/workflow/round-follow-up.ts): arbetsledare and admin are told in the app and by e-mail.
+    || item.id.startsWith(ROUND_FOLLOW_UP_URGENT_PREFIX);
 }
 
 /**

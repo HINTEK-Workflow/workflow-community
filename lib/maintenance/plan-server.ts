@@ -7,9 +7,9 @@ import { addDays, daysBetween, isDayKey } from "@/lib/workflow/schedule";
 import { workflowTaskInputSchema, workflowTaskProgress } from "@/lib/workflow/task-model";
 import { itemInputSchema, maintenanceAccess, PART_LIMIT, rootOf, type MaintenanceCaller } from "./model";
 import {
-  checklistRows, dormantProblem, firstRunHours, holderForDay, intervalText, isDormant, itemOccurrenceState, itemPlanOrder, occurrenceState, PLAN_LIMIT_PER_PART, planFill, planInputSchema, planOrderTitle,
+  checklistRows, dormantProblem, firstRunHours, holderForDay, intervalModeOf, intervalText, isDormant, itemOccurrenceState, itemPlanOrder, occurrenceState, PLAN_LIMIT_PER_PART, planFill, planInputSchema, planOrderTitle,
   readChecklistTexts, roundPlanStep, roundWaitingText, runHoursStep,
-  type PlanningMaintenance, type PlanOccurrenceState, type PlanOrder, type PlanUnit, type RoundHolder, type RoundStep,
+  type IntervalMode, type PlanningMaintenance, type PlanOccurrenceState, type PlanOrder, type PlanRule, type PlanUnit, type RoundHolder, type RoundStep,
 } from "./plan-model";
 import { formScheduleRuleSchema, scheduleRuleText } from "@/lib/workflow/form-schedule";
 import { audit, createItemAs, requireMaintenance, type Db } from "./server";
@@ -73,6 +73,10 @@ const planOrder = (row: OrderRow): PlanOrder => ({
 });
 
 type PlanRow = Prisma.MaintenancePlanGetPayload<{ include: { part: { select: { id: true; name: true; runHours: true; isActive: true; status: true } } } }>;
+
+/** The plan's rule for the pure functions (./plan-model.ts), with its interval: Fast schema or from the latest done (2026-11-27). */
+const planRule = (plan: { unit: string; every: number; startDate: string; intervalMode?: string | null }, isActive: boolean): PlanRule =>
+  ({ unit: plan.unit as PlanUnit, every: plan.every, startDate: plan.startDate, isActive, mode: intervalModeOf(plan.intervalMode) });
 
 async function createOrder(tx: Prisma.TransactionClient, plan: PlanRow, due: string, customerId: string | null, actorId: string) {
   const task = workflowTaskInputSchema.parse({
@@ -154,7 +158,7 @@ async function fillRoundPlan(tx: Prisma.TransactionClient, plan: PlanRow & { rou
     summary.nextRunHours = nextAt;
     return summary;
   }
-  const step = roundPlanStep({ rule: { unit: plan.unit as PlanUnit, every: plan.every, startDate: plan.startDate, isActive: active }, orders: [...kept, ...items.map(asPlanOrder)], open, openOrder, holders, today });
+  const step = roundPlanStep({ rule: planRule(plan, active), orders: [...kept, ...items.map(asPlanOrder)], open, openOrder, holders, today });
   summary.next = step.next;
   summary.waiting = round ? step.waiting : "no_round";
   if (step.create) { await createRoundItem(tx, plan, step.create.due, step.create.workOrderId, actorId); summary.created = 1; }
@@ -244,7 +248,7 @@ export async function fillPlan(organizationId: string, planId: string, now = new
       summary.nextRunHours = step.nextAt;
       return summary;
     }
-    const fill = planFill({ unit: plan.unit as PlanUnit, every: plan.every, startDate: plan.startDate, isActive: active }, orders, today);
+    const fill = planFill(planRule(plan, active), orders, today);
     summary.next = fill.next;
     for (const change of fill.update) {
       const row = rows.find((item) => item.id === change.id)!;
@@ -320,6 +324,8 @@ export type PlanOccurrence = {
 };
 export type PlanView = {
   id: string; partId: string; name: string; description: string; unit: PlanUnit; every: number; intervalText: string; startDate: string; nextRunHours: number | null;
+  /** Fast schema or Räkna från senaste utförda (2026-11-27). */
+  intervalMode: IntervalMode;
   assignedToUserId: string | null; assignedToName: string; estimatedMinutes: number | null; isActive: boolean; version: number;
   /** Vad som ska göras (2026-11-27): the checklist's texts. */
   checklist: string[];
@@ -384,13 +390,13 @@ export async function listPlans(caller: MaintenanceCaller, partId: string) {
       if (plan.roundScheduleId && !round) waitingText = "Ronden finns inte längre. Välj en annan rond eller Egen arbetsorder.";
       else if (round && plan.isActive && (plan.unit as PlanUnit) !== "RUN_HOURS" && !coming.length) {
         const planItems = items.filter((row) => row.maintenancePlanId === plan.id);
-        const step = roundPlanStep({ rule: { unit: plan.unit as PlanUnit, every: plan.every, startDate: plan.startDate, isActive: true }, orders: [...orders.filter((row) => row.maintenancePlanId === plan.id).map((row) => ({ id: row.id, status: row.status, due: row.maintenanceDue ?? "", activated: Boolean(row.maintenanceActivatedAt), pinned: row.maintenancePinned, plannedStartDate: row.maintenanceDue ?? "", completedDay: row.completedAt ? swedishDayKey(row.completedAt) : null, touched: true })), ...planItems.map(asPlanOrder)],
+        const step = roundPlanStep({ rule: planRule(plan, true), orders: [...orders.filter((row) => row.maintenancePlanId === plan.id).map((row) => ({ id: row.id, status: row.status, due: row.maintenanceDue ?? "", activated: Boolean(row.maintenanceActivatedAt), pinned: row.maintenancePinned, plannedStartDate: row.maintenanceDue ?? "", completedDay: row.completedAt ? swedishDayKey(row.completedAt) : null, touched: true })), ...planItems.map(asPlanOrder)],
           open: null, openOrder: false, holders: holders.get(round.id) ?? [], today });
         waitingText = roundWaitingText(step, round.title);
       }
       return {
         id: plan.id, partId: plan.partId, name: plan.name, description: plan.description, unit: plan.unit as PlanUnit, every: plan.every, intervalText: intervalText(plan.unit as PlanUnit, plan.every),
-        startDate: plan.startDate, nextRunHours: plan.nextRunHours, assignedToUserId: plan.assignedToUserId, assignedToName: plan.assignedToName, estimatedMinutes: plan.estimatedMinutes,
+        startDate: plan.startDate, nextRunHours: plan.nextRunHours, intervalMode: planRule(plan, true).mode ?? "FROM_DONE", assignedToUserId: plan.assignedToUserId, assignedToName: plan.assignedToName, estimatedMinutes: plan.estimatedMinutes,
         isActive: plan.isActive, version: plan.version, checklist: readChecklistTexts(plan.checklist), round, waitingText,
         coming, last: closed.length ? closed.at(-1)!.view : null,
       };
@@ -424,7 +430,7 @@ export async function createPlan(caller: MaintenanceCaller, raw: unknown) {
         organizationId: caller.organizationId, partId: part.id, name: input.name, description: input.description, unit: input.unit, every: input.every, startDate: input.startDate,
         nextRunHours: input.unit === "RUN_HOURS" ? firstRunHours({ every: input.every, runHours: part.runHours, chosen: input.firstRunHours }) : null,
         assignedToUserId: input.assignedToUserId, assignedToName, estimatedMinutes: input.estimatedMinutes, isActive: input.isActive, createdById: caller.userId, updatedById: caller.userId,
-        checklist: input.checklist, roundScheduleId: input.roundScheduleId,
+        checklist: input.checklist, roundScheduleId: input.roundScheduleId, intervalMode: input.intervalMode,
       },
       select: { id: true, version: true },
     });
@@ -454,7 +460,7 @@ export async function updatePlan(caller: MaintenanceCaller, id: string, version:
     const changed = await tx.maintenancePlan.updateMany({
       where: { id, organizationId: caller.organizationId, version },
       data: { name: input.name, description: input.description, unit: input.unit, every: input.every, startDate: input.startDate, nextRunHours, assignedToUserId: input.assignedToUserId, assignedToName,
-        estimatedMinutes: input.estimatedMinutes, isActive: input.isActive, checklist: input.checklist, roundScheduleId: input.roundScheduleId, updatedById: caller.userId, version: { increment: 1 } },
+        estimatedMinutes: input.estimatedMinutes, isActive: input.isActive, checklist: input.checklist, roundScheduleId: input.roundScheduleId, intervalMode: input.intervalMode, updatedById: caller.userId, version: { increment: 1 } },
     });
     if (!changed.count) throw new ApiError(409, STALE);
     const today = swedishDayKey(new Date());

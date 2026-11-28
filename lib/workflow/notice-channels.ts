@@ -106,7 +106,7 @@ export function noticeStage(item: Pick<TaskNotification, "urgent" | "deadline" |
 export const noticeKey = (item: Pick<TaskNotification, "id" | "urgent" | "deadline" | "needsAction" | "dueDate">) =>
   // An assignment is told once per assignment (its id carries the time); a changed date is not a new assignment. An absence
   // conflict is told once per absence: its date is the first job left, which moves day by day as the absence goes on.
-  item.id.startsWith(ABSENCE_CONFLICT_PREFIX) || item.id.startsWith("ASSIGNED:") || item.id.startsWith("MACHINE_ALARM:") || item.id.startsWith("QUOTE:") || item.id.startsWith("OBSTACLE:") || item.id.startsWith("ROUND_NOT_DONE:") || item.id.startsWith("TEAM:") || item.id.startsWith("COMMENT:") || item.id.startsWith("NEWS:") ? item.id : `${item.id}|${noticeStage(item)}|${item.dueDate}`;
+  item.id.startsWith(ABSENCE_CONFLICT_PREFIX) || item.id.startsWith("ASSIGNED:") || item.id.startsWith("MACHINE_ALARM:") || item.id.startsWith("QUOTE:") || item.id.startsWith("OBSTACLE:") || item.id.startsWith("ROUND_NOT_DONE:") || item.id.startsWith("ROUND_FOLLOW_UP:") || item.id.startsWith("TEAM:") || item.id.startsWith("COMMENT:") || item.id.startsWith("NEWS:") ? item.id : `${item.id}|${noticeStage(item)}|${item.dueDate}`;
 
 /**
  * The notices to send now over one channel: those of a kind the person chose and that were not sent before. Nothing is

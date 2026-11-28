@@ -4,7 +4,7 @@ Copyright © 2026 HINTEK Power Solutions AB. Licensed under the [GNU Affero Gene
 
 [Svenska](README.sv.md) | English
 
-> **Status: in active development.** This text describes what the edition contains as of version 0.90.0. Issues
+> **Status: in active development.** This text describes what the edition contains as of version 0.91.0. Issues
 > and pull requests are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Workflow is a web app for electrical and installation companies. It brings together work orders, quotes, invoice bases,

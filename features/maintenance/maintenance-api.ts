@@ -10,8 +10,10 @@ export type FollowUpRow = { kind: "order" | "item"; id: string; workOrderId: str
 export type FollowUp = { figures: PlanFollowUp; text: string; late: FollowUpRow[]; soon: FollowUpRow[]; plans: number; truncated: boolean };
 /** Historik (2026-11-27): the answer of ?part=history. */
 export type HistoryEntry = {
-  kind: "order" | "item" | "deviation"; id: string; at: string; title: string; line: string; status: string; tone: "success" | "info" | "warning" | "danger" | "neutral";
+  kind: "order" | "item" | "deviation" | "finding"; id: string; at: string; title: string; line: string; status: string; tone: "success" | "info" | "warning" | "danger" | "neutral";
   workOrderId: string | null; itemId: string | null; deviationId: string | null;
+  /** A brist from a driftrond (2026-11-27): its protocol, comment and photos (the protocol's attachment ids). */
+  taskId?: string | null; comment?: string; images?: string[];
 };
 export type PartHistory = { entries: HistoryEntry[]; truncated: boolean };
 

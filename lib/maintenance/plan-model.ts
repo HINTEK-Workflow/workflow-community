@@ -8,7 +8,8 @@ import { addDays, daysBetween, isDayKey } from "@/lib/workflow/schedule";
  * - One work order per occurrence ("byt lager i pumpen varje halvår"). Calendar time (days, weeks, months) keeps the coming
  *   occurrences as vilande (dormant) work orders, a year ahead or the next 12, whichever comes first. They show in the planning
  *   on their day but are not active: no time and no start until the day has come or a person activates the order.
- * - The interval counts from when the work was actually done: done a day late, the next occurrence moves a day. While an
+ * - Since 2026-11-28 a calendar plan chooses (INTERVAL_MODES): Fast schema keeps the plan's own days, or – as every plan did
+ *   before – the interval counts from when the work was actually done: done a day late, the next occurrence moves a day. While an
  *   occurrence is open past its day, the coming ones count from today (so they move each day until it is done). An occurrence
  *   set to Utgår counts from its own day (it was skipped, not done).
  * - A day a person moved (postponed in the plan, or Start changed on the vilande work order) is kept; the ones after it follow.
@@ -51,6 +52,49 @@ export function addInterval(day: string, unit: CalendarUnit, every: number): str
 
 const laterOf = (a: string, b: string) => a > b ? a : b;
 
+// ---------- the interval: fast schema or from the latest done (2026-11-27) ----------
+
+/**
+ * How a calendar plan counts its next day (2026-11-27, the round's follow-up): FIXED keeps the plan's own days – the
+ * start and every interval after it, whenever the work was done ("Fast schema", chosen per plan); FROM_DONE counts each next
+ * day from the day the previous one was actually done ("Räkna från senaste utförda", the default: it is how every plan
+ * counted before 2026-11-28, so existing plans keep their behaviour).
+ * Drifttimmar always count from the hours when it was done. A rule without a mode counts from the latest done (the pure
+ * functions' behaviour before 2026-11-28, kept so callers that pass none are unchanged); the server always passes the plan's.
+ */
+export const INTERVAL_MODES = ["FIXED", "FROM_DONE"] as const;
+export type IntervalMode = (typeof INTERVAL_MODES)[number];
+export const INTERVAL_MODE_LABELS: Record<IntervalMode, string> = { FIXED: "Fast schema", FROM_DONE: "Räkna från senaste utförda" };
+export const INTERVAL_MODE_HINTS: Record<IntervalMode, string> = {
+  FIXED: "Dagarna ligger fast från startdatumet, även om arbetet görs tidigare eller senare.",
+  FROM_DONE: "Nästa dag räknas från dagen då arbetet senast gjordes.",
+};
+export const intervalModeOf = (value: unknown): IntervalMode => value === "FIXED" ? "FIXED" : "FROM_DONE";
+
+const monthIndex = (day: string) => { const [year, month] = day.split("-").map(Number) as [number, number]; return year * 12 + (month - 1); };
+
+/** The first of the plan's own days (the start and every interval after it) that is after `day` – or on it, with `onOrAfter`. */
+export function scheduleDayAfter(rule: Pick<PlanRule, "startDate" | "every"> & { unit: CalendarUnit }, day: string, onOrAfter = false): string {
+  const passes = (candidate: string) => onOrAfter ? candidate >= day : candidate > day;
+  if (passes(rule.startDate)) return rule.startDate;
+  if (rule.unit === "MONTH") {
+    // Counted from the start each time, so the 31st stays the last day of a short month and comes back after it.
+    let k = Math.max(0, Math.floor((monthIndex(day) - monthIndex(rule.startDate)) / rule.every));
+    let candidate = addMonths(rule.startDate, k * rule.every);
+    while (!passes(candidate)) { k += 1; candidate = addMonths(rule.startDate, k * rule.every); }
+    return candidate;
+  }
+  const step = rule.unit === "WEEK" ? rule.every * 7 : rule.every;
+  let k = Math.max(0, Math.floor(daysBetween(rule.startDate, day) / step));
+  let candidate = addDays(rule.startDate, k * step);
+  while (!passes(candidate)) { k += 1; candidate = addDays(rule.startDate, k * step); }
+  return candidate;
+}
+
+/** The day after `day` in the plan's sequence: its own next day (Fast schema) or one interval later (from the latest done). */
+const followingDay = (rule: PlanRule & { unit: CalendarUnit }, day: string) =>
+  rule.mode === "FIXED" ? scheduleDayAfter(rule, day) : addInterval(day, rule.unit, rule.every);
+
 // ---------- input ----------
 
 const dayKey = z.string().trim().refine(isDayKey, "Ange ett datum (ÅÅÅÅ-MM-DD).");
@@ -75,6 +119,8 @@ export const planInputSchema = z.object({
   checklist: checklistSchema.default([]),
   /** Gör i driftronden (2026-11-27): the round whose work order holds the occurrences; null = a work order per occurrence. */
   roundScheduleId: z.string().trim().min(1).max(100).nullable().default(null),
+  /** Fast schema or Räkna från senaste utförda (2026-11-27); left out = Räkna från senaste utförda. Only calendar time reads it. */
+  intervalMode: z.enum(INTERVAL_MODES).default("FROM_DONE"),
 }).superRefine((input, context) => {
   if (input.every > MAX_EVERY[input.unit]) context.addIssue({ code: "custom", path: ["every"], message: `Intervallet kan vara högst ${MAX_EVERY[input.unit]} ${PLAN_UNIT_LABELS[input.unit].toLowerCase()}.` });
 });
@@ -106,7 +152,7 @@ export type PlanOrder = {
   /** Something hangs on it (time, tasks, bookings, withdrawals, purchases, files): it is never removed by the plan. */
   touched: boolean;
 };
-export type PlanRule = { unit: PlanUnit; every: number; startDate: string; isActive: boolean };
+export type PlanRule = { unit: PlanUnit; every: number; startDate: string; isActive: boolean; /** Left out: from the latest done (see INTERVAL_MODES). */ mode?: IntervalMode };
 export type FillResult = {
   /** Vilande work orders that get another day (and whether it is a day a person chose). */
   update: { id: string; due: string; pinned: boolean }[];
@@ -130,6 +176,13 @@ export function nextPlanDay(rule: PlanRule, orders: readonly PlanOrder[], today:
   if (rule.unit === "RUN_HOURS") return today;
   const live = orders.filter((order) => isLive(order, today)).sort((a, b) => a.due.localeCompare(b.due) || (a.completedDay ?? "").localeCompare(b.completedDay ?? ""));
   const last = live.at(-1);
+  if (rule.mode === "FIXED") {
+    // Fast schema: the plan's own day after the latest occurrence's day, however late or early it was done; never before
+    // today, and then the plan's first own day from today (a day that was missed is not made afterwards).
+    const calendar = { ...rule, unit: rule.unit };
+    const next = last ? scheduleDayAfter(calendar, last.due) : rule.startDate;
+    return next >= today ? next : scheduleDayAfter(calendar, today, true);
+  }
   let next = rule.startDate;
   if (last) {
     const from = last.status === "COMPLETED" ? last.completedDay ?? last.due : last.status === "CANCELLED" ? last.due : laterOf(last.due, today);
@@ -166,12 +219,12 @@ export function planFill(rule: PlanRule, orders: readonly PlanOrder[], today: st
     }
     if (day !== order.due || pinned !== order.pinned || order.plannedStartDate !== day) result.update.push({ id: order.id, due: day, pinned });
     count += 1;
-    cursor = addInterval(laterOf(day, today), rule.unit, rule.every);
+    cursor = followingDay({ ...rule, unit: rule.unit }, laterOf(day, today));
   }
   while (count < PLAN_MAX_AHEAD && cursor <= horizon) {
     result.create.push(cursor);
     count += 1;
-    cursor = addInterval(cursor, rule.unit, rule.every);
+    cursor = followingDay({ ...rule, unit: rule.unit }, cursor);
   }
   return result;
 }
@@ -254,6 +307,16 @@ export function tickChecklist(rows: readonly ChecklistRow[], done: readonly bool
   return rows.map((row, index) => done[index]
     ? row.done ? row : { ...row, done: true, doneAt: by.at, doneByName: by.name }
     : { ...row, done: false, doneAt: null, doneByName: "" });
+}
+
+/**
+ * Klart with points left (2026-11-27): the shared confirm dialog asks "N punkter är inte avbockade. Markera som klart
+ * ändå?" with Ja and Gå tillbaka. Null when every point is ticked (or there is no checklist): Klart then needs no question.
+ */
+export function checklistDoneQuestion(ticked: readonly boolean[]) {
+  const open = ticked.filter((done) => !done).length;
+  if (!open) return null;
+  return { title: `${open} ${open === 1 ? "punkt är inte avbockad" : "punkter är inte avbockade"}`, message: "Markera som klart ändå?", confirmLabel: "Ja", cancelLabel: "Gå tillbaka" };
 }
 
 /** "3 av 5 punkter" – how far the checklist is, or "" without one. */

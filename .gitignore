@@ -54,6 +54,8 @@ storage/*
 /tmp/
 /.test-storage/
 /backups/
+# Community: the backup key pair the installer makes when no BACKUP_AGE_RECIPIENT is given (K1.6); never in Git.
+/backup-key/
 /tests/artifacts/
 /db-restore-drill.*/
 /storage-restore-drill.*/

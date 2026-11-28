@@ -14,7 +14,7 @@ import { announce } from "@/lib/workflow/toast";
 import { useLoadEffect } from "@/lib/use-load-effect";
 import { shortDay } from "@/lib/workflow/schedule";
 import { cn } from "@/lib/utils";
-import { PLAN_CHECKLIST_MAX, PLAN_ROUND_LEAD_DAYS, PLAN_STATE_LABELS, PLAN_STATE_TONES, PLAN_UNIT_LABELS, PLAN_UNITS, type PlanOccurrenceState, type PlanUnit } from "@/lib/maintenance/plan-model";
+import { INTERVAL_MODE_HINTS, INTERVAL_MODE_LABELS, INTERVAL_MODES, PLAN_CHECKLIST_MAX, PLAN_ROUND_LEAD_DAYS, PLAN_STATE_LABELS, PLAN_STATE_TONES, PLAN_UNIT_LABELS, PLAN_UNITS, type IntervalMode, type PlanOccurrenceState, type PlanUnit } from "@/lib/maintenance/plan-model";
 import { maintenanceGet, maintenancePost } from "./maintenance-api";
 import { PlanFollowUpCard } from "./maintenance-follow-up";
 
@@ -37,6 +37,8 @@ type Plan = {
   id: string; partId: string; name: string; description: string; unit: PlanUnit; every: number; intervalText: string; startDate: string; nextRunHours: number | null;
   assignedToUserId: string | null; assignedToName: string; estimatedMinutes: number | null; isActive: boolean; version: number; coming: Occurrence[]; last: Occurrence | null;
   checklist?: string[]; round?: { id: string; title: string } | null; waitingText?: string;
+  /** Fast schema or Räkna från senaste utförda (2026-11-27); an older answer (the demo) may lack it. */
+  intervalMode?: IntervalMode;
 };
 type RoundChoice = { id: string; title: string; ruleText: string; active: boolean };
 type Plans = { plans: Plan[]; runHours: number | null; members: { id: string; name: string }[]; rounds?: RoundChoice[]; canEdit: boolean; canActivate: boolean };
@@ -75,7 +77,7 @@ export function PartPlans({ partId }: { partId: string }) {
       <div className="flex flex-wrap items-start gap-2">
         <span className="min-w-0 flex-1 basis-56">
           <span className="flex items-center gap-1.5 font-semibold"><Repeat className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" /><span className="min-w-0 [overflow-wrap:anywhere]">{plan.name}</span></span>
-          <span className="block text-xs text-muted-foreground">{[plan.intervalText, nextLine(plan), plan.assignedToName ? `Ansvarig ${plan.assignedToName}` : ""].filter(Boolean).join(" · ")}</span>
+          <span className="block text-xs text-muted-foreground">{[plan.intervalText, plan.unit !== "RUN_HOURS" && plan.intervalMode ? INTERVAL_MODE_LABELS[plan.intervalMode].toLowerCase() : "", nextLine(plan), plan.assignedToName ? `Ansvarig ${plan.assignedToName}` : ""].filter(Boolean).join(" · ")}</span>
           {plan.round ? <span className="mt-1 flex items-center gap-1 text-xs" data-testid="maintenance-plan-round"><Route className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />Görs i driftronden {plan.round.title}</span> : null}
           {plan.description ? <span className="mt-1 block whitespace-pre-wrap text-xs [overflow-wrap:anywhere]">{plan.description}</span> : null}
           {plan.checklist?.length ? <span className="mt-1 flex items-center gap-1 text-xs text-muted-foreground" data-testid="maintenance-plan-checklist"><ListChecks className="size-3.5 shrink-0" aria-hidden="true" />Checklista med {plan.checklist.length} {plan.checklist.length === 1 ? "punkt" : "punkter"}</span> : null}
@@ -118,7 +120,7 @@ function PlanDialog({ partId, plan, members, rounds, onClose, onSaved }: { partI
   const [draft, setDraft] = useState({
     name: plan?.name ?? "", description: plan?.description ?? "", unit: plan?.unit ?? "MONTH" as PlanUnit, every: String(plan?.every ?? 6), startDate: plan?.startDate ?? swedishDayKey(new Date()),
     firstRunHours: "", assignedToUserId: plan?.assignedToUserId ?? "", estimatedMinutes: plan?.estimatedMinutes === null || plan?.estimatedMinutes === undefined ? "" : String(plan.estimatedMinutes), isActive: plan?.isActive ?? true,
-    checklist: (plan?.checklist ?? []).join("\n"), roundScheduleId: plan?.round?.id ?? "",
+    checklist: (plan?.checklist ?? []).join("\n"), roundScheduleId: plan?.round?.id ?? "", intervalMode: plan?.intervalMode ?? "FROM_DONE" as IntervalMode,
   });
   const [busy, setBusy] = useState(false);
   const hours = draft.unit === "RUN_HOURS";
@@ -134,7 +136,7 @@ function PlanDialog({ partId, plan, members, rounds, onClose, onSaved }: { partI
     setBusy(true);
     try {
       const body = { partId, name: draft.name, description: draft.description, unit: draft.unit, every, startDate: draft.startDate, firstRunHours: hours ? first : null,
-        assignedToUserId: draft.assignedToUserId || null, estimatedMinutes: minutes, isActive: draft.isActive, checklist: points, roundScheduleId: draft.roundScheduleId || null };
+        assignedToUserId: draft.assignedToUserId || null, estimatedMinutes: minutes, isActive: draft.isActive, checklist: points, roundScheduleId: draft.roundScheduleId || null, intervalMode: draft.intervalMode };
       if (plan) { await maintenancePost({ action: "update_plan", id: plan.id, version: plan.version, plan: body }); announce("Planen är sparad."); }
       else {
         const made = await maintenancePost<{ created: number; inRound?: boolean }>({ action: "create_plan", plan: body });
@@ -144,9 +146,10 @@ function PlanDialog({ partId, plan, members, rounds, onClose, onSaved }: { partI
       await onSaved();
     } catch (cause) { announce((cause as Error).message, true); } finally { setBusy(false); }
   };
+  const counted = draft.intervalMode === "FIXED" ? "Dagarna ligger fast från första gången." : "Nästa räknas från när arbetet gjordes.";
   const help = inRound
-    ? `Tillfället läggs som en underhållspost i rondens arbetsorder ${PLAN_ROUND_LEAD_DAYS} dagar före, och teknikern bockar av det i ronden. Nästa räknas från när det gjordes.`
-    : hours ? "En arbetsorder skapas när delen når drifttimmarna. Nästa räknas från när den gjordes." : "Arbetsordrarna skapas ett år framåt och vilar tills det är dags. Nästa räknas från när arbetet gjordes.";
+    ? `Tillfället läggs som en underhållspost i rondens arbetsorder ${PLAN_ROUND_LEAD_DAYS} dagar före, och teknikern bockar av det i ronden.${hours ? " Nästa räknas från när det gjordes." : ` ${counted}`}`
+    : hours ? "En arbetsorder skapas när delen når drifttimmarna. Nästa räknas från när den gjordes." : `Arbetsordrarna skapas ett år framåt och vilar tills det är dags. ${counted}`;
   return <Modal open onOpenChange={(next) => { if (!next) onClose(); }} title={plan ? `Ändra ${plan.name}` : "Ny plan"} size="form">
     <form className="grid gap-4" onSubmit={(event) => { event.preventDefault(); void save(); }} data-testid="maintenance-plan-form">
       <Field id="plan-name" label="Vad ska göras" required value={draft.name} placeholder="Till exempel Byt lager" onChange={(name) => setDraft({ ...draft, name })} />
@@ -159,6 +162,8 @@ function PlanDialog({ partId, plan, members, rounds, onClose, onSaved }: { partI
         <Field id="plan-unit" label="Enhet" value={draft.unit} options={[...PLAN_UNITS]} optionLabels={PLAN_UNIT_LABELS} onChange={(unit) => setDraft({ ...draft, unit: unit as PlanUnit })} />
         {hours ? <Field id="plan-first-hours" label="Första vid (h)" value={draft.firstRunHours} placeholder={plan?.nextRunHours !== null && plan?.nextRunHours !== undefined ? String(plan.nextRunHours) : "Drifttimmar nu + intervall"} onChange={(firstRunHours) => setDraft({ ...draft, firstRunHours })} />
           : <Field id="plan-start" label="Första gången" type="date" value={draft.startDate} onChange={(startDate) => setDraft({ ...draft, startDate })} />}
+        {hours ? null : <Field id="plan-interval-mode" label="Nästa gång räknas" value={draft.intervalMode} options={[...INTERVAL_MODES]} optionLabels={INTERVAL_MODE_LABELS}
+          help={INTERVAL_MODE_HINTS[draft.intervalMode]} onChange={(intervalMode) => setDraft({ ...draft, intervalMode: intervalMode as IntervalMode })} />}
         <Field id="plan-minutes" label="Beräknad tid (min)" value={draft.estimatedMinutes} placeholder="Valfritt" onChange={(estimatedMinutes) => setDraft({ ...draft, estimatedMinutes })} />
         <Field id="plan-assignee" label="Ansvarig" value={draft.assignedToUserId} options={["", ...members.map((member) => member.id)]} optionLabels={Object.fromEntries([["", "Ingen vald"], ...members.map((member) => [member.id, member.name])])}
           onChange={(assignedToUserId) => setDraft({ ...draft, assignedToUserId })} help={inRound ? "I ronden gör rondens ansvarige arbetet." : undefined} />

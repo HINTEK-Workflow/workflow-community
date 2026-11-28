@@ -53,7 +53,7 @@ const onTouchDevice = () => typeof window !== "undefined" && typeof window.match
  * others, without the autofill (the ordinary button's instance keeps that) and not on a phone itself.
  */
 export function PasskeySignIn({ returnTo, busy, onError, onPending, label, primary = false, testId, phone = false }: { returnTo: string; busy: boolean; onError: (text: string | null) => void; onPending: (pending: boolean) => void;
-  /** The button's words; the code step says "Använd passkey (Face ID / fingeravtryck)" (2026-11-25). */
+  /** The button's words; both login steps say "Logga in med passkey" (2026-11-28: the same words everywhere). */
   label?: string;
   /** The first choice of its box (the code step): a filled button instead of an outlined one. */
   primary?: boolean;

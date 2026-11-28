@@ -10,7 +10,8 @@ import { DialogActions, Field, Modal, Panel, RowsSkeleton } from "@/features/kfi
 import { MaintenanceFields } from "@/features/workflow/maintenance-fields";
 import { indicatorBadge } from "@/features/workflow/indicator-tone";
 import { formatSwedish, swedishDayKey } from "@/lib/swedish-time";
-import { itemOccurrenceState, PLAN_STATE_LABELS, PLAN_STATE_TONES } from "@/lib/maintenance/plan-model";
+import { checklistDoneQuestion, itemOccurrenceState, PLAN_STATE_LABELS, PLAN_STATE_TONES } from "@/lib/maintenance/plan-model";
+import { useConfirm } from "@/features/kfid/confirm";
 import { announce } from "@/lib/workflow/toast";
 import { useLoadEffect } from "@/lib/use-load-effect";
 import { MAINTENANCE_PRIORITIES, MAINTENANCE_PRIORITY_LABELS, MAINTENANCE_TYPE_LABELS, MAINTENANCE_TYPES } from "@/lib/workflow/maintenance";
@@ -42,6 +43,7 @@ export function MaintenanceItemEditor({ itemId, onClose }: { itemId: string; onC
   const [ticked, setTicked] = useState<boolean[]>([]);
   const [busy, setBusy] = useState(false);
   const [taking, setTaking] = useState<Spare | null>(null);
+  const [confirm, confirmElement] = useConfirm();
   const load = useCallback(async () => {
     try {
       const { item: next } = await maintenanceGet<{ item: ItemView }>(`part=item&id=${encodeURIComponent(itemId)}`);
@@ -66,6 +68,12 @@ export function MaintenanceItemEditor({ itemId, onClose }: { itemId: string; onC
     } catch (cause) { announce((cause as Error).message, true); } finally { setBusy(false); }
   };
   const open = ticked.filter((done) => !done).length;
+  // Klart with points left asks first, in the shared dialog (never the browser's own): Ja or Gå tillbaka.
+  const done = async () => {
+    const question = checklist.length ? checklistDoneQuestion(ticked) : null;
+    if (question && !(await confirm(question))) return;
+    await save("DONE");
+  };
   const work = item.instruction || checklist.length ? <Panel icon={ListChecks} area="maintenance" title="Vad ska göras" description={item.plan ? `Från planen ${item.plan.name}${item.planDue ? ` · ${item.planDue}` : ""}` : undefined}>
     <div className="grid gap-3" data-testid="maintenance-item-work">
       {item.instruction ? <p className="whitespace-pre-wrap text-sm [overflow-wrap:anywhere]" data-testid="maintenance-item-instruction">{item.instruction}</p> : null}
@@ -78,7 +86,7 @@ export function MaintenanceItemEditor({ itemId, onClose }: { itemId: string; onC
         </label>
       </li>)}</ul> : null}
       {item.canEdit && item.status === "OPEN" ? <div className="flex flex-wrap items-center gap-2">
-        <Button type="button" busy={busy} busyLabel="Sparar…" disabledReason={problem || null} onClick={() => void save("DONE")} data-testid="maintenance-item-done"><Check />Klart</Button>
+        <Button type="button" busy={busy} busyLabel="Sparar…" disabledReason={problem || null} onClick={() => void done()} data-testid="maintenance-item-done"><Check />Klart</Button>
         {checklist.length && open ? <span className="text-xs text-muted-foreground">{open} av {checklist.length} punkter är inte avbockade.</span> : null}
       </div> : null}
     </div>
@@ -87,6 +95,7 @@ export function MaintenanceItemEditor({ itemId, onClose }: { itemId: string; onC
     try { await maintenancePost({ action: "return", id }); announce("Reservdelen är tillbaka i förrådet."); await load(); } catch (cause) { announce((cause as Error).message, true); }
   };
   return <div className="space-y-4" data-testid="maintenance-item-editor">
+    {confirmElement}
     <PageHeader title={itemTitle(item.partName)} description={item.partPath.join(" › ")}
       actions={<>
         <PageBackButton onClick={() => onClose(item.partId)} testId="maintenance-item-back" />

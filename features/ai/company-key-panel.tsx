@@ -43,7 +43,8 @@ export function CompanyKeyPanel({ notify }: { notify?: (text: string, error?: bo
   if (!view || !draft) return null;
 
   const post = async (payload: Record<string, unknown>) => {
-    const result = await api<{ companyKey: CompanyKeyView; ok?: boolean; message?: string }>("/api/ai/company-key", { method: "POST", body: JSON.stringify(payload) });
+    // billingNote (Cloud, 2026-11-27): e.g. that the price with the own key applies from the next price version.
+    const result = await api<{ companyKey: CompanyKeyView; ok?: boolean; message?: string; billingNote?: string }>("/api/ai/company-key", { method: "POST", body: JSON.stringify(payload) });
     setView(result.companyKey);
     return result;
   };
@@ -52,8 +53,8 @@ export function CompanyKeyPanel({ notify }: { notify?: (text: string, error?: bo
     if (on && !(await confirm({ title: "Använda företagets egen AI-nyckel?", message: "All AI i företaget går då via er egen nyckel, även agenter som körs på schema. Saknas nyckeln eller fungerar den inte pausas AI med ett besked. Workflows nyckel används aldrig i stället.", confirmLabel: "Slå på" }))) return;
     setBusy(true);
     try {
-      await post({ action: "save", on, ...saved });
-      say(on ? "Företagets egen AI-nyckel används nu för all AI." : "Workflow AI används igen.");
+      const result = await post({ action: "save", on, ...saved });
+      say(`${on ? "Företagets egen AI-nyckel används nu för all AI." : "Workflow AI används igen."}${result.billingNote ? ` ${result.billingNote}` : ""}`);
     } catch (cause) { say((cause as Error).message, true); } finally { setBusy(false); }
   };
   const dirty = draft.provider !== view.provider || draft.endpoint.trim() !== view.endpoint || draft.model.trim() !== view.model || draft.euAttested !== view.euAttested || Boolean(draft.apiKey.trim()) || draft.removeKey;

@@ -56,7 +56,10 @@ async function writeSettings(organizationId: string, change: (current: CompanyKe
   return aiPolicy.ownKey;
 }
 
-/** The provider refused the key or the model: AI is paused for the company with the reason (logged once per new reason). */
+/**
+ * The provider refused the key or the model: AI is paused for the company with the reason (logged once per new reason). The switch
+ * stays on, so with billing the company keeps the price with its own AI key (ee/billing/own-key-price.ts) until the admin turns it off.
+ */
 export async function pauseCompanyKey(organizationId: string, reason: string) {
   const before = parseCompanyKey((await getAiSharingPolicy(organizationId)).ownKey);
   if (!before.on || before.pausedReason === reason) return;

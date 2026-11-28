@@ -10,9 +10,9 @@
     ],
     "component": {
       "type": "application",
-      "bom-ref": "workflow-community@0.90.0",
+      "bom-ref": "workflow-community@0.91.0",
       "name": "workflow-community",
-      "version": "0.90.0",
+      "version": "0.91.0",
       "licenses": [
         {
           "license": {
@@ -21037,7 +21037,7 @@
   ],
   "dependencies": [
     {
-      "ref": "workflow-community@0.90.0",
+      "ref": "workflow-community@0.91.0",
       "dependsOn": [
         "@dnd-kit/core@6.3.1",
         "@dnd-kit/sortable@10.0.0",

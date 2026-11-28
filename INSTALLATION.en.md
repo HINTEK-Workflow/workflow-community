@@ -90,9 +90,18 @@ The first start takes 5-10 minutes. To install by hand, see *Manual installation
 (Linux and macOS, before `bash` in the line) or `$env:WORKFLOW_VERSION = "v1.2.3"` (PowerShell). The versions are listed
 under *Releases* on GitHub.
 
-**Check the script first (recommended).** Every version has a release on GitHub with the release notes, a list of the
-packages (`sbom-community-v….cdx.json`) and the file `SHA256SUMS`. Download the script for the version, check its
-checksum, then run it:
+**Check the script first (recommended).** From 0.90.0 on every version has a release on GitHub under *Releases*, and
+older releases and tags are never removed. The release has these files:
+
+| File | What it is |
+| --- | --- |
+| `workflow-community-v1.2.3.tar.gz` | All the code of the version (the same files as a clone of the tag) |
+| `install.sh`, `install.ps1` | The install scripts of the version |
+| `sbom-community-v1.2.3.cdx.json` | The list of the packages in the version (CycloneDX) |
+| `allowed_signers` | The public key the tag is signed with |
+| `SHA256SUMS` | The checksums of the files above |
+
+Download the script for the version, check its checksum, then run it:
 
 ```bash
 curl -fsSLO https://github.com/HINTEK-Workflow/workflow-community/releases/download/v1.2.3/install.sh
@@ -101,6 +110,15 @@ sha256sum --check --ignore-missing SHA256SUMS && WORKFLOW_VERSION=v1.2.3 bash in
 ```
 
 In PowerShell: `Get-FileHash install.ps1 -Algorithm SHA256` and compare with the line for `install.ps1` in `SHA256SUMS`.
+
+**The tag is signed.** The tag `v1.2.3` is signed with an SSH key, and GitHub shows it as *Verified*. To check it
+yourself, in the install folder (or a clone) with `allowed_signers` from the release:
+
+```bash
+git fetch origin tag v1.2.3 && git -c gpg.ssh.allowedSignersFile=allowed_signers verify-tag v1.2.3
+```
+
+The line should end with `Good "git" signature`. Versions up to and including 0.90.0 have no signed tag.
 
 ### Where Workflow is placed
 
@@ -297,18 +315,31 @@ Within five minutes after that, `tail /var/log/workflow/monitor.log` should show
 
   The drill restores into a temporary database and folder under `BACKUP_ROOT/work` (another folder: `DRILL_WORK_ROOT`)
   and removes them when it is done. The report is in the drill's folder under `BACKUP_ROOT`.
-- **Encrypt the copy (recommended).** Without encryption the copy holds the whole database and every file in plain
-  text. Do this once:
-  1. Install `age` on the server (for example `apt install age`) and on another computer.
-  2. Make the key on the other computer, not on the server: `age-keygen -o workflow-backup.key`. The line
-     `Public key: age1…` is the public part. Keep the key file safe, for example in a password manager. Without it the
-     backup cannot be read.
-  3. Add `BACKUP_AGE_RECIPIENT=age1…` (the public part) at the top of the cron file in section 5 and to `.env`.
-  `nightly-backup.sh` then encrypts the database and the files after they have been read back, and only the `.age` files
-  are kept and sent to `OFFSITE_TARGET`. The install script's backup before an update is encrypted the same way.
-  `SHA256SUMS.plain` holds the checksums of the plain files. The drill above works on unencrypted copies; for an encrypted
-  copy, first decrypt it with `age -d -i workflow-backup.key` on the other computer.
-- Without `BACKUP_AGE_RECIPIENT` the copy is **not encrypted**. Keep it as well protected as the server.
+- **The backups are always encrypted** with `age`. The program is needed on the server (for example `apt install age`,
+  `brew install age` or `winget install FiloSottile.age`), and the installer stops with a message when it is missing.
+  - Best is to make the key on another computer, not on the server: `age-keygen -o workflow-backup.key`. The line
+    `Public key: age1…` is the public part. Put it in `.env` as `BACKUP_AGE_RECIPIENT=age1…` (or give it the first time
+    with `WORKFLOW_BACKUP_AGE_RECIPIENT=age1…` before the install line).
+  - Without a `BACKUP_AGE_RECIPIENT` the installer makes a key pair in `backup-key/workflow-backup.agekey` in the install
+    folder (only your user can read it), writes the public part to `.env` and tells you where the private key is. **Copy
+    the private key to a safe place off the server**, preferably two (a password manager and a USB stick in a safe), then
+    remove it from the server. Without it no backup can be opened.
+  - `nightly-backup.sh` reads `BACKUP_AGE_RECIPIENT` from `.env` in the folder the cron line runs in (or from the cron
+    file) and refuses to take an unencrypted backup. Only the `.age` files are kept and sent to `OFFSITE_TARGET`.
+    `SHA256SUMS.plain` holds the checksums of the plain files, and the backup before an update also has `ROWS` (the number
+    of rows per table) and `MANIFEST`.
+- **Practise restoring a real backup once a month** with `scripts/ops/aterstallningsovning.sh`, on a computer that has
+  Docker and the private key (preferably not the server). It restores the newest backup into a temporary database without
+  a network, compares the checksums and the number of rows per table with the backup's own list, starts the app against
+  the copy and checks that it answers, and writes a report to `aterstallning/aterstallning-YYYY-MM-DD.md`. Without
+  `--apply` it only shows what it would do:
+
+  ```bash
+  bash scripts/ops/aterstallningsovning.sh --backup-dir backups --key ~/workflow-backup.key \
+    --app-image "$(sed -n 's/^APP_IMAGE=//p' .env)" --apply
+  ```
+
+  The decrypted copy is overwritten and removed afterwards; the encrypted one stays.
 - The secrets in `.env` are not in the copy. Keep `.env` separately and safely, or the sealed keys cannot be opened
   after a restore.
 
@@ -324,7 +355,7 @@ Run the install line again. The script does this:
 4. Starts the new version, which updates the database.
 
 - Settings and data are kept. The five newest backups from updates are kept (`WORKFLOW_KEEP_BACKUPS` changes the
-  number). With `BACKUP_AGE_RECIPIENT` in `.env` and `age` installed they are encrypted (section 6).
+  number). They are always encrypted to `BACKUP_AGE_RECIPIENT` in `.env` (section 6).
 - If you update by hand (`git fetch --tags` and `git checkout v1.2.3` followed by `docker compose up -d --build`), take
   a backup with `scripts/ops/nightly-backup.sh` first.
 
@@ -347,7 +378,7 @@ This restores the backup from before an update, or a nightly backup. Run the com
 ```bash
 dir=backups/update-<time>
 ( cd "$dir" && sha256sum --check SHA256SUMS )
-# Encrypted backup: decrypt first, on a computer that has the key
+# The backup is encrypted: decrypt first, on a computer that has the key (then check with SHA256SUMS.plain)
 #   age -d -i workflow-backup.key -o "$dir/database.dump" "$dir/database.dump.age"
 #   age -d -i workflow-backup.key -o "$dir/storage.tar.gz" "$dir/storage.tar.gz.age"
 docker compose stop app

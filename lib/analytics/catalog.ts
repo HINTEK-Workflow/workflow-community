@@ -213,6 +213,46 @@ const inList = <T extends string>(list: readonly T[], value: unknown): value is 
 export const isLandingClick = (value: unknown): value is LandingClick => inList(LANDING_CLICK_KEYS, value);
 export const isLandingDevice = (value: unknown): value is LandingDevice => inList(LANDING_DEVICE_KEYS, value);
 
+/**
+ * Från AI-tjänster (Growth Engine paket 2, 2026-11-28): a visit that came from an AI assistant – by the referring site's host name
+ * (its subdomains too) or by the link's utm_source – is also counted as `ai:<service>`, a source of its own. A fixed list, so
+ * nothing outside it is ever stored; the name is the service's own.
+ */
+export const AI_SERVICES = [
+  { key: "chatgpt", label: "ChatGPT", domains: ["chatgpt.com", "chat.openai.com", "openai.com"], names: ["chatgpt", "openai"] },
+  { key: "perplexity", label: "Perplexity", domains: ["perplexity.ai"], names: ["perplexity"] },
+  { key: "copilot", label: "Microsoft Copilot", domains: ["copilot.microsoft.com", "copilot.cloud.microsoft", "m365.cloud.microsoft", "edgeservices.bing.com"], names: ["copilot"] },
+  { key: "gemini", label: "Gemini", domains: ["gemini.google.com"], names: ["gemini"] },
+  { key: "claude", label: "Claude", domains: ["claude.ai"], names: ["claude"] },
+  { key: "mistral", label: "Mistral Le Chat", domains: ["chat.mistral.ai"], names: ["mistral"] },
+  { key: "deepseek", label: "DeepSeek", domains: ["chat.deepseek.com"], names: ["deepseek"] },
+  // "meta" alone is also what Meta's own ads write in utm_source, so only the assistant's address counts.
+  { key: "meta", label: "Meta AI", domains: ["meta.ai"], names: [] },
+  { key: "grok", label: "Grok", domains: ["grok.com"], names: ["grok"] },
+] as const satisfies readonly { key: string; label: string; domains: readonly string[]; names: readonly string[] }[];
+export type AiServiceKey = (typeof AI_SERVICES)[number]["key"];
+export const AI_SERVICE_KEYS: readonly AiServiceKey[] = AI_SERVICES.map((service) => service.key);
+export const isAiServiceKey = (value: unknown): value is AiServiceKey => inList(AI_SERVICE_KEYS, value);
+export const aiServiceLabel = (key: string) => AI_SERVICES.find((service) => service.key === key)?.label ?? key;
+
+/** A utm_source as the beacon sends it: lower case, only a–z, 0–9, dot and hyphen, at most 100 characters. */
+export const cleanUtmSource = (value: string | null | undefined) => (value ?? "").toLowerCase().replace(/[^a-z0-9.-]/g, "").slice(0, 100);
+const onDomain = (host: string, domain: string) => host === domain || host.endsWith(`.${domain}`);
+
+/**
+ * The AI service a visit came from, as the key `ai:<service>`, or null: `domain` is the referring page's host name (the full name,
+ * subdomains count), `utmSource` the link's utm_source (ChatGPT writes utm_source=chatgpt.com on its links). Only the fixed list.
+ */
+export function aiServiceOf(domain: string | null | undefined, utmSource?: string | null): `ai:${AiServiceKey}` | null {
+  const host = bareHost(domain);
+  const utm = cleanUtmSource(utmSource).replace(/^www\./, "");
+  for (const service of AI_SERVICES) {
+    if (host && service.domains.some((item) => onDomain(host, item))) return `ai:${service.key}`;
+    if (utm && (service.domains.some((item) => onDomain(utm, item)) || (service.names as readonly string[]).includes(utm))) return `ai:${service.key}`;
+  }
+  return null;
+}
+
 export function isLandingKey(key: string) {
   const parts = key.split(":");
   if (parts.length !== 2) return false;
@@ -222,6 +262,7 @@ export function isLandingKey(key: string) {
   if (group === "device") return isLandingDevice(rest);
   if (group === "ref") return rest === "none" || rest === "other" || DOMAIN.test(rest);
   if (group === "newsletter") return inList(LANDING_NEWSLETTER_KEYS, rest);
+  if (group === "ai") return isAiServiceKey(rest);
   return false;
 }
 
@@ -284,6 +325,7 @@ export function landingKeyLabel(key: string) {
   if (group === "device" && isLandingDevice(rest)) return LANDING_DEVICE_LABELS[rest];
   if (group === "ref") return rest === "none" ? "Ingen hänvisning (direkt)" : rest === "other" ? "Övriga webbplatser" : rest;
   if (group === "newsletter" && inList(LANDING_NEWSLETTER_KEYS, rest)) return LANDING_NEWSLETTER_LABELS[rest];
+  if (group === "ai" && isAiServiceKey(rest)) return aiServiceLabel(rest);
   return key;
 }
 
