@@ -21,7 +21,8 @@ export const HISTORY_CATEGORIES = [
   { key: "project", label: "Projekthistorik", note: "Händelser som skapat, kopplat och arkiverat. Beslutsloggen behålls." },
   { key: "planning", label: "Planeringshistorik", note: "Ändringar av planerade aktiviteter." },
   { key: "time", label: "Ändringshistorik för tidrapporter", note: "Själva tidposterna behålls." },
-  { key: "administration", label: "Administrationshistorik", note: "Medlemmar, inställningar, nycklar, arbetstider och formulärändringar." },
+  // Spårbarhet K3.3 (2026-11-27): the administration log of members, settings and keys follows Lagringstid för loggar.
+  { key: "administration", label: "Administrationshistorik", note: "Ändringar av arbetstider och formulär. Loggen över medlemmar, inställningar och nycklar följer lagringstiden för loggar." },
   { key: "ai", label: "Chattar med Workflow AI", note: "Hela konversationer vars senaste meddelande är äldre. Kostnadsloggen för AI-körningar behålls." },
 ] as const;
 export type HistoryCategory = (typeof HISTORY_CATEGORIES)[number]["key"];

@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db";
 import { requireWorkflowPermission, type Context } from "@/lib/kfid/server";
 import { formFamily } from "@/lib/kfid/form-server";
 import { canViewTeam, formPermissionArea, hasWorkflowPermission, normalizeWorkflowPermissionProfile, readableTaskScope, workflowSubjectForTask } from "@/lib/workflow/permissions";
-import { closedInvestigation, deviationCloseRefusal, deviationReadWhere, deviationSeverity, deviationType, DEVIATION_TYPES, incidentFields, incidentResponsibleRefusal, isIncidentType, mayHandleDeviation, mayReadDeviation, reportToAuthorityRefusal, REPORTABLE_WHERE, type DeviationViewer } from "./incidents";
+import { closedInvestigation, deviationCloseRefusal, deviationReadWhere, deviationSeverity, deviationType, deviationTypeLabel, incidentFields, incidentResponsibleRefusal, isIncidentType, mayHandleDeviation, mayReadDeviation, normalizeOwnTypes, reportToAuthorityRefusal, REPORTABLE_WHERE, resolvedDeviationType, storedDeviationType, type DeviationViewer } from "./incidents";
 import { readableTaskSql } from "@/lib/workflow/task-access";
 import { PLANNING_FORM_ID } from "@/lib/workflow/builtin-planning-form";
 import { swedishDayKey } from "@/lib/swedish-time";
@@ -26,6 +26,8 @@ import { manualStatusPatch, newEntryPatch, withoutSourceNote } from "./deviation
 import { cloudOrderForRow, withCloudDeviationOrders } from "./deviation-link-server";
 import { DEVIATION_PERSONAL_DATA_REFUSAL } from "./retention";
 import { countDeviationsSoonPurged } from "./retention-server";
+import { deviationSnapshot } from "@/lib/traceability/record-changes";
+import { recordChange } from "@/lib/traceability/record-changes-server";
 
 /**
  * Egenkontrollprogram in Cloud (2026-10-06): the tables behind app/api/self-inspection. Everything is read and
@@ -48,7 +50,7 @@ const iso = (value: Date | null) => value ? value.toISOString() : null;
 /** Tillbud och olycksfall (2026-10-30): the stored type and investigation as the document reads them. */
 export const incidentRow = (item: { type: string; occurredAt: Date | null; whatHappened: string; cause: string; serious: boolean; personalInjury: boolean; electrical: boolean;
   reportedToAuthorityAt: Date | null; reportedToAuthorityById: string | null; doneNote: string }) => ({
-  type: deviationType(item.type), occurredAt: iso(item.occurredAt), whatHappened: item.whatHappened, cause: item.cause, serious: item.serious, personalInjury: item.personalInjury,
+  type: storedDeviationType(item.type), occurredAt: iso(item.occurredAt), whatHappened: item.whatHappened, cause: item.cause, serious: item.serious, personalInjury: item.personalInjury,
   electrical: item.electrical, reportedToAuthorityAt: iso(item.reportedToAuthorityAt), reportedToAuthorityById: item.reportedToAuthorityById, reportedToAuthorityByName: "", doneNote: item.doneNote,
 });
 export const PHOTO_SELECT = { id: true, phase: true, filename: true, mimeType: true, size: true, createdById: true, createdAt: true } as const;
@@ -72,8 +74,8 @@ export async function loadSelfInspectionDocument(organizationId: string, viewer:
     include: { sections: { orderBy: { sortOrder: "asc" } }, roles: { orderBy: { sortOrder: "asc" }, include: { members: { orderBy: { createdAt: "asc" } } } }, competence: { orderBy: { createdAt: "asc" } } },
   });
   // Avvikelser (2026-10-30): the log is the company's, with or without a programme; the read rule of ./incidents.ts in the query.
-  const [registers, deviations] = await Promise.all([loadRegisters(organizationId, viewer, db), loadDeviationLog(organizationId, viewer, db)]);
-  if (!program) return { ...emptySelfInspectionDocument(), ...registers, deviations };
+  const [registers, deviations, deviationTypes] = await Promise.all([loadRegisters(organizationId, viewer, db), loadDeviationLog(organizationId, viewer, db), ownDeviationTypes(db, organizationId)]);
+  if (!program) return { ...emptySelfInspectionDocument(), ...registers, deviations, deviationTypes };
   const where = { programId: program.id, organizationId };
   // Bounded reads (2026-09-26): the latest 50 versions and reviews, the latest 200 log entries.
   const versions = await db.selfInspectionVersion.findMany({ where, orderBy: { number: "desc" }, take: viewer.admin ? 50 : 1 });
@@ -120,7 +122,14 @@ export async function loadSelfInspectionDocument(organizationId: string, viewer:
     // The customers' requirements are the customer card's field (2026-10-07); the document keeps the older shape empty.
     customerRequirements: [],
     ...registers,
+    deviationTypes,
   };
+}
+
+/** Avvikelseloggen (2026-11-28): the company's own deviation types, kept beside what it works with (WorkspaceSettings.profile). */
+export async function ownDeviationTypes(db: Db, organizationId: string): Promise<string[]> {
+  const settings = await db.workspaceSettings.findUnique({ where: { organizationId }, select: { profile: true } });
+  return normalizeOwnTypes((settings?.profile as { deviationTypes?: unknown } | null)?.deviationTypes);
 }
 
 /** The company's deviation log as the reader may read it (./incidents.ts), the latest 200 entries; no programme needed. */
@@ -261,7 +270,7 @@ export async function cloudSelfInspectionReminders(ctx: Context, today = swedish
       deviationsReviewed: review.deviationsReviewed, competenceFollowed: review.competenceFollowed, outcome: "NO_CHANGES", notes: "", createdAt: review.createdAt.toISOString() }] : [],
     deviations: deviations.map((item) => ({ id: item.id, number: item.number, kind: item.kind === "IMPROVEMENT" ? "IMPROVEMENT" : "DEVIATION", title: item.title, description: "", category: "ROUTINE", systematic: false,
       status: item.status === "IN_PROGRESS" ? "IN_PROGRESS" : "OPEN", action: item.action, responsibleId: item.responsibleUserId, responsibleName: "", dueDate: item.dueDate, followUp: "",
-      reportedById: item.reportedById, reportedByName: "", createdAt: item.createdAt.toISOString(), updatedAt: item.updatedAt.toISOString(), closedAt: null, source: null, type: deviationType(item.type),
+      reportedById: item.reportedById, reportedByName: "", createdAt: item.createdAt.toISOString(), updatedAt: item.updatedAt.toISOString(), closedAt: null, source: null, type: storedDeviationType(item.type),
       serious: item.serious, reportedToAuthorityAt: item.reportedToAuthorityAt?.toISOString() ?? null, severity: deviationSeverity(item.severity) })),
     assignments: [], customerRequirements: [], riskClasses: {}, competenceGroups: [], cardVersions: [], ...registers,
   };
@@ -427,7 +436,7 @@ export async function cloudWorkContext(ctx: Context, input: { projectId?: string
       inspectorId: item.inspectorUserId, inspectorName: "", activityType: ACTIVITY_TYPES.some((type) => type.key === item.activityType) ? item.activityType as ActivityTypeKey : null, updatedAt: item.updatedAt.toISOString() })),
     deviations: deviations.map((item) => ({ id: item.id, number: item.number, kind: item.kind === "IMPROVEMENT" ? "IMPROVEMENT" : "DEVIATION", status: item.status === "DONE" ? "DONE" : item.status === "IN_PROGRESS" ? "IN_PROGRESS" : "OPEN",
       source: item.sourceTaskId ? { taskId: item.sourceTaskId, title: item.sourceTitle, rowId: item.sourceRowId } : null,
-      workOrderId: item.workOrderId, reportedById: item.reportedById, responsibleId: item.responsibleUserId, closedAt: iso(item.closedAt), closedByName: item.closedByName, type: deviationType(item.type) })),
+      workOrderId: item.workOrderId, reportedById: item.reportedById, responsibleId: item.responsibleUserId, closedAt: iso(item.closedAt), closedByName: item.closedByName, type: storedDeviationType(item.type) })),
   };
   return workContext(full, { taskId: target.taskId, projectId: target.projectId, names, customerRequirements: customer?.specialRequirements ?? "", planning: planningScope(planning), me: { id: ctx.user.id }, admin: ctx.admin, team: canViewTeam(ctx), subject });
 }
@@ -455,6 +464,14 @@ const storedIncident = (value: ReturnType<typeof incidentFields>) => ({ ...value
  * One change, checked and written in a transaction. The route has checked session, origin and Cloud write access.
  * `createdDeviationId`: the entry a new report made, so the page can send its photos.
  */
+/** The existing deviation an action changes (Ändringshistorik); null for a new one or for an action on something else. */
+function deviationActionId(input: ParsedSelfInspectionAction): string | null {
+  if (input.action === "save_deviation") return input.deviation.id || null;
+  if (input.action === "save_investigation" || input.action === "mark_deviation_done" || input.action === "reopen_deviation" || input.action === "mark_reported_to_authority"
+    || input.action === "set_deviation_hold" || input.action === "withdraw_deviation") return input.id;
+  return null;
+}
+
 export async function applyCloudSelfInspectionAction(ctx: Context, input: ParsedSelfInspectionAction): Promise<{ createdDeviationId?: string }> {
   if (actionNeedsAdmin(input) && !ctx.admin) throw new SelfInspectionError(403, "Bara företagets administratör kan ändra egenkontrollprogrammet.");
   const organizationId = ctx.organizationId;
@@ -464,12 +481,14 @@ export async function applyCloudSelfInspectionAction(ctx: Context, input: Parsed
   // The handling of a log entry is kept in the administration history (Öppna igen, Markera klar, anmäld); only type and number.
   const logDeviation = async (tx: Prisma.TransactionClient, deviationId: string, action: string, what: string) => {
     const entry = await tx.selfInspectionDeviation.findFirst({ where: { id: deviationId, organizationId }, select: { number: true, type: true } });
-    if (entry) await tx.administrationEvent.create({ data: { actorId, organizationId, action, detail: `${DEVIATION_TYPES[deviationType(entry.type)]} ${entry.number} i avvikelseloggen ${what}.` } });
+    if (entry) await tx.administrationEvent.create({ data: { actorId, organizationId, action, detail: `${deviationTypeLabel(entry.type)} ${entry.number} i avvikelseloggen ${what}.` } });
   };
   // Stored files of deleted competence-card lines and deviations' photos: removed from the storage once the change has been committed.
   const removedFiles: string[] = [];
-  await prisma.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT id FROM "Organization" WHERE id = ${organizationId} FOR UPDATE`;
+  // Ändringshistorik (K3.2, 2026-11-27): an action on one deviation is recorded with the entry before and after, in the same
+  // transaction (lib/traceability/record-changes.ts deviationSnapshot); a new entry as created, a withdrawn one as removed.
+  const trackedDeviation = deviationActionId(input);
+  const runAction = async (tx: Prisma.TransactionClient) => {
     if (input.action === "create_program") {
       const exists = await tx.selfInspectionProgram.findUnique({ where: { organizationId_scopeKey: { organizationId, scopeKey: SCOPE } }, select: { id: true } });
       if (exists) throw new SelfInspectionError(409, "Företaget har redan ett egenkontrollprogram.");
@@ -700,6 +719,17 @@ export async function applyCloudSelfInspectionAction(ctx: Context, input: Parsed
       return;
     }
 
+    // Avvikelseloggen (2026-11-28): the company's own deviation types, kept beside what it works with (admins; checked above).
+    // Entries keep the name they were given; a type taken away is only no longer offered.
+    if (input.action === "save_deviation_types") {
+      const types = normalizeOwnTypes(input.types);
+      const current = await tx.workspaceSettings.findUnique({ where: { organizationId }, select: { profile: true } });
+      const profile = { ...((current?.profile ?? {}) as Record<string, unknown>), deviationTypes: types };
+      const organization = await tx.organization.findUniqueOrThrow({ where: { id: organizationId }, select: { name: true } });
+      await tx.workspaceSettings.upsert({ where: { organizationId }, create: { organizationId, companyName: organization.name, contactEmail: "", profile }, update: { profile } });
+      await tx.administrationEvent.create({ data: { actorId, organizationId, action: "deviation_types_saved", detail: types.length ? `Egna avvikelsetyper: ${types.join(", ")}.` : "Inga egna avvikelsetyper." } });
+      return;
+    }
     // Avvikelser (2026-10-30): the log needs no programme (the company row above is the lock); an entry is tied to
     // the programme when the company has one. Everything else changes the programme and locks it.
     const logAction = input.action === "save_deviation" || input.action === "withdraw_deviation" || input.action === "save_investigation" || input.action === "mark_deviation_done"
@@ -720,7 +750,13 @@ export async function applyCloudSelfInspectionAction(ctx: Context, input: Parsed
     }
     if (input.action === "save_deviation") {
       // A Förbättring has no type of its own, whoever called (model.ts improvementWithoutType).
-      const value = improvementWithoutType(input.deviation);
+      const sentValue = improvementWithoutType(input.deviation);
+      // The type (2026-11-28, ./incidents.ts resolvedDeviationType): Elinstallation only with a programme, an own type only while the
+      // company has it, and a saved entry keeps its own when none is sent.
+      const existingType = sentValue.id ? (await tx.selfInspectionDeviation.findFirst({ where: { id: sentValue.id, organizationId }, select: { type: true } }))?.type : undefined;
+      const resolved = resolvedDeviationType({ kind: sentValue.kind, sent: sentValue.type, current: existingType, hasProgram: Boolean(logProgramId), ownTypes: await ownDeviationTypes(tx, organizationId) });
+      if (resolved.refusal && (!sentValue.id || existingType !== undefined)) throw new SelfInspectionError(400, resolved.refusal);
+      const value = { ...sentValue, type: resolved.type };
       if (value.responsibleId) await requireActivePerson(tx, organizationId, value.responsibleId);
       // Ansvarig for a near miss or an accident: an admin or someone with Teamet only (privacy first, 2026-10-30).
       const responsibleRefusal = isIncidentType(value.type) && value.responsibleId ? incidentResponsibleRefusal(value.type, value.responsibleId, await memberRights(tx, organizationId, value.responsibleId)) : null;
@@ -1017,6 +1053,17 @@ export async function applyCloudSelfInspectionAction(ctx: Context, input: Parsed
     await tx.selfInspectionVersion.create({ data: { organizationId, programId, number, content: content as unknown as Prisma.InputJsonValue, contentHash: hash, changeReason: input.changeReason, approvedById: actorId,
       approvedByName: (names.get(actorId) || ctx.user.name?.trim() || ctx.user.email).slice(0, 160) } });
     await tx.administrationEvent.create({ data: { actorId, organizationId, action: "self_inspection_approved", detail: `Egenkontrollprogrammet version ${number} fastställdes ${swedishDayKey(new Date())}.` } });
+  };
+  await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "Organization" WHERE id = ${organizationId} FOR UPDATE`;
+    const before = trackedDeviation ? await tx.selfInspectionDeviation.findFirst({ where: { id: trackedDeviation, organizationId } }) : null;
+    await runAction(tx);
+    const deviationId = trackedDeviation ?? createdDeviationId;
+    if (!deviationId) return;
+    const after = await tx.selfInspectionDeviation.findFirst({ where: { id: deviationId, organizationId } });
+    if (!before && after) await recordChange(tx, { organizationId, entityType: "DEVIATION", entityId: deviationId, actorId, action: "CREATED" });
+    else if (before && !after) await recordChange(tx, { organizationId, entityType: "DEVIATION", entityId: deviationId, actorId, action: "DELETED" });
+    else if (before && after) await recordChange(tx, { organizationId, entityType: "DEVIATION", entityId: deviationId, actorId, action: "UPDATED", before: deviationSnapshot(before), after: deviationSnapshot(after) });
   });
   await removeStoredFiles(removedFiles);
   // När något händer (Agenter, 2026-11-21): a new deviation – and a tillbud or olycksfall as its own event – may start a mission.

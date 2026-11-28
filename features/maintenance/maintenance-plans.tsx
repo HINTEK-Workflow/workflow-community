@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { INTERVAL_MODE_HINTS, INTERVAL_MODE_LABELS, INTERVAL_MODES, PLAN_CHECKLIST_MAX, PLAN_ROUND_LEAD_DAYS, PLAN_STATE_LABELS, PLAN_STATE_TONES, PLAN_UNIT_LABELS, PLAN_UNITS, type IntervalMode, type PlanOccurrenceState, type PlanUnit } from "@/lib/maintenance/plan-model";
 import { maintenanceGet, maintenancePost } from "./maintenance-api";
 import { PlanFollowUpCard } from "./maintenance-follow-up";
+import { ChangeHistorySection } from "@/features/traceability/change-history";
 
 /**
  * Planer (2026-10-30, återkommande underhåll): the part's maintenance plans – what is done and how often – with each
@@ -103,6 +104,8 @@ export function PartPlans({ partId }: { partId: string }) {
       </li>)}</ol> : null}
       {plan.coming.length > 4 ? <p className="text-xs text-muted-foreground">{plan.coming.length - 4} till i Planering → Kalender.</p> : null}
       {plan.last ? <p className="text-xs text-muted-foreground">Senast: <Link className="underline-offset-2 hover:underline" href={occurrenceHref(plan.last)}>{PLAN_STATE_LABELS[plan.last.state]} {dayText(plan.last.due)}</Link></p> : null}
+      {/* Ändringshistorik (K3.2, 2026-11-27): who changed the plan and how, read when asked for. */}
+      <ChangeHistorySection type="MAINTENANCE_PLAN" id={plan.id} compact />
     </li>)}</ul> : <p className="text-sm text-muted-foreground">Inga planer än.</p>}
     {data.canEdit ? <Button type="button" variant="outline" size="sm" onClick={() => setEditing("new")} data-testid="maintenance-plan-new"><Plus />Ny plan</Button> : null}
     <p className="text-xs text-muted-foreground">Varje tillfälle blir en egen arbetsorder, eller en underhållspost i driftrondens arbetsorder. De kommande väntar tills det är dags.</p>

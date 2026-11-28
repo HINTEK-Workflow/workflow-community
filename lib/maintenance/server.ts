@@ -12,6 +12,11 @@ import { jobOnPartWhere, NO_JOB_ON_MACHINE } from "@/lib/kfid/job-access";
 import { placePath } from "./place-model";
 import { signalLabel } from "@/lib/machine/signals";
 import { checklistText, readChecklist, tickChecklist, type ChecklistRow } from "./plan-model";
+import { partSnapshot } from "@/lib/traceability/record-changes";
+import { recordChange } from "@/lib/traceability/record-changes-server";
+import { plantTemplate, plantTemplateNotes } from "./plant-templates";
+import { capRefusal, effectiveCap, MACHINE_CAP_DEFAULT } from "./caps";
+import { machinePosition, nextPosition } from "./location";
 
 /**
  * Underhåll (2026-10-30) on the server: the machine tree and the maintenance items. The store is ./store-server.ts,
@@ -68,12 +73,13 @@ export async function reportedPerPart(db: Db, organizationId: string): Promise<M
 export async function partsOf(db: Db, organizationId: string) {
   const [rows, reported] = await Promise.all([db.machinePart.findMany({
     where: { organizationId }, orderBy: [{ position: "asc" }, { name: "asc" }], take: PART_LIMIT + 1,
-    select: { id: true, parentId: true, placeId: true, customerId: true, name: true, partType: true, marking: true, status: true, isActive: true, customer: { select: { name: true, company: true } },
+    select: { id: true, parentId: true, placeId: true, customerId: true, name: true, partType: true, marking: true, status: true, isActive: true, latitude: true, longitude: true, customer: { select: { name: true, company: true } },
       images: { where: { isMain: true }, select: { id: true }, take: 1 }, _count: { select: { maintenanceItems: { where: { status: "OPEN" } } } } },
   }), reportedPerPart(db, organizationId)]);
   const parts = rows.slice(0, PART_LIMIT).map((row): PartListItem => ({
     id: row.id, parentId: row.parentId, placeId: row.placeId, customerId: row.customerId, ownerName: customerTitle(row.customer), name: row.name, partType: row.partType,
     marking: row.marking, status: partStatusOf(row.status), isActive: row.isActive, mainImageId: row.images[0]?.id ?? null, openItems: row._count.maintenanceItems, reported: reported.get(row.id) ?? 0,
+    latitude: row.parentId ? null : row.latitude, longitude: row.parentId ? null : row.longitude,
   }));
   return { parts, truncated: rows.length > PART_LIMIT };
 }
@@ -94,6 +100,13 @@ async function readPart(db: Db, organizationId: string, id: string) {
 async function checkPlacement(db: Db, caller: MaintenanceCaller, partId: string | null, input: { parentId: string | null; customerId: string | null; placeId?: string | null }) {
   const all = await db.machinePart.findMany({ where: { organizationId: caller.organizationId }, select: { id: true, parentId: true, name: true }, take: PART_LIMIT + 1 });
   if (!partId && all.length >= PART_LIMIT) throw new ApiError(422, `Högst ${PART_LIMIT} delar per företag.`);
+  // Justerbart tak (0.92.0): a new machine, or a part made into a machine, counts against the company's cap of machines.
+  const becomesMachine = !input.parentId && (!partId || Boolean(all.find((row) => row.id === partId)?.parentId));
+  if (becomesMachine) {
+    const company = await db.organization.findUnique({ where: { id: caller.organizationId }, select: { maintenanceMachineCap: true } });
+    const refusal = capRefusal("machine", all.filter((row) => !row.parentId).length, effectiveCap(company?.maintenanceMachineCap, MACHINE_CAP_DEFAULT));
+    if (refusal) throw new ApiError(422, refusal);
+  }
   const problem = moveProblem(all, partId, input.parentId);
   if (problem) throw new ApiError(422, problem);
   if (input.customerId) {
@@ -113,12 +126,42 @@ export async function createPart(caller: MaintenanceCaller, raw: unknown) {
   const input = partInputSchema.parse(raw);
   return prisma.$transaction(async (tx) => {
     await checkPlacement(tx, caller, null, input);
+    const position = nextPosition({ latitude: null, longitude: null }, input, !input.parentId);
     const row = await tx.machinePart.create({
-      data: { organizationId: caller.organizationId, parentId: input.parentId, placeId: input.parentId ? null : input.placeId ?? null, customerId: input.parentId ? null : input.customerId, name: input.name, partType: input.partType, marking: input.marking,
+      data: { organizationId: caller.organizationId, parentId: input.parentId, ...position, placeId: input.parentId ? null : input.placeId ?? null, customerId: input.parentId ? null : input.customerId, name: input.name, partType: input.partType, marking: input.marking,
         status: input.status, notes: input.notes, runHours: input.runHours ?? null, runHoursAt: input.runHours === null || input.runHours === undefined ? null : new Date(), runHoursOrigin: input.runHours === null || input.runHours === undefined ? null : "person", isActive: input.isActive, createdById: caller.userId, updatedById: caller.userId },
       select: { id: true, version: true },
     });
     if (!input.parentId) await audit(tx, caller, "maintenance_tree_created", `Underhåll: ny maskin ${input.name}.`);
+    await recordChange(tx, { organizationId: caller.organizationId, entityType: "MACHINE", entityId: row.id, actorId: caller.userId, action: "CREATED" });
+    return row;
+  });
+}
+
+/**
+ * Skapa från mall (K5.1, 2026-11-28): a machine from one of the generic plant templates (./plant-templates.ts), with its suggested parts
+ * under it in one transaction, and the suggested round points in its notes when none were written. The same rights and limits as Ny maskin.
+ */
+export async function createPartFromTemplate(caller: MaintenanceCaller, templateKey: string, raw: unknown) {
+  requireMaintenance(caller, "edit");
+  const template = plantTemplate(templateKey);
+  if (!template) throw new ApiError(404, "Mallen finns inte.");
+  const input = partInputSchema.parse(raw);
+  if (input.parentId) throw new ApiError(422, "En mall blir en egen maskin, inte en del under en annan.");
+  return prisma.$transaction(async (tx) => {
+    await checkPlacement(tx, caller, null, input);
+    const count = await tx.machinePart.count({ where: { organizationId: caller.organizationId } });
+    if (count + 1 + template.parts.length > PART_LIMIT) throw new ApiError(422, `Högst ${PART_LIMIT} delar per företag.`);
+    const row = await tx.machinePart.create({
+      data: { organizationId: caller.organizationId, parentId: null, placeId: input.placeId ?? null, customerId: input.customerId, name: input.name, partType: input.partType || template.name, marking: input.marking,
+        status: input.status, notes: input.notes || plantTemplateNotes(template), isActive: input.isActive, createdById: caller.userId, updatedById: caller.userId },
+      select: { id: true, version: true },
+    });
+    for (const [position, name] of template.parts.entries()) {
+      await tx.machinePart.create({ data: { organizationId: caller.organizationId, parentId: row.id, placeId: null, customerId: null, name, partType: "", marking: "", status: "IN_SERVICE", notes: "",
+        position, isActive: true, createdById: caller.userId, updatedById: caller.userId } });
+    }
+    await audit(tx, caller, "maintenance_tree_created", `Underhåll: ny maskin ${input.name} från mallen ${template.name}.`);
     return row;
   });
 }
@@ -136,12 +179,17 @@ export async function updatePart(caller: MaintenanceCaller, id: string, version:
     const runHours = input.runHours === undefined ? current.runHours : input.runHours;
     const runHoursChanged = current.runHours !== runHours;
     const runHoursAnswered = runHoursChanged || runHours === current.runHoursHeld;
+    // Kartnål (0.92.0): a part moved in under a machine leaves its pin, it follows its machine; left out keeps the pin.
+    const position = nextPosition(current, input, !input.parentId);
     const updated = await tx.machinePart.updateMany({
       where: { id, organizationId: caller.organizationId, version },
-      data: { parentId: input.parentId, placeId, customerId: input.parentId ? null : input.customerId, name: input.name, partType: input.partType, marking: input.marking, status: input.status, notes: input.notes,
+      data: { parentId: input.parentId, placeId, ...position, customerId: input.parentId ? null : input.customerId, name: input.name, partType: input.partType, marking: input.marking, status: input.status, notes: input.notes,
         runHours, ...(runHoursChanged ? { runHoursAt: runHours === null ? null : new Date(), runHoursOrigin: runHours === null ? null : "person" } : {}), ...(runHoursAnswered ? { runHoursHeld: null, runHoursHeldAt: null, runHoursHeldReason: null } : {}), isActive: input.isActive, updatedById: caller.userId, version: { increment: 1 } },
     });
     if (!updated.count) throw new ApiError(409, STALE);
+    // Ändringshistorik (K3.2, 2026-11-27): the machine's fields before and after, in the save's transaction.
+    await recordChange(tx, { organizationId: caller.organizationId, entityType: "MACHINE", entityId: id, actorId: caller.userId, action: "UPDATED", before: partSnapshot(current),
+      after: partSnapshot({ ...current, parentId: input.parentId, placeId, customerId: input.parentId ? null : input.customerId, name: input.name, partType: input.partType, marking: input.marking, status: input.status, notes: input.notes, runHours, isActive: input.isActive }) });
     if (current.isActive !== input.isActive) await audit(tx, caller, "maintenance_part_paused", `Underhåll: ${input.name} ${input.isActive ? "aktiv igen" : "pausad"}.`);
     if (moved) await audit(tx, caller, "maintenance_part_moved", `Underhåll: flyttade ${input.name}.`);
     // Hours are never lowered in silence, also not by a person. A new counter: each plan on run hours keeps the hours it has left.
@@ -187,6 +235,7 @@ export async function removePartRow(tx: Db, caller: MaintenanceCaller, part: { i
   const files = await tx.machinePartImage.findMany({ where: { organizationId: caller.organizationId, partId: part.id }, select: { storagePath: true } });
   await tx.machinePart.deleteMany({ where: { id: part.id, organizationId: caller.organizationId } });
   await audit(tx, caller, "maintenance_part_removed", `Underhåll: tog bort ${part.name}.`);
+  await recordChange(tx, { organizationId: caller.organizationId, entityType: "MACHINE", entityId: part.id, actorId: caller.userId, action: "DELETED" });
   return { removedFiles: files.map((file) => file.storagePath) };
 }
 
@@ -237,11 +286,13 @@ export async function getPart(caller: MaintenanceCaller, id: string) {
   const part = await prisma.machinePart.findFirst({ where: { id, organizationId: caller.organizationId }, include: { customer: { select: { name: true, company: true } } } });
   if (!part) throw new ApiError(404, NOT_FOUND);
   const [all, places] = await Promise.all([
-    prisma.machinePart.findMany({ where: { organizationId: caller.organizationId }, select: { id: true, parentId: true, placeId: true, name: true }, take: PART_LIMIT }),
-    prisma.maintenancePlace.findMany({ where: { organizationId: caller.organizationId }, select: { id: true, parentId: true, name: true, level: true }, take: 2000 }),
+    prisma.machinePart.findMany({ where: { organizationId: caller.organizationId }, select: { id: true, parentId: true, placeId: true, name: true, latitude: true, longitude: true }, take: PART_LIMIT }),
+    prisma.maintenancePlace.findMany({ where: { organizationId: caller.organizationId }, select: { id: true, parentId: true, name: true, level: true, latitude: true, longitude: true }, take: 2000 }),
   ]);
   const below = subtreeIds(all, id);
   const machine = all.find((row) => row.id === rootOf(all, id));
+  // Kartnål (0.92.0): the machine's own pin or its place's; a part shows its machine's.
+  const position = machine ? machinePosition({ latitude: machine.latitude, longitude: machine.longitude, placeId: machine.placeId }, places) : null;
   const [images, spares, items, signals, sources, workOrders, feed] = await Promise.all([
     prisma.machinePartImage.findMany({ where: { organizationId: caller.organizationId, partId: id }, orderBy: [{ isMain: "desc" }, { createdAt: "asc" }], select: { id: true, filename: true, isMain: true } }),
     sparesOf(prisma, caller.organizationId, id),
@@ -264,6 +315,9 @@ export async function getPart(caller: MaintenanceCaller, id: string) {
       /** The place of the part's machine, from the top ([] = Utan plats). */
       placePath: placePath(places, machine?.placeId),
       machinePlaceId: machine?.placeId ?? null,
+      /** The machine's own pin (only on the machine itself; null = Samma som platsen) and where it is shown. */
+      latitude: part.parentId ? null : part.latitude, longitude: part.parentId ? null : part.longitude,
+      position,
     },
     images: images.map((image) => ({ id: image.id, name: image.filename, isMain: image.isMain })),
     spares, items: items.map(itemListRow),
@@ -535,7 +589,12 @@ export async function reportFault(caller: MaintenanceCaller, raw: unknown) {
   const now = new Date().toISOString();
   return prisma.$transaction(async (tx) => {
     const created = await createItemAs(tx, caller, itemInputSchema.parse({ partId: input.partId, workOrderId: null, type: "CORRECTIVE", priority: input.priority, fault: input.fault, reportedAt: now, stoppedAt: input.stopped ? now : null }), "OPERATOR", { reportedById: caller.userId });
-    if (input.stopped) await tx.machinePart.updateMany({ where: { id: input.partId, organizationId: caller.organizationId }, data: { status: "OUT_OF_SERVICE", updatedById: caller.userId, version: { increment: 1 } } });
+    if (input.stopped) {
+      const before = await tx.machinePart.findFirst({ where: { id: input.partId, organizationId: caller.organizationId } });
+      await tx.machinePart.updateMany({ where: { id: input.partId, organizationId: caller.organizationId }, data: { status: "OUT_OF_SERVICE", updatedById: caller.userId, version: { increment: 1 } } });
+      // Ändringshistorik (K3.2): the machine went out of service with the fault report.
+      if (before) await recordChange(tx, { organizationId: caller.organizationId, entityType: "MACHINE", entityId: before.id, actorId: caller.userId, action: "UPDATED", before: partSnapshot(before), after: partSnapshot({ ...before, status: "OUT_OF_SERVICE" }) });
+    }
     return created;
   });
 }

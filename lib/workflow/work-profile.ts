@@ -36,6 +36,8 @@ export const WORK_PROFILES = [
   "maintenance_technician", "maintenance_electrician", "operator",
   // Fastighet och drift
   "caretaker", "property_operations_technician",
+  // Kommunal teknisk verksamhet (2026-11-28)
+  "utility_technician",
   // Projekt och arbetsledning
   "project_manager", "work_lead", "maintenance_lead", "designer",
   // Kontor och administration
@@ -65,8 +67,12 @@ export const RETIRED_WORK_PROFILE: Readonly<Record<string, WorkProfile>> = {
 };
 export const currentWorkProfile = (value: unknown): unknown => (typeof value === "string" && Object.hasOwn(RETIRED_WORK_PROFILE, value) ? RETIRED_WORK_PROFILE[value] : value);
 
-/** What a company can work with. Several can be chosen, and a company can mix every profile; nothing is locked by them. */
-export const WORK_AREAS = ["electric", "power", "automation", "industry", "property", "projects", "office"] as const;
+/**
+ * What a company can work with. Several can be chosen, and a company can mix every profile; nothing is locked by them.
+ * Kommunal teknisk verksamhet (2026-11-27, the seven adjustments): VA, elnät, fjärrvärme and vattenkraft run by the
+ * municipality or its company. Only the electrical areas (EL_WORK_AREAS) bring the built-in electrical forms to the pickers.
+ */
+export const WORK_AREAS = ["electric", "power", "automation", "industry", "property", "municipal", "projects", "office"] as const;
 export type WorkArea = (typeof WORK_AREAS)[number];
 export const WORK_AREA_LABEL: Record<WorkArea, string> = {
   electric: "El och service",
@@ -74,9 +80,17 @@ export const WORK_AREA_LABEL: Record<WorkArea, string> = {
   automation: "Automation",
   industry: "Industri och underhåll",
   property: "Fastighet och drift",
+  municipal: "Kommunal teknisk verksamhet",
   projects: "Projekt och arbetsledning",
   office: "Kontor och administration",
 };
+/** The areas that are electrical work: the electrical texts and the built-in electrical forms follow them. */
+export const EL_WORK_AREAS: readonly WorkArea[] = ["electric", "power"];
+/**
+ * Whether the company works with electrical installations: one of the electrical areas is chosen, or nothing is chosen at all
+ * (a company that never answered keeps everything as before, the electrical wording as the default).
+ */
+export const electricalWorkChosen = (areas: readonly WorkArea[]) => areas.length === 0 || areas.some((area) => EL_WORK_AREAS.includes(area));
 
 /** One first thing to do: a link in the guide's last step and in the empty lists, drawn only when the person may use its button. */
 export type WorkProfileStep = { menu: MenuHideable; href: string; title: string; text: string };
@@ -209,6 +223,12 @@ export const WORK_PROFILE: Record<WorkProfile, WorkProfileDefinition> = {
     menuFirst: ["rounds", "work_orders", "deviations"], menuHidden: ["quotes", "maintenance"], home: HOME_ROUNDS_FIRST, tabs: TABS_ROUNDS_FIRST,
     newFirst: ["round", "deviation", "work-order", "absence"], firstSteps: [STEP_ROUNDS, STEP_JOBS, STEP_DEVIATION] },
 
+  // ----- Kommunal teknisk verksamhet: the municipality's own plants (VA, elnät, fjärrvärme, vattenkraft) -----
+  utility_technician: { ...FIELD_MAINTENANCE_ROW, label: "VA-tekniker", area: "municipal", description: "Ronder, maskiner och avvikelser först.",
+    alternativeNames: ["Drifttekniker, VA", "Fjärrvärmetekniker", "Drifttekniker, vattenkraft", "Reningsverkstekniker"],
+    menuFirst: ["rounds", "maintenance", "deviations"], menuHidden: ["quotes", "customers"], home: ["rounds", "maintenance", "jobs", "new", "deviations", "time", "absence", "notices"], tabs: ["home", "rounds", "maintenance", "jobs"],
+    newFirst: ["round", "deviation", "work-order", "absence"], firstSteps: [STEP_ROUNDS, STEP_MACHINES, STEP_DEVIATION] },
+
   // ----- Projekt och arbetsledning -----
   project_manager: { workView: "supervisor", grants: PROJECT_LEAD_GRANTS, rights: ["Utföra arbete", "Arkivera projekt", "Teamet"], label: "Projektledare", area: "projects", description: "Projekt, planering och teamet först.",
     alternativeNames: ["Platschef", "Elkraftsingenjör"],
@@ -283,12 +303,15 @@ export function normalizeWorkAreas(value: unknown): WorkArea[] {
 /**
  * A save of the company's details writes the whole profile and knows nothing of what the company works with, so it carries the
  * stored answer over; without this every save of Företagsuppgifter would empty it. The answer is only ever changed by work_areas.
- * The same for the company's choice to turn the risk exception off (Arbetssätt, 2026-11-02), only changed by risk_exception.
+ * The same for the company's choice to turn the risk exception off (Arbetssätt, 2026-11-02), only changed by risk_exception, and
+ * for the company's own deviation types (2026-11-28), only changed by the deviation log's save_deviation_types.
  */
-export function keepWorkAreas<T extends object>(details: T, stored: unknown): T & { workAreas?: WorkArea[]; riskExceptionOff?: true } {
+export function keepWorkAreas<T extends object>(details: T, stored: unknown): T & { workAreas?: WorkArea[]; riskExceptionOff?: true; deviationTypes?: string[] } {
   const workAreas = normalizeWorkAreas(stored && typeof stored === "object" ? (stored as { workAreas?: unknown }).workAreas : null);
   const off = Boolean(stored && typeof stored === "object" && (stored as { riskExceptionOff?: unknown }).riskExceptionOff === true);
-  return { ...details, ...(workAreas.length ? { workAreas } : {}), ...(off ? { riskExceptionOff: true as const } : {}) };
+  const types = stored && typeof stored === "object" ? (stored as { deviationTypes?: unknown }).deviationTypes : null;
+  const deviationTypes = Array.isArray(types) ? types.filter((item): item is string => typeof item === "string").slice(0, 20) : [];
+  return { ...details, ...(workAreas.length ? { workAreas } : {}), ...(off ? { riskExceptionOff: true as const } : {}), ...(deviationTypes.length ? { deviationTypes } : {}) };
 }
 
 export const suggestedRights = (profile: WorkProfile): WorkflowPermissionProfile => ({ version: 1, grants: [...new Set(WORK_PROFILE[profile].grants)] });

@@ -61,11 +61,17 @@ test("history:retention passes the dry run to every step that deletes, and leave
   // pruneSystemLogs and pruneSecurityLog: every delete is the second half of a count-or-delete pair.
   const cleanup = read("lib/workflow/system-cleanup.ts");
   const body = cleanup.slice(cleanup.indexOf("export async function pruneSystemLogs"));
-  assert.equal((body.match(/deleteMany\(/g) ?? []).length, (body.match(/rows\(\(\) => prisma\.\w+\.count\(/g) ?? []).length, "each table in pruneSystemLogs is counted in a dry run");
+  // A chained log's rows leave through removeChainedRows (Spårbarhet K3, 2026-11-27), counted like the others.
+  assert.equal((body.match(/deleteMany\(|removeChainedRows\(/g) ?? []).length, (body.match(/rows\(\(\) => prisma\.\w+\.count\(/g) ?? []).length, "each table in pruneSystemLogs is counted in a dry run");
   assert.match(body, /cleanRateLimits\(now, \{ dryRun \}\)/);
   assert.match(body, /pruneCounters\(now, settings\.retentionMonths, \{ dryRun \}\)/);
   assert.match(body, /pruneSecurityLog\(now, undefined, \{ dryRun \}\)/);
-  assert.match(read("lib/security/security-log.ts"), /options\.dryRun \? await Promise\.all\(\[\s*prisma\.securityEvent\.count/);
+  const securityLog = read("lib/security/security-log.ts");
+  assert.match(securityLog, /options\.dryRun \? await Promise\.all\(\[\s*prisma\.userSession\.count/);
+  assert.match(securityLog, /pruneSecurityEvents\(now, \{ dryRun: options\.dryRun \}\)/, "the security events follow the dry run through the chain's retention");
+  const logRetention = read("lib/traceability/retention-server.ts");
+  assert.ok(logRetention.indexOf("if (options.dryRun) {") > 0 && logRetention.indexOf("if (options.dryRun) {") < logRetention.indexOf("await removeChainedRows("), "the log retention counts before it removes");
+  assert.ok(script.includes("applyLogRetention(new Date(), { dryRun, logs: [\"admin\", \"change\"] })"), "the administration and change logs follow the dry run");
 });
 
 test("mailings:send and notices:send send, queue, claim and draft nothing in a dry run", () => {

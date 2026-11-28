@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useState } from "react";
-import { Ban, ChevronDown, CircleDot, Cpu, FileJson, ListTree, MapPin, Plus, RefreshCw, ScanSearch, Send, Trash2 } from "lucide-react";
+import { Ban, ChevronDown, CircleDot, Cpu, FileJson, KeyRound, ListTree, MapPin, Plus, RefreshCw, ScanSearch, Send, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CopyButton } from "@/components/ui/copy-button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,7 @@ import { KeyField } from "../../features/kfid/secret-field";
 import { useLoadEffect } from "@/lib/use-load-effect";
 import { useInstance } from "@/components/instance-provider";
 import { AiMachineExplainSwitch } from "@/features/ai/sharing-policy-panel";
-import { MachinePartSelect } from "@/features/maintenance/part-picker";
+import { MachinePartSelect, partOptions, usePartOptions } from "@/features/maintenance/part-picker";
 import { MachineSignalsPage } from "./machine-signals";
 import { MachineProfilesSection, MachineSamplesPage, useProfiles } from "./machine-profiles";
 import { MachineAlarmSection } from "./machine-alarm-responsibility";
@@ -33,6 +33,8 @@ type Source = {
   lastUsedAt: string | null; lastEventAt: string | null; events24h: number; alarmMode: AlarmMode; cooldownMinutes: number;
   /** Integrationsmotorn E1, since Underhåll (2026-10-30): the source's default machine part in the machine tree, or null. */
   part: { id: string; name: string; path: string; isActive: boolean } | null;
+  /** K2.5 (2026-11-28): the machine parts the key may write events for; empty = all. */
+  allowedParts?: { id: string; name: string; path: string; isActive: boolean }[];
   /** Integrationsmotorn E2: the source's signal catalogue in numbers. */
   signals?: { total: number; discovered: number; active: number; ignoredOverCap: number };
   /** E4: the format profile for the raw intake, and Fånga prov until. */
@@ -73,6 +75,7 @@ export function MachineSourcesPanel({ notify, simulator = false }: { notify: (te
   const [shown, setShown] = useState<{ name: string; token: string } | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const [placing, setPlacing] = useState<Source | null>(null);
+  const [limiting, setLimiting] = useState<Source | null>(null);
   const [signalsOf, setSignalsOf] = useState<Source | null>(null);
   const [samplesOf, setSamplesOf] = useState<Source | null>(null);
   const profiles = useProfiles();
@@ -137,6 +140,14 @@ export function MachineSourcesPanel({ notify, simulator = false }: { notify: (te
       await send({ action: "set_part", id: source.id, partId });
       setPlacing(null);
       notify(partId ? "Källan är kopplad till maskindelen." : "Källan har ingen maskindel.");
+      await load();
+    } catch (cause) { notify((cause as Error).message, true); }
+  };
+  const setAllowed = async (source: Source, partIds: string[]) => {
+    try {
+      await send({ action: "set_allowed_parts", id: source.id, partIds });
+      setLimiting(null);
+      notify(partIds.length ? "Nyckeln får nu bara skriva för de valda maskinerna." : "Nyckeln får skriva för alla maskiner.");
       await load();
     } catch (cause) { notify((cause as Error).message, true); }
   };
@@ -205,6 +216,7 @@ export function MachineSourcesPanel({ notify, simulator = false }: { notify: (te
     {samplesOf ? <MachineSamplesPage source={samplesOf} onClose={() => setSamplesOf(null)} notify={notify} /> : null}
     {signalsOf ? <MachineSignalsPage source={signalsOf} open onClose={() => { setSignalsOf(null); void load(); }} notify={notify} /> : null}
     {placing ? <PartDialog source={placing} busy={busy} onClose={() => setPlacing(null)} onSave={(partId) => void setPart(placing, partId)} /> : null}
+    {limiting ? <AllowedPartsDialog source={limiting} busy={busy} onClose={() => setLimiting(null)} onSave={(partIds) => void setAllowed(limiting, partIds)} /> : null}
     {creating ? <CreateDialog busy={busy} onClose={() => setCreating(false)} onCreate={create} /> : null}
     <Modal open={Boolean(shown)} onOpenChange={(next) => { if (!next) void closeToken(); }} title="Kopiera nyckeln nu" size="compact">
       <KeyField id="machine-token" label="Källans nya nyckel" className="mt-1" hint={<>Nyckeln för ”{shown?.name}” visas bara nu. Lägg in den där källan skickar från.</>}>
@@ -239,7 +251,7 @@ Content-Type: application/json`}</pre>
     {sources.map((source) => <li key={source.id} className="min-w-0" data-testid="machine-source">
       <SourceCard source={source} busy={busy} profiles={profiles.data?.profiles ?? null} open={open === source.id} events={events[source.id]}
         onTest={() => void test(source)} onSignals={() => setSignalsOf(source)} onRotate={() => void rotate(source)} onRevoke={() => void revoke(source)}
-        onRemove={() => void remove(source)} onPlace={() => setPlacing(source)} onProfile={(profileId) => void setProfile(source, profileId)}
+        onRemove={() => void remove(source)} onPlace={() => setPlacing(source)} onLimit={() => setLimiting(source)} onProfile={(profileId) => void setProfile(source, profileId)}
         onCapture={() => void setCapture(source, !source.captureUntil)} onSamples={() => setSamplesOf(source)}
         onAlarm={(mode) => void setAlarm(source, mode)} onToggleEvents={() => toggleEvents(source.id)} />
     </li>)}
@@ -254,9 +266,9 @@ Content-Type: application/json`}</pre>
  * A machine source as a card of its own (2026-11-12, the key cards' build): the status in the header; what it has sent,
  * its machine part and its two choices in the card; every button in the one action row; Ta bort under Mer.
  */
-function SourceCard({ source, busy, profiles, open, events, onTest, onSignals, onRotate, onRevoke, onRemove, onPlace, onProfile, onCapture, onSamples, onAlarm, onToggleEvents }: {
+function SourceCard({ source, busy, profiles, open, events, onTest, onSignals, onRotate, onRevoke, onRemove, onPlace, onLimit, onProfile, onCapture, onSamples, onAlarm, onToggleEvents }: {
   source: Source; busy: boolean; profiles: { id: string; name: string }[] | null; open: boolean; events: MachineEventRow[] | undefined;
-  onTest: () => void; onSignals: () => void; onRotate: () => void; onRevoke: () => void; onRemove: () => void; onPlace: () => void;
+  onTest: () => void; onSignals: () => void; onRotate: () => void; onRevoke: () => void; onRemove: () => void; onPlace: () => void; onLimit: () => void;
   onProfile: (profileId: string | null) => void; onCapture: () => void; onSamples: () => void; onAlarm: (mode: AlarmMode) => void; onToggleEvents: () => void;
 }) {
   return <KeyCard icon={Cpu} title={source.name} status={STATUS[source.status]} statusTestId="machine-status"
@@ -280,6 +292,13 @@ function SourceCard({ source, busy, profiles, open, events, onTest, onSignals, o
       <span className="text-muted-foreground">Maskindel</span>
       <span className="min-w-0 font-medium [overflow-wrap:anywhere]" data-testid="machine-part-name">{source.part ? `${[source.part.path, source.part.name].filter(Boolean).join(" › ")}${source.part.isActive ? "" : " (pausad)"}` : "Ingen – larmen gäller källan"}</span>
       <Button type="button" variant="ghost" size="sm" className="-my-1 text-primary touch:h-11" disabled={busy} onClick={onPlace} data-testid="machine-part-choose">{source.part ? "Byt del" : "Välj del"}</Button>
+    </div>
+    {/* Nyckel med minsta behörighet (K2.5): the machines the key may write for; all until the admin limits it. */}
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs" data-testid="machine-allowed">
+      <KeyRound className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+      <span className="text-muted-foreground">Nyckeln får skriva för</span>
+      <span className="min-w-0 font-medium [overflow-wrap:anywhere]" data-testid="machine-allowed-names">{source.allowedParts?.length ? source.allowedParts.map((part) => part.name).join(", ") : "Alla maskiner"}</span>
+      <Button type="button" variant="ghost" size="sm" className="-my-1 text-primary touch:h-11" disabled={busy} onClick={onLimit} data-testid="machine-allowed-choose">{source.allowedParts?.length ? "Ändra" : "Begränsa"}</Button>
     </div>
     <KeyFields>
       <div className="grid min-w-0 gap-1.5" data-testid="machine-raw"><label htmlFor={`machine-profile-${source.id}`} className="field-label text-xs font-medium">Formatprofil för rådata</label>
@@ -325,6 +344,28 @@ function CreateDialog({ busy, onClose, onCreate }: { busy: boolean; onClose: () 
       </div>
       <p className="text-xs text-muted-foreground" data-testid="machine-new-off">Källan börjar på Av: larm blir ingen arbetsorder förrän du väljer det.</p>
       <DialogActions cancel={{ onClick: onClose }} primary={{ label: "Skapa källa", type: "submit", disabled: busy, disabledReason: !name.trim() ? "Skriv ett namn först." : null, testId: "machine-create" }} />
+    </form>
+  </Modal>;
+}
+
+/**
+ * Nyckel med minsta behörighet (K2.5, 2026-11-28): the machine parts the source's key may write events for. None chosen is no
+ * limit, as before; with a choice, an event that would land on another machine is refused by the intake ("machine_not_allowed").
+ * Data only goes one way: the key can never read or send anything back to the machine.
+ */
+function AllowedPartsDialog({ source, busy, onClose, onSave }: { source: Source; busy: boolean; onClose: () => void; onSave: (partIds: string[]) => void }) {
+  const [chosen, setChosen] = useState<string[]>(source.allowedParts?.map((part) => part.id) ?? []);
+  const { parts, places } = usePartOptions();
+  const options = partOptions(parts ?? [], null, places);
+  const nameOf = (id: string) => options.find((option) => option.id === id)?.label ?? source.allowedParts?.find((part) => part.id === id)?.name ?? "Maskindel";
+  return <Modal open onOpenChange={(next) => { if (!next) onClose(); }} title={`Maskiner för ${source.name}`} size="compact">
+    <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); onSave(chosen); }} data-testid="machine-allowed-dialog">
+      <p className="text-sm text-muted-foreground">Välj de maskiner som nyckeln får skriva händelser för. Väljer du ingen får den skriva för alla, som förut. Nyckeln kan bara skicka in, aldrig läsa eller styra något.</p>
+      {chosen.length ? <ul className="flex flex-wrap gap-2" aria-label="Valda maskiner">
+        {chosen.map((id) => <li key={id}><Button type="button" variant="outline" size="sm" onClick={() => setChosen((list) => list.filter((item) => item !== id))} aria-label={`Ta bort ${nameOf(id)}`}>{nameOf(id)}<X /></Button></li>)}
+      </ul> : <p className="text-xs text-muted-foreground" data-testid="machine-allowed-all">Alla maskiner.</p>}
+      <MachinePartSelect id="machine-allowed-add" label="Lägg till maskin" emptyLabel="Välj en maskin" value={null} onChange={(id) => { if (id) setChosen((list) => (list.includes(id) ? list : [...list, id])); }} testId="machine-allowed-select" />
+      <DialogActions cancel={{ onClick: onClose }} primary={{ label: chosen.length ? "Spara begränsningen" : "Spara: alla maskiner", type: "submit", disabled: busy, testId: "machine-allowed-save" }} />
     </form>
   </Modal>;
 }

@@ -1,4 +1,6 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { removeChainedRows } from "@/lib/traceability/chain-server";
 import { cleanRateLimits } from "@/lib/security/rate-limit";
 import { getAnalyticsSettings } from "@/lib/analytics/settings";
 import { pruneCounters } from "@/lib/analytics/store";
@@ -18,7 +20,8 @@ import { swedishDayKey } from "@/lib/swedish-time";
  *  - the key alarms' "already sent" marks after 400 days;
  *  - mailings with their recipient lists after 12 months;
  *  - the anonymous usage counters of Beteendeanalys after the retention time chosen there (14 months unless changed);
- *  - the security log after 12 months, and ended sessions a month after they ended (2026-10-10);
+ *  - the security log after 12 months, and ended sessions a month after they ended (2026-10-10); since 2026-11-27 a company's
+ *    security events follow the company's log retention instead (lib/traceability/retention-server.ts);
  *  - machine events (Maskinintag) after 90 days (2026-10-19); the objects' daily summaries (integrationsmotorn E6,
  *    counted from the events the same night before they go) after 24 months (decision 2026-10-18 point 6);
  *  - the machines' caught raw samples after 24 hours and the raw intake's body hashes after 10 minutes (integrationsmotorn E4);
@@ -56,8 +59,9 @@ export async function pruneSystemLogs(now = new Date(), options: { dryRun?: bool
     rows(() => prisma.passwordResetToken.count({ where: ended("expiresAt") }), () => prisma.passwordResetToken.deleteMany({ where: ended("expiresAt") })),
     rows(() => prisma.oAuthAuthorizationCode.count({ where: ended("expiresAt") }), () => prisma.oAuthAuthorizationCode.deleteMany({ where: ended("expiresAt") })),
     rows(() => prisma.oAuthToken.count({ where: tokens }), () => prisma.oAuthToken.deleteMany({ where: tokens })),
-    rows(() => prisma.administrationEvent.count({ where: keyChecksWhere }), () => prisma.administrationEvent.deleteMany({ where: keyChecksWhere })),
-    rows(() => prisma.administrationEvent.count({ where: keyAlertsWhere }), () => prisma.administrationEvent.deleteMany({ where: keyAlertsWhere })),
+    // The administration log is chained (Spårbarhet K3, 2026-11-27): the rows leave with their links kept as gaps.
+    rows(() => prisma.administrationEvent.count({ where: keyChecksWhere }), () => removeChainedRows(prisma, "admin", Prisma.sql`starts_with("action", 'server_key_check:') AND "createdAt" < ${keyChecksWhere.createdAt.lt}`, "removed").then((count) => ({ count }))),
+    rows(() => prisma.administrationEvent.count({ where: keyAlertsWhere }), () => removeChainedRows(prisma, "admin", Prisma.sql`starts_with("action", 'key_expiry_alert:') AND "createdAt" < ${keyAlertsWhere.createdAt.lt}`, "removed").then((count) => ({ count }))),
     rows(() => prisma.mailing.count({ where: mailingsWhere }), () => prisma.mailing.deleteMany({ where: mailingsWhere })),
     // Rate-limit counters older than a day are past every window (security review 2026-10-04).
     cleanRateLimits(now, { dryRun }),

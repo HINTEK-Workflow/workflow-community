@@ -12,7 +12,7 @@ import { machineAlarmsOverview } from "@/lib/maintenance/machine-alarms-server";
 import { activateOrder, createPlan, deletePlan, listPlans, partPlansChanged, planItemChanged, planningMaintenance, postponeOrder, updatePlan } from "@/lib/maintenance/plan-server";
 import { partHistory, planFollowUpOf } from "@/lib/maintenance/follow-up-server";
 import {
-  callerOf, createItem, createPart, deleteItem, deletePart, getItem, getPart, itemsOfWorkOrder, jobPartCard, listParts, ownerChoices, removeImage, reportFault, setMainImage, updateItem, updatePart,
+  callerOf, createItem, createPart, createPartFromTemplate, deleteItem, deletePart, getItem, getPart, itemsOfWorkOrder, jobPartCard, listParts, ownerChoices, removeImage, reportFault, setMainImage, updateItem, updatePart,
 } from "@/lib/maintenance/server";
 import {
   addStoreItem, assignStoreNumber, count, createLocation, deleteLocation, deleteStoreItem, getStore, linkSparePart, orderItem, receive, returnWithdrawal, storeArticleCard, storeLog, storePlaceCard, unlinkSparePart, updateLocation, updateStoreItem, withdraw,
@@ -74,6 +74,8 @@ const requestSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("update_place"), id, version: z.number().int().min(1), place: z.unknown() }),
   z.object({ action: z.literal("delete_place"), id }),
   z.object({ action: z.literal("create_part"), part: z.unknown() }),
+  // Skapa från mall (2026-11-28): a machine with its suggested parts from a generic plant template (lib/maintenance/plant-templates.ts).
+  z.object({ action: z.literal("create_from_template"), template: z.string().trim().min(1).max(60), part: z.unknown() }),
   z.object({ action: z.literal("update_part"), id, version: z.number().int().min(1), part: z.unknown() }),
   z.object({ action: z.literal("delete_part"), id }),
   z.object({ action: z.literal("main_image"), id }),
@@ -117,6 +119,7 @@ export async function POST(request: Request) {
       case "update_place": return json(await updatePlace(caller, input.id, input.version, input.place));
       case "delete_place": return json(await deletePlace(caller, input.id));
       case "create_part": return json(await createPart(caller, input.part));
+      case "create_from_template": return json(await createPartFromTemplate(caller, input.template, input.part));
       case "update_part": {
         const saved = await updatePart(caller, input.id, input.version, input.part);
         // Drifttimmar or a pause changed: the part's plans fill again (a failure here never undoes the saved part).

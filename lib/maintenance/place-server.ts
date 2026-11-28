@@ -4,6 +4,8 @@ import { ApiError } from "@/lib/kfid/server";
 import { type MaintenanceCaller, PART_LIMIT } from "./model";
 import { PLACE_LIMIT, placeInputSchema, placeLevelOf, placeProblem, placeSubtree, type PlaceListItem, type PlaceRow } from "./place-model";
 import { audit, requireMaintenance, type Db } from "./server";
+import { capRefusal, effectiveCap, PLACE_CAP_DEFAULT } from "./caps";
+import { nextPosition } from "./location";
 
 /**
  * Platserna i Underhåll (2026-10-31): the company's own tree Ort › Anläggning › Område › Avdelning, apart from the customer
@@ -16,7 +18,7 @@ const DUPLICATE = "Det finns redan en plats med det namnet här.";
 const isUnique = (error: unknown) => error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
 
 export async function placesOf(db: Db, organizationId: string): Promise<PlaceListItem[]> {
-  const rows = await db.maintenancePlace.findMany({ where: { organizationId }, orderBy: { name: "asc" }, take: PLACE_LIMIT, select: { id: true, parentId: true, name: true, level: true, notes: true, version: true } });
+  const rows = await db.maintenancePlace.findMany({ where: { organizationId }, orderBy: { name: "asc" }, take: PLACE_LIMIT, select: { id: true, parentId: true, name: true, level: true, notes: true, version: true, latitude: true, longitude: true } });
   return rows.map((row) => ({ ...row, level: placeLevelOf(row.level) }));
 }
 
@@ -37,11 +39,15 @@ export async function createPlace(caller: MaintenanceCaller, raw: unknown) {
   try {
     return await prisma.$transaction(async (tx) => {
       const rows = await placeRows(tx, caller.organizationId);
-      if (rows.length >= PLACE_LIMIT) throw new ApiError(422, `Högst ${PLACE_LIMIT} platser per företag.`);
+      // Justerbart tak (0.92.0): the company's own cap when the product owner has set one, else today's PLACE_LIMIT.
+      const company = await tx.organization.findUnique({ where: { id: caller.organizationId }, select: { maintenancePlaceCap: true } });
+      const refusal = capRefusal("place", rows.length, effectiveCap(company?.maintenancePlaceCap, PLACE_CAP_DEFAULT));
+      if (refusal) throw new ApiError(422, refusal);
       const problem = placeProblem(rows, null, input);
       if (problem) throw new ApiError(422, problem);
       await checkName(tx, caller.organizationId, null, input);
-      const row = await tx.maintenancePlace.create({ data: { organizationId: caller.organizationId, parentId: input.parentId, name: input.name, level: input.level, notes: input.notes, createdById: caller.userId, updatedById: caller.userId }, select: { id: true, version: true } });
+      const position = nextPosition({ latitude: null, longitude: null }, input, true);
+      const row = await tx.maintenancePlace.create({ data: { organizationId: caller.organizationId, parentId: input.parentId, name: input.name, level: input.level, notes: input.notes, ...position, createdById: caller.userId, updatedById: caller.userId }, select: { id: true, version: true } });
       await audit(tx, caller, "maintenance_place_created", `Underhåll: ny plats ${input.name}.`);
       return row;
     });
@@ -61,7 +67,9 @@ export async function updatePlace(caller: MaintenanceCaller, id: string, version
       const problem = placeProblem(rows, id, input);
       if (problem) throw new ApiError(422, problem);
       await checkName(tx, caller.organizationId, id, input);
-      const updated = await tx.maintenancePlace.updateMany({ where: { id, organizationId: caller.organizationId, version }, data: { parentId: input.parentId, name: input.name, level: input.level, notes: input.notes, updatedById: caller.userId, version: { increment: 1 } } });
+      // Kartnål (0.92.0): left out (a drag in the tree) keeps the pin; null removes it.
+      const position = input.latitude === undefined || input.longitude === undefined ? {} : { latitude: input.latitude, longitude: input.longitude };
+      const updated = await tx.maintenancePlace.updateMany({ where: { id, organizationId: caller.organizationId, version }, data: { parentId: input.parentId, name: input.name, level: input.level, notes: input.notes, ...position, updatedById: caller.userId, version: { increment: 1 } } });
       if (!updated.count) throw new ApiError(409, "Platsen har ändrats av någon annan. Läs in den igen.");
       return { id, version: version + 1 };
     });

@@ -26,8 +26,9 @@ on **your own server on the internet**.
 | What | Requirement | Why |
 | --- | --- | --- |
 | Computer or server | Linux recommended (Ubuntu 22.04/24.04). Windows and macOS work with Docker Desktop. At least 2 CPU cores, 4 GB memory (8 GB while building) and 20 GB disk. | Workflow and the database run in two containers. |
-| Docker | Docker Engine with Docker Compose, or Docker Desktop. | The installation builds and starts everything with Docker. |
-| Git | Any current version. | The install script fetches the code. |
+| Docker | Docker Engine with Docker Compose, or Docker Desktop. Docker Engine on Linux is open source and free for everyone. Docker Desktop (Windows and macOS) is free for individuals, education and smaller businesses; larger organisations need a paid licence from Docker (read Docker's own terms). | The installation builds and starts everything with Docker. |
+| Git | Any current version. Open source. | The install script fetches the code. |
+| age or GnuPG | age is the default: any current version (for example `apt install age` or `winget install FiloSottile.age`). If you choose GnuPG instead: `apt install gnupg`, `brew install gnupg` or `winget install GnuPG.Gpg4win` (section 6, *Encryption of the backups*). Both are open source. | The backups are always encrypted, and the installation stops if the program is missing. |
 | Mail server (SMTP) | An address allowed to send mail, for example `noreply@example.com`, with server, port, user name and password from your e-mail provider. | Without e-mail, **Forgot password** (*Glömt lösenord*), e-mail verification, invitations, reminders, operations alerts and mailings do not work. |
 | Backup | A place outside the server for copies of the database and the files. | You are responsible for being able to restore your data. |
 
@@ -315,7 +316,7 @@ Within five minutes after that, `tail /var/log/workflow/monitor.log` should show
 
   The drill restores into a temporary database and folder under `BACKUP_ROOT/work` (another folder: `DRILL_WORK_ROOT`)
   and removes them when it is done. The report is in the drill's folder under `BACKUP_ROOT`.
-- **The backups are always encrypted** with `age`. The program is needed on the server (for example `apt install age`,
+- **The backups are always encrypted** with `age` (or with GnuPG, see *Encryption of the backups* below). The program is needed on the server (for example `apt install age`,
   `brew install age` or `winget install FiloSottile.age`), and the installer stops with a message when it is missing.
   - Best is to make the key on another computer, not on the server: `age-keygen -o workflow-backup.key`. The line
     `Public key: age1…` is the public part. Put it in `.env` as `BACKUP_AGE_RECIPIENT=age1…` (or give it the first time
@@ -343,6 +344,58 @@ Within five minutes after that, `tail /var/log/workflow/monitor.log` should show
 - The secrets in `.env` are not in the copy. Keep `.env` separately and safely, or the sealed keys cannot be opened
   after a restore.
 
+### Encryption of the backups
+
+You can choose between two programs. Both encrypt to a public key, so the server never needs the private key.
+
+| | age (default) | GnuPG (choice) |
+| --- | --- | --- |
+| Method | age, with X25519 for the key and ChaCha20-Poly1305 for the data | OpenPGP (RFC 9580), with AES-256 for the data and an RSA key of 4096 bits for the recipient |
+| Licence | Open source (BSD) | Open source (GPLv3) |
+| Suits | Most installations | Organisations whose rules require algorithms from the BSI or NIST lists (for example BSI TR-02102) |
+| The files | `database.dump.age`, `storage.tar.gz.age` | `database.dump.gpg`, `storage.tar.gz.gpg` |
+| Private key that is made | `backup-key/workflow-backup.agekey` | `backup-key/workflow-backup.gpgkey` |
+
+**Choose GnuPG when you install.** Install GnuPG first (Debian and Ubuntu: `sudo apt install gnupg`, macOS:
+`brew install gnupg`, Windows: `winget install GnuPG.Gpg4win`). Then run the install line with the choice:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/HINTEK-Workflow/workflow-community/main/install.sh | bash -s -- --encryption gpg
+```
+
+```powershell
+$env:WORKFLOW_BACKUP_ENCRYPTION = "gpg"; irm https://raw.githubusercontent.com/HINTEK-Workflow/workflow-community/main/install.ps1 | iex
+```
+
+On Linux and macOS you can also set `WORKFLOW_BACKUP_ENCRYPTION=gpg` before `bash`. Without the choice the installer asks
+nothing more than usual, and age is used.
+
+- The choice is kept in `.env` as `BACKUP_ENCRYPTION=gpg`. The installer then makes a key pair (RSA 4096 bits, without a
+  passphrase) in a temporary GnuPG folder of its own, saves the public key in `backup-key/workflow-backup.pub.asc` and the
+  private one in `backup-key/workflow-backup.gpgkey`, and then removes the temporary folder. `.env` gets
+  `BACKUP_GPG_RECIPIENT_FILE=backup-key/workflow-backup.pub.asc`. Your own GnuPG keyring is not used.
+- The key has **no expiry date**, so the backups never stop working on their own when a date passes. Change the key when
+  your own routine says so (see below).
+- If you would rather make the key on another computer, export the public part (`gpg --armor --export <fingerprint> >
+  workflow-backup.pub.asc`) and give the file the first time with `WORKFLOW_BACKUP_GPG_RECIPIENT_FILE=<file>` (PowerShell:
+  `$env:WORKFLOW_BACKUP_GPG_RECIPIENT_FILE`). The key must be RSA with at least 3072 bits and able to encrypt, and the file
+  must not contain a private key.
+- `nightly-backup.sh` reads `BACKUP_ENCRYPTION` and `BACKUP_GPG_RECIPIENT_FILE` from `.env` in the folder the cron line
+  runs in. It encrypts with `gpg --cipher-algo AES256 --compress-algo none --recipient-file <public key>`, in a temporary
+  GnuPG folder of its own, and keeps only the `.gpg` files.
+
+**Keep the private key off the server**, whichever program you use, preferably in two places (a password manager and a
+USB stick in a safe), then remove it from the server. Without it no backup can be opened.
+
+**Changing the program or the key.** Run the install line again with `--encryption gpg` or `--encryption age`
+(PowerShell: `$env:WORKFLOW_BACKUP_ENCRYPTION`), or change `BACKUP_ENCRYPTION` in `.env`. New backups are then encrypted
+with the new choice. Older backups do not change: keep the old private key for as long as those backups are kept. For a
+new GnuPG key, remove the line `BACKUP_GPG_RECIPIENT_FILE` from `.env` and move the old `workflow-backup.pub.asc` (and the
+private key, if it is still there) out of `backup-key/` before you run the install line again.
+
+**Practise the restore with GnuPG.** `scripts/ops/aterstallningsovning.sh` recognises the `.gpg` files. Give the private
+key with `--key ~/workflow-backup.gpgkey`; it is read into a temporary GnuPG folder that is removed afterwards.
+
 ## 7. Update
 
 Run the install line again. The script does this:
@@ -355,9 +408,15 @@ Run the install line again. The script does this:
 4. Starts the new version, which updates the database.
 
 - Settings and data are kept. The five newest backups from updates are kept (`WORKFLOW_KEEP_BACKUPS` changes the
-  number). They are always encrypted to `BACKUP_AGE_RECIPIENT` in `.env` (section 6).
+  number). They are always encrypted to `BACKUP_AGE_RECIPIENT` in `.env`, or with GnuPG to `BACKUP_GPG_RECIPIENT_FILE`
+  when `BACKUP_ENCRYPTION=gpg` (section 6).
 - If you update by hand (`git fetch --tags` and `git checkout v1.2.3` followed by `docker compose up -d --build`), take
   a backup with `scripts/ops/nightly-backup.sh` first.
+- Under **Hjälp → Om Workflow** (Help → About Workflow) you see which version you have and how old it is. There the
+  administrator can turn on **Kontrollera nya versioner** (check for new versions). The server then reads the public list
+  of releases on GitHub once a day and shows when a new version is out. It is off by default, and nothing about the
+  installation is sent.
+- Every version can be upgraded straight to the latest, also one that is several years old (see SECURITY.md).
 
 **If the update stops**
 
@@ -381,6 +440,10 @@ dir=backups/update-<time>
 # The backup is encrypted: decrypt first, on a computer that has the key (then check with SHA256SUMS.plain)
 #   age -d -i workflow-backup.key -o "$dir/database.dump" "$dir/database.dump.age"
 #   age -d -i workflow-backup.key -o "$dir/storage.tar.gz" "$dir/storage.tar.gz.age"
+# With GnuPG (.gpg files): import the private key once and decrypt
+#   gpg --import workflow-backup.gpgkey
+#   gpg -o "$dir/database.dump" -d "$dir/database.dump.gpg"
+#   gpg -o "$dir/storage.tar.gz" -d "$dir/storage.tar.gz.gpg"
 docker compose stop app
 git fetch --depth 1 origin tag v1.2.2
 git checkout v1.2.2

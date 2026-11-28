@@ -1,6 +1,6 @@
 # Form file reference – hintek-workflow-forms, formatVersion 1
 
-Package version 1.0.0. The exact, machine-readable rules are in `schema.json` (JSON Schema 2020-12), generated from HINTEK Workflow's own import validation. This page explains every key. Every key except those marked **required** may be left out; the default is then used. No other keys are accepted. Swedish names in parentheses are the words used in Workflow's form builder (Skapa formulär).
+Package version 1.1.0. The exact, machine-readable rules are in `schema.json` (JSON Schema 2020-12), generated from HINTEK Workflow's own import validation. This page explains every key. Every key except those marked **required** may be left out; the default is then used. No other keys are accepted. Swedish names in parentheses are the words used in Workflow's form builder (Skapa formulär).
 
 ## 1. The file
 
@@ -32,7 +32,7 @@ Package version 1.0.0. The exact, machine-readable rules are in `schema.json` (J
 | `description` | text ≤ 500, `""` | Short description under Ny uppgift. |
 | `color` | `green` · `blue` · `violet` · `amber` · `rose` · `cyan`, default `green` | The card's colour. |
 | `icon` | `file-spreadsheet` · `clipboard-check` · `list-checks` · `gauge` · `zap` · `plug` · `wrench` · `shield-check` · `shield-alert` · `flame` · `thermometer` · `camera` · `building`, default `file-spreadsheet` | The card's icon. |
-| `category` | `ELECTRICAL` (Elinstallation) · `POWER` (Elkraft) · `INDUSTRY` (Industri) · `ROUNDS` (Underhåll och driftronder) · `PROPERTY` (Fastigheter) · `SAFETY` (Arbetsmiljö och säkerhet) · `OTHER` (Övrigt), default `OTHER` | Where the form is listed. |
+| `category` | `ELECTRICAL` (Elinstallation) · `POWER` (Elkraft) · `INDUSTRY` (Industri) · `ROUNDS` (Underhåll och driftronder) · `UTILITIES` (VA och värme) · `SUPERVISION` (Tillsyn och besiktning) · `ENVIRONMENT` (Miljö) · `PROPERTY` (Fastigheter) · `SAFETY` (Arbetsmiljö och säkerhet) · `OTHER` (Övrigt), default `OTHER` | Where the form is listed. |
 | `allowStandalone` | yes/no, `true` | May be used without a project. |
 | `allowInProject` | yes/no, `true` | May be used in a project. At least one of the two must be `true`. |
 

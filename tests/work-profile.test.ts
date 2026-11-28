@@ -12,7 +12,7 @@ import { MODULE_PACKAGES } from "../lib/workflow/modules";
 import { setupStartLinks, setupStepsFor } from "../lib/setup-guide";
 import { readWorkView, WORK_VIEW_LABEL, withWorkView } from "../lib/workflow/work-view";
 import {
-  currentWorkProfile, effectiveMenuChoices, effectiveNativeLayout, effectiveWorkProfile, effectiveWorkView, findWorkProfileTitles, isWorkProfile, keepWorkAreas, NO_ADMIN_WORK_CHOICES, nextWorkProfileSetting, normalizeWorkAreas, ownWorkProfileChoice, ownWorkProfileShown,
+  currentWorkProfile, effectiveMenuChoices, electricalWorkChosen, effectiveNativeLayout, effectiveWorkProfile, effectiveWorkView, findWorkProfileTitles, isWorkProfile, keepWorkAreas, NO_ADMIN_WORK_CHOICES, nextWorkProfileSetting, normalizeWorkAreas, ownWorkProfileChoice, ownWorkProfileShown,
   profileNativeLayout, profileRightsStep, readWorkProfile, RESET_CHOICE_BASIS, RETIRED_WORK_PROFILE, FIELD_GRANTS, READ_GRANTS, OFFICE_GRANTS, MAINTENANCE_GRANTS, suggestedRights, WORK_AREAS, WORK_PROFILE, WORK_PROFILES, workProfileFirstSteps, workProfileGroups, workProfileMenuFirst, workProfileNewFirst, workProfileStartTab, workProfileTucked, withWorkProfile,
   type AdminWorkChoices,
 } from "../lib/workflow/work-profile";
@@ -24,11 +24,11 @@ const adminChose = (profile: (typeof WORK_PROFILES)[number]): AdminWorkChoices =
 const member = (grants: string[] = []): MenuAccess => ({ memberRole: "MEMBER", workflowPermissions: workflowPermissionProfileSchema.parse({ version: 1, grants }) });
 const owner: MenuAccess = { memberRole: "OWNER", workflowPermissions: noWorkflowPermissionProfile() };
 
-test("the table: one row per kind of work under seven groups, neutral work views, and no admin among them", () => {
-  assert.equal(WORK_PROFILES.length, 19);
+test("the table: one row per kind of work under eight groups, neutral work views, and no admin among them", () => {
+  assert.equal(WORK_PROFILES.length, 20);
   assert.equal(new Set(WORK_PROFILES).size, WORK_PROFILES.length, "every key once");
   const groups = workProfileGroups();
-  assert.deepEqual(groups.map((group) => group.label), ["El och service", "Elkraft och elnät", "Automation", "Industri och underhåll", "Fastighet och drift", "Projekt och arbetsledning", "Kontor och administration"]);
+  assert.deepEqual(groups.map((group) => group.label), ["El och service", "Elkraft och elnät", "Automation", "Industri och underhåll", "Fastighet och drift", "Kommunal teknisk verksamhet", "Projekt och arbetsledning", "Kontor och administration"]);
   assert.deepEqual(groups.map((group) => group.profiles.length > 0), groups.map(() => true), "every group has a profile");
   assert.deepEqual(groups.flatMap((group) => group.profiles).sort(), [...WORK_PROFILES].sort(), "every profile is offered once");
   // One title per row: never "A / B", and no two rows with the same title.
@@ -142,9 +142,22 @@ test("no profile suggests more than the admin preset it builds on, and what stan
 });
 
 test("the company's areas propose a package for the new groups too", () => {
-  assert.deepEqual(WORK_AREAS, ["electric", "power", "automation", "industry", "property", "projects", "office"]);
+  assert.deepEqual(WORK_AREAS, ["electric", "power", "automation", "industry", "property", "municipal", "projects", "office"]);
   assert.ok(MODULE_PACKAGES.power.includes("rounds") && MODULE_PACKAGES.power.includes("projects") && !MODULE_PACKAGES.power.includes("quotes"));
   assert.ok(MODULE_PACKAGES.automation.includes("upkeep") && MODULE_PACKAGES.automation.includes("projects"));
+  // Kommunal teknisk verksamhet (2026-11-28): the own plants – rounds, machines and the store; no customers, quotes, invoicing or programme.
+  assert.ok(["rounds", "upkeep", "planning", "time"].every((key) => MODULE_PACKAGES.municipal.includes(key as never)));
+  assert.ok(!["customers", "quotes", "invoicing", "staff_register", "self_inspection"].some((key) => MODULE_PACKAGES.municipal.includes(key as never)));
+  assert.deepEqual(workProfileGroups().find((group) => group.area === "municipal")?.profiles, ["utility_technician"]);
+  assert.equal(findWorkProfileTitles("fjärrvärme")[0]?.profile, "utility_technician");
+});
+
+test("the electrical work: chosen when an electrical area is, or when nothing is chosen at all", () => {
+  assert.equal(electricalWorkChosen([]), true, "a company that never answered keeps everything");
+  assert.equal(electricalWorkChosen(["electric"]), true);
+  assert.equal(electricalWorkChosen(["municipal", "power"]), true);
+  assert.equal(electricalWorkChosen(["municipal"]), false);
+  assert.equal(electricalWorkChosen(["industry", "property", "automation"]), false);
 });
 
 test("every profile's rights are valid together and its menu, Hem, tab bar and start tab exist", () => {
@@ -468,7 +481,9 @@ test("a profile never changes what the API allows", () => {
   for (const dir of ["app/api", "lib", "ee"]) if (existsSync(dir)) walk(dir);
   // lib/kfid/round-follow-up-server.ts (2026-11-27): only who gets the notice of a work order from the round (arbetsledare
   // and admin); the notice shows only work orders the person may already read, so it grants nothing.
-  assert.deepEqual(readers.sort(), ["app/api/administration/route.ts", "app/api/superadmin/customer-companies/route.ts", "app/api/workspace/route.ts", "lib/auth/invitations.ts", "lib/kfid/preferences.ts", "lib/kfid/round-follow-up-server.ts", "lib/workflow/first-frame-server.ts", "lib/workflow/modules.ts"].sort(), "a new reader of the profile on the server must be looked at");
+  // app/api/forms/route.ts (2026-11-28): only what the company works with, to leave Workflow's electrical forms out of the catalog
+  // without an electrical area; it hides, it never opens anything, and one form by its id is read as before.
+  assert.deepEqual(readers.sort(), ["app/api/administration/route.ts", "app/api/forms/route.ts", "app/api/superadmin/customer-companies/route.ts", "app/api/workspace/route.ts", "lib/auth/invitations.ts", "lib/kfid/preferences.ts", "lib/kfid/round-follow-up-server.ts", "lib/workflow/first-frame-server.ts", "lib/workflow/modules.ts"].sort(), "a new reader of the profile on the server must be looked at");
   // What those routes take from it: the company's areas, and the admin's save of the profile itself. Never a right.
   assert.doesNotMatch(readFileSync("app/api/workspace/route.ts", "utf8"), /(suggestedRights|readWorkProfile|WORK_PROFILE\b)/);
   assert.doesNotMatch(readFileSync("app/api/superadmin/customer-companies/route.ts", "utf8"), /(suggestedRights|readWorkProfile|WORK_PROFILE\b)/);

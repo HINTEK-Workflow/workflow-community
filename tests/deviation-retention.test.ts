@@ -35,7 +35,8 @@ test("the filters are always one company's closed entries without a hold", () =>
   assert.equal(removal.organizationId, "org-a");
   assert.equal(removal.status, "DONE");
   assert.equal(removal.retentionHoldAt, null);
-  assert.deepEqual(removal.OR.map((step) => [step.type.in, day(step.closedAt.lt)]), [[["SELF_INSPECTION", "RISK_OBSERVATION"], "2035-01-15"], [["NEAR_MISS", "ACCIDENT"], "2030-01-15"]]);
+  // Every type but the incidents after 5 years – the company's own types too – and the incidents after 10.
+  assert.deepEqual(removal.OR.map((step) => ["notIn" in step.type ? { notIn: step.type.notIn } : { in: step.type.in }, day(step.closedAt.lt)]), [[{ notIn: ["NEAR_MISS", "ACCIDENT"] }, "2035-01-15"], [{ in: ["NEAR_MISS", "ACCIDENT"] }, "2030-01-15"]]);
   const personal = deviationPersonalDataWhere("org-a", cutoffs)!;
   assert.equal(personal.organizationId, "org-a");
   assert.equal(personal.status, "DONE");

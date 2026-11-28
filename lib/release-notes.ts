@@ -27,11 +27,27 @@ export type ReleaseNote = {
 
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    version: "0.92.0",
+    date: "2026-11-28",
+    summary: "Mer kontroll över vem som ser vad, en logg som inte går att ändra i efterhand och stöd för fler verksamheter.",
+    items: [
+      "Admin kan ge supporten läsåtkomst i 1 timme, 24 timmar eller 7 dagar. Allt supporten läser syns för er, och åtkomsten kan återkallas när som helst. Under Användare finns också Granska behörigheter, med export.",
+      "Loggarna är skyddade mot ändringar, och arbetsordrar, protokoll, avvikelser, underhållsplaner och maskiner har en Ändringshistorik. Hur länge loggarna sparas väljer ni själva: 1, 2, 5 eller 10 år.",
+      "Det nya arbetsområdet Kommunal teknisk verksamhet passar VA, fjärrvärme, elnät och vattenkraft. En maskin kan skapas från en mall, till exempel pumpstation eller nätstation, och elformulären döljs när el inte är valt.",
+      "Avvikelseloggen finns alltid, även utan egenkontrollprogram, med typer som Driftfel, Miljö och företagets egna. Maskiner kan få en kartnål, och en driftrond kan skrivas ut på papper.",
+    ],
+    highlights: [
+      "Supportåtkomst bara med ert medgivande",
+      "Ändringshistorik och skyddade loggar",
+      "Stöd för VA, fjärrvärme, elnät och vattenkraft",
+    ],
+  },
+  {
     version: "0.91.0",
     date: "2026-11-28",
     summary: "Brister från driftronden blir arbetsordrar direkt, och uppföljningen syns på rondens arbetsorder.",
     items: [
-      "Hittar du en brist i driftronden väljer du Akut arbetsorder eller Planerad arbetsorder. Maskinen är redan vald, och foto och kommentar följer med. Vid en akut brist får arbetsledare och admin ett meddelande direkt, även med e-post.",
+      "Hittar du en brist i driftronden väljer du Akut arbetsorder eller Planerad arbetsorder. Du väljer maskinen, som redan är vald när ronden gäller en maskin, och foto och kommentar följer med. Vid en akut brist får arbetsledare och admin ett meddelande direkt, även med e-post.",
       "Rondens arbetsorder visar Från ronden, med varje uppföljning och om den är öppen eller klar. Det du åtgärdade direkt räknas som klart och syns i maskinens Historik.",
       "En underhållsplan kan räkna nästa gång från när arbetet senast gjordes, som förut, eller följa ett fast schema.",
       "Trycker du Klart med punkter som inte är avbockade frågar Workflow först om du vill markera det som klart ändå.",

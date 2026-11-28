@@ -17,6 +17,11 @@
 # $env:WORKFLOW_KEEP_BACKUPS (how many update backups are kept, 5). $env:WORKFLOW_SKIP_BACKUP=1 skips the backup (not
 # recommended). Without questions: $env:WORKFLOW_ADMIN_EMAIL, $env:WORKFLOW_ADMIN_PASSWORD, $env:WORKFLOW_NAME;
 # $env:WORKFLOW_NO_BROWSER=1 opens no browser.
+#
+# Encryption (2026-11-28): age is the default. GnuPG (OpenPGP, AES-256 and RSA 4096) is a second choice for organisations
+# whose rules ask for algorithms from the BSI or NIST lists: $env:WORKFLOW_BACKUP_ENCRYPTION = "gpg" before the install line,
+# or .\install.ps1 -Encryption gpg. The choice is kept in .env as BACKUP_ENCRYPTION; without it nothing more is asked.
+param([string]$Encryption = "")
 
 $ErrorActionPreference = "Stop"
 $Source = if ($env:WORKFLOW_SOURCE) { $env:WORKFLOW_SOURCE } else { "https://github.com/HINTEK-Workflow/workflow-community.git" }
@@ -250,26 +255,30 @@ function BackupBeforeUpdate {
   # the plain files are kept to check after decrypting; only the .age files stay.
   $utf8 = New-Object Text.UTF8Encoding($false)
   $plainFiles = @("database.dump", "storage.tar.gz") | ForEach-Object { Join-Path $target $_ }
-  $recipient = EnvValue "BACKUP_AGE_RECIPIENT"
-  if (-not $recipient -or -not (Get-Command age -ErrorAction SilentlyContinue)) {
-    Write-Host "Backupen krypteras alltid, men BACKUP_AGE_RECIPIENT eller age.exe saknas."
+  # age (the default) or gpg (BACKUP_ENCRYPTION=gpg); the file ending follows the program.
+  $encryption = if ((EnvValue "BACKUP_ENCRYPTION") -eq "gpg") { "gpg" } else { "age" }
+  $setting = if ($encryption -eq "gpg") { "BACKUP_GPG_RECIPIENT_FILE" } else { "BACKUP_AGE_RECIPIENT" }
+  $recipient = EnvValue $setting
+  if (-not $recipient -or -not (Get-Command $encryption -ErrorAction SilentlyContinue)) {
+    Write-Host "Backupen krypteras alltid, men $setting eller $encryption.exe saknas."
     $plainFiles | ForEach-Object { Remove-Item $_ -Force -ErrorAction SilentlyContinue }
     return $false
   }
   $plainSums = $plainFiles | ForEach-Object { "$((Get-FileHash $_ -Algorithm SHA256).Hash.ToLower())  $(Split-Path $_ -Leaf)" }
   [IO.File]::WriteAllText((Join-Path $target "SHA256SUMS.plain"), (($plainSums -join "`n") + "`n"), $utf8)
   foreach ($plain in $plainFiles) {
-    if (-not (Succeeds { age -r $recipient -o "$plain.age" $plain }) -or -not (Test-Path "$plain.age") -or (Get-Item "$plain.age").Length -eq 0) {
-      $plainFiles | ForEach-Object { Remove-Item $_ -Force -ErrorAction SilentlyContinue }
+    $encrypted = "$plain.$encryption"
+    if (-not (EncryptBackupFile $encryption $recipient $plain $encrypted) -or -not (Test-Path $encrypted) -or (Get-Item $encrypted).Length -eq 0) {
+      $plainFiles + @($encrypted) | ForEach-Object { Remove-Item $_ -Force -ErrorAction SilentlyContinue }
       return $false
     }
     Remove-Item $plain -Force
   }
-  Write-Host "  krypterad med age till BACKUP_AGE_RECIPIENT"
-  $sums = @("database.dump.age", "storage.tar.gz.age") | ForEach-Object { "$((Get-FileHash (Join-Path $target $_) -Algorithm SHA256).Hash.ToLower())  $_" }
+  Write-Host "  krypterad med $encryption till $setting"
+  $sums = @("database.dump.$encryption", "storage.tar.gz.$encryption") | ForEach-Object { "$((Get-FileHash (Join-Path $target $_) -Algorithm SHA256).Hash.ToLower())  $_" }
   [IO.File]::WriteAllText((Join-Path $target "SHA256SUMS"), (($sums -join "`n") + "`n"), $utf8)
   $from = if ($script:PreviousVersion) { $script:PreviousVersion } else { "okänd" }
-  [IO.File]::WriteAllText((Join-Path $target "MANIFEST"), "created=$stamp`nfrom=$from`ntables=$(($tables -split ' ')[1])`nfiles=$(($files -split '\s+')[1])`nencrypted=age`n", $utf8)
+  [IO.File]::WriteAllText((Join-Path $target "MANIFEST"), "created=$stamp`nfrom=$from`ntables=$(($tables -split ' ')[1])`nfiles=$(($files -split '\s+')[1])`nencrypted=$encryption`n", $utf8)
   Write-Host "Backup klar: $target"
   # Retention: the newest WORKFLOW_KEEP_BACKUPS update backups stay; only folders named like a stamp are removed.
   if ($KeepBackups -ge 1) {
@@ -284,7 +293,123 @@ function BackupBeforeUpdate {
 # Without one, a key pair is made here in backup-key\ (only this user can read it) and the admin is told to move a copy of
 # the private key somewhere safe: without it no backup can be opened. age.exe is needed on this computer either way.
 $AgeHint = "Installera age: winget install FiloSottile.age (öppna sedan ett nytt PowerShell-fönster) och kör igen."
+$GpgHint = "Installera GnuPG: winget install GnuPG.Gpg4win (öppna sedan ett nytt PowerShell-fönster) och kör igen."
+# The encryption chosen with -Encryption or $env:WORKFLOW_BACKUP_ENCRYPTION; empty = what .env says (age when nothing).
+$EncryptionChoice = if ($Encryption) { $Encryption.Trim().ToLower() } elseif ($env:WORKFLOW_BACKUP_ENCRYPTION) { $env:WORKFLOW_BACKUP_ENCRYPTION.Trim().ToLower() } else { "" }
+if ($EncryptionChoice -and $EncryptionChoice -ne "age" -and $EncryptionChoice -ne "gpg") { Fail "-Encryption (eller WORKFLOW_BACKUP_ENCRYPTION) ska vara age eller gpg." }
+function SaveEnvValue($key, $value) {
+  $envFile = Join-Path $Dir ".env"
+  $lines = SetValue (Get-Content $envFile) $key $value
+  [IO.File]::WriteAllText($envFile, (($lines -join "`n") + "`n"), (New-Object Text.UTF8Encoding($false)))
+}
 function EnsureBackupEncryption {
+  $choice = if ($EncryptionChoice) { $EncryptionChoice } else { EnvValue "BACKUP_ENCRYPTION" }
+  if (-not $choice) { $choice = "age" }
+  if ($choice -ne "age" -and $choice -ne "gpg") { Fail "BACKUP_ENCRYPTION i .env ska vara age eller gpg." }
+  if ($EncryptionChoice) { SaveEnvValue "BACKUP_ENCRYPTION" $choice }
+  if ($choice -eq "gpg") { EnsureGpgEncryption } else { EnsureAgeEncryption }
+  $script:BackupEncryption = $choice
+}
+
+# A path in .env is relative to the install folder (the nightly backup's cron line runs there too).
+function GpgKeyPath($path) { if ([IO.Path]::IsPathRooted($path)) { return $path } else { return (Join-Path $Dir $path) } }
+function NewTempDir { $path = Join-Path ([IO.Path]::GetTempPath()) ("wf-gpg-" + [Guid]::NewGuid().ToString("N").Substring(0, 12)); New-Item -ItemType Directory $path | Out-Null; return $path }
+# Stops the gpg-agent of a GNUPGHOME of its own and removes the folder.
+function GpgStop($gpgHome) {
+  try { Succeeds { gpgconf --homedir $gpgHome --kill all } | Out-Null } catch { }
+  Remove-Item $gpgHome -Recurse -Force -ErrorAction SilentlyContinue
+}
+function GpgOut {
+  $previous = $ErrorActionPreference; $ErrorActionPreference = "Continue"
+  try { $out = @(& gpg @args 2>$null) } finally { $ErrorActionPreference = $previous }
+  return $out
+}
+# Makes the backups' GnuPG key pair (RSA 4096 with an RSA 4096 subkey for encryption) in its own GNUPGHOME. No expiry, so the
+# backups never stop silently when a date passes; without a passphrase, like the age key, because the update's backup only
+# needs the public key and the private one is meant to leave this computer. gpg writes the files itself (--output).
+function GpgMakeKey($gpgHome, $key, $pub) {
+  New-Item -ItemType Directory -Force $gpgHome | Out-Null
+  $params = Join-Path $gpgHome "key-params.txt"
+  $text = @("%no-protection", "Key-Type: RSA", "Key-Length: 4096", "Key-Usage: cert", "Subkey-Type: RSA", "Subkey-Length: 4096",
+    "Subkey-Usage: encrypt", "Name-Real: Workflow backup", "Expire-Date: 0", "%commit", "") -join "`n"
+  [IO.File]::WriteAllText($params, $text, (New-Object Text.UTF8Encoding($false)))
+  if (-not (Succeeds { gpg --homedir $gpgHome --batch --gen-key $params })) { return $false }
+  $fprLine = @(GpgOut --homedir $gpgHome --batch --with-colons --list-secret-keys | Where-Object { "$_" -like "fpr:*" }) | Select-Object -First 1
+  $fpr = if ($fprLine) { ("$fprLine" -split ":")[9] } else { "" }
+  if ($fpr -notmatch "^([0-9A-F]{40}|[0-9A-F]{64})$") { return $false }
+  if (-not (Succeeds { gpg --homedir $gpgHome --batch --armor --output $key --export-secret-keys $fpr })) { return $false }
+  if (-not (Succeeds { gpg --homedir $gpgHome --batch --armor --output $pub --export $fpr })) { return $false }
+  return ((Test-Path $key) -and (Test-Path $pub) -and (Get-Item $key).Length -gt 0 -and (Get-Item $pub).Length -gt 0)
+}
+# Empty when the file is a public key that can encrypt with RSA of at least 3072 bits; otherwise the reason.
+function GpgKeyProblem($file) {
+  if (-not (Test-Path $file) -or (Get-Item $file).Length -eq 0) { return "filen $file finns inte" }
+  $tmp = NewTempDir
+  try { $lines = @(GpgOut --homedir $tmp --batch --with-colons --show-keys $file) } finally { GpgStop $tmp }
+  if (@($lines | Where-Object { "$_" -match "^(sec|ssb):" }).Count -gt 0) { return "filen innehåller en privat nyckel; ange bara den publika" }
+  $usable = @($lines | Where-Object {
+    $f = "$_" -split ":"
+    $f.Count -ge 12 -and ($f[0] -eq "pub" -or $f[0] -eq "sub") -and $f[1] -notmatch "[rei]" -and $f[3] -eq "1" -and $f[2] -match "^\d+$" -and [int]$f[2] -ge 3072 -and $f[11] -match "e"
+  })
+  if ($usable.Count -eq 0) { return "nyckeln ska vara en publik RSA-nyckel med minst 3072 bitar som kan kryptera" }
+  return ""
+}
+# One backup file encrypted with age or gpg. gpg reads the public key from the file (--recipient-file) in a GNUPGHOME of its
+# own that is removed again; no keyring is used or changed.
+function EncryptBackupFile($encryption, $recipient, $plain, $encrypted) {
+  if ($encryption -ne "gpg") { return (Succeeds { age -r $recipient -o $encrypted $plain }) }
+  $tmp = NewTempDir
+  $keyFile = GpgKeyPath $recipient
+  try { return ((NativeCode { gpg --homedir $tmp --batch --yes --no-tty --trust-model always --cipher-algo AES256 --compress-algo none --recipient-file $keyFile -o $encrypted --encrypt $plain }) -eq 0) }
+  finally { GpgStop $tmp }
+}
+function NewKeyDir {
+  $keyDir = Join-Path $Dir "backup-key"
+  if (-not (Test-Path $keyDir)) {
+    New-Item -ItemType Directory -Force $keyDir | Out-Null
+    # Only this Windows user (and the system) may read the folder.
+    Succeeds { icacls $keyDir /inheritance:r /grant:r "$($env:USERNAME):(OI)(CI)F" "SYSTEM:(OI)(CI)F" } | Out-Null
+  }
+  return $keyDir
+}
+# GnuPG (BACKUP_ENCRYPTION=gpg): BACKUP_GPG_RECIPIENT_FILE in .env (or $env:WORKFLOW_BACKUP_GPG_RECIPIENT_FILE the first time,
+# then copied to backup-key\) is the public key; without one a key pair is made in a GNUPGHOME of its own under backup-key\,
+# the private key exported to backup-key\workflow-backup.gpgkey (like the age key) and that GNUPGHOME removed again.
+function EnsureGpgEncryption {
+  if (-not (Get-Command gpg -ErrorAction SilentlyContinue)) { Fail "Backuperna ska krypteras med GnuPG, men gpg.exe finns inte. $GpgHint" }
+  $file = EnvValue "BACKUP_GPG_RECIPIENT_FILE"
+  $pub = Join-Path $Dir "backup-key\workflow-backup.pub.asc"
+  $key = Join-Path $Dir "backup-key\workflow-backup.gpgkey"
+  if (-not $file -and $env:WORKFLOW_BACKUP_GPG_RECIPIENT_FILE) {
+    $given = $env:WORKFLOW_BACKUP_GPG_RECIPIENT_FILE.Trim()
+    if (-not (Test-Path $given)) { Fail "Filen i WORKFLOW_BACKUP_GPG_RECIPIENT_FILE finns inte: $given" }
+    NewKeyDir | Out-Null
+    Copy-Item $given $pub -Force
+    $file = "backup-key/workflow-backup.pub.asc"
+    SaveEnvValue "BACKUP_GPG_RECIPIENT_FILE" $file
+  }
+  if (-not $file) {
+    if (-not (Test-Path $pub) -or (Get-Item $pub).Length -eq 0) {
+      # Never a new key over an old private key: the backups made with it could no longer be opened.
+      if ((Test-Path $key) -and (Get-Item $key).Length -gt 0) { Fail "$key finns men inte den publika nyckeln $pub. Exportera den publika delen dit (gpg --armor --export) och kör igen." }
+      $keyDir = NewKeyDir
+      $gpgHome = Join-Path $keyDir "gnupg-tmp"
+      Remove-Item $gpgHome -Recurse -Force -ErrorAction SilentlyContinue
+      $made = $false
+      try { $made = GpgMakeKey $gpgHome $key $pub } finally { GpgStop $gpgHome }
+      if (-not $made) {
+        Remove-Item $key, $pub -Force -ErrorAction SilentlyContinue
+        Fail "Kunde inte skapa en GnuPG-nyckel för backuperna i $keyDir."
+      }
+    }
+    $file = "backup-key/workflow-backup.pub.asc"
+    SaveEnvValue "BACKUP_GPG_RECIPIENT_FILE" $file
+  }
+  $problem = GpgKeyProblem (GpgKeyPath $file)
+  if ($problem) { Fail "BACKUP_GPG_RECIPIENT_FILE i .env ($file): $problem." }
+}
+
+function EnsureAgeEncryption {
   $envFile = Join-Path $Dir ".env"
   $recipient = EnvValue "BACKUP_AGE_RECIPIENT"
   if (-not $recipient -and $env:WORKFLOW_BACKUP_AGE_RECIPIENT) {
@@ -373,7 +498,8 @@ if (Test-Path $envFile) {
 
 Step "Kontrollerar krypteringen av backuperna"
 EnsureBackupEncryption
-Write-Host "Backuperna krypteras med age till BACKUP_AGE_RECIPIENT i .env."
+if ($script:BackupEncryption -eq "gpg") { Write-Host "Backuperna krypteras med GnuPG (AES-256, RSA) till nyckeln i BACKUP_GPG_RECIPIENT_FILE i .env." }
+else { Write-Host "Backuperna krypteras med age till BACKUP_AGE_RECIPIENT i .env." }
 
 if ($updating) {
   # The new version is built while the old one keeps running; then the old one stops, the backup is taken and read back,
@@ -453,12 +579,13 @@ Write-Host "  Starta igen:      docker compose up -d"
 Write-Host "  Uppdatera:        kör installationsraden igen (tar en backup först)"
 Write-Host "  Gå tillbaka:      INSTALLATION.md, avsnittet Återställ (backuperna ligger i $Dir\backups)"
 Write-Host "  Ta bort allt:     docker compose down -v   (raderar även datan)"
-$backupKey = Join-Path $Dir "backup-key\workflow-backup.agekey"
-if ((Test-Path $backupKey) -and (Get-Item $backupKey).Length -gt 0) {
+foreach ($backupKey in @((Join-Path $Dir "backup-key\workflow-backup.agekey"), (Join-Path $Dir "backup-key\workflow-backup.gpgkey"))) {
+  if (-not (Test-Path $backupKey) -or (Get-Item $backupKey).Length -eq 0) { continue }
   Write-Host ""
   Write-Host "Viktigt: den privata nyckeln till backuperna ligger i $backupKey" -ForegroundColor Yellow
   Write-Host "Kopiera den nu till en säker plats utanför den här datorn (en lösenordshanterare eller ett USB-minne i ett kassaskåp)," -ForegroundColor Yellow
   Write-Host "helst två ställen. Utan den går ingen backup att öppna. Ligger den bara här försvinner den med datorn." -ForegroundColor Yellow
+  if ($backupKey -like "*.gpgkey") { Write-Host "Nyckeln har ingen utgångstid, så backuperna slutar aldrig fungera av sig själva." -ForegroundColor Yellow }
   Write-Host "Flytta den sedan härifrån, så att den som kommer åt datorn inte också kan läsa backuperna (INSTALLATION.md, avsnitt 6)." -ForegroundColor Yellow
 }
 if (-not $env:WORKFLOW_NO_BROWSER) { Start-Process $url }

@@ -16,7 +16,7 @@ export function withChartOrder<T extends { roleId: string; parentId: string | nu
 import { swedishDayKey } from "@/lib/swedish-time";
 import { programFromTemplate } from "./template";
 import { manualStatusPatch, newEntryInDocument, withoutSourceNote, type DeviationOrderFacts, type DeviationRow } from "./deviation-link";
-import { closedInvestigation, deviationCloseRefusal, deviationSeverity, deviationType, incidentFields, incidentResponsibleRefusal, isIncidentType, mayHandleDeviation, mayReadDeviation, reportToAuthorityRefusal } from "./incidents";
+import { closedInvestigation, deviationCloseRefusal, deviationSeverity, deviationType, incidentFields, incidentResponsibleRefusal, isIncidentType, mayHandleDeviation, mayReadDeviation, normalizeOwnTypes, reportToAuthorityRefusal, resolvedDeviationType } from "./incidents";
 
 /**
  * The self-inspection programme kept as one document: the Local .hwf file and the demo apply every change here, with
@@ -89,7 +89,12 @@ export async function applySelfInspectionAction(
   }
   if (input.action === "save_deviation") {
     // A Förbättring has no type of its own (model.ts improvementWithoutType).
-    const value = improvementWithoutType(input.deviation);
+    const sentValue = improvementWithoutType(input.deviation);
+    // The type (2026-11-28, ./incidents.ts resolvedDeviationType): Elinstallation only with a programme, an own type only while the company has it.
+    const existing = sentValue.id ? doc.deviations.find((item) => item.id === sentValue.id) : undefined;
+    const resolved = resolvedDeviationType({ kind: sentValue.kind, sent: sentValue.type, current: existing ? existing.type ?? null : undefined, hasProgram: Boolean(doc.program), ownTypes: normalizeOwnTypes(doc.deviationTypes) });
+    if (resolved.refusal && (!sentValue.id || existing)) throw new SelfInspectionError(400, resolved.refusal);
+    const value = { ...sentValue, type: resolved.type };
     const responsibleName = value.responsibleId ? options.people?.find((person) => person.id === value.responsibleId)?.name ?? "" : "";
     if (value.responsibleId && options.people && !options.people.some((person) => person.id === value.responsibleId)) throw new SelfInspectionError(400, "Den ansvariga finns inte bland företagets personer.");
     const responsibleRefusal = options.memberRights ? incidentResponsibleRefusal(value.type, value.responsibleId, value.responsibleId ? options.memberRights(value.responsibleId) : null) : null;
@@ -126,6 +131,8 @@ export async function applySelfInspectionAction(
     if (!withdrawnDeviationKept(current)) return { ...doc, deviations: doc.deviations.filter((item) => item.id !== current.id) };
     return { ...doc, deviations: doc.deviations.map((item) => item.id === current.id ? { ...item, followUp: withNoteOfWithdrawal(item.followUp), updatedAt: now } : item) };
   }
+  // Avvikelseloggen (2026-11-28): the company's own types; entries keep the name they were given.
+  if (input.action === "save_deviation_types") return { ...doc, deviationTypes: normalizeOwnTypes(input.types) };
   // Lagringstiden (2026-11-04, ./retention.ts) is Cloud's: a Local file is the company's own and nothing clears it.
   if (input.action === "set_deviation_hold") throw new SelfInspectionError(400, "Spara tills vidare finns bara med serverlagring.");
   // Tillbud och olycksfall (2026-10-30): the handling of one entry, with the same rules as Cloud (./incidents.ts).

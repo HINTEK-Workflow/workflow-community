@@ -89,6 +89,7 @@ export default async function HomePage({
     "calculators",
     "place",
     "place_labels",
+    "round_paper",
     "credits",
     "help",
     "settings",

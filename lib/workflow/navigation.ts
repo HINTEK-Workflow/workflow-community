@@ -57,6 +57,8 @@ export const VIEW_LABEL = {
   facilities: "Platser",
   place: "Plats",
   place_labels: "QR-etiketter",
+  // Rondprotokoll på papper (0.92.0): the round's points to tick by hand when the service cannot be reached, printed from the round.
+  round_paper: "Rondprotokoll på papper",
   customers: "Kunder",
   self_inspection: "Egenkontroll",
   instruments: "Instrument",
@@ -178,6 +180,8 @@ function taskListCrumb(taskType: string | null | undefined): Crumb {
 
 /** The label sheet of a round (QR hör till driftronden, 2026-10-22): printed from the round, for its place and the objects under it. */
 export const roundLabelsHref = (roundId: string) => `/?view=place_labels&roundId=${encodeURIComponent(roundId)}`;
+/** Rondprotokoll på papper (0.92.0): the round's points to tick by hand, printed from the round, when the service cannot be reached. */
+export const roundPaperHref = (roundId: string) => `/?view=round_paper&roundId=${encodeURIComponent(roundId)}`;
 
 /**
  * The page whose menu button (and tab) the open page marks, from the names the page gave its trail: Företagets platser is
@@ -260,6 +264,7 @@ export function breadcrumbTrail({ view, params = {}, labels = {} }: TrailInput):
     }
     // QR hör till driftronden (2026-10-22): the label sheet lies under Driftronder, also for an older address from the register.
     case "place_labels": return [root, crumb("rounds"), here(VIEW_LABEL.place_labels)];
+    case "round_paper": return [root, crumb("rounds"), here(VIEW_LABEL.round_paper)];
     // Avvikelser (2026-10-30): the log, and Rapportera avvikelse under it (`&new=`).
     // Rapportera avvikelse (&new=) is a DialogPage: it adds its own name to the trail.
     // One entry (`&deviation=`, 2026-10-30: the list opens the entry) lies under the list.
@@ -366,7 +371,7 @@ export function viewGroupLabel(view: string): string | null {
     case "projects": case "new_project": case "project": case "project_summary": return "Projekt";
     case "work_orders": case "tasks": case "controls": case "new_task": case "new": case "workflow_task": return "Arbetsordrar";
     // QR hör till driftronden (2026-10-22): the label sheet marks Driftronder.
-    case "rounds": case "place_labels": return "Driftronder";
+    case "rounds": case "place_labels": case "round_paper": return "Driftronder";
     case "deviations": return null;
     case "maintenance": return "Underhåll";
     case "boards": return "Tavlor";

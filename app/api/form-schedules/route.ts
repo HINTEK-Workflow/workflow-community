@@ -6,7 +6,7 @@ import { ApiError, body, checkOrigin, context, failure, requireCloudStorage, req
 import { visibleFormsWhere } from "@/lib/kfid/form-server";
 import { swedishDayKey } from "@/lib/swedish-time";
 import { formScheduleInputSchema } from "@/lib/workflow/form-schedule";
-import { loadPlanningRounds, loadRoundLabelPlaces, loadScheduleViews, roundOfOrder, roundPlanStates } from "@/lib/kfid/rounds-server";
+import { loadPlanningRounds, loadRoundLabelPlaces, loadRoundPaper, loadScheduleViews, roundOfOrder, roundPlanStates } from "@/lib/kfid/rounds-server";
 import { canReadRounds } from "@/lib/workflow/permissions";
 import { canPlanRounds, roundChangeRefusal, roundPlanRefusal, type RoundPlanActor } from "@/lib/workflow/round-planning";
 import { planningRoundPeriod } from "@/lib/workflow/planning-rounds";
@@ -45,6 +45,8 @@ export async function GET(request: Request) {
     if (params.get("roundOrder")) return NextResponse.json({ round: await roundOfOrder(ctx, identifier.parse(params.get("roundOrder"))), canMarkNotDone: true }, { headers: { "Cache-Control": "private, no-store" } });
     // A round's QR label sheet (?labels=<id>): the round and only its own places, read within the round's visibility.
     if (params.get("labels")) return NextResponse.json(await loadRoundLabelPlaces(ctx, identifier.parse(params.get("labels"))), { headers: { "Cache-Control": "private, no-store" } });
+    // Rondprotokoll på papper (?paper=<id>, 0.92.0): the round, its points and its form's rows to tick, read within the round's visibility.
+    if (params.get("paper")) return NextResponse.json(await loadRoundPaper(ctx, identifier.parse(params.get("paper"))), { headers: { "Cache-Control": "private, no-store" } });
     const today = swedishDayKey(new Date());
     // Planning (2026-10-06): the rounds inside the shown period, computed from the schedules, at most 200 days.
     if (params.get("planning") === "1") {

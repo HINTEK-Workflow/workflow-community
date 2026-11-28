@@ -2,7 +2,7 @@
 
 import { plural } from "@/lib/plural";
 import { useCallback, useState } from "react";
-import { Check, Eye, History, ShieldCheck, Trash2, Info, Hourglass } from "lucide-react";
+import { Check, Eye, History, ShieldAlert, ShieldCheck, ScrollText, Trash2, Info, Hourglass } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api } from "@/features/kfid/api";
@@ -22,11 +22,15 @@ import {
 } from "@/lib/workflow/history-retention";
 import { useLoadEffect } from "@/lib/use-load-effect";
 import { PageHeader } from "@/components/page-shell";
+import { DEFAULT_LOG_RETENTION_YEARS, LOG_RETENTION_YEARS, logRetentionLabel, type LogRetentionYears } from "@/lib/traceability/log-retention";
 
+type ChainStatus = { log: string; label: string; rows: number; verifiedAt: string | null; broken: null | { at: string; seq: number | null; text: string } };
 type State = {
   months: HistoryRetentionMonths;
   pending: HistoryCounts | null;
   recent: { id: string; action: string; detail: string; createdAt: string }[];
+  /** Lagringstid för loggar and the logs' chains (K3.1, K3.3, 2026-11-27); an older answer may lack it. */
+  logs?: { years: LogRetentionYears; chains: ChainStatus[] };
 };
 
 const send = (input: unknown) => api<Record<string, unknown>>("/api/history-retention", { method: "POST", body: JSON.stringify(input) });
@@ -109,6 +113,7 @@ export function HistoryRetention({ notify, embedded = false }: { notify: (text: 
       </div>
       {state.months && state.pending ? <p className="mt-3 text-sm text-muted-foreground" data-testid="retention-pending">{countTotal(state.pending) ? `${plural(countTotal(state.pending), "post", "poster")} är äldre än lagringstiden och raderas i natt.` : "Ingen historik är äldre än lagringstiden."}</p> : null}
     </Panel>
+    {state.logs ? <LogRetention logs={state.logs} busy={busy} setBusy={setBusy} confirm={confirmCard} notify={notify} onSaved={load} /> : null}
     <Panel icon={Trash2} title="Radera historik för hand" description="Välj datum och vad som ska raderas. Du ser antalet innan något raderas.">
       <div className="grid gap-4 lg:grid-cols-[14rem_minmax(0,1fr)]">
         <label className="grid content-start gap-1.5 text-xs font-medium text-muted-foreground">Radera historik äldre än<Input type="date" value={before} max={new Date().toISOString().slice(0, 10)} onChange={(event) => setBefore(event.target.value)} data-testid="purge-before" /></label>
@@ -128,4 +133,45 @@ export function HistoryRetention({ notify, embedded = false }: { notify: (text: 
         : <p className="text-sm text-muted-foreground">Inga ändringar ännu.</p>}
     </Panel>
   </div>;
+}
+
+/**
+ * Lagringstid för loggar (K3.3, 2026-11-27): how long the security, administration and change logs are kept – 1, 2, 5
+ * or 10 years – saved when chosen, as Lagringstid; a shorter time asks first (rows go tonight) and the server asks for a fresh
+ * sign-in. Under it each log's chain (K3.1): checked every night, or the break the check found. The logs are never removed by
+ * hand: a tamper-evident log is removed only by its retention time.
+ */
+function LogRetention({ logs, busy, setBusy, confirm, notify, onSaved }: {
+  logs: NonNullable<State["logs"]>; busy: boolean; setBusy: (busy: boolean) => void;
+  confirm: ReturnType<typeof useConfirm>[0]; notify: (text: string, error?: boolean) => void; onSaved: () => Promise<void>;
+}) {
+  const [years, setYears] = useState<LogRetentionYears>(logs.years ?? DEFAULT_LOG_RETENTION_YEARS);
+  const [saved, setSaved] = useState(false);
+  const save = async (next: LogRetentionYears) => {
+    if (next < logs.years && !(await confirm({ title: "Ändra lagringstiden för loggarna?", message: `Loggrader som är äldre än ${logRetentionLabel(next)} raderas i natt. Det går inte att ångra.`, confirmLabel: "Ändra lagringstid", tone: "danger" }))) { setYears(logs.years); return; }
+    setBusy(true); setSaved(false);
+    try { await send({ action: "log_retention", years: next }); setSaved(true); notify(`Loggarna sparas i ${logRetentionLabel(next)}.`); await onSaved(); }
+    catch (cause) { setYears(logs.years); notify((cause as Error).message, true); } finally { setBusy(false); }
+  };
+  const broken = logs.chains.filter((chain) => chain.broken);
+  return <Panel icon={ScrollText} title="Lagringstid för loggar" description="Säkerhetsloggen, administrationsloggen och ändringshistoriken. Äldre rader raderas varje natt.">
+    <div className="space-y-4" data-testid="log-retention">
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="grid gap-1.5 text-xs font-medium text-muted-foreground">Behåll loggarna i<select className="form-select min-w-40" value={years} disabled={busy} onChange={(event) => { const next = Number(event.target.value) as LogRetentionYears; setYears(next); setSaved(false); void save(next); }} data-testid="log-retention-select">
+          {LOG_RETENTION_YEARS.map((choice) => <option key={choice} value={choice}>{logRetentionLabel(choice)}{choice === DEFAULT_LOG_RETENTION_YEARS ? " (förval)" : ""}</option>)}
+        </select></label>
+        {saved && years === logs.years ? <span className="inline-flex items-center gap-1 pb-2 text-xs text-muted-foreground" role="status" data-testid="log-retention-saved"><Check className="size-3.5" />Sparat</span> : null}
+      </div>
+      {broken.length ? <div role="alert" className="notice border-destructive/40 text-sm text-destructive" data-testid="log-chain-broken">
+        <p className="flex items-center gap-2 font-medium"><ShieldAlert className="size-4 shrink-0" />{broken.length === 1 ? `${broken[0].label} stämmer inte.` : "Loggarna stämmer inte."}</p>
+        <ul className="mt-1 space-y-0.5 text-xs">{broken.map((chain) => <li key={chain.log}>{chain.label}: {chain.broken!.text}{chain.broken!.seq ? ` Rad ${chain.broken!.seq}.` : ""} Upptäcktes {formatSwedish(chain.broken!.at, { dateStyle: "medium" })}.</li>)}</ul>
+        <p className="mt-1 text-xs">Loggarna rensas inte medan kedjan är bruten. Installationens administratör har fått ett larm.</p>
+      </div> : null}
+      {logs.chains.length ? <ul className="divide-y rounded-lg border text-sm" data-testid="log-chains">{logs.chains.map((chain) => <li key={chain.log} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
+        <span className="flex items-center gap-2">{chain.broken ? <ShieldAlert className="size-4 shrink-0 text-destructive" /> : <ShieldCheck className="size-4 shrink-0 text-primary" />}{chain.label}</span>
+        <span className="text-xs text-muted-foreground" data-testid="log-chain-state">{chain.broken ? "Bruten" : chain.verifiedAt ? `Hel · kontrollerad ${formatSwedish(chain.verifiedAt, { dateStyle: "medium", timeStyle: "short" })}` : "Kontrolleras i natt"}</span>
+      </li>)}</ul> : null}
+      <p className="flex gap-2 text-xs text-muted-foreground"><Info className="size-4 shrink-0" />Varje rad i loggarna bär ett kontrollvärde från raden före. Kedjan kontrolleras varje natt, så att en ändrad eller borttagen rad syns.</p>
+    </div>
+  </Panel>;
 }

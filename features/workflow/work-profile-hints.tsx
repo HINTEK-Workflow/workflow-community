@@ -5,6 +5,7 @@ import { SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useWorkProfile } from "@/features/workflow/use-work-view";
 import { WORK_PROFILE } from "@/lib/workflow/work-profile";
+import { cn } from "@/lib/utils";
 
 /** The address that opens Visning, where the profile is chosen: Mer on the phone has the same row. */
 const DISPLAY_SETTINGS_HREF = "/?view=settings&step=display";
@@ -30,8 +31,10 @@ export function WorkProfileNextSteps({ here, className, center = false }: { here
 export function WorkProfileChangeLink({ className }: { className?: string }) {
   const profile = useWorkProfile()?.effective.profile;
   if (!profile) return null;
-  return <p className={className} data-testid="work-profile-change">
-    <span className="text-xs text-muted-foreground">Förval för {WORK_PROFILE[profile].label}. </span>
+  // On the phone the words and the link stand on their own lines (2026-11-28): side by side the link's 44 px touch
+  // height pushed the words out of line. From sm they share one row, centred.
+  return <p className={cn("flex flex-col items-start sm:flex-row sm:items-center sm:gap-1", className)} data-testid="work-profile-change">
+    <span className="text-xs text-muted-foreground">Förval för {WORK_PROFILE[profile].label}.</span>
     <Link href={DISPLAY_SETTINGS_HREF} className="inline-flex min-h-11 items-center gap-1 text-xs font-medium text-primary underline-offset-2 hover:underline sm:min-h-0"><SlidersHorizontal className="size-3.5" aria-hidden="true" />Ändra vad du ser</Link>
   </p>;
 }

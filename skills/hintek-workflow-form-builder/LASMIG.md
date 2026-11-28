@@ -1,6 +1,6 @@
 # Skapa formulär med extern AI – HINTEK Workflow Form Builder
 
-Version 1.0.0. Med det här paketet kan du låta en AI, till exempel ChatGPT, Claude, Gemini eller Copilot, skapa ett färdigt formulär som du sedan importerar i HINTEK Workflow.
+Version 1.1.0. Med det här paketet kan du låta en AI, till exempel ChatGPT, Claude, Gemini eller Copilot, skapa ett färdigt formulär som du sedan importerar i HINTEK Workflow.
 
 ## Så gör du
 

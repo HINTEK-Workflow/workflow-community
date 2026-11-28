@@ -7,7 +7,7 @@ import {
   createDeviationsPdf, DEVIATION_EXPORT_SECTIONS, deviationEntryLabel, deviationExportFilename, deviationsCsv, exportPhotoIds,
   type DeviationExportFormat, type DeviationExportSections,
 } from "@/lib/self-inspection/deviation-export";
-import { DEVIATION_STATUSES, DEVIATION_TYPES, deviationType, isIncidentType, type DeviationView } from "@/lib/self-inspection/model";
+import { DEVIATION_STATUSES, deviationTypeLabel, isIncidentType, type DeviationView } from "@/lib/self-inspection/model";
 import type { KitIdentity } from "@/lib/workflow/report-kit";
 import { fetchReportFonts } from "@/lib/workflow/report-fonts";
 import type { DeviationPhotosApi } from "./deviation-photos";
@@ -66,7 +66,7 @@ export function DeviationListExport({ entries, scope, photos, exporter, disabled
   };
   return <ExportMenu testId={testId} title="Exportera avvikelser" description={`${entries.length} ${entries.length === 1 ? "post" : "poster"} med valt urval (${scope}).`} disabled={disabled || !entries.length}
     choicesLabel="Poster" choices={entries.map((entry) => ({ id: entry.id, title: `${deviationEntryLabel(entry)} · ${entry.title}`,
-      detail: [entry.kind === "IMPROVEMENT" ? "" : DEVIATION_TYPES[deviationType(entry.type)], DEVIATION_STATUSES[entry.status]].filter(Boolean).join(" · ") }))}
+      detail: [entry.kind === "IMPROVEMENT" ? "" : deviationTypeLabel(entry.type), DEVIATION_STATUSES[entry.status]].filter(Boolean).join(" · ") }))}
     sections={sectionsFor(entries, photos)}
     formats={[
       { id: "deviations-pdf", label: "PDF", icon: FileText, primary: true, run: run("pdf") },

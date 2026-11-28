@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { getCurrentAuth } from "@/lib/auth/session";
 import { TWO_FACTOR_SETUP_REQUIRED, twoFactorRequiredCached } from "@/lib/auth/two-factor";
 import { strongSignInMethod } from "@/lib/auth/session-rules";
+import { twoFactorSetupNeeded } from "@/lib/security/access-rules";
 import { authUserSelect } from "@/lib/auth/service";
 import { canAccessTest, localRoleQaEnabled } from "@/lib/auth/access";
 import { currentPrincipal } from "@/lib/integrations/principal";
@@ -32,8 +33,12 @@ export { ApiError } from "@/lib/kfid/errors";
 /** Whether this sign-in must set up two-step verification before it may do anything (see context). */
 async function twoFactorBlocks(signedIn: NonNullable<Awaited<ReturnType<typeof getCurrentAuth>>>) {
   // The synthetic QA superadmin on loopback (app/api/qa/session) keeps working although a superadmin always needs two-factor now.
-  if (signedIn.method === "qa" && signedIn.user.role === "SUPERADMIN" && localRoleQaEnabled()) return false;
-  return !signedIn.user.totpEnabledAt && !strongSignInMethod(signedIn.method) && (await twoFactorRequiredCached(signedIn.user));
+  const qaSuperadmin = signedIn.method === "qa" && signedIn.user.role === "SUPERADMIN" && localRoleQaEnabled();
+  const hasTotp = Boolean(signedIn.user.totpEnabledAt);
+  const strongMethod = strongSignInMethod(signedIn.method);
+  // The requirement is asked only when it can matter (K2.6: lib/security/access-rules.ts holds the rule).
+  if (qaSuperadmin || hasTotp || strongMethod) return false;
+  return twoFactorSetupNeeded({ required: await twoFactorRequiredCached(signedIn.user), hasTotp, strongMethod });
 }
 
 /**

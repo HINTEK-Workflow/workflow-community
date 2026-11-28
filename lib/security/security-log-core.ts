@@ -53,11 +53,21 @@ export const SECURITY_EVENT_TYPES = {
   operator_login_ok: "Operatör inloggad",
   operator_login_failed: "Misslyckad operatörsinloggning",
   operator_locked: "Operatörskonto spärrat en stund (för många försök)",
+  // Behörighetsstyrning (K2, 2026-11-28): company events; the length or a count in detail, never what was read.
+  support_access_granted: "Supportåtkomst given",
+  support_access_revoked: "Supportåtkomst återkallad",
+  support_access_expired: "Supportåtkomst har gått ut",
+  support_access_used: "Supporten läste företagets uppgifter",
+  access_review_signed: "Behörigheter granskade",
+  access_review_reminder: "Påminnelse om granskning ändrad",
 } as const;
 export type SecurityEventType = keyof typeof SECURITY_EVENT_TYPES;
 export const isSecurityEventType = (value: string): value is SecurityEventType => value in SECURITY_EVENT_TYPES;
 
-/** Kept 12 months, then removed by the nightly system cleanup (history:retention). */
+/**
+ * A person's events without a company are kept 12 months, then removed by the nightly system cleanup (history:retention).
+ * A company's events follow the company's log retention since 2026-11-27 (lib/traceability/log-retention.ts).
+ */
 export const SECURITY_LOG_MONTHS = 12;
 
 export function securityLogCutoff(now = new Date(), months = SECURITY_LOG_MONTHS) {

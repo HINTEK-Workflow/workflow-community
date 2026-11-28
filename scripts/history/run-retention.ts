@@ -2,7 +2,9 @@
 // Companies that keep history "tills vidare" are skipped. Every deletion leaves one counted line in the company's
 // administration history. Also deletes the competence cards of people who left a company more than three months ago
 // (2026-10-07), whatever retention time the company chose, and absence older than the company keeps it (
-// 2026-10-30). Run: npm run history:retention (daily, like rounds:reminders).
+// 2026-10-30). Spårbarhet (K3, 2026-11-27): first it checks every hash-chained log (an alarm for a chain broken tonight), and
+// it removes the security, administration and change logs by each company's log retention, keeping the chains checkable.
+// Run: npm run history:retention (daily, like rounds:reminders).
 //      npm run history:retention -- --dry-run   (T5, 2026-10-24: deletes and writes nothing; prints what a run would delete,
 //                                               counts only; the nightly machine analysis is left out)
 import "dotenv/config";
@@ -19,10 +21,19 @@ import { purgeRetainedInvoices } from "../../lib/customer-invoice/retention-serv
 import { purgeExpiredAbsence } from "../../lib/absence/retention-server";
 import { purgeExpiredDeviations } from "../../lib/self-inspection/retention-server";
 import { purgeExpiredAgentHistory } from "../../lib/agents/retention-server";
+import { verifyAllChains } from "../../lib/traceability/chain-server";
+import { alertBrokenChains } from "../../lib/traceability/chain-alert-server";
+import { applyLogRetention } from "../../lib/traceability/retention-server";
 
 async function main() {
   const { dryRun } = jobArguments(process.argv.slice(2), "history:retention");
   const job = jobPrefix("history:retention", dryRun);
+  // Manipulationsskyddad logg (K3.1, 2026-11-27): every log chain is checked first, before anything is removed; a chain found
+  // broken tonight raises the operations alarm, and its rows are kept until someone has looked (counts and places only).
+  const chains = await verifyAllChains(new Date(), { dryRun });
+  const broken = chains.filter((chain) => !chain.ok);
+  console.log(`${job} loggkedjor ${JSON.stringify({ chains: chains.length, rows: chains.reduce((sum, chain) => sum + chain.checked, 0), broken: broken.map((chain) => ({ log: chain.log, chain: chain.chainKey, seq: chain.seq, reason: chain.reason })) })}`);
+  if (!dryRun) await alertBrokenChains(chains);
   const results = await applyRetention(new Date(), retentionCutoff, { dryRun });
   for (const result of results) console.log(`${job} ${result.organizationId} ${JSON.stringify(dryRun ? { ...result.counts, importedFiles: result.importedFiles, reports: result.reports } : result.counts)}`);
   // Competence cards of people who left more than three months ago, with their files; counts only, never names.
@@ -46,8 +57,11 @@ async function main() {
   // Integrationsmotorn E6: the objects' day summaries are counted before the machine events are pruned below. It writes, so a dry run leaves it out.
   if (dryRun) console.log(`${job} maskindygn hoppas över i provkörningen`);
   else console.log(`${job} maskindygn ${JSON.stringify(await summariseMachineDays(new Date()))}`);
-  // System logs clear themselves whatever the companies choose (2026-10-03).
+  // System logs clear themselves whatever the companies choose (2026-10-03). The security log goes by its chain's retention.
   console.log(`${job} systemloggar ${JSON.stringify(await pruneSystemLogs(new Date(), { dryRun }))}`);
+  // Lagringstid för loggar (K3.3, 2026-11-27): each company's administration log and change history by its chosen years.
+  const logs = await applyLogRetention(new Date(), { dryRun, logs: ["admin", "change"] });
+  console.log(`${job} loggar ${JSON.stringify(logs.map((row) => ({ log: row.log, chain: row.chainKey, rows: row.rows, ...(row.skipped ? { skipped: row.skipped } : {}) })))}`);
   // Maskinanalys (0.19.0): the rules look at every source once a night; counts only. It writes, so a dry run leaves it out.
   if (dryRun) console.log(`${job} maskinanalys hoppas över i provkörningen`);
   else console.log(`${job} maskinanalys ${JSON.stringify(await analyseAllSources(new Date()))}`);

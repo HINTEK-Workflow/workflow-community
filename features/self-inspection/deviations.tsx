@@ -4,8 +4,9 @@ import { WORK_LIST_SCOPE_LABEL } from "@/lib/workflow/work-list";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Archive, CalendarClock, Camera, CheckCircle2, ExternalLink, FileSearch, Pencil, Plus, RotateCcw, Send, UserRound, ClipboardList } from "lucide-react";
+import { AlertTriangle, Archive, CalendarClock, Camera, CheckCircle2, ExternalLink, FileSearch, Pencil, Plus, RotateCcw, Send, Tags, Trash2, UserRound, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
 import { ListCard, ListCardGrid, ListFilterBar, useListPrefs } from "@/components/list-filter-bar";
 import { listSortOptions } from "@/lib/list-filter";
 import { DEVIATION_SORTS, sortDeviations } from "@/lib/self-inspection/deviation-list";
@@ -13,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { DialogActions, Empty, Field } from "@/features/kfid/ui";
 import { DialogPage } from "@/features/kfid/dialog-page";
 import { CommentThread } from "@/features/workflow/comment-thread";
+import { ChangeHistoryPanel } from "@/features/traceability/change-history";
 import { ListEmpty, ListFact, ListGroup, ListRow, NativeActions, NativePage, NativePickerRow, NativeSegmented } from "@/components/native";
 import { useNativeMode } from "@/features/workflow/use-detail-level";
 import { indicatorBadge, PILL_FIXED_WIDTH } from "@/features/workflow/indicator-tone";
@@ -23,9 +25,10 @@ import { swedishDayKey } from "@/lib/swedish-time";
 import { cn } from "@/lib/utils";
 import { announce } from "@/lib/workflow/toast";
 import {
-  DEVIATION_CATEGORIES, DEVIATION_FILTER_LABEL, DEVIATION_FILTERS, DEVIATION_KINDS, DEVIATION_STATUSES, DEVIATION_TYPE_FILTER_LABEL, DEVIATION_TYPE_FILTERS, DEVIATION_TYPES, DEVIATION_SCOPES, DEVIATION_STATUS_FILTERS, deviationInScope, deviationSearchMatches, type DeviationScope,
+  DEVIATION_CATEGORIES, DEVIATION_FILTER_LABEL, DEVIATION_FILTERS, DEVIATION_KINDS, DEVIATION_STATUSES, DEVIATION_TYPE_FILTER_LABEL, DEVIATION_TYPE_FILTERS, DEVIATION_SCOPES, DEVIATION_STATUS_FILTERS, deviationInScope, deviationSearchMatches, type DeviationScope,
   ELECTRICAL_ACCIDENT_REPORT_URL, SERIOUS_NOTICE, REPORTABLE_GUIDE_URL, REPORTABLE_HINT, REPORTABLE_LABEL, deviationSeverity, DEFAULT_DEVIATION_SEVERITY, DEVIATION_SEVERITIES, type DeviationSeverity, WORK_INJURY_REPORT_URL, awaitsAuthorityReport, deviationCloseRefusal, deviationMatches, deviationTypeMatches, isIncidentType,
-  type DeviationFilter, type DeviationType, type DeviationTypeFilter, type DeviationView, type SelfInspectionAction, type SelfInspectionView,
+  deviationTypeChoices, deviationTypeFilterChoices, deviationTypeLabel, normalizeOwnTypes, OWN_TYPE_NAME_MAX, OWN_TYPES_MAX, storedDeviationType,
+  type DeviationFilter, type DeviationTypeFilter, type DeviationView, type SelfInspectionAction, type SelfInspectionView, type StoredDeviationType,
 } from "@/lib/self-inspection/model";
 import { closedInvestigation } from "@/lib/self-inspection/incidents";
 import { DEVIATION_RETENTION_HOLD_HINT, DEVIATION_RETENTION_TEXT, DEVIATION_RETENTION_WARNING_DAYS, deviationRetentionLine } from "@/lib/self-inspection/retention";
@@ -43,7 +46,7 @@ import { DeviationTypeIcon, ICON_ON_TINT, deviationLook, severityOf } from "./de
  * why, and whether it is serious, injured someone or concerns electricity. Only drawing here – the backend decides who sees
  * and may do what (lib/self-inspection/incidents.ts).
  */
-type DeviationDraft = { id?: string; kind: keyof typeof DEVIATION_KINDS; type: DeviationType | ""; title: string; description: string; category: keyof typeof DEVIATION_CATEGORIES; systematic: boolean;
+type DeviationDraft = { id?: string; kind: keyof typeof DEVIATION_KINDS; type: StoredDeviationType | ""; title: string; description: string; category: keyof typeof DEVIATION_CATEGORIES; systematic: boolean;
   status: keyof typeof DEVIATION_STATUSES; action: string; responsibleId: string | null; dueDate: string; followUp: string;
   occurredAt: string; whatHappened: string; cause: string; serious: boolean; personalInjury: boolean; electrical: boolean; severity: DeviationSeverity };
 // Öppen is grey since the severity scale (2026-10-30): an amber Öppen read as the amber Normal beside it.
@@ -52,9 +55,9 @@ const statusTone = (status: DeviationView["status"]) => status === "DONE" ? "suc
 const orderTone = (status: string) => status === "COMPLETED" ? "success" as const : status === "CANCELLED" || status === "PLANNED" ? "neutral" as const : status === "NEEDS_ACTION" ? "danger" as const : "info" as const;
 const date = siDate;
 const DEVIATION_SORT_OPTIONS = listSortOptions(DEVIATION_SORTS);
-const typeOf = (item: { type?: DeviationType }) => item.type ?? "SELF_INSPECTION";
+const typeOf = (item: { type?: string | null }): StoredDeviationType => storedDeviationType(item.type);
 /** "Tillbud 4", "Avvikelse 2" (an Elinstallation entry keeps its kind's name), "Förbättring 3" – the export's own label (lib/self-inspection/deviation-export.ts). */
-export const entryLabel = (item: Pick<DeviationView, "kind" | "number"> & { type?: DeviationType }) => deviationEntryLabel(item);
+export const entryLabel = (item: Pick<DeviationView, "kind" | "number"> & { type?: string | null }) => deviationEntryLabel(item);
 /** Förenkling 0.77.0 (kvar-till-2026-12-31 F): the log mixes four types from four ways in, so the page says where they come from. */
 export const DEVIATION_SOURCES_SENTENCE = "Hit kommer brister från protokoll och ronder, maskinlarm, operatörernas felanmälningar och det ni rapporterar själva.";
 
@@ -80,8 +83,8 @@ const draftOf = (item: DeviationView): DeviationDraft => ({ id: item.id, kind: i
   cause: item.cause ?? "", serious: Boolean(item.serious), personalInjury: Boolean(item.personalInjury), electrical: Boolean(item.electrical), severity: deviationSeverity(item.severity) });
 /** The draft as the action sends it; the incident fields only for a near miss or an accident. */
 function deviationInput(draft: DeviationDraft) {
-  // A Förbättring has no type of its own; it is sent as the plain type, as the server stores it.
-  const type = (draft.kind === "IMPROVEMENT" ? "SELF_INSPECTION" : draft.type || "SELF_INSPECTION") as DeviationType;
+  // A Förbättring has no type of its own; it is sent as the plain type, as the server stores it. No type chosen: the server's default.
+  const type: StoredDeviationType | undefined = draft.kind === "IMPROVEMENT" ? "SELF_INSPECTION" : draft.type || undefined;
   const incident = isIncidentType(type);
   return { ...(draft.id ? { id: draft.id } : {}), kind: draft.kind, type, title: draft.title, description: draft.description, category: draft.category, systematic: type === "SELF_INSPECTION" && draft.systematic,
     status: draft.status, action: draft.action, responsibleId: draft.responsibleId, dueDate: draft.dueDate as "", followUp: draft.followUp,
@@ -148,6 +151,9 @@ export function DeviationsTab({ view, busy, run, reload, photos, comments = fals
     && deviationMatches(item, choice.status ?? status, { meId: view.me.id, today }) && deviationTypeMatches(item, choice.type ?? typeFilter) && deviationSearchMatches(item, query);
   const statusCounts = Object.fromEntries(DEVIATION_STATUS_FILTERS.map((key) => [key, view.deviations.filter((item) => matches(item, { status: key })).length])) as Record<DeviationFilter, number>;
   const typeCounts = Object.fromEntries(DEVIATION_TYPE_FILTERS.map((key) => [key, view.deviations.filter((item) => matches(item, { type: key })).length])) as Record<DeviationTypeFilter, number>;
+  // The types the filter offers (2026-11-28): those the company may report and those its entries have, so no empty Elinstallation without a programme.
+  const typeFilters = deviationTypeFilterChoices({ hasProgram: view.hasProgram, ownTypes: view.ownDeviationTypes, entries: view.deviations, selected: typeFilter });
+  const [editingTypes, setEditingTypes] = useState(false);
   // The sort (toppvisningen, 2026-10-31), remembered per person on the device; Nummer keeps the old order.
   const prefs = useListPrefs("deviations", view.me.id, { sorts: DEVIATION_SORTS });
   const items = sortDeviations(view.deviations.filter((item) => item.id === focusId || matches(item, {})), prefs.sort);
@@ -202,6 +208,8 @@ export function DeviationsTab({ view, busy, run, reload, photos, comments = fals
         await sendPhotos(closing.id, "AFTER", files);
         return true;
       }} />}
+    {editingTypes ? <OwnTypesDialog types={view.ownDeviationTypes ?? []} busy={busy} onClose={() => setEditingTypes(false)}
+      onSave={(types) => run({ action: "save_deviation_types", types }, "Typerna är sparade.").then(Boolean)} /> : null}
     {/* The camera of Rapportera tillbud, outside the form so the same tap can open it. */}
     {photoApi ? <input ref={camera} type="file" accept="image/*" capture="environment" className="sr-only" tabIndex={-1} aria-label="Ta foto"
       onChange={(event) => { const files = Array.from(event.target.files ?? []); event.target.value = ""; if (files.length) setNewPhotos((current) => [...current, ...files]); }} /> : null}
@@ -259,6 +267,7 @@ export function DeviationsTab({ view, busy, run, reload, photos, comments = fals
       <ListRow type="risk" icon={Plus} title="Rapportera avvikelse" onClick={() => startReport("")} testId="native-deviation-new" />
       <ListRow type="risk" icon={photoApi ? Camera : Plus} title="Rapportera tillbud" onClick={() => startReport("NEAR_MISS", Boolean(photoApi))} testId="native-near-miss-new" />
       {view.canEdit ? <ListRow type="neutral" icon={Plus} title="Ny förbättring" onClick={() => { setNewPhotos([]); setDraft(blank("IMPROVEMENT")); }} /> : null}
+      {view.canEdit ? <ListRow type="neutral" icon={Tags} title="Egna typer" onClick={() => setEditingTypes(true)} testId="native-deviation-types" /> : null}
     </ListGroup>
     <div className="space-y-3 pt-4">
       {/* Omfattning och status var för sig, som på datorn (TF9, 2026-11-01). */}
@@ -269,7 +278,7 @@ export function DeviationsTab({ view, busy, run, reload, photos, comments = fals
     <ListGroup testId="native-deviations-type">
       <NativePickerRow label="Typ" display={`${DEVIATION_TYPE_FILTER_LABEL[typeFilter]} (${typeCounts[typeFilter]})`}>
         <select id="deviations-type-native" aria-label="Typ" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as DeviationTypeFilter)}>
-          {DEVIATION_TYPE_FILTERS.map((key) => <option key={key} value={key}>{`${DEVIATION_TYPE_FILTER_LABEL[key]} (${typeCounts[key]})`}</option>)}
+          {typeFilters.map((key) => <option key={key} value={key}>{`${DEVIATION_TYPE_FILTER_LABEL[key]} (${typeCounts[key]})`}</option>)}
         </select>
       </NativePickerRow>
     </ListGroup>
@@ -328,11 +337,14 @@ export function DeviationsTab({ view, busy, run, reload, photos, comments = fals
         {focused.canHandle || canCreate(focused) ? <div className="flex flex-wrap gap-2" data-testid="deviation-actions">{handling(focused, false)}</div> : null}
       </article>
       {comments && !focused.personalDataRemovedAt ? <div className="mt-6"><CommentThread parentType="DEVIATION" parentId={focused.id} /></div> : null}
+      {/* Ändringshistorik (K3.2, 2026-11-27): Cloud only, as the comments; the server reads it by the log's own rule. */}
+      {comments ? <div className="mt-6"><ChangeHistoryPanel key={focused.id} type="DEVIATION" id={focused.id} /></div> : null}
       {dialogs}
     </>;
   }
   const actions = <>
     {listExport}
+    {view.canEdit && <Button variant="outline" onClick={() => setEditingTypes(true)} data-testid="deviation-types"><Tags />Egna typer</Button>}
     {view.canEdit && <Button variant="outline" onClick={() => { setNewPhotos([]); setDraft(blank("IMPROVEMENT")); }}><Plus />Ny förbättring</Button>}
     <Button onClick={() => startReport("")} data-testid="deviation-new"><Plus />Rapportera avvikelse</Button>
   </>;
@@ -344,7 +356,7 @@ export function DeviationsTab({ view, busy, run, reload, photos, comments = fals
       chips={{ label: "Visa", chips: DEVIATION_STATUS_FILTERS.map((key) => ({ value: key, label: DEVIATION_FILTER_LABEL[key], count: statusCounts[key] })), value: status, onChange: chooseStatus, testId: "deviations-filter" }}
       search={{ label: "Sök avvikelse", placeholder: "Rubrik, nummer, text eller ansvarig", value: query, onChange: setQuery, testId: "deviations-search" }}
       extras={[{ key: "type", label: "Typ", testId: "deviations-type", className: "sm:w-56 sm:flex-none", value: typeFilter, onChange: (value) => setTypeFilter(value as DeviationTypeFilter),
-        options: DEVIATION_TYPE_FILTERS.map((key) => ({ value: key, label: `${DEVIATION_TYPE_FILTER_LABEL[key]} (${typeCounts[key]})` })) }]}
+        options: typeFilters.map((key) => ({ value: key, label: `${DEVIATION_TYPE_FILTER_LABEL[key]} (${typeCounts[key]})` })) }]}
       sort={{ value: prefs.sort, options: DEVIATION_SORT_OPTIONS, onChange: prefs.setSort }}
       view={{ value: prefs.view, onChange: prefs.setView }} />
     {header ? null : <div className="flex flex-wrap gap-2">{actions}</div>}
@@ -450,19 +462,21 @@ function DeviationDialog({ draft: initial, view, busy, photos, onClose, onSave }
   // In the app the screen is called "Ny avvikelse" (mobilresan 2026-11-18: "Rapportera avvikel…" was cut in the top bar), and its
   // fields stand in one white group on the grey page, as Rapportera tid's and Ny arbetsorder's.
   const native = useNativeMode();
-  const title = draft.id ? `Ändra ${(draft.kind === "IMPROVEMENT" ? "förbättring" : draft.type && draft.type !== "SELF_INSPECTION" ? DEVIATION_TYPES[draft.type] : "avvikelse").toLowerCase()}`
+  const title = draft.id ? `Ändra ${draft.kind === "IMPROVEMENT" ? "förbättring" : draft.type && isIncidentType(draft.type) ? deviationTypeLabel(draft.type).toLowerCase() : draft.type === "RISK_OBSERVATION" ? "riskobservation" : "avvikelse"}`
     : draft.kind === "IMPROVEMENT" ? "Ny förbättring" : native ? "Ny avvikelse" : "Rapportera avvikelse";
   // A Förbättring has no type to choose (none of them fits a suggestion); the server stores it as the plain type.
   const improvement = draft.kind === "IMPROVEMENT";
   const missing = !draft.title.trim() ? "Ange en rubrik." : !improvement && !draft.type ? "Välj typ." : null;
+  // The types to choose (2026-11-28, lib/self-inspection/incidents.ts): the neutral ones and the company's own; Elinstallation with a programme.
+  const typeChoices = deviationTypeChoices({ hasProgram: view.hasProgram, ownTypes: view.ownDeviationTypes, current: initial.id ? initial.type : null });
   return <DialogPage pageKey="avvikelse" size="page" open onOpenChange={(open) => { if (!open) onClose(); }} title={title} panelTitle="Avvikelsen">
     <div className={cn("space-y-4", native && "native-form-card")}>
       <Field id="si-dev-title" label="Rubrik" value={draft.title} onChange={(value) => set({ title: value })} />
       <Field id="si-dev-description" multiline label="Beskrivning" value={draft.description} onChange={(description) => set({ description })} />
       {photos ? <PhotoPicker files={photos.files} onChange={photos.onChange} disabled={busy} cameraRef={photos.cameraRef} /> : null}
       {/* The type is chosen here, with no choice made in advance (2026-10-30); what follows depends on it. */}
-      {improvement ? null : <Field id="si-dev-type" label="Typ" value={draft.type} onChange={(type) => set({ type: type as DeviationDraft["type"] })} options={["", ...Object.keys(DEVIATION_TYPES)]}
-        optionLabels={{ "": "Välj typ", ...DEVIATION_TYPES }} required />}
+      {improvement ? null : <Field id="si-dev-type" label="Typ" value={draft.type} onChange={(type) => set({ type: type as DeviationDraft["type"] })} options={["", ...typeChoices.map((choice) => choice.value)]}
+        optionLabels={{ "": "Välj typ", ...Object.fromEntries(typeChoices.map((choice) => [choice.value, choice.label])) }} required />}
       {/* Allvarlighetsgrad right after Typ (2026-10-30), Normal from the start; a Förbättring has none. */}
       {improvement ? null : <Field id="si-dev-severity" label="Allvarlighetsgrad" value={draft.severity} onChange={(severity) => set({ severity: severity as DeviationSeverity })}
         options={Object.keys(DEVIATION_SEVERITIES)} optionLabels={DEVIATION_SEVERITIES} required />}
@@ -485,6 +499,29 @@ function DeviationDialog({ draft: initial, view, busy, photos, onClose, onSave }
       {!full && !draft.id ? <p className="text-xs text-muted-foreground">Den som hanterar avvikelsen lägger till åtgärd, ansvarig och datum.</p> : null}
       <DialogActions cancel={{ onClick: onClose }} primary={{ label: draft.id ? "Spara" : draft.kind === "IMPROVEMENT" ? "Lägg till" : "Rapportera", disabled: busy, disabledReason: missing ?? undefined, testId: "deviation-save",
         onClick: () => void onSave(draft).then((saved) => { if (saved) onClose(); }) }} />
+    </div>
+  </DialogPage>;
+}
+
+/**
+ * Egna typer (2026-11-27): the company's own deviation types beside the built-in ones, for the company's admins. An entry keeps the
+ * name it was given; a type taken away here is only no longer offered.
+ */
+function OwnTypesDialog({ types, busy, onClose, onSave }: { types: readonly string[]; busy: boolean; onClose: () => void; onSave: (types: string[]) => Promise<boolean> }) {
+  const [rows, setRows] = useState<string[]>(() => types.length ? [...types] : [""]);
+  const cleaned = normalizeOwnTypes(rows);
+  const full = rows.length >= OWN_TYPES_MAX;
+  return <DialogPage pageKey="avvikelse-typer" size="form" open onOpenChange={(open) => { if (!open) onClose(); }} title="Egna typer">
+    <div className="space-y-4" data-testid="deviation-types-form">
+      <p className="text-sm text-muted-foreground">Typerna visas under Typ när någon rapporterar, bredvid de inbyggda. En avvikelse behåller sin typ även om du tar bort den här.</p>
+      {rows.map((row, index) => <div key={index} className="flex items-end gap-2">
+        <Field id={`si-own-type-${index}`} label={`Typ ${index + 1}`} value={row} placeholder="Till exempel Läckage" className="min-w-0 flex-1"
+          onChange={(value) => setRows((current) => current.map((item, at) => at === index ? value.slice(0, OWN_TYPE_NAME_MAX) : item))} />
+        <IconButton label={`Ta bort ${row || `typ ${index + 1}`}`} onClick={() => setRows((current) => current.filter((_, at) => at !== index))}><Trash2 /></IconButton>
+      </div>)}
+      <Button type="button" variant="outline" disabled={full} onClick={() => setRows((current) => [...current, ""])}><Plus />Lägg till typ</Button>
+      <DialogActions cancel={{ onClick: onClose }} primary={{ label: "Spara", disabled: busy, testId: "deviation-types-save",
+        onClick: () => void onSave(cleaned).then((saved) => { if (saved) onClose(); }) }} />
     </div>
   </DialogPage>;
 }

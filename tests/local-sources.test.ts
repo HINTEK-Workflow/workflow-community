@@ -52,9 +52,13 @@ const SERVER_ONLY = new Map<string, string[]>([
   // YouTube (2026-11-20): Google's sign-in, tokens and the YouTube Data API with the company's own keys, from the server's one client
   // module (the browser is only sent to the sign-in page by Koppla YouTube and never loads anything from Google).
   ...["accounts.google.com", "oauth2.googleapis.com", "www.googleapis.com"].map((host) => [host, ["lib/youtube/api.ts"]] as [string, string[]]),
-  // The commercial part's own outside hosts (2026-10-25: Workflow's key vault), named only in ee/, used only by its modules.
-  ...(existsSync("ee/server-hosts.json") ? (JSON.parse(readFileSync("ee/server-hosts.json", "utf8")) as { host: string; modules: string[] }[]).map(({ host, modules }) => [host, modules] as [string, string[]]) : []),
+  // Kontrollera nya versioner (K4.8, 2026-11-28): Community only and off from the start; the server reads the public list of releases.
+  ["api.github.com", ["lib/updates/version-check-server.ts"]],
 ]);
+// The commercial part's own outside hosts (2026-10-25: Workflow's key vault), named only in ee/, used only by its modules; a host
+// the core names too (api.github.com) keeps the core's modules beside ee/'s.
+for (const { host, modules } of existsSync("ee/server-hosts.json") ? JSON.parse(readFileSync("ee/server-hosts.json", "utf8")) as { host: string; modules: string[] }[] : [])
+  SERVER_ONLY.set(host, [...(SERVER_ONLY.get(host) ?? []), ...modules]);
 // Names that are identifiers, never fetched: XML namespaces (w3.org, the sitemap's sitemaps.org) and schema.org types.
 const IGNORED = /(^|\.)(example(\.\w+)?|invalid|test|local|localhost)$|^127\.|^www\.w3\.org$|^www\.sitemaps\.org$|^schema\.org$|^json-schema\.org$/;
 const FORBIDDEN = /fonts\.googleapis|fonts\.gstatic|cdnjs|jsdelivr|unpkg|googletagmanager|google-analytics|plausible\.io|posthog|sentry\.io|segment\.(io|com)|hotjar/i;

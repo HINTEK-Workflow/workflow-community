@@ -11,6 +11,9 @@ import {
   type HistoryCategory,
 } from "@/lib/workflow/history-retention";
 import { countHistory, purgeHistory } from "@/lib/workflow/history-retention-server";
+import { requireFreshAuth } from "@/lib/auth/fresh-auth";
+import { companyChainStatus } from "@/lib/traceability/chain-server";
+import { isLogRetentionYears, logRetentionDetail, logRetentionYears } from "@/lib/traceability/log-retention";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +33,8 @@ const categories = z.array(z.enum(HISTORY_CATEGORY_KEYS as [HistoryCategory, ...
   .transform((list) => [...new Set(list)]);
 const input = z.discriminatedUnion("action", [
   z.object({ action: z.literal("retention"), months: z.number().int().nullable() }),
+  // Lagringstid för loggar (K3.3, 2026-11-27): 1, 2, 5 or 10 years for the security, administration and change logs.
+  z.object({ action: z.literal("log_retention"), years: z.number().int() }),
   z.object({ action: z.literal("preview"), before: z.string(), categories }),
   z.object({ action: z.literal("purge"), before: z.string(), categories, confirm: z.literal(true) }),
 ]);
@@ -45,14 +50,17 @@ export async function GET() {
     const ctx = await admin();
     const company = await prisma.organization.findUniqueOrThrow({ where: { id: ctx.organizationId }, select: { historyRetentionMonths: true } });
     const months = company.historyRetentionMonths;
-    const [pending, recent] = await Promise.all([
+    const [pending, recent, logYears, chains] = await Promise.all([
       months ? countHistory(ctx.organizationId, retentionCutoff(months), HISTORY_CATEGORY_KEYS) : null,
       prisma.administrationEvent.findMany({
-        where: { organizationId: ctx.organizationId, action: { in: ["history_purge", "history_retention", "history_retention_setting"] } },
+        where: { organizationId: ctx.organizationId, action: { in: ["history_purge", "history_retention", "history_retention_setting", "log_retention_setting"] } },
         orderBy: { createdAt: "desc" }, take: 10, select: { id: true, action: true, detail: true, createdAt: true },
       }),
+      // Raw SQL: the column is new and reads the same with any generated client.
+      prisma.$queryRaw<{ years: number | null }[]>`SELECT "logRetentionYears" AS years FROM "Organization" WHERE "id" = ${ctx.organizationId}`.then((rows) => logRetentionYears(rows[0]?.years)),
+      companyChainStatus(ctx.organizationId),
     ]);
-    return NextResponse.json({ months, label: retentionLabel(isRetentionChoice(months) ? months : null), pending, recent }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ months, label: retentionLabel(isRetentionChoice(months) ? months : null), pending, recent, logs: { years: logYears, chains } }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return failure(error);
   }
@@ -71,6 +79,18 @@ export async function POST(request: Request) {
           detail: `Lagringstid för historik: ${retentionLabel(command.months)}.` } }),
       ]);
       return NextResponse.json({ ok: true, months: command.months });
+    }
+    if (command.action === "log_retention") {
+      if (!isLogRetentionYears(command.years)) throw new ApiError(400, "Välj 1, 2, 5 eller 10 år.");
+      const years = command.years;
+      // A shorter time removes log rows tonight: the person confirms with a fresh sign-in first, as for other sensitive changes.
+      const [stored] = await prisma.$queryRaw<{ years: number | null }[]>`SELECT "logRetentionYears" AS years FROM "Organization" WHERE "id" = ${ctx.organizationId}`;
+      if (years < logRetentionYears(stored?.years)) await requireFreshAuth(ctx.user.id, ctx.auth);
+      await prisma.$transaction(async (tx) => {
+        await tx.$executeRaw`UPDATE "Organization" SET "logRetentionYears" = ${years} WHERE "id" = ${ctx.organizationId}`;
+        await tx.administrationEvent.create({ data: { actorId: ctx.user.id, organizationId: ctx.organizationId, action: "log_retention_setting", detail: logRetentionDetail(years) } });
+      });
+      return NextResponse.json({ ok: true, years });
     }
     const before = cutoff(command.before);
     if (command.action === "preview")

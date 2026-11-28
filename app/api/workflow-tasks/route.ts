@@ -51,6 +51,8 @@ import { linkDeviationsOnOrderSave } from "@/lib/self-inspection/deviation-link-
 import { applyMaterialPriceRules } from "@/lib/workflow/material-prices-server";
 import { assertNotDormant, planOrderChanged, roundOrderChanged } from "@/lib/maintenance/plan-server";
 import { answerAfterTaken, claimIdempotencyKey, IdempotencyTaken, idempotencyClaim, replayedAnswer, storeIdempotentAnswer } from "@/lib/security/idempotency-server";
+import { taskSnapshot } from "@/lib/traceability/record-changes";
+import { recordChange } from "@/lib/traceability/record-changes-server";
 
 /** Återkommande underhåll (2026-10-30): after a plan's work order changed, its plan fills again; never fails the request. */
 const refillPlan = async (organization: { id: string; disabledModules?: readonly string[] | null }, task: { id: string; maintenancePlanId?: string | null; roundScheduleId?: string | null; roundOccurrence?: string | null } | null | undefined) => {
@@ -62,6 +64,10 @@ const refillPlan = async (organization: { id: string; disabledModules?: readonly
 
 const identifier = z.string().min(1).max(100);
 const json = (value: unknown) => value as Prisma.InputJsonValue;
+/** Ändringshistorik: a field the save left out keeps its stored value. */
+const kept = <T,>(next: T | undefined, stored: T) => (next === undefined ? stored : next);
+/** The stored content read with the same schema as a save, so only a real change of the content counts. */
+const storedTaskData = (data: unknown) => { const parsed = workflowTaskDataSchema.safeParse(data); return parsed.success ? parsed.data : data; };
 /** The timer met a newer version of the task: read again and retry (M4), never told to the person unless it keeps happening. */
 class TimerVersionConflict extends Error {}
 export const dynamic = "force-dynamic";
@@ -364,6 +370,8 @@ export async function POST(request: Request) {
         });
         if (!changed.count) throw new ApiError(409, "Uppgiften har ändrats. Läs in den senaste versionen.");
         await tx.workflowTaskRevision.create({ data: { taskId: task.id, version: nextVersion, createdBy: ctx.user.id, snapshot: json({ title: task.title, description: task.description, status: applied.status, progress, data: applied.data, completedAt: null }) } });
+        await recordChange(tx, { organizationId: ctx.organizationId, entityType: "TASK", entityId: task.id, actorId: ctx.user.id, action: "UPDATED",
+          before: taskSnapshot({ ...task, data }), after: taskSnapshot({ ...task, status: applied.status, data: applied.data }) });
         if (task.projectId) await tx.projectEvent.create({ data: { organizationId: ctx.organizationId, projectId: task.projectId, kind: "UPDATED", summary: (report ? `Hinder på ${task.title}: ${OBSTACLE_REASON_LABELS[input.obstacle.reason]}${input.obstacle.text ? ` – ${input.obstacle.text}` : ""}` : `Hindret på ${task.title} är löst`).slice(0, 500), taskId: task.id, actorName, createdBy: ctx.user.id } });
         if (!report) { await clearObstacleNotices(tx, { organizationId: ctx.organizationId, taskId: task.id }); return; }
         // The job's and the project's responsible people (active members of the company), never the reporter.
@@ -405,6 +413,8 @@ export async function POST(request: Request) {
         });
         if (!changed.count) throw new ApiError(409, "Uppgiften har ändrats. Läs in den senaste versionen.");
         await tx.workflowTaskRevision.create({ data: { taskId: task.id, version: nextVersion, createdBy: ctx.user.id, snapshot: json({ title: task.title, description: task.description, status, progress, data, completedAt: null, ...(cancel ? { cancelReason: reason } : {}) }) } });
+        await recordChange(tx, { organizationId: ctx.organizationId, entityType: "TASK", entityId: task.id, actorId: ctx.user.id, action: "UPDATED",
+          before: taskSnapshot({ ...task, data }), after: taskSnapshot({ ...task, ...fields, data }) });
         if (task.projectId) await tx.projectEvent.create({ data: { organizationId: ctx.organizationId, projectId: task.projectId, kind: "UPDATED", summary: (cancel ? `Jobbet ${task.title} utgår: ${reason}` : `Jobbet ${task.title} återupptogs`).slice(0, 500), taskId: task.id, actorName, createdBy: ctx.user.id } });
         // Utgår stops everyone's running time on the job; the entries enter the time history as on completion.
         if (!cancel) return [];
@@ -437,11 +447,14 @@ export async function POST(request: Request) {
       const reopenedInput = workflowTaskInputSchema.parse({ ...task, status: "NEEDS_ACTION", data });
       const progress = workflowTaskProgress(reopenedInput);
       const snapshot = json({ ...task, data, status: "NEEDS_ACTION", progress, completedAt: null, version: nextVersion });
-      await prisma.$transaction([
-        prisma.workflowTask.update({ where: { id: task.id, version: task.version, status: "COMPLETED" }, data: { data: json(data), status: "NEEDS_ACTION", progress, completedAt: null, version: { increment: 1 }, updatedBy: ctx.user.id } }),
-        prisma.workflowTaskRevision.create({ data: { taskId: task.id, version: nextVersion, snapshot, createdBy: ctx.user.id } }),
-        ...(task.projectId ? [prisma.projectEvent.create({ data: { organizationId: ctx.organizationId, projectId: task.projectId, kind: "TASK_REOPENED", summary: `Uppgiften ${task.title} återöppnades`, taskId: task.id, actorName: ctx.user.name || ctx.user.email, createdBy: ctx.user.id } })] : []),
-      ]);
+      await prisma.$transaction(async (tx) => {
+        await tx.workflowTask.update({ where: { id: task.id, version: task.version, status: "COMPLETED" }, data: { data: json(data), status: "NEEDS_ACTION", progress, completedAt: null, version: { increment: 1 }, updatedBy: ctx.user.id } });
+        await tx.workflowTaskRevision.create({ data: { taskId: task.id, version: nextVersion, snapshot, createdBy: ctx.user.id } });
+        if (task.projectId) await tx.projectEvent.create({ data: { organizationId: ctx.organizationId, projectId: task.projectId, kind: "TASK_REOPENED", summary: `Uppgiften ${task.title} återöppnades`, taskId: task.id, actorName: ctx.user.name || ctx.user.email, createdBy: ctx.user.id } });
+        // Ändringshistorik (K3.2): the status, and the content when the approval was reset.
+        await recordChange(tx, { organizationId: ctx.organizationId, entityType: "TASK", entityId: task.id, actorId: ctx.user.id, action: "UPDATED",
+          before: taskSnapshot({ ...task, data: storedTaskData(task.data) }), after: taskSnapshot({ ...task, status: "NEEDS_ACTION", data }) });
+      });
       publishTaskChange(task.id, { version: nextVersion, byUserId: ctx.user.id, byName: ctx.user.name || ctx.user.email, status: "NEEDS_ACTION", reason: "reopen" });
       await refillPlan(ctx.organization, task);
       return NextResponse.json({ ok: true });
@@ -627,6 +640,15 @@ export async function POST(request: Request) {
           data: { projectId: task.projectId, customerId: task.customerId, facilityId: task.facilityId, workOrderId: task.workOrderId, ...(task.kind === "WORK_ORDER" && !current.roundOccurrence ? { roundScheduleId } : {}), title: task.title, description: task.description, status, progress, assignedToUserId: task.assignedToUserId, assignedToName: task.assignedToName, dueDate: task.dueDate, ...schedule, data: json(task.data), version: { increment: 1 }, completedAt: status === "COMPLETED" ? new Date() : null, updatedBy: ctx.user.id },
         });
         if (!changed.count) throw new ApiError(409, "Uppgiften har ändrats. Läs in den senaste versionen.");
+        // Ändringshistorik (K3.2, 2026-11-27): the fields that changed, from what to what, in the save's own transaction.
+        await recordChange(tx, { organizationId: ctx.organizationId, entityType: "TASK", entityId: task.id!, actorId: ctx.user.id, action: "UPDATED", autosave: Boolean(input.autosave),
+          before: taskSnapshot({ ...current, data: storedTaskData(current.data) }),
+          after: taskSnapshot({
+            ...current, title: task.title, description: task.description, status, data: task.data,
+            projectId: kept(task.projectId, current.projectId), customerId: kept(task.customerId, current.customerId), facilityId: kept(task.facilityId, current.facilityId), workOrderId: kept(task.workOrderId, current.workOrderId),
+            assignedToUserId: kept(task.assignedToUserId, current.assignedToUserId), assignedToName: kept(task.assignedToName, current.assignedToName), dueDate: kept(task.dueDate, current.dueDate),
+            plannedStartDate: kept(schedule.plannedStartDate, current.plannedStartDate), estimatedMinutes: kept(schedule.estimatedMinutes, current.estimatedMinutes), stage: kept(schedule.stage, current.stage),
+          }) });
         // The tasks of a work order follow its Grunduppgifter (Arbetsordern som hållare, 2026-10-30).
         if (following)
           followed = await followWorkOrder(tx, ctx.organizationId, { id: task.id!, kind: "WORK_ORDER", status, projectId: task.projectId, customerId: task.customerId, facilityId: task.facilityId, assignedToUserId: task.assignedToUserId, assignedToName: task.assignedToName, plannedStartDate: task.plannedStartDate ?? current.plannedStartDate, dueDate: task.dueDate, roundScheduleId: current.roundOccurrence ? current.roundScheduleId : roundScheduleId }, ctx.user.id);
@@ -673,6 +695,7 @@ export async function POST(request: Request) {
       });
       // "Tilldelad dig" (Fas 1B): a task created for someone else tells them.
       await recordAssignment(tx, { organizationId: ctx.organizationId, taskId: row.id, previousUserId: null, nextUserId: task.assignedToUserId, actorId: ctx.user.id });
+      await recordChange(tx, { organizationId: ctx.organizationId, entityType: "TASK", entityId: row.id, actorId: ctx.user.id, action: "CREATED" });
       // Avvikelse ↔ arbetsorder (2026-10-10): a work order made from a protocol row takes the row's log entries.
       await linkDeviationsOnOrderSave(tx, { organizationId: ctx.organizationId, order: { id: row.id, kind: task.kind, title: task.title, status, data: task.data }, created: true, by: { id: ctx.user.id, name: ctx.user.name?.trim() || ctx.user.email }, now });
       if (followUp) await applyRoundFollowUp(tx, { organizationId: ctx.organizationId, userId: ctx.user.id, workOrderId: row.id, prepared: followUp, facts: input.maintenance ?? null, now });
@@ -728,6 +751,8 @@ export async function DELETE(request: Request) {
       });
       await tx.workflowTask.deleteMany({ where: { organizationId: ctx.organizationId, id: { in: inside.map((item) => item.id) } } });
       await tx.workflowTask.delete({ where: { id: task.id } });
+      // Ändringshistorik (K3.2): who removed it stays in the company's log after the record is gone.
+      for (const removed of ids) await recordChange(tx, { organizationId: ctx.organizationId, entityType: "TASK", entityId: removed, actorId: ctx.user.id, action: "DELETED" });
     });
     await Promise.all([...inside.flatMap((item) => item.attachments), ...task.attachments].map((attachment) => remove(attachment.storagePath)));
     for (const removed of ids) publishTaskChange(removed, { version: 0, byUserId: ctx.user.id, byName: ctx.user.name || ctx.user.email, reason: "delete" });

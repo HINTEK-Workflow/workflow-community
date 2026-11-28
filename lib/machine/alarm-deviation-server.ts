@@ -35,7 +35,8 @@ export async function createDeviationFromAlarmOrder(ctx: Context, taskId: string
     const last = await tx.selfInspectionDeviation.findFirst({ where: { organizationId }, orderBy: { number: "desc" }, select: { number: true } });
     const number = (last?.number ?? 0) + 1;
     const created = await tx.selfInspectionDeviation.create({
-      data: { organizationId, programId: program?.id ?? null, number, kind: "DEVIATION", title: text.title, description: text.description, category: text.category, systematic: false,
+      // A machine's alarm is a Driftfel (2026-11-28), with or without a programme.
+      data: { organizationId, programId: program?.id ?? null, number, kind: "DEVIATION", type: "OPERATING_FAULT", title: text.title, description: text.description, category: text.category, systematic: false,
         status: linked.status ?? "OPEN", action: linked.action ?? "", responsibleUserId: null, dueDate: "", followUp: "", reportedById: actor.id,
         closedAt: linked.closedAt ? new Date(linked.closedAt) : null, closedById: linked.closedById ?? null, closedByName: linked.closedByName ?? "", workOrderId: task.id },
       select: { id: true },

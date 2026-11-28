@@ -3,7 +3,7 @@ import { swedishDayKey } from "@/lib/swedish-time";
 import { TEMPLATE_SECTIONS } from "./template";
 import { isRiskClassKey, levelDirectory, levelsView, toLevel, type LevelDirectory, type LevelsView } from "./levels";
 import { CREDENTIAL_KINDS, externalInProgramme, externalPeriodEnded, levelYearsOf, personLevel, type CredentialKind, type PersonLevel } from "./structure";
-import { awaitsAuthorityReport, DEVIATION_PHOTO_PHASES, DEVIATION_SEVERITIES, DEVIATION_TYPES, deviationType, mayHandleDeviation, mayReadDeviation, REPORTABLE_LABEL, SERIOUS_NOTICE, type DeviationViewer } from "./incidents";
+import { awaitsAuthorityReport, DEVIATION_PHOTO_PHASES, DEVIATION_SEVERITIES, DEVIATION_TYPE_KEYS, DEVIATION_TYPES, deviationType, deviationTypeLabel, isStoredTypeValue, mayHandleDeviation, normalizeOwnTypes, mayReadDeviation, OWN_TYPE_NAME_MAX, OWN_TYPES_MAX, REPORTABLE_LABEL, SERIOUS_NOTICE, storedDeviationType, type DeviationType, type DeviationViewer } from "./incidents";
 export * from "./incidents";
 
 /**
@@ -68,6 +68,8 @@ export type DeviationCategory = keyof typeof DEVIATION_CATEGORIES;
 export type DeviationStatus = keyof typeof DEVIATION_STATUSES;
 export type ReviewOutcome = keyof typeof REVIEW_OUTCOMES;
 const enumOf = <T extends Record<string, string>>(record: T) => z.enum(Object.keys(record) as [keyof T & string, ...(keyof T & string)[]]);
+/** An entry's type as stored (./incidents.ts): a built-in type, or the company's own as "OWN:<namn>". */
+const storedType = z.string().trim().max(64).refine(isStoredTypeValue, "Välj en typ i listan.").transform((value) => storedDeviationType(value));
 
 /** The programme is reviewed at least once a year (3 kap. 13 §); the bell reminds 30 days ahead. */
 export const REVIEW_INTERVAL_MONTHS = 12;
@@ -315,9 +317,9 @@ export const deviationSchema = z.object({
    * Tillbud och olycksfall (2026-10-30, ./incidents.ts): the type (absent = Egenkontroll, as everything from before),
    * the investigation of a near miss or an accident, Allvarlig/Personskada/Gäller el (never a diagnosis), who marked it
    * reported to the authority, the line written at Markera klar and the photos. Optional and additive, so an older .hwf file
-   * opens unchanged.
+   * opens unchanged. Since 2026-11-28 also the neutral types and the company's own ("OWN:<namn>").
    */
-  type: enumOf(DEVIATION_TYPES).optional(),
+  type: storedType.optional(),
   /** Lagringstid (2026-11-04, ./retention.ts), Cloud only: kept for a claim; the names, text and photos are gone. */
   retentionHoldAt: timestamp.nullable().optional(),
   personalDataRemovedAt: timestamp.nullable().optional(),
@@ -356,6 +358,8 @@ export const selfInspectionDocumentSchema = z.object({
   /** Ny struktur (2026-11-24): the company's experience areas and its hired staff. */
   experienceAreas: z.array(experienceAreaSchema).max(100).optional(),
   externalPeople: z.array(externalPersonSchema).max(500).optional(),
+  /** Avvikelseloggen (2026-11-28): the company's own deviation types in a Local file (Cloud keeps them in the company's settings). */
+  deviationTypes: z.array(z.string().max(OWN_TYPE_NAME_MAX)).max(OWN_TYPES_MAX).optional(),
 });
 export type ProgramSection = z.infer<typeof sectionSchema>;
 export type RoleMember = z.infer<typeof roleMemberSchema>;
@@ -442,8 +446,9 @@ export const selfInspectionActionSchema =z.discriminatedUnion("action", [
     action: z.string().trim().max(4000).default(""), responsibleId: id.nullable().default(null), dueDate: z.union([day, z.literal("")]).default(""), followUp: z.string().trim().max(4000).default(""),
     source: deviationSourceSchema.nullable().default(null),
     // Tillbud och olycksfall (2026-10-30): the type first; the rest is kept only for a near miss or an accident.
-    // Left out (a protocol row, an older client) it is Egenkontroll.
-    type: enumOf(DEVIATION_TYPES).optional(),
+    // Left out (a protocol row, an older client) a new entry is Elinstallation with a programme and Övrigt without one
+    // (./incidents.ts defaultDeviationType), and a saved one keeps its own.
+    type: storedType.optional(),
     // Allvarlighetsgrad (2026-10-30): left out, a new entry is Normal and a saved one keeps its own.
     severity: enumOf(DEVIATION_SEVERITIES).optional(), ...investigationInput })
     // A Förbättring has no type to choose (improvementWithoutType above).
@@ -460,6 +465,8 @@ export const selfInspectionActionSchema =z.discriminatedUnion("action", [
   // The row an entry was taken from is gone from the protocol (removed, or thrown away with Kasta; 2026-10-12): the
   // reporter – or an admin – withdraws the entry. Untouched (open, no plan, no work order) it leaves the log; otherwise it is marked.
   z.object({ action: z.literal("withdraw_deviation"), id }),
+  // Avvikelseloggen (2026-11-28): the company's own deviation types, the whole list in one save (admins). Entries keep the name they have.
+  z.object({ action: z.literal("save_deviation_types"), types: z.array(z.string().trim().max(OWN_TYPE_NAME_MAX, `Högst ${OWN_TYPE_NAME_MAX} tecken per typ.`)).max(OWN_TYPES_MAX, `Högst ${OWN_TYPES_MAX} egna typer.`) }),
   // Only the kind of work is chosen per project or task now; the performer and the inspector of older clients are ignored
   // (roles are given in advance with a level, 2026-10-07).
   z.object({ action: z.literal("set_assignment"), target: z.enum(["project", "task"]), targetId: id, activityType: z.enum(ACTIVITY_KEYS).nullable().default(null) }),
@@ -975,6 +982,8 @@ export type SelfInspectionView = {
   experienceAreas?: ExperienceArea[];
   externalPeople?: ExternalPersonView[];
   hasProgram: boolean;
+  /** Avvikelseloggen (2026-11-28): the company's own deviation types, offered beside the built-in ones (./incidents.ts deviationTypeChoices). */
+  ownDeviationTypes?: string[];
   current: VersionView | null;
   versions: VersionView[];
   myConfirmation: string | null;
@@ -1091,7 +1100,7 @@ export async function selfInspectionView(doc: SelfInspectionDocument, viewer: { 
   return {
     canEdit: viewer.admin, canApprove: viewer.admin, me: viewer.me, company: viewer.company,
     people: viewer.admin ? viewer.activePeople ?? viewer.people : [],
-    program, hasProgram: Boolean(doc.program), current,
+    program, hasProgram: Boolean(doc.program), ownDeviationTypes: normalizeOwnTypes(doc.deviationTypes), current,
     versions: viewer.admin ? [...doc.versions].sort((a, b) => b.number - a.number).map(withNames) : [],
     myConfirmation: confirmed(viewer.me.id),
     confirmations: viewer.admin && latest ? (viewer.activePeople ?? viewer.people).map((person) => ({ personId: person.id, name: person.name, confirmedAt: confirmed(person.id) })) : null,
@@ -1233,12 +1242,26 @@ export function deviationSearchMatches(item: { number?: number | string | null; 
   const text = [item.number, item.title, item.description, item.action, item.responsibleName].filter(Boolean).join(" ").toLocaleLowerCase("sv");
   return words.every((word) => text.includes(word));
 }
-/** The type filter beside them (2026-10-30): every type, or one; a Förbättring is its own choice, not an Elinstallation. */
-export const DEVIATION_TYPE_FILTERS = ["any", "SELF_INSPECTION", "RISK_OBSERVATION", "NEAR_MISS", "ACCIDENT", "IMPROVEMENT"] as const;
-export type DeviationTypeFilter = (typeof DEVIATION_TYPE_FILTERS)[number];
-export const DEVIATION_TYPE_FILTER_LABEL: Record<DeviationTypeFilter, string> = { any: "Alla typer", ...DEVIATION_TYPES, IMPROVEMENT: DEVIATION_KINDS.IMPROVEMENT };
+/**
+ * The type filter beside them (2026-10-30): every type, or one; a Förbättring is its own choice, not an Elinstallation.
+ * Since 2026-11-28 also the neutral types, and Egna typer for all the company's own.
+ */
+export const DEVIATION_TYPE_FILTERS = ["any", ...DEVIATION_TYPE_KEYS, "IMPROVEMENT"] as const;
+export type DeviationTypeFilter = "any" | DeviationType | "IMPROVEMENT";
+export const DEVIATION_TYPE_FILTER_LABEL: Record<DeviationTypeFilter, string> = { any: "Alla typer", ...DEVIATION_TYPES, OWN: "Egna typer", IMPROVEMENT: DEVIATION_KINDS.IMPROVEMENT };
 export const deviationTypeMatches = (item: { kind?: string | null; type?: string | null }, filter: DeviationTypeFilter) => filter === "any"
-  || (filter === "IMPROVEMENT" ? item.kind === "IMPROVEMENT" : item.kind !== "IMPROVEMENT" && (item.type ?? "SELF_INSPECTION") === filter);
+  || (filter === "IMPROVEMENT" ? item.kind === "IMPROVEMENT" : item.kind !== "IMPROVEMENT" && deviationType(item.type) === filter);
+/**
+ * The filter's choices on the page: every type the company may report (Elinstallation only with a programme), the types its entries
+ * have, Egna typer when it has any, and Förbättring – so a company without a programme is not offered an empty Elinstallation.
+ */
+export function deviationTypeFilterChoices(input: { hasProgram: boolean; ownTypes?: readonly string[]; entries: readonly { kind?: string | null; type?: string | null }[]; selected?: DeviationTypeFilter }): DeviationTypeFilter[] {
+  const present = new Set(input.entries.filter((item) => item.kind !== "IMPROVEMENT").map((item) => deviationType(item.type)));
+  const keep = (key: DeviationType) => present.has(key) || input.selected === key || (key === "SELF_INSPECTION" ? input.hasProgram : key === "OWN" ? Boolean(input.ownTypes?.length) : true);
+  return ["any", ...DEVIATION_TYPE_KEYS.filter(keep), "IMPROVEMENT"];
+}
+/** What an entry is called in a line: Förbättring, or its type's name (the company's own type by its own name). */
+export const deviationTypeWord = (item: { kind?: string | null; type?: string | null }) => item.kind === "IMPROVEMENT" ? DEVIATION_KINDS.IMPROVEMENT : deviationTypeLabel(item.type);
 export function deviationMatches(item: { status: string; dueDate?: string | null; responsibleId?: string | null }, filter: DeviationFilter, input: { meId: string; today: string }) {
   switch (filter) {
     case "open": return item.status !== "DONE";
@@ -1257,11 +1280,11 @@ export function selfInspectionReminders(view: Pick<SelfInspectionView, "canEdit"
   // action, until someone marks it reported or it is done. Its Allvarlighetsgrad is left as the person chose.
   if (view.canEdit || view.team) for (const item of view.deviations) {
     if (item.status === "DONE" || !awaitsAuthorityReport(item)) continue;
-    items.push({ id: `self-inspection:reportable:${item.id}`, label: "Avvikelse", title: `${REPORTABLE_LABEL}: ${DEVIATION_TYPES[deviationType(item.type)]} ${item.number}: ${item.title}`, detail: SERIOUS_NOTICE,
+    items.push({ id: `self-inspection:reportable:${item.id}`, label: "Avvikelse", title: `${REPORTABLE_LABEL}: ${deviationTypeLabel(item.type)} ${item.number}: ${item.title}`, detail: SERIOUS_NOTICE,
       href: deviationHref(item.id), dueDate: "", deadline: null, needsAction: true });
     if (items.length >= 10) break;
   }
-  const typeWord = (item: SelfInspectionView["deviations"][number]) => item.kind === "IMPROVEMENT" ? DEVIATION_KINDS.IMPROVEMENT : DEVIATION_TYPES[deviationType(item.type)];
+  const typeWord = deviationTypeWord;
   // Kräver åtgärd (beslut 4, 2026-11-01; replaces TE7's "until someone is responsible"): an entry of the grade Hög or Akut stands
   // here until it is done – for those who oversee the log (admins and the Teamet right, within what they may read) and for the
   // person responsible for it. Someone who reported it and has no such right has done their part; the one who reported it and
@@ -1309,7 +1332,7 @@ export function selfInspectionReminders(view: Pick<SelfInspectionView, "canEdit"
     if ((item.state !== "DUE_SOON" && item.state !== "OVERDUE") || item.leftAt) continue;
     const own = item.personId === view.me.id;
     items.push({ id: `self-inspection:credential:${item.id}`, title: `${item.state === "OVERDUE" ? "Har gått ut" : "Går ut snart"}: ${item.title}${own ? "" : ` (${item.name || "en person"})`}`,
-      detail: "Kompetenskortet i egenkontrollen.", href: "/?view=self_inspection&tab=competence", dueDate: item.validUntil ?? "", deadline: item.state, needsAction: false });
+      detail: "Se kompetenskortet.", href: "/?view=self_inspection&tab=competence", dueDate: item.validUntil ?? "", deadline: item.state, needsAction: false });
     if (items.length >= 20) return items;
   }
   // Kompetenskort v2 (2026-10-08): a driving licence that runs out within 30 days, and – for admins – a person's suggestion.
@@ -1318,7 +1341,7 @@ export function selfInspectionReminders(view: Pick<SelfInspectionView, "canEdit"
     const own = card.personId === view.me.id;
     if ((card.licenceState === "DUE_SOON" || card.licenceState === "OVERDUE") && (own || view.canEdit))
       items.push({ id: `self-inspection:licence:${card.personId}`, title: `${card.licenceState === "OVERDUE" ? "Har gått ut" : "Går ut snart"}: körkort${own ? "" : ` (${card.name || "en person"})`}`,
-        detail: "Kompetenskortet i egenkontrollen.", href: "/?view=self_inspection&tab=competence", dueDate: card.licenceValidUntil ?? "", deadline: card.licenceState, needsAction: false });
+        detail: "Se kompetenskortet.", href: "/?view=self_inspection&tab=competence", dueDate: card.licenceValidUntil ?? "", deadline: card.licenceState, needsAction: false });
     if (view.canEdit && card.suggestion.trim())
       items.push({ id: `self-inspection:card-suggestion:${card.personId}:${card.suggestedAt ?? ""}`, title: `Förslag till kompetenskortet: ${card.name || "en person"}`, detail: card.suggestion.slice(0, 160),
         href: "/?view=self_inspection&tab=competence", dueDate: "", deadline: null, needsAction: true });

@@ -191,6 +191,8 @@ const VARIANTS = [
   { id: "v:news#redigera", view: "news", label: "Redigera nyheten", params: { post: "X", edit: "1" } },
   { id: "v:news#ny", view: "news", label: "Ny nyhet", params: { new: "1" } },
   { id: "v:place_labels#rond", view: "place_labels", label: "Rondens QR-ark", params: { roundId: "X" } },
+  // Rondprotokoll på papper (0.92.0): a round's printable protocol, reached from the round.
+  { id: "v:round_paper#rond", view: "round_paper", label: "Rondens protokoll på papper", params: { roundId: "X" } },
   { id: "v:administration#person", view: "administration", label: "En persons sida", params: { person: "X" } },
   { id: "v:administration#inbjudan", view: "administration", label: "En inbjudans sida", params: { invitation: "X" } },
   { id: "v:operator_accounts#konto", view: "operator_accounts", label: "Ett operatörskonto", params: { account: "X" } },
@@ -232,6 +234,7 @@ function nodeForAddress(raw) {
   else if (view === "boards") id = p.table ? "v:boards#tabell" : p.board ? (p.edit ? "v:boards#redigera" : "v:boards#tavla") : id;
   else if (view === "news") id = p.post ? (p.edit ? "v:news#redigera" : "v:news#post") : p.new ? "v:news#ny" : id;
   else if (view === "place_labels") id = p.roundId ? "v:place_labels#rond" : id;
+  else if (view === "round_paper") id = p.roundId ? "v:round_paper#rond" : id;
   else if (view === "administration") id = p.person ? "v:administration#person" : p.invitation ? "v:administration#inbjudan" : id;
   else if (view === "operator_accounts") id = p.account ? "v:operator_accounts#konto" : id;
   else if (view === "customer_companies") id = p.companyId ? "v:customer_companies#foretag" : id;
@@ -1045,7 +1048,7 @@ for (const e of edges.values()) for (const end of [e.from, e.to]) if (!nodes.has
 // rutor som står för ett enskilt objekt – ett jobb, ett projekt, en kund, en plats, en offert, ett inköp, en rond, en
 // kalkylator – och allt som hänger under dem. De döljs som förval; kryssrutan "Visa enskilda poster" tar tillbaka dem.
 const ITEM_ROOTS = new Set(["v:workflow_task#uppgift", "v:workflow_task#ao", "v:project", "v:project#redigera", "v:project#koppla", "v:customers#kund", "v:customers#redigera",
-  "v:place", "v:place#ny", "v:place_labels", "v:quote#offert", "v:purchase#inkop", "v:rounds#andra", "v:calculators#verktyg", "v:forms#formular"]);
+  "v:place", "v:place#ny", "v:place_labels", "v:round_paper", "v:quote#offert", "v:purchase#inkop", "v:rounds#andra", "v:calculators#verktyg", "v:forms#formular"]);
 for (const n of nodes.values()) {
   let p = n.id, hops = 0;
   while (p && hops++ < 20) { if (ITEM_ROOTS.has(p)) { n.item = true; break; } p = nodes.get(p)?.parent; }

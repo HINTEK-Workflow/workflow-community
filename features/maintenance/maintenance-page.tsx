@@ -2,7 +2,7 @@
 
 import { plural } from "@/lib/plural";
 import { useModuleOn } from "@/features/workflow/use-modules";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -34,12 +34,13 @@ import {
   ITEM_SOURCE_LABELS, ITEM_STATUS_LABELS, PART_STATUS_LABELS, PART_STATUS_TONES, PART_STATUSES, partPath, quantityText, rootsOf, subtreeIds, type PartListItem, type PartStatus,
 } from "@/lib/maintenance/model";
 import {
-  childLevelName, nextPlaceLevel, partLevelName, partRollups, PLACE_ALL, placeChoice, PLACE_LEVEL_LABELS, PLACE_NONE, placeLevelsUnder, placePath, placeProblem, placeRollups, placeSubtree, rollupBadges,
+  childLevelName, machinesAt, nextPlaceLevel, partLevelName, partRollups, PLACE_ALL, placeChoice, PLACE_LEVEL_LABELS, PLACE_NONE, placeLevelsUnder, placePath, placeProblem, placeRollups, placeSubtree, rollupBadges,
   type PlaceLevel, type PlaceListItem, type PlaceRollup,
 } from "@/lib/maintenance/place-model";
 import { filterPartTree, PART_FILTER_LABEL, PART_FILTERS, type PartFilter } from "@/lib/maintenance/tree-filter";
 import { moveBody, placesHolding, planTreeDrop, treeAncestors, wholeTreeParent, type WholeTreeItem } from "@/lib/maintenance/tree-move";
 import { runHoursHeldText } from "@/lib/machine/run-hours";
+import { PLANT_TEMPLATES, plantTemplate, plantTemplateNotes } from "@/lib/maintenance/plant-templates";
 import { hoursText, kronor, maintenanceGet, maintenancePost, partImageUrl, uploadPartImage, type Cost, type ItemRow, type PartDetail, type Spare, type Tree } from "./maintenance-api";
 import { MaintenanceItemEditor, NewItemDialog, WithdrawDialog } from "./maintenance-item-editor";
 import { MaintenanceHeader, NEW_BUTTON_WIDTH, type MaintenanceView } from "./maintenance-header";
@@ -50,6 +51,7 @@ import { PartHistoryTab } from "./maintenance-history";
 import { FigureBox } from "./maintenance-figures";
 import { partOptions } from "./part-picker";
 import { useSetQuery } from "./use-set-query";
+import { aboveOf, MachinePositionCard, MachinePositionFields, MachinesMap, usePositionFieldset } from "./maintenance-location";
 
 /**
  * Underhåll (2026-10-30; the look of the proposal app/design-lab/arbetsorder-hallare, view underhall): the module's
@@ -78,7 +80,7 @@ const partCardIcon = (part: Pick<TreeItem, "name" | "partType" | "parentId">): L
 // The place tree: the same row as the customers' places, and "Alla platser" and "Utan plats" as rows of their own around it.
 const asPlaceItem = (place: PlaceListItem) => ({ ...place, customerId: "", address: "", postalCode: "", city: "", description: "", isActive: true });
 type PlaceTreeItem = ReturnType<typeof asPlaceItem>;
-const pseudoPlace = (id: string, name: string): PlaceTreeItem => asPlaceItem({ id, parentId: null, name, level: "SITE", notes: "", version: 0 });
+const pseudoPlace = (id: string, name: string): PlaceTreeItem => asPlaceItem({ id, parentId: null, name, level: "SITE", notes: "", version: 0, latitude: null, longitude: null });
 const ALL_PLACES = pseudoPlace(PLACE_ALL, "Alla platser");
 const NO_PLACE = pseudoPlace(PLACE_NONE, "Utan plats");
 const EMPTY_SET: ReadonlySet<string> = new Set();
@@ -285,7 +287,8 @@ function MachinesView({ partId, placeParam }: { partId: string | null; placePara
     : editing.mode === "move" ? part ? <MovePartDialog detail={part} parts={parts} places={places} onClose={() => setEditing(null)} onSaved={async () => { setEditing(null); await reload(); }} /> : null
     : <PartDialog mode={editing.mode} detail={part} place={realPlace} owners={tree.owners} places={places} onClose={() => setEditing(null)}
       onSaved={async (id) => { setEditing(null); if (id) setQuery({ part: id }); await reload(); }} />;
-  const placePane = <PlacePane choice={choice} place={realPlace} sum={placeSums.get(choice)} name={choiceName} path={realPlace ? pathOf(realPlace.parentId) : []} native={native} empty={!places.length && !parts.length} />;
+  const placePane = <PlacePane choice={choice} place={realPlace} sum={placeSums.get(choice)} name={choiceName} path={realPlace ? pathOf(realPlace.parentId) : []} native={native} empty={!places.length && !parts.length}
+    map={<MachinesMap key={choice} machines={machinesAt(parts, places, choice)} places={places} label={`Maskinerna på karta: ${choiceName}`} />} />;
 
   if (native) {
     if (!partScreen) return <div className={rootClass} data-testid="maintenance-explorer">
@@ -335,8 +338,12 @@ function StatusLine({ text, sum }: { text: string; sum?: { reported: number; out
 /** Ny plats and Redigera: the fixed level names, only the levels that may lie here. */
 function PlaceDialog({ place, parent, places, onClose, onSaved }: { place: PlaceListItem | null; parent: PlaceListItem | null; places: PlaceListItem[]; onClose: () => void; onSaved: (id: string) => Promise<void> }) {
   const initialParent = place ? place.parentId : parent && nextPlaceLevel(parent) ? parent.id : null;
-  const [draft, setDraft] = useState({ name: place?.name ?? "", parentId: initialParent ?? "", level: (place?.level ?? nextPlaceLevel(places.find((row) => row.id === initialParent) ?? null) ?? "SITE") as PlaceLevel, notes: place?.notes ?? "" });
+  const [draft, setDraft] = useState({ name: place?.name ?? "", parentId: initialParent ?? "", level: (place?.level ?? nextPlaceLevel(places.find((row) => row.id === initialParent) ?? null) ?? "SITE") as PlaceLevel, notes: place?.notes ?? "",
+    latitude: place?.latitude ?? null, longitude: place?.longitude ?? null });
   const [busy, setBusy] = useState(false);
+  // Kartnål (0.92.0): the place's own pin; without one the place above's is shown grey.
+  const { positionFieldset } = usePositionFieldset({ value: draft, onChange: (next) => setDraft((current) => ({ ...current, ...next })), above: aboveOf(places, draft.parentId || null),
+    name: draft.name, testIdPrefix: "maintenance-place", pinLabel: draft.name || "Platsen", mapLabel: "Karta för platsens position" });
   const chosenParent = places.find((row) => row.id === draft.parentId) ?? null;
   const levels = placeLevelsUnder(chosenParent);
   const below = place ? placeSubtree(places, place.id) : [];
@@ -345,7 +352,7 @@ function PlaceDialog({ place, parent, places, onClose, onSaved }: { place: Place
   const save = async () => {
     setBusy(true);
     try {
-      const body = { parentId: draft.parentId || null, name: draft.name, level: draft.level, notes: draft.notes };
+      const body = { parentId: draft.parentId || null, name: draft.name, level: draft.level, notes: draft.notes, latitude: draft.latitude, longitude: draft.longitude };
       const made = place ? await maintenancePost<{ id: string }>({ action: "update_place", id: place.id, version: place.version, place: body }) : await maintenancePost<{ id: string }>({ action: "create_place", place: body });
       announce("Platsen är sparad.");
       await onSaved(made.id);
@@ -360,6 +367,7 @@ function PlaceDialog({ place, parent, places, onClose, onSaved }: { place: Place
         <Field id="mpl-level" label="Nivå" value={draft.level} options={[...levels]} optionLabels={PLACE_LEVEL_LABELS} onChange={(level) => setDraft({ ...draft, level: level as PlaceLevel })} />
       </div>
       <Field id="mpl-notes" label="Anteckningar" multiline value={draft.notes} onChange={(notes) => setDraft({ ...draft, notes })} />
+      {positionFieldset}
       {problem ? <p role="alert" className="text-sm text-destructive">{problem}</p> : null}
       <DialogActions cancel={{ onClick: onClose }} primary={{ label: place ? "Spara" : "Skapa", type: "submit", busy, busyLabel: "Sparar…", disabledReason: !draft.name.trim() ? "Skriv ett namn först." : problem || null, testId: "maintenance-place-save" }} />
     </form>
@@ -373,8 +381,21 @@ function PartDialog({ mode, detail, place, owners, places, onClose, onSaved }: {
     name: current?.name ?? "", partType: current?.partType ?? "", marking: current?.marking ?? "", status: (current?.status ?? "IN_SERVICE") as PartStatus,
     notes: current?.notes ?? "", runHours: current?.runHours === null || current?.runHours === undefined ? "" : String(current.runHours), customerId: current?.customerId ?? "", isActive: current?.isActive ?? true,
     placeId: current?.placeId ?? place?.id ?? "",
+    latitude: current?.latitude ?? null, longitude: current?.longitude ?? null,
   });
   const [busy, setBusy] = useState(false);
+  // Skapa från mall (2026-11-28, lib/maintenance/plant-templates.ts): only a new machine; the template fills Typ and the notes, the parts follow on save.
+  const [templateKey, setTemplateKey] = useState("");
+  const template = mode === "machine" ? plantTemplate(templateKey) : null;
+  const chooseTemplate = (key: string) => {
+    const next = plantTemplate(key);
+    const previous = plantTemplate(templateKey);
+    setTemplateKey(key);
+    setDraft((now) => ({ ...now,
+      // What the earlier template wrote is replaced; what the person wrote stays.
+      partType: !now.partType || now.partType === previous?.name ? next?.name ?? "" : now.partType,
+      notes: !now.notes || (previous && now.notes === plantTemplateNotes(previous)) ? next ? plantTemplateNotes(next) : "" : now.notes }));
+  };
   const machine = mode === "machine" || (mode === "edit" && !current?.parentId);
   const parentId = mode === "child" ? detail?.part.id ?? null : current?.parentId ?? null;
   const level = mode === "machine" ? "Maskin" : mode === "child" ? childLevelName(detail?.part.depth ?? 0) : partLevelName(current?.depth ?? 0);
@@ -385,25 +406,32 @@ function PartDialog({ mode, detail, place, owners, places, onClose, onSaved }: {
     setBusy(true);
     try {
       const hoursEdited = draft.runHours.trim() !== (current?.runHours === null || current?.runHours === undefined ? "" : String(current.runHours));
-      const body = { parentId, placeId: machine ? draft.placeId || null : null, customerId: machine && draft.customerId ? draft.customerId : null, name: draft.name, partType: draft.partType, marking: draft.marking, status: draft.status, notes: draft.notes, ...(hoursEdited ? { runHours } : {}), isActive: draft.isActive };
+      const body = { parentId, placeId: machine ? draft.placeId || null : null, customerId: machine && draft.customerId ? draft.customerId : null, name: draft.name, partType: draft.partType, marking: draft.marking, status: draft.status, notes: draft.notes, ...(hoursEdited ? { runHours } : {}), isActive: draft.isActive,
+        // Kartnål (0.92.0): only a machine; null = Samma som platsen.
+        ...(machine ? { latitude: draft.latitude, longitude: draft.longitude } : {}) };
       if (current) { await maintenancePost({ action: "update_part", id: current.id, version: current.version, part: body }); await onSaved(current.id); announce(`${level}en är sparad.`); }
+      else if (template) { const made = await maintenancePost<{ id: string }>({ action: "create_from_template", template: template.key, part: body }); await onSaved(made.id); announce(`${level}en är skapad med ${template.parts.length} delar.`); }
       else { const made = await maintenancePost<{ id: string }>({ action: "create_part", part: body }); await onSaved(made.id); announce(`${level}en är skapad.`); }
     } catch (cause) { announce((cause as Error).message, true); } finally { setBusy(false); }
   };
   return <Modal open onOpenChange={(next) => { if (!next) onClose(); }} title={title} size="form">
     <form className="grid gap-4" onSubmit={(event) => { event.preventDefault(); void save(); }} data-testid="maintenance-part-form">
+      {mode === "machine" ? <Field id="mp-template" label="Mall" value={templateKey} options={["", ...PLANT_TEMPLATES.map((item) => item.key)]}
+        optionLabels={Object.fromEntries([["", "Ingen mall"], ...PLANT_TEMPLATES.map((item) => [item.key, item.name])])} onChange={chooseTemplate}
+        help={template ? `${template.description} Delarna ${template.parts.join(", ")} läggs under maskinen. Gränsvärden och intervall anger ni själva.` : "Välj en anläggning för att få förslag på delar och rondpunkter."} /> : null}
       <Field id="mp-name" label="Namn" required value={draft.name} placeholder={machine ? "Till exempel Press 4" : "Till exempel Hydraulpump"} onChange={(name) => setDraft({ ...draft, name })} />
       {machine ? <Field id="mp-place" label="Plats" value={draft.placeId} options={["", ...places.map((row) => row.id)]} optionLabels={Object.fromEntries([["", "Utan plats"], ...places.map((row) => [row.id, placePath(places, row.id).join(" › ")])])} onChange={(placeId) => setDraft({ ...draft, placeId })} /> : null}
       {/* A company without a customer register never sees the owner: its machines are its own. */}
       {machine && (owners.length || draft.customerId) ? <Field id="mp-owner" label="Ägare" value={draft.customerId} options={["", ...owners.map((owner) => owner.id)]} optionLabels={Object.fromEntries([["", "Eget"], ...owners.map((owner) => [owner.id, owner.name])])}
         onChange={(customerId) => setDraft({ ...draft, customerId })} help="Kunden ser inte maskinen." /> : null}
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field id="mp-type" label="Typ" value={draft.partType} placeholder="Pump, Motor, Fläkt …" suggestions={["Press", "Pump", "Motor", "Fläkt", "Kompressor", "Transportband", "Växellåda"]} onChange={(partType) => setDraft({ ...draft, partType })} />
+        <Field id="mp-type" label="Typ" value={draft.partType} placeholder="Pump, Motor, Fläkt …" suggestions={["Press", "Pump", "Motor", "Fläkt", "Kompressor", "Transportband", "Växellåda", "Ventil", "Värmeväxlare", "Transformator", "Givare"]} onChange={(partType) => setDraft({ ...draft, partType })} />
         <Field id="mp-marking" label="Märkning" value={draft.marking} placeholder="Till exempel P4-HP1" onChange={(marking) => setDraft({ ...draft, marking })} />
         <Field id="mp-status" label="Status" value={draft.status} options={[...PART_STATUSES]} optionLabels={PART_STATUS_LABELS} onChange={(status) => setDraft({ ...draft, status: status as PartStatus })} />
         <Field id="mp-hours" label="Drifttimmar" value={draft.runHours} type="text" placeholder="Valfritt" onChange={(runHours) => setDraft({ ...draft, runHours })} help={detail?.part.runHoursFeed && current ? `Följer ${detail.part.runHoursFeed.signalName}. Det du skriver gäller från nu.` : undefined} />
       </div>
       <Field id="mp-notes" label="Anteckningar" multiline value={draft.notes} onChange={(notes) => setDraft({ ...draft, notes })} />
+      {machine ? <MachinePositionFields value={draft} onChange={(next) => setDraft((state) => ({ ...state, ...next }))} places={places} placeId={draft.placeId || null} name={draft.name} /> : null}
       {current ? <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!draft.isActive} onChange={(event) => setDraft({ ...draft, isActive: !event.target.checked })} />Pausad</label> : null}
       <DialogActions cancel={{ onClick: onClose }} primary={{ label: current ? "Spara" : "Skapa", type: "submit", busy, busyLabel: "Sparar…", disabledReason: draft.name.trim() ? null : "Skriv ett namn först.", testId: "maintenance-part-save" }} />
     </form>
@@ -443,7 +471,7 @@ function MovePartDialog({ detail, parts, places, onClose, onSaved }: { detail: P
 }
 
 /** The place's card (Alla platser and Utan plats too): how many machines, what is wrong under it, and the cost summed upward. */
-function PlacePane({ choice, place, sum, name, path, native, empty }: { choice: string; place: PlaceListItem | null; sum?: PlaceRollup; name: string; path: string[]; native: boolean; empty: boolean }) {
+function PlacePane({ choice, place, sum, name, path, native, empty, map }: { choice: string; place: PlaceListItem | null; sum?: PlaceRollup; name: string; path: string[]; native: boolean; empty: boolean; map: ReactNode }) {
   const [cost, setCost] = useState<Cost | null>(null);
   const [costError, setCostError] = useState("");
   const load = useCallback(async () => {
@@ -465,6 +493,7 @@ function PlacePane({ choice, place, sum, name, path, native, empty }: { choice: 
       <FigureBox label="Kostnad" value={cost ? (cost.pricesVisible ? kronor(cost.totals.total) : hoursText(cost.totals.hours)) : "…"} hint={cost ? plural(cost.totals.orders, "arbetsorder", "arbetsordrar") : undefined} testId="maintenance-place-cost" />
     </dl>
     {place?.notes ? <p className="whitespace-pre-wrap text-sm">{place.notes}</p> : null}
+    {map}
     {choice === PLACE_NONE ? <p className="text-sm text-muted-foreground" data-testid="maintenance-none-help">Maskiner som inte står på någon plats. Välj en och flytta den med Flytta, eller ta bort den.</p> : null}
     <PlanFollowUpCard key={choice} scope="place" id={choice} />
     <CostBody cost={cost} error={costError} scopeText="Allt på platsen och under den." />
@@ -613,6 +642,7 @@ function Overview({ detail, onEdit, onMove, onChanged }: { detail: PartDetail; o
       }}>Använd värdet</Button> : null}
     </div> : null}
     {part.notes ? <p className="whitespace-pre-wrap text-sm">{part.notes}</p> : null}
+    <MachinePositionCard position={part.position ?? null} name={part.name} isPart={Boolean(part.parentId)} />
     {detail.canEdit ? <div className="flex flex-wrap gap-2">
       <Button type="button" variant="outline" size="sm" onClick={onEdit} data-testid="maintenance-part-edit"><Pencil />Redigera</Button>
       <Button type="button" variant="outline" size="sm" onClick={onMove} data-testid="maintenance-part-move"><Move />Flytta</Button>

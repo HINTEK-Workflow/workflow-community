@@ -120,6 +120,9 @@ export type Overview = {
     riskException?: boolean;
     /** The company's own details (Företagsuppgifter); the organisation number is shown in Ställ in Workflow. */
     profile?: { organizationNumber?: string; workAreas?: unknown } | null;
+    /** Granska behörigheter (K2.4): the quarterly reminder (off by default) and the last sign-off. */
+    accessReviewReminder?: boolean;
+    accessReviewedAt?: string | null;
   } | null;
   preferences: Partial<Preferences>;
   organization: {
@@ -130,6 +133,7 @@ export type Overview = {
     storageMode: "LOCAL" | "HINTEK_CLOUD";
     /** Företagets moduler (0.39.0): the optional modules the company has turned off; missing = all on. */
     disabledModules?: string[];
+    createdAt?: string;
   };
   admin: boolean;
   canDeleteControls: boolean;

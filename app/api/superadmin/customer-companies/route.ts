@@ -19,6 +19,7 @@ import { grantCompensationCredits } from "@/lib/kfid/purchased-credits";
 import { ensureCreditWallet } from "@/lib/credits/ensure-wallet";
 import { DAILY_CAP_MAX, DAILY_CAP_MIN } from "@/lib/machine/alarm-scope";
 import { isErasedCompany } from "@/lib/kfid/paused-company";
+import { capChangeText, machineCapInput, placeCapInput } from "@/lib/maintenance/caps";
 
 // The details a company's documents need (2026-11-04), the same fields as Skapa konto, Kom igång and Företagsuppgifter
 // (features/kfid/company-details-form.tsx). Each is checked again by the profile's own schema when it is merged.
@@ -101,6 +102,8 @@ export async function GET(request: Request) {
         createdAt: true,
         updatedAt: true,
         machineDailyOrderCap: true,
+        maintenanceMachineCap: true,
+        maintenancePlaceCap: true,
         members: {
           where: { isActive: true },
           select: {
@@ -190,6 +193,8 @@ export async function GET(request: Request) {
           creditExpiryEnabled: item.wallet?.expiryEnabled ?? true,
           creditExpiryOverrideAt: item.wallet?.expiryOverrideAt ?? null,
           machineDailyOrderCap: item.machineDailyOrderCap,
+          // Justerbart tak i Underhåll (0.92.0): null = förvalet (lib/maintenance/caps.ts). Only the numbers, never the machines.
+          maintenanceMachineCap: item.maintenanceMachineCap, maintenancePlaceCap: item.maintenancePlaceCap,
           registration: registrationOf.get(item.id) ?? null,
           acceptances: acceptancesOf(item.id),
           payment: payments[item.id] ?? null,
@@ -220,6 +225,9 @@ const ownerInvitationSchema = z.discriminatedUnion("action", [
     organizationNumber: z.string().trim().max(30).optional(),
     // Maskinlarm (integrationsmotorn, 2026-10-24): automatic work orders per company and rolling day; 20 by default.
     machineDailyOrderCap: z.number().int().min(DAILY_CAP_MIN, `Minst ${DAILY_CAP_MIN}.`).max(DAILY_CAP_MAX, `Högst ${DAILY_CAP_MAX}.`).optional(),
+    // Justerbart tak i Underhåll (0.92.0): null = förvalet; left out = unchanged.
+    maintenanceMachineCap: machineCapInput.optional(),
+    maintenancePlaceCap: placeCapInput.optional(),
   }),
   z.object({
     action: z.literal("prepare_owner"),
@@ -359,8 +367,13 @@ export async function PATCH(request: Request) {
         const changed = (Object.keys(changes) as CompanyDetailKey[]).filter((key) => changes[key] !== undefined && changes[key] !== before[key]).map((key) => DETAIL_LABEL[key] ?? key);
         await tx.organization.update({
           where: { id: current.id },
-          data: { name: input.name, isActive: input.isActive, storageMode: input.storageMode, ...(input.machineDailyOrderCap !== undefined ? { machineDailyOrderCap: input.machineDailyOrderCap } : {}) },
+          data: { name: input.name, isActive: input.isActive, storageMode: input.storageMode, ...(input.machineDailyOrderCap !== undefined ? { machineDailyOrderCap: input.machineDailyOrderCap } : {}),
+            ...(input.maintenanceMachineCap !== undefined ? { maintenanceMachineCap: input.maintenanceMachineCap } : {}), ...(input.maintenancePlaceCap !== undefined ? { maintenancePlaceCap: input.maintenancePlaceCap } : {}) },
         });
+        const capChanges = [
+          capChangeText("machine", current.maintenanceMachineCap, input.maintenanceMachineCap),
+          capChangeText("place", current.maintenancePlaceCap, input.maintenancePlaceCap),
+        ].filter(Boolean).join(" ");
         await tx.workspaceSettings.upsert({
           where: { organizationId: current.id },
           create: { organizationId: current.id, companyName: input.name, contactEmail: input.contactEmail, profile },
@@ -370,7 +383,7 @@ export async function PATCH(request: Request) {
           data: { actorId: ctx.user.id, organizationId: current.id,
             action: "customer_company_settings_update", detail: (input.machineDailyOrderCap !== undefined && input.machineDailyOrderCap !== current.machineDailyOrderCap
               ? `Ändrade kundföretagets metadata, status eller lagring. Maskinlarm: högst ${input.machineDailyOrderCap} automatiska arbetsordrar per dygn (förut ${current.machineDailyOrderCap}).`
-              : "Ändrade kundföretagets metadata, status eller lagring.") + (changed.length ? ` Företagsuppgifter: ${changed.join(", ")}.` : "") },
+              : "Ändrade kundföretagets metadata, status eller lagring.") + (changed.length ? ` Företagsuppgifter: ${changed.join(", ")}.` : "") + (capChanges ? ` ${capChanges}` : "") },
         });
       });
       return NextResponse.json({ ok: true });

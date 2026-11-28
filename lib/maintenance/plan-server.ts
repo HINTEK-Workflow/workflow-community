@@ -13,6 +13,8 @@ import {
 } from "./plan-model";
 import { formScheduleRuleSchema, scheduleRuleText } from "@/lib/workflow/form-schedule";
 import { audit, createItemAs, requireMaintenance, type Db } from "./server";
+import { planSnapshot } from "@/lib/traceability/record-changes";
+import { recordChange } from "@/lib/traceability/record-changes-server";
 
 /**
  * Återkommande underhåll on the server (2026-10-30; the rules: ./plan-model.ts). A plan belongs to one machine part
@@ -435,6 +437,7 @@ export async function createPlan(caller: MaintenanceCaller, raw: unknown) {
       select: { id: true, version: true },
     });
     await audit(tx, caller, "maintenance_plan_created", `Underhåll: ny plan ${input.name} på ${part.name}${input.roundScheduleId ? " (görs i driftronden)" : ""}.`);
+    await recordChange(tx, { organizationId: caller.organizationId, entityType: "MAINTENANCE_PLAN", entityId: row.id, actorId: caller.userId, action: "CREATED" });
     return row;
   });
   const filled = await fillPlan(caller.organizationId, plan.id, new Date(), caller.userId);
@@ -463,6 +466,10 @@ export async function updatePlan(caller: MaintenanceCaller, id: string, version:
         estimatedMinutes: input.estimatedMinutes, isActive: input.isActive, checklist: input.checklist, roundScheduleId: input.roundScheduleId, intervalMode: input.intervalMode, updatedById: caller.userId, version: { increment: 1 } },
     });
     if (!changed.count) throw new ApiError(409, STALE);
+    // Ändringshistorik (K3.2, 2026-11-27): the plan's fields before and after, in the save's transaction.
+    await recordChange(tx, { organizationId: caller.organizationId, entityType: "MAINTENANCE_PLAN", entityId: id, actorId: caller.userId, action: "UPDATED", before: planSnapshot(current),
+      after: planSnapshot({ ...current, name: input.name, description: input.description, unit: input.unit, every: input.every, startDate: input.startDate, nextRunHours, assignedToUserId: input.assignedToUserId, assignedToName,
+        estimatedMinutes: input.estimatedMinutes, isActive: input.isActive, checklist: input.checklist, roundScheduleId: input.roundScheduleId, intervalMode: input.intervalMode }) });
     const today = swedishDayKey(new Date());
     // The vilande work orders take the new name, description, responsible person and estimated time.
     const dormantWhere = { organizationId: caller.organizationId, maintenancePlanId: id, status: "PLANNED", maintenanceActivatedAt: null, maintenanceDue: { gt: today } };
@@ -500,6 +507,7 @@ export async function deletePlan(caller: MaintenanceCaller, id: string) {
     if (removed !== rows.length) throw new ApiError(409, "Planen har ändrats. Läs in den igen.");
     await tx.maintenancePlan.deleteMany({ where: { id, organizationId: caller.organizationId } });
     await audit(tx, caller, "maintenance_plan_removed", `Underhåll: tog bort planen ${plan.name}.`);
+    await recordChange(tx, { organizationId: caller.organizationId, entityType: "MAINTENANCE_PLAN", entityId: id, actorId: caller.userId, action: "DELETED" });
     return { ok: true, removed };
   });
 }

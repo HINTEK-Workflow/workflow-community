@@ -21,7 +21,7 @@ const OWNER_VIEWS = new Set(["product_overview", "customer_companies", "pricing_
 export const PAGE_LABELS: Record<string, string> = {
   demo: "Demo", stats: "Översikt", setup: "Kom igång", notifications: "Notiser", new_task: "Ny uppgift", new: "Ny kontroll", new_project: "Nytt projekt", projects: "Projekt",
   planning: "Planering – Kalender", project_planning: "Planering – Tidplan", capacity: "Planering – Kapacitet", rounds: "Driftronder", project: "Projekt (öppnat)", tasks: "Uppgifter", work_orders: "Arbetsordrar", time: "Tid",
-  facilities: "Platser", customers: "Kunder", self_inspection: "Egenkontroll", deviations: "Avvikelser", place: "Plats", place_labels: "Platsetiketter", credits: "Abonnemang",
+  facilities: "Platser", customers: "Kunder", self_inspection: "Egenkontroll", deviations: "Avvikelser", place: "Plats", place_labels: "Platsetiketter", round_paper: "Rondprotokoll på papper", credits: "Abonnemang",
   help: "Hjälp", settings: "Mina inställningar", administration: "Användare", operator_accounts: "Operatörskonton", company: "Företag", advanced: "Kopplingar", quote_settings: "Priser och offert", view_as: "Visa som", integrations: "API och MCP", history_retention: "Historik och lagring",
   company_values: "Värden och referenser", company_settings: "Rapporter och logotyp", company_features: "Arbetssätt", company_website: "Min webbsida", company_posts: "Inlägg", company_videos: "Filmer", forms: "Skapa formulär", import: "Import", ai_settings: "Workflow AI", agents: "Agenter",
   quotes: "Offerter", quote: "Offert (öppnad)", purchases: "Inköp", purchase: "Inköp (öppnat)", articles: "Artiklar", invoice_bases: "Fakturaunderlag",

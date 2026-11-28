@@ -55,7 +55,7 @@ test("who handles an entry: admins, the responsible person, and Teamet for an in
 test("the database filter says the same as the rule", () => {
   assert.deepEqual(deviationReadWhere(admin), {});
   assert.deepEqual(deviationReadWhere(worker), { OR: [
-    { type: { in: ["SELF_INSPECTION", "RISK_OBSERVATION"] }, OR: [{ reportedById: "worker" }, { responsibleUserId: "worker" }] },
+    { type: { notIn: ["NEAR_MISS", "ACCIDENT"] }, OR: [{ reportedById: "worker" }, { responsibleUserId: "worker" }] },
     { type: { in: ["NEAR_MISS", "ACCIDENT"] }, reportedById: "worker" },
   ] });
   assert.deepEqual(deviationReadWhere(teamReader).OR?.[1], { type: { in: ["NEAR_MISS", "ACCIDENT"] } });
@@ -137,13 +137,13 @@ test("a document without a programme keeps the log: report, investigate, mark do
 
 test("an admin's own save of a near miss as done is refused without the investigation", async () => {
   await assert.rejects(apply(emptySelfInspectionDocument(), report("Olycka", "ACCIDENT", { status: "DONE", action: "X" }), actor("boss", { admin: true })), { status: 409 });
-  const doc = await apply(emptySelfInspectionDocument(), report("Brist", "SELF_INSPECTION", { status: "DONE", action: "X" }), actor("boss", { admin: true }));
-  assert.equal(doc.deviations[0].status, "DONE", "Egenkontroll closes as before");
+  const doc = await apply(emptySelfInspectionDocument(), report("Brist", "OTHER", { status: "DONE", action: "X" }), actor("boss", { admin: true }));
+  assert.equal(doc.deviations[0].status, "DONE", "the other types close as before");
 });
 
 test("the view shows each reader what the rule allows, with what they may handle", async () => {
   let doc = emptySelfInspectionDocument();
-  doc = await apply(doc, report("Brist", "SELF_INSPECTION"), actor("worker"));
+  doc = await apply(doc, report("Brist", "OPERATING_FAULT"), actor("worker"));
   doc = await apply(doc, report("Tillbud", "NEAR_MISS"), actor("worker"));
   doc = await apply(doc, report("Annans olycka", "ACCIDENT"), actor("other"));
   const viewOf = (id: string, extra: { admin?: boolean; team?: boolean } = {}) => selfInspectionView(doc, { me: { id, name: id }, admin: Boolean(extra.admin), team: extra.team, company: "AB", people });
@@ -209,14 +209,14 @@ test("severity: Låg · Normal · Hög · Akut, Normal when missing (an older fi
 
 test("severity on a document: Normal when reported without one, kept when saved without one, an older file opens unchanged", async () => {
   const { selfInspectionDocumentSchema } = await import("../lib/self-inspection/model");
-  let doc = await apply(emptySelfInspectionDocument(), report("Saknad märkning", "SELF_INSPECTION"), actor("boss", { admin: true }));
+  let doc = await apply(emptySelfInspectionDocument(), report("Saknad märkning", "QUALITY"), actor("boss", { admin: true }));
   assert.equal(doc.deviations[0]!.severity, "NORMAL", "Normal from the start");
   doc = await apply(doc, report("Stege gled", "NEAR_MISS", { severity: "HIGH" }), actor("worker"));
   assert.equal(doc.deviations[1]!.severity, "HIGH", "a member chooses it too");
   const first = doc.deviations[0]!;
-  doc = await apply(doc, { action: "save_deviation", deviation: { id: first.id, title: first.title, type: "SELF_INSPECTION", severity: "ACUTE" } }, actor("boss", { admin: true }));
+  doc = await apply(doc, { action: "save_deviation", deviation: { id: first.id, title: first.title, type: "QUALITY", severity: "ACUTE" } }, actor("boss", { admin: true }));
   assert.equal(doc.deviations[0]!.severity, "ACUTE");
-  doc = await apply(doc, { action: "save_deviation", deviation: { id: first.id, title: "Ny rubrik", type: "SELF_INSPECTION" } }, actor("boss", { admin: true }));
+  doc = await apply(doc, { action: "save_deviation", deviation: { id: first.id, title: "Ny rubrik", type: "QUALITY" } }, actor("boss", { admin: true }));
   assert.equal(doc.deviations[0]!.severity, "ACUTE", "an older client that sends none keeps it");
   doc = await apply(doc, { action: "save_deviation", deviation: { kind: "IMPROVEMENT", title: "Bättre rutin", severity: "ACUTE" } }, actor("boss", { admin: true }));
   assert.equal(doc.deviations[2]!.severity, "NORMAL", "a Förbättring has none");

@@ -23,8 +23,9 @@ nätverk eller på en **egen server på internet**.
 | Vad | Krav | Varför |
 | --- | --- | --- |
 | Dator eller server | Linux rekommenderas (Ubuntu 22.04/24.04). Windows och macOS fungerar med Docker Desktop. Minst 2 processorkärnor, 4 GB minne (8 GB under bygget) och 20 GB disk. | Workflow och databasen körs i två containrar. |
-| Docker | Docker Engine med Docker Compose, eller Docker Desktop. | Installationen bygger och startar allt med Docker. |
-| Git | Valfri aktuell version. | Installationsskriptet hämtar koden. |
+| Docker | Docker Engine med Docker Compose, eller Docker Desktop. Docker Engine på Linux är öppen källkod och fri för alla. Docker Desktop (Windows och macOS) är gratis för privatpersoner, utbildning och mindre företag; större organisationer behöver en betald licens från Docker (läs Dockers egna villkor). | Installationen bygger och startar allt med Docker. |
+| Git | Valfri aktuell version. Öppen källkod. | Installationsskriptet hämtar koden. |
+| age eller GnuPG | age är förval: valfri aktuell version (till exempel `apt install age` eller `winget install FiloSottile.age`). Väljer ni GnuPG i stället: `apt install gnupg`, `brew install gnupg` eller `winget install GnuPG.Gpg4win` (avsnitt 6, *Kryptering av säkerhetskopiorna*). Båda är öppen källkod. | Säkerhetskopiorna krypteras alltid, och installationen stoppar om programmet saknas. |
 | E-postserver (SMTP) | En adress som får skicka mejl, till exempel `noreply@ert-foretag.se`, med server, port, användarnamn och lösenord från er e-postleverantör. | Utan e-post fungerar inte *Glömt lösenord*, verifiering av e-post, inbjudningar, påminnelser, driftlarm eller utskick. |
 | Backup | En plats utanför servern för kopior av databasen och filerna. | Ni ansvarar själva för att data kan återställas. |
 
@@ -303,7 +304,7 @@ Inom fem minuter efter det ska `tail /var/log/workflow/monitor.log` visa `OK`.
 
   Övningen återställer till en tillfällig databas och mapp under `BACKUP_ROOT/work` (en annan mapp: `DRILL_WORK_ROOT`)
   och tar bort dem när den är klar. Rapporten ligger i övningens mapp under `BACKUP_ROOT`.
-- **Backuperna krypteras alltid** med `age`. Programmet behövs på servern (till exempel `apt install age`,
+- **Backuperna krypteras alltid** med `age` (eller med GnuPG, se *Kryptering av säkerhetskopiorna* nedan). Programmet behövs på servern (till exempel `apt install age`,
   `brew install age` eller `winget install FiloSottile.age`), och installationen stannar med ett besked om det saknas.
   - Bäst är att skapa nyckeln på en annan dator, inte på servern: `age-keygen -o workflow-backup.key`. Raden
     `Public key: age1…` är den publika delen. Lägg den i `.env` som `BACKUP_AGE_RECIPIENT=age1…` (eller ange den första
@@ -331,6 +332,58 @@ Inom fem minuter efter det ska `tail /var/log/workflow/monitor.log` visa `OK`.
 - Hemligheterna i `.env` ingår inte i kopian. Spara `.env` separat och säkert, annars går de förseglade nycklarna inte
   att öppna efter en återställning.
 
+### Kryptering av säkerhetskopiorna
+
+Ni kan välja mellan två program. Båda krypterar till en publik nyckel, så servern behöver aldrig den privata nyckeln.
+
+| | age (förval) | GnuPG (val) |
+| --- | --- | --- |
+| Metod | age, med X25519 för nyckeln och ChaCha20-Poly1305 för datan | OpenPGP (RFC 9580), med AES-256 för datan och en RSA-nyckel på 4096 bitar för mottagaren |
+| Licens | Öppen källkod (BSD) | Öppen källkod (GPLv3) |
+| Passar | De flesta installationer | Organisationer vars regler kräver algoritmer från BSI:s eller NIST:s listor (till exempel BSI TR-02102) |
+| Filerna | `database.dump.age`, `storage.tar.gz.age` | `database.dump.gpg`, `storage.tar.gz.gpg` |
+| Privat nyckel som skapas | `backup-key/workflow-backup.agekey` | `backup-key/workflow-backup.gpgkey` |
+
+**Välj GnuPG vid installationen.** Installera GnuPG först (Debian och Ubuntu: `sudo apt install gnupg`, macOS:
+`brew install gnupg`, Windows: `winget install GnuPG.Gpg4win`). Kör sedan installationsraden med valet:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/HINTEK-Workflow/workflow-community/main/install.sh | bash -s -- --encryption gpg
+```
+
+```powershell
+$env:WORKFLOW_BACKUP_ENCRYPTION = "gpg"; irm https://raw.githubusercontent.com/HINTEK-Workflow/workflow-community/main/install.ps1 | iex
+```
+
+På Linux och macOS går det också att sätta `WORKFLOW_BACKUP_ENCRYPTION=gpg` före `bash`. Utan valet frågar installationen
+inget mer än vanligt, och age används.
+
+- Valet sparas i `.env` som `BACKUP_ENCRYPTION=gpg`. Installationen skapar då ett nyckelpar (RSA 4096 bitar, utan
+  lösenfras) i en egen, tillfällig GnuPG-mapp, sparar den publika nyckeln i `backup-key/workflow-backup.pub.asc` och den
+  privata i `backup-key/workflow-backup.gpgkey`, och tar sedan bort den tillfälliga mappen. `.env` får
+  `BACKUP_GPG_RECIPIENT_FILE=backup-key/workflow-backup.pub.asc`. Er egen nyckelring i GnuPG används inte.
+- Nyckeln har **ingen utgångstid**, så backuperna slutar aldrig fungera av sig själva när ett datum passerar. Byt nyckel
+  när er egen rutin säger det (se nedan).
+- Vill ni hellre skapa nyckeln på en annan dator, exportera den publika delen (`gpg --armor --export <fingeravtryck> >
+  workflow-backup.pub.asc`) och ange filen första gången med `WORKFLOW_BACKUP_GPG_RECIPIENT_FILE=<fil>` (PowerShell:
+  `$env:WORKFLOW_BACKUP_GPG_RECIPIENT_FILE`). Nyckeln måste vara RSA med minst 3072 bitar och kunna kryptera, och filen får
+  inte innehålla en privat nyckel.
+- `nightly-backup.sh` läser `BACKUP_ENCRYPTION` och `BACKUP_GPG_RECIPIENT_FILE` ur `.env` i mappen som cron-raden står i.
+  Den krypterar med `gpg --cipher-algo AES256 --compress-algo none --recipient-file <publik nyckel>`, i en egen tillfällig
+  GnuPG-mapp, och sparar bara `.gpg`-filerna.
+
+**Spara den privata nyckeln utanför servern**, oavsett program, helst på två ställen (en lösenordshanterare och ett
+USB-minne i ett kassaskåp), och ta sedan bort den från servern. Utan den går ingen backup att öppna.
+
+**Byta program eller nyckel.** Kör installationsraden igen med `--encryption gpg` eller `--encryption age`
+(PowerShell: `$env:WORKFLOW_BACKUP_ENCRYPTION`), eller ändra `BACKUP_ENCRYPTION` i `.env`. Nya backuper krypteras då med
+det nya valet. Äldre backuper ändras inte: spara den gamla privata nyckeln så länge de backuperna sparas. För en ny
+GnuPG-nyckel tar ni bort raden `BACKUP_GPG_RECIPIENT_FILE` i `.env` och flyttar den gamla `workflow-backup.pub.asc` (och
+den privata nyckeln, om den fortfarande ligger kvar) från `backup-key/` innan ni kör installationsraden igen.
+
+**Öva återställningen med GnuPG.** `scripts/ops/aterstallningsovning.sh` känner igen `.gpg`-filerna. Ange den privata
+nyckeln med `--key ~/workflow-backup.gpgkey`; den läses in i en tillfällig GnuPG-mapp som tas bort efteråt.
+
 ## 7. Uppdatera
 
 Kör installationsraden igen. Skriptet gör så här:
@@ -343,9 +396,14 @@ Kör installationsraden igen. Skriptet gör så här:
 4. Startar den nya versionen, som uppdaterar databasen.
 
 - Inställningar och data behålls. De fem senaste backuperna från uppdateringar sparas (`WORKFLOW_KEEP_BACKUPS` ändrar
-  antalet). De krypteras alltid till `BACKUP_AGE_RECIPIENT` i `.env` (avsnitt 6).
+  antalet). De krypteras alltid till `BACKUP_AGE_RECIPIENT` i `.env`, eller med GnuPG till `BACKUP_GPG_RECIPIENT_FILE`
+  när `BACKUP_ENCRYPTION=gpg` (avsnitt 6).
 - Uppdaterar ni för hand (`git fetch --tags` och `git checkout v1.2.3` följt av `docker compose up -d --build`), ta
   först en backup med `scripts/ops/nightly-backup.sh`.
+- Under **Hjälp → Om Workflow** ser ni vilken version ni har och hur gammal den är. Där kan administratören slå på
+  **Kontrollera nya versioner**. Då läser servern en gång om dygnet den publika listan över versioner på GitHub och
+  visar när en ny version finns. Det är av från början, och inget om installationen skickas.
+- Varje version kan uppgraderas direkt till den senaste, också från en version som är flera år gammal (se SECURITY.md).
 
 **Om uppdateringen stannar**
 
@@ -370,6 +428,10 @@ dir=backups/update-<tid>
 # Backupen är krypterad: packa upp först, på en dator som har nyckeln (kontrollera sedan med SHA256SUMS.plain)
 #   age -d -i workflow-backup.key -o "$dir/database.dump" "$dir/database.dump.age"
 #   age -d -i workflow-backup.key -o "$dir/storage.tar.gz" "$dir/storage.tar.gz.age"
+# Med GnuPG (.gpg-filer): läs in den privata nyckeln en gång och packa upp
+#   gpg --import workflow-backup.gpgkey
+#   gpg -o "$dir/database.dump" -d "$dir/database.dump.gpg"
+#   gpg -o "$dir/storage.tar.gz" -d "$dir/storage.tar.gz.gpg"
 docker compose stop app
 git fetch --depth 1 origin tag v1.2.2
 git checkout v1.2.2

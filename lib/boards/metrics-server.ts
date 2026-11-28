@@ -4,7 +4,7 @@ import { workStateMatches, workStateOf } from "@/lib/workflow/work-list";
 import { timeEntryInOrganization } from "@/lib/workflow/timer-server";
 import { expectedWeeklyWorkMinutes } from "@/lib/workflow/work-schedule";
 import { canReadPlannedActivity } from "@/lib/workflow/planned-activity-access";
-import { deviationReadWhere, DEVIATION_TYPES, deviationType } from "@/lib/self-inspection/incidents";
+import { deviationReadWhere, deviationTypeLabel } from "@/lib/self-inspection/incidents";
 import { addSwedishDays, swedishClock, swedishDayKey, swedishMonday, startOfSwedishDay } from "@/lib/swedish-time";
 import { isoWeekOf } from "./week";
 import { metricAccess, metricDefinition, metricPeriod, type MetricKey, type MetricViewer } from "./metrics";
@@ -92,7 +92,7 @@ const COUNT: Record<MetricKey, (caller: MetricCaller, now: Date, period: Period)
       where: { organizationId: caller.organizationId, AND: [deviationReadWhere({ admin: caller.admin, id: caller.userId, team: canTeam(caller) })] },
       orderBy: { createdAt: "desc" }, take: 20, select: { createdAt: true, title: true, type: true, status: true, serious: true },
     });
-    return { kind: "events", items: rows.map((row) => ({ at: row.createdAt.toISOString(), title: row.title || DEVIATION_TYPES[deviationType(row.type)], level: row.serious ? "error" : row.status === "DONE" ? "info" : "warning", detail: `${DEVIATION_TYPES[deviationType(row.type)]}${row.status === "DONE" ? " · Klar" : ""}` })) } satisfies EventsShape;
+    return { kind: "events", items: rows.map((row) => ({ at: row.createdAt.toISOString(), title: row.title || deviationTypeLabel(row.type), level: row.serious ? "error" : row.status === "DONE" ? "info" : "warning", detail: `${deviationTypeLabel(row.type)}${row.status === "DONE" ? " · Klar" : ""}` })) } satisfies EventsShape;
   },
   // Nyheter (2026-11-21): the company's latest published posts; the line under is the start of the text, never a name.
   async news_latest(caller) {

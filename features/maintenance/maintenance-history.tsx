@@ -6,6 +6,7 @@ import { ClipboardList, Route, TriangleAlert, Wrench, type LucideIcon } from "lu
 import { Badge } from "@/components/ui/badge";
 import { ListGroup, ListRow } from "@/components/native/list";
 import { RowsSkeleton } from "@/features/kfid/ui";
+import { ChangeHistorySection } from "@/features/traceability/change-history";
 import { indicatorBadge } from "@/features/workflow/indicator-tone";
 import { useNativeMode } from "@/features/workflow/use-detail-level";
 import { formatSwedish } from "@/lib/swedish-time";
@@ -49,9 +50,11 @@ export function PartHistoryTab({ partId }: { partId: string }) {
     try { setData(await maintenanceGet<PartHistory>(`part=history&id=${encodeURIComponent(partId)}`)); setError(""); } catch (cause) { setError((cause as Error).message); }
   }, [partId]);
   useLoadEffect(load);
+  // Ändringshistorik (K3.2, 2026-11-27): the machine's own changes – name, status, place, hours – under its story, read on request.
+  const changes = <div className="border-t pt-3"><ChangeHistorySection type="MACHINE" id={partId} /></div>;
   if (error) return <p role="alert" className="notice text-destructive">{error}</p>;
   if (!data) return <RowsSkeleton rows={4} label="Hämtar historiken…" />;
-  if (!data.entries.length) return <p className="text-sm text-muted-foreground" data-testid="maintenance-history-empty">Ingen historik än. Arbetsordrar, underhållsposter, avvikelser och brister från ronden på delen hamnar här.</p>;
+  if (!data.entries.length) return <div className="space-y-3"><p className="text-sm text-muted-foreground" data-testid="maintenance-history-empty">Ingen historik än. Arbetsordrar, underhållsposter, avvikelser och brister från ronden på delen hamnar här.</p>{native ? null : changes}</div>;
   const foot = <p className="text-xs text-muted-foreground">{data.truncated ? "De senaste 100 visas. " : ""}Delen och allt under den. Bilder och filer finns i arbetsordrarna och under Bilder.</p>;
   if (native) return <div className="space-y-3" data-testid="maintenance-history">
     <ListGroup>{data.entries.map((entry) => <ListRow key={`${entry.kind}:${entry.id}`} type="maintenance" icon={ICONS[entry.kind]} title={entry.title}
@@ -72,5 +75,6 @@ export function PartHistoryTab({ partId }: { partId: string }) {
       </li>;
     })}</ul>
     {foot}
+    {changes}
   </div>;
 }

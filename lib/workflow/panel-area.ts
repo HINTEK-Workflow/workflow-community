@@ -35,7 +35,7 @@ const VIEW_AREA: Record<string, PanelArea> = {
   news: "tools",
   // Dokument (0.87.0): a page under Mer, in Verktyg's colour.
   documents: "tools",
-  work_orders: "work-order", rounds: "round",
+  work_orders: "work-order", rounds: "round", round_paper: "round",
   // Avvikelser (2026-10-30): the deviation log, in the colour of risk (tillbud, olycksfall).
   deviations: "risk",
   // Underhåll (2026-10-30): the machine tree, the store and the items, an olive green of its own.

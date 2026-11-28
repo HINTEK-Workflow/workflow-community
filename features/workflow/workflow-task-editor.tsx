@@ -28,6 +28,7 @@ import { DisabledReason } from "@/components/ui/disabled-reason";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { CollapsibleSection, DialogActions, Modal, Panel, PanelAreaProvider, ShowMore } from "@/features/kfid/ui";
+import { ChangeHistoryPanel } from "@/features/traceability/change-history";
 import { panelAreaOfTask } from "@/lib/workflow/panel-area";
 import { DialogPage } from "@/features/kfid/dialog-page";
 import { DISCARD_QUESTION, useConfirm, type ConfirmOptions } from "@/features/kfid/confirm";
@@ -2059,6 +2060,9 @@ function WorkflowTaskEditorBody({ kind, taskId, projectId, customerId, customers
   // One line on the phone (2026-10-12); the page's fuller wording stays in visning 2–3.
   // Kommentarer (beslut 14, 2026-11-01): the work order's thread, in Cloud and on a saved order. Local has one user.
   const commentPanel = task.id && task.kind === "WORK_ORDER" && !local && !preview ? <CommentThread parentType="WORK_ORDER" parentId={task.id} disabled={Boolean(selectedProject?.archivedAt)} /> : null;
+  // Ändringshistorik (K3.2, 2026-11-27): who changed what, from what to what – Cloud only, read when the card is opened;
+  // visningsnivå 1 leaves it out on a phone or tablet like the other reference cards.
+  const changeHistoryPanel = task.id && !local && !preview ? <div data-detail-min="2" className="empty:hidden"><ChangeHistoryPanel type="TASK" id={task.id} /></div> : null;
   const attachmentsPanel = <Panel icon={Images} title="Bilder och dokument" description={native ? `Högst ${workflowTaskAttachmentLimit(task.kind)} filer, max 10 MB per fil.` : `Högst ${workflowTaskAttachmentLimit(task.kind)} bilder eller dokument. Max 10 MB per fil.${task.kind === "FORM" && !inlineTask ? " Bilder som tas i formuläret hamnar också här." : ""}`}
     actions={native ? undefined : <div className="flex flex-wrap gap-2"><Button type="button" variant="outline" disabled={busy || Boolean(preview)} disabledReason={attachReason} aria-describedby={attachReason ? "task-attach-reason" : undefined} onClick={() => attachmentInput.current?.click()}><Upload />Lägg till fil</Button><Button type="button" variant="outline" disabled={busy || Boolean(preview)} disabledReason={attachReason} aria-describedby={attachReason ? "task-attach-reason" : undefined} onClick={() => receiptInput.current?.click()} data-testid="task-attach-receipt"><Receipt />Lägg till kvitto</Button></div>}>
     {/* Nivå 1 på mobil (QA 2026-10-10): the phone's camera or a file, as rows with words over the list. */}
@@ -3071,6 +3075,7 @@ function WorkflowTaskEditorBody({ kind, taskId, projectId, customerId, customers
     </div> : null}
     {summaryFoot ? null : attachmentsPanel}
     {commentPanel}
+    {changeHistoryPanel}
     {assignmentPanel}
     {completePanel && kind === "WORK_ORDER" ? <EditorAside label="Färdigställ arbetsordern" testId="task-aside">{completePanel}</EditorAside> : completePanel}
     {reportPanel}

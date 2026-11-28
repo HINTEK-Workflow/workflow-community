@@ -5,7 +5,7 @@ import { ARCHIVE_KIND_LABELS, archiveReadableSubjects } from "@/lib/workflow/rep
 import { readableTaskSql } from "@/lib/workflow/task-access";
 import { tempPlaceLabel, tempPlaceOf } from "@/lib/workflow/temp-place";
 import { swedishDayKey } from "@/lib/swedish-time";
-import { INCIDENT_TYPES, OPEN_TYPES } from "@/lib/self-inspection/incidents";
+import { INCIDENT_TYPES } from "@/lib/self-inspection/incidents";
 import { customerCandidate, deviationCandidate, invoiceBasisCandidate, machineCandidate, personCandidate, placeCandidate, projectCandidate, quoteCandidate, reportCandidate, roundCandidate, taskCandidate } from "./candidates";
 import { typoAllowance } from "./normalize";
 import { trigramSql } from "./trgm-sql";
@@ -338,7 +338,8 @@ export function searchSpecs(ctx: SearchSqlAccess, parsed: ParsedSearch): Spec[] 
   // admins every entry; others the open types they reported or answer for, and the incidents they reported – all of them with Teamet.
   if (wanted("deviation")) {
     const mineOrResponsible = Prisma.sql`(d."reportedById" = ${me} OR d."responsibleUserId" = ${me})`;
-    const readable = ctx.admin ? TRUE : Prisma.sql`((d.type IN (${Prisma.join([...OPEN_TYPES])}) AND ${mineOrResponsible}) OR (d.type IN (${Prisma.join([...INCIDENT_TYPES])})${canViewTeam(ctx) ? Prisma.empty : Prisma.sql` AND d."reportedById" = ${me}`}))`;
+    // Every type but the incidents keeps the log's rule, the company's own types ("OWN:<namn>") too.
+    const readable = ctx.admin ? TRUE : Prisma.sql`((d.type NOT IN (${Prisma.join([...INCIDENT_TYPES])}) AND ${mineOrResponsible}) OR (d.type IN (${Prisma.join([...INCIDENT_TYPES])})${canViewTeam(ctx) ? Prisma.empty : Prisma.sql` AND d."reportedById" = ${me}`}))`;
     list.push({
       type: "deviation", paths: false,
       select: Prisma.sql`d.id, d.number, d.type, d.kind, d.title, d.status, d."dueDate", left(d.description, 500) AS description, left(d.action, 500) AS action, d."reportedById", d."responsibleUserId", d."updatedAt"`,

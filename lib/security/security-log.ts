@@ -3,7 +3,8 @@ import { prisma } from "@/lib/db";
 import { env } from "@/lib/env";
 import { keyRing } from "@/lib/security/key-ring";
 import { clientIp } from "@/lib/security/client-ip";
-import { coarseClient, ipHash, securityLogCutoff, SECURITY_EVENT_TYPES, type SecurityEventType } from "@/lib/security/security-log-core";
+import { coarseClient, ipHash, SECURITY_EVENT_TYPES, type SecurityEventType } from "@/lib/security/security-log-core";
+import { pruneSecurityEvents } from "@/lib/traceability/retention-server";
 import { SIGN_IN_METHOD_LABELS } from "@/lib/auth/session-rules";
 
 export { SECURITY_EVENT_TYPES, type SecurityEventType } from "@/lib/security/security-log-core";
@@ -104,20 +105,24 @@ export async function platformSecurityLog(cursor?: string | null) {
   return page(rows, new Map(people.map((user) => [user.id, user.name || user.email] as const)));
 }
 
-/** Nightly: events older than 12 months, and session rows ended or unused for longer than a session can live + 30 days. */
+/**
+ * Nightly: events older than their retention, and session rows ended or unused for longer than a session can live + 30 days.
+ * Spårbarhet (K3, 2026-11-27): the log is chained, so its rows leave through the chain's retention (lib/traceability/
+ * retention-server.ts): a person's events without a company after 12 months, a company's after the company's log retention.
+ */
 export async function pruneSecurityLog(now = new Date(), sessionMaxAgeHours = env.SESSION_MAX_AGE_HOURS, options: { dryRun?: boolean } = {}) {
   const sessionsBefore = new Date(now.getTime() - (sessionMaxAgeHours * 3600_000 + 30 * 86_400_000));
-  const eventsWhere = { createdAt: { lt: securityLogCutoff(now) } } satisfies Prisma.SecurityEventWhereInput;
+  const securityEvents = await pruneSecurityEvents(now, { dryRun: options.dryRun });
   const sessionsWhere = { OR: [{ revokedAt: { lt: new Date(now.getTime() - 30 * 86_400_000) } }, { lastSeenAt: { lt: sessionsBefore } }] } satisfies Prisma.UserSessionWhereInput;
   // Passkey ceremonies never finished (2026-10-11); they expire after five minutes.
   const challengesWhere = { expiresAt: { lt: now } } satisfies Prisma.WebAuthnChallengeWhereInput;
   // Operatörernas inloggningar (2026-10-30): a row lives at most 24 hours; it goes 30 days after it started (counted with the sessions).
   const operatorWhere = { createdAt: { lt: new Date(now.getTime() - 31 * 86_400_000) } } satisfies Prisma.OperatorSessionWhereInput;
   // Torrkörning (T5, 2026-10-24): the same rows counted, nothing deleted.
-  const [securityEvents, userSessions, passkeyChallenges, operatorSessions] = options.dryRun ? await Promise.all([
-    prisma.securityEvent.count({ where: eventsWhere }), prisma.userSession.count({ where: sessionsWhere }), prisma.webAuthnChallenge.count({ where: challengesWhere }), prisma.operatorSession.count({ where: operatorWhere }),
+  const [userSessions, passkeyChallenges, operatorSessions] = options.dryRun ? await Promise.all([
+    prisma.userSession.count({ where: sessionsWhere }), prisma.webAuthnChallenge.count({ where: challengesWhere }), prisma.operatorSession.count({ where: operatorWhere }),
   ]) : (await Promise.all([
-    prisma.securityEvent.deleteMany({ where: eventsWhere }), prisma.userSession.deleteMany({ where: sessionsWhere }), prisma.webAuthnChallenge.deleteMany({ where: challengesWhere }), prisma.operatorSession.deleteMany({ where: operatorWhere }),
+    prisma.userSession.deleteMany({ where: sessionsWhere }), prisma.webAuthnChallenge.deleteMany({ where: challengesWhere }), prisma.operatorSession.deleteMany({ where: operatorWhere }),
   ])).map((result) => result.count);
   return { securityEvents, sessions: userSessions + operatorSessions, passkeyChallenges };
 }

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { PartStatus } from "./model";
+import { positionFields, positionProblem } from "./location";
 
 /**
  * Underhåll i två träd (2026-10-31), utan databas. Träd 1 "Platser": Ort › Anläggning › Område › Avdelning, ett eget
@@ -25,11 +26,13 @@ export const placeInputSchema = z.object({
   name: z.string().trim().min(1, "Skriv ett namn.").max(120),
   level: z.enum(PLACE_LEVELS).default("SITE"),
   notes: z.string().trim().max(2000).default(""),
-});
+  /** Kartnål (0.92.0): null = none (the place above's is shown), left out = unchanged (a drag in the tree sends none). */
+  ...positionFields,
+}).superRefine((value, context) => { const problem = positionProblem(value); if (problem) context.addIssue({ code: "custom", path: ["latitude"], message: problem }); });
 export type PlaceInput = z.output<typeof placeInputSchema>;
 
 export type PlaceRow = { id: string; parentId: string | null; name: string; level: string };
-export type PlaceListItem = PlaceRow & { level: PlaceLevel; notes: string; version: number };
+export type PlaceListItem = PlaceRow & { level: PlaceLevel; notes: string; version: number; latitude: number | null; longitude: number | null };
 
 const levelIndex = (level: string) => PLACE_LEVELS.indexOf(placeLevelOf(level));
 

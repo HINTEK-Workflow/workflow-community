@@ -43,6 +43,8 @@ const command = z.discriminatedUnion("action", [
   z.object({ action: z.literal("set_alarm"), id: z.string().min(1).max(64), alarmMode: z.enum(ALARM_MODES), cooldownMinutes: z.number().int().min(1, "Minst 1 minut.").max(1440, "Högst 1 440 minuter.") }),
   // Integrationsmotorn E1, since Underhåll (2026-10-30) a part in the machine tree: the source's default machine part, or none.
   z.object({ action: z.literal("set_part"), id: z.string().min(1).max(64), partId: z.string().min(1).max(100).nullable() }),
+  // K2.5 (2026-11-28): the machine parts the source's key may write events for; an empty list is no limit.
+  z.object({ action: z.literal("set_allowed_parts"), id: z.string().min(1).max(64), partIds: z.array(z.string().min(1).max(100)).max(200) }),
   // Integrationsmotorn E2: a signal's name, unit, status (Upptäckt/Aktiv/Ignorerad), machine part and dead band.
   updateSignalCommand,
   // E4: format profiles, the source's profile and Fånga prov.
@@ -106,7 +108,7 @@ export async function GET(request: Request) {
     ]);
     const counts = new Map(recent.map((row) => [row.sourceId, row._count._all]));
     const signalCount = (sourceId: string, status?: string) => signalRows.filter((row) => row.sourceId === sourceId && (!status || row.status === status)).reduce((sum, row) => sum + row._count._all, 0);
-    const partById = await partLabels(ctx.organizationId, sources.map((source) => source.machinePartId));
+    const partById = await partLabels(ctx.organizationId, sources.flatMap((source) => [source.machinePartId, ...source.allowedMachinePartIds]));
     // Opening the page refreshes the analysis (at most once an hour per source); with Underhåll off the page only reads.
     if (organizationModuleOn(ctx.organization, "upkeep")) for (const source of sources) { try { await analyseSource(source); } catch { /* the page still opens */ } }
     const suggestions = await prisma.machineSuggestion.findMany({ where: { organizationId: ctx.organizationId, status: "open" }, orderBy: { createdAt: "desc" }, take: 50, select: { id: true, sourceId: true, scopeKey: true, kind: true, title: true, basis: true, explanation: true, createdAt: true } });
@@ -118,6 +120,8 @@ export async function GET(request: Request) {
       waiting: waiting.map((row) => ({ ...row, sourceName: names.get(row.sourceId) ?? "" })),
       sources: sources.map((source) => ({
         alarmMode: source.alarmMode, cooldownMinutes: source.cooldownMinutes, part: source.machinePartId ? partById.get(source.machinePartId) ?? null : null,
+        // K2.5: the machines the key may write for (empty = all).
+        allowedParts: source.allowedMachinePartIds.flatMap((id) => { const label = partById.get(id); return label ? [label] : []; }),
         id: source.id, name: source.name, displayHint: source.displayHint, status: statusOf(source), keyIssuedAt: source.keyIssuedAt, keyExpiresAt: source.keyExpiresAt,
         lastUsedAt: source.lastUsedAt, lastEventAt: source.lastEventAt, events24h: counts.get(source.id) ?? 0,
         profileId: source.profileId, captureUntil: source.captureUntil && source.captureUntil > new Date() ? source.captureUntil : null,
@@ -226,6 +230,18 @@ export async function POST(request: Request) {
       await prisma.$transaction([
         prisma.machineSource.update({ where: { id: source.id }, data: { machinePartId: part?.id ?? null } }),
         audit(part ? `Kopplade maskinkällan ”${source.name}” till maskindelen ”${part.name}”.` : `Tog bort maskindelen från maskinkällan ”${source.name}”.`),
+      ]);
+      return NextResponse.json({ ok: true }, { headers: noStore });
+    }
+    if (input.action === "set_allowed_parts") {
+      // Every chosen part must be one of the company's own; a limit is a key change, so it asks for a fresh confirmation.
+      await requireFreshAuth(ctx.user.id, ctx.auth, MACHINE_CONFIRM_WINDOW_SECONDS);
+      const wanted = [...new Set(input.partIds)];
+      const parts = wanted.length ? await prisma.machinePart.findMany({ where: { id: { in: wanted }, organizationId: ctx.organizationId }, select: { id: true, name: true } }) : [];
+      if (parts.length !== wanted.length) throw new ApiError(404, "En av maskindelarna finns inte i företaget.");
+      await prisma.$transaction([
+        prisma.machineSource.update({ where: { id: source.id }, data: { allowedMachinePartIds: parts.map((part) => part.id) } }),
+        audit(parts.length ? `Begränsade nyckeln för maskinkällan ”${source.name}” till ${parts.length === 1 ? "maskindelen" : "maskindelarna"} ${parts.map((part) => `”${part.name}”`).join(", ")}.` : `Tog bort begränsningen av nyckeln för maskinkällan ”${source.name}”. Den får skriva för alla maskiner igen.`),
       ]);
       return NextResponse.json({ ok: true }, { headers: noStore });
     }

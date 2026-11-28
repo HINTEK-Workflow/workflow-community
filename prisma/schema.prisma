@@ -321,11 +321,17 @@ model SecurityEvent {
   ipHash         String?
   detail         String   @default("")
   createdAt      DateTime @default(now())
+  /// Spårbarhet K3.1 (2026-11-27): the row's place in its chain (the company's, or "platform" without a company) and the
+  /// SHA-256 links, set by the database trigger on insert (migration 20261128210000_traceability). Null on rows from before.
+  chainSeq       Int?
+  prevHash       String?
+  rowHash        String?
 
   @@index([userId, createdAt])
   @@index([organizationId, createdAt])
   @@index([platform, createdAt])
   @@index([createdAt])
+  @@index([organizationId, chainSeq])
 }
 
 model AuthAccount {
@@ -362,9 +368,17 @@ model Organization {
   // History kept for a selectable time (2026-09-30); null keeps it until deleted by hand.
   /// Lagringstid för historik i månader; null = tills vidare. 24 som standard (2026-10-03).
   historyRetentionMonths         Int?                            @default(24)
+  /// Spårbarhet K3.3 (2026-11-27): how long the company's security, administration and change logs are kept, in years
+  /// (1, 2, 5 or 10; 2 as standard, CHECK). The nightly history:retention job removes older rows and keeps the chain whole
+  /// (lib/traceability/retention-server.ts).
+  logRetentionYears              Int                             @default(2)
   /// Maskinlarm (integrationsmotorn E1, 2026-10-24): högst så många automatiska arbetsordrar och förslag per rullande
   /// dygn. 20 som förval; bara systemadministratören ändrar det per företag (1–500, CHECK i migreringen).
   machineDailyOrderCap           Int                             @default(20)
+  /// Justerbart tak i Underhåll (0.92.0, lib/maintenance/caps.ts): högst så många maskiner (1–5000) och platser (1–2000) i
+  /// företaget. Null = dagens värde. Bara systemadministratören ändrar det per företag (CHECK i migreringen).
+  maintenanceMachineCap          Int?
+  maintenancePlaceCap            Int?
   /// Integrationsmotorn E6 (2026-10-24): när larmnotiser (e-post och push) får gå ut. "day" (förval) = kl. 06–20, nattens
   /// larm kommer i morgonlistan; "always" = dygnet runt, men bara till den som själv sagt ja till natten. Bara en
   /// administratör ändrar det, efter bekräftelse inom 15 minuter (CHECK i migreringen).
@@ -460,6 +474,8 @@ model Organization {
   purchaseLines                  PurchaseLine[]
   invoiceBasisSources            InvoiceBasisSource[]
   machineSources                 MachineSource[]
+  supportAccessGrants            SupportAccessGrant[]
+  supportAccessReads             SupportAccessRead[]
   machineEvents                  MachineEvent[]
   machineAlarmOrders             MachineAlarmOrder[]
   machineSuggestions             MachineSuggestion[]
@@ -2281,6 +2297,48 @@ model WorkspaceSettings {
   /// Företagets mål (2026-10-28): the company's own goals – completed work orders per month for the statistics, and
   /// invoiced per month and quote win rate for Ekonomi (lib/workflow/company-goals.ts). Empty = no goal set.
   goalSettings       Json    @default("{}")
+  /// Granska behörigheter (K2.4, 2026-11-28): the quarterly reminder to the company's admins is off by default; when on,
+  /// Översikt reminds an admin three months after the last sign-off ("Granskad"). The sign-off itself is also logged.
+  accessReviewReminder Boolean   @default(false)
+  accessReviewedAt     DateTime?
+  accessReviewedById   String?
+}
+
+/// Supportåtkomst med medgivande (K2.3, 2026-11-28): the company's admin lets the installation's support (superadmin) read the
+/// company's data for 1 hour, 24 hours or 7 days, and can take it back at any time. Without an open row there is no access.
+/// Read only: the support view never writes business data. expiryLoggedAt marks that the end was written to the history once.
+model SupportAccessGrant {
+  id             String              @id @default(cuid())
+  organizationId String
+  grantedById    String
+  hours          Int
+  createdAt      DateTime            @default(now())
+  expiresAt      DateTime
+  revokedAt      DateTime?
+  revokedById    String?
+  expiryLoggedAt DateTime?
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  reads          SupportAccessRead[]
+
+  @@unique([id, organizationId])
+  @@index([organizationId, expiresAt])
+}
+
+/// What support read during a grant (K2.3): one row per read, shown to the company's admin. The part read and a count only,
+/// never the content itself. The grant is a composite key, so a read can never point at another company's grant.
+model SupportAccessRead {
+  id             String             @id @default(cuid())
+  organizationId String
+  grantId        String
+  userId         String
+  part           String
+  detail         String             @default("")
+  createdAt      DateTime           @default(now())
+  grant          SupportAccessGrant @relation(fields: [grantId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@index([grantId])
 }
 
 model UserPreferences {
@@ -2312,8 +2370,93 @@ model AdministrationEvent {
   action         String
   detail         String
   createdAt      DateTime @default(now())
+  /// Spårbarhet K3.1 (2026-11-27): chained per company by the database trigger on insert; null on rows from before.
+  chainSeq       Int?
+  prevHash       String?
+  rowHash        String?
 
   @@index([organizationId, createdAt])
+  @@index([organizationId, chainSeq])
+}
+
+/// Ändringshistorik K3.2 (2026-11-27, lib/traceability/record-changes.ts): who changed what on a work order or protocol (TASK),
+/// a deviation (DEVIATION), a maintenance plan (MAINTENANCE_PLAN) or a machine (MACHINE), and from what to what. Written at
+/// the server's write paths in the same transaction as the change; `changes` is JSON text [{ field, from, to }] with values
+/// as short texts or ids (people, customers and places are named when read). Chained per company like the other logs.
+/// No relation to the record: the history stays when the record is removed, until the company's log retention.
+model RecordChange {
+  id             String   @id @default(cuid())
+  organizationId String
+  entityType     String
+  entityId       String
+  /// CREATED | UPDATED | DELETED
+  action         String
+  actorId        String?
+  changes        String   @default("[]")
+  createdAt      DateTime @default(now())
+  chainSeq       Int?
+  prevHash       String?
+  rowHash        String?
+
+  @@index([organizationId, entityType, entityId, createdAt])
+  @@index([organizationId, chainSeq])
+  @@index([organizationId, createdAt])
+}
+
+/// Spårbarhet K3.1 (2026-11-27): the end of one log chain – `log` is admin | security | change and `chainKey` the company's id
+/// (or "platform" for security events without a company). The trigger locks this row while it appends, so a chain never
+/// forks. The nightly check writes what it found (verified…, broken…). No relation: a company's chain may outlive a test row.
+model AuditChainHead {
+  log            String
+  chainKey       String
+  organizationId String?
+  lastSeq        Int       @default(0)
+  lastHash       String
+  verifiedAt     DateTime?
+  verifiedSeq    Int?
+  brokenAt       DateTime?
+  brokenSeq      Int?
+  brokenReason   String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @default(now())
+
+  @@id([log, chainKey])
+  @@index([organizationId])
+  @@index([brokenAt])
+}
+
+/// A known starting point of a chain: `genesis` (a new chain), `anchor` (the rows written before the chain existed, as one
+/// hash over them, legacyCount rows) or `retention` (the hash of the last row the retention removed). Checking starts at the
+/// newest one.
+model AuditChainCheckpoint {
+  id             String   @id @default(cuid())
+  log            String
+  chainKey       String
+  organizationId String?
+  throughSeq     Int
+  hash           String
+  kind           String
+  legacyCount    Int?
+  createdAt      DateTime @default(now())
+
+  @@index([log, chainKey, throughSeq])
+  @@index([organizationId])
+}
+
+/// A link kept without its row (`erased` by a person's erasure, `removed` by a cleanup, `retention`), or a row whose text was
+/// rewritten on purpose (`redacted`, the erasure's names): the hashes only, never the content.
+model AuditChainGap {
+  log            String
+  chainKey       String
+  seq            Int
+  organizationId String?
+  prevHash       String
+  rowHash        String
+  kind           String
+  createdAt      DateTime @default(now())
+
+  @@id([log, chainKey, seq])
+  @@index([organizationId])
 }
 
 /// PDF-mallar (2026-11-03, lib/pdf-templates): the product owner's change of one block of a document's default template,
@@ -5160,6 +5303,9 @@ model MachineSource {
   /// längre skrivs. Enkel FK med SET NULL och triggern MachineSource_machine_part_tenant.
   machinePartId   String?
   machinePart     MachinePart?          @relation(fields: [machinePartId], references: [id], onDelete: SetNull)
+  /// Nyckel med minsta behörighet (K2.5, 2026-11-28): the machine parts this source's key may write events for. Empty (the
+  /// default) = no limit, as before. An event that would land on another part, or on no part, is refused.
+  allowedMachinePartIds String[]      @default([])
   createdById     String?
   createdAt       DateTime              @default(now())
   updatedAt       DateTime              @updatedAt
@@ -5525,6 +5671,9 @@ model MachinePart {
   runHoursHeldAt       DateTime?
   runHoursHeldReason   String?
   position             Int                   @default(0)
+  /// Kartnål (0.92.0, lib/maintenance/location.ts): bara en maskin (rot), WGS 84. Null = samma som platsen.
+  latitude             Float?
+  longitude            Float?
   isActive             Boolean               @default(true)
   version              Int                   @default(1)
   createdById          String
@@ -5565,6 +5714,9 @@ model MaintenancePlace {
   name           String
   level          String             @default("SITE")
   notes          String             @default("")
+  /// Kartnål (0.92.0, lib/maintenance/location.ts): valfri, WGS 84; en plats utan egen ärver platsen ovanför.
+  latitude       Float?
+  longitude      Float?
   version        Int                @default(1)
   createdById    String
   updatedById    String

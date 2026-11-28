@@ -1889,6 +1889,8 @@ function route(request: Request): Json | unknown {
     }, request.url).catch((error) => { throw error instanceof DemoOverviewError ? new DemoError(error.status, error.message) : error; }); break;
     case "/api/task-notifications": return notifications(ctx, request);
     case "/api/comments": return demoComments(ctx.user, request, ctx.admin || ctx.can("work-order", "edit"));
+    // Ändringshistorik (K3.2, 2026-11-27): the demo keeps no log; the card says that nothing is saved yet.
+    case "/api/record-changes": if (get) return { entries: [], total: 0, next: null }; break;
     // Egenkontroll (2026-10-06): an invented programme in memory, the same rules as Cloud. The instrument register is
     // read on its own (2026-10-07), as in Cloud.
     case "/api/self-inspection": if (get && request.url.searchParams.get("part") === "card-history") return demoCardHistory(ctx.db, ctx.user, ctx.admin, request.url.searchParams.get("personId") ?? "");
@@ -1986,6 +1988,9 @@ function route(request: Request): Json | unknown {
     // Operatörskonton (2026-10-30): invented accounts in this browser only (features/demo/demo-operator.ts).
     case "/api/operator-accounts": if (!ctx.admin) throw new DemoError(403, "Bara en företagsadministratör kan göra det."); try { return get ? demoOperatorAdminView() : demoOperatorAdminAction((request.body ?? {}) as Record<string, unknown>); } catch (error) { throw error instanceof DemoOperatorError ? new DemoError(error.status, error.message) : error; }
     case "/api/security/company": if (get && ctx.admin) return { required: false, me: ctx.user.id, members: [], log: { events: [], next: null } }; break;
+    // Supportåtkomst och Granska behörigheter (K2, 2026-11-28) need a server: the demo shows them empty and closed.
+    case "/api/security/support-access": if (get && ctx.admin) return { open: null, grants: [], reads: [], choices: [1, 24, 168], defaultHours: 24 }; if (!get) throw new DemoError(409, "Supportåtkomst finns inte i demon."); break;
+    case "/api/security/access-review": if (get && ctx.admin) return { rows: [], review: { reminderOn: false, lastReviewedAt: null, reviewedBy: "", dueAt: new Date().toISOString(), due: false } }; if (!get) throw new DemoError(409, "Granskningen sparas inte i demon."); break;
     case "/api/oauth/connections": if (get) return { connections: [] }; break;
     case "/api/passkeys": if (get) return { passkeys: [] }; break;
     // Notiser per e-post och push (2026-10-07) need a server and an account: the demo only says so.

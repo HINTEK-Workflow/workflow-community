@@ -3,7 +3,7 @@
   "$id": "urn:hintek-workflow-forms:format-1",
   "title": "Form file (hintek-workflow-forms, formatVersion 1)",
   "description": "A form file for the Workflow form import. Generated from the import's own validation; objects accept no other keys. Leave out \"signature\": only Workflow signs files.",
-  "x-skill-version": "1.0.0",
+  "x-skill-version": "1.1.0",
   "type": "object",
   "properties": {
     "format": {
@@ -123,6 +123,9 @@
                   "POWER",
                   "INDUSTRY",
                   "ROUNDS",
+                  "UTILITIES",
+                  "SUPERVISION",
+                  "ENVIRONMENT",
                   "PROPERTY",
                   "SAFETY",
                   "OTHER"

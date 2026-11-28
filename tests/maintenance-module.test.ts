@@ -90,7 +90,7 @@ test("the machine tree: the way down, everything under a part, the root, no cycl
   const deep = Array.from({ length: PART_MAX_DEPTH }, (_, index) => ({ id: `d${index}`, parentId: index ? `d${index - 1}` : null, name: `D${index}` }));
   assert.match(moveProblem(deep, null, `d${PART_MAX_DEPTH - 1}`), /högst 12 nivåer/);
   // The part picker lists the tree in reading order with the way down; paused parts only when chosen.
-  const listed = partOptions(tree.map((part) => ({ ...part, placeId: null, customerId: null, ownerName: "", partType: "", marking: "", status: "IN_SERVICE" as const, isActive: part.id !== "m", mainImageId: null, openItems: 0, reported: 0 })));
+  const listed = partOptions(tree.map((part) => ({ ...part, placeId: null, customerId: null, ownerName: "", partType: "", marking: "", status: "IN_SERVICE" as const, isActive: part.id !== "m", mainImageId: null, openItems: 0, reported: 0, latitude: null, longitude: null })));
   assert.deepEqual(listed.map((option) => option.label), ["Fabriken", "Fabriken › Linje 2", "Fabriken › Linje 2 › Press 4", "Fabriken › Linje 2 › Press 4 › Hydraulpump", "Pumpstation 2"]);
 });
 

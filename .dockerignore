@@ -12,6 +12,8 @@ storage-test
 tests
 tmp
 backups
+# Community: the backups' key pair (age or GnuPG) the installer makes; the private key never goes into an image.
+backup-key
 storage-qa
 storage-local
 storage-local-qa

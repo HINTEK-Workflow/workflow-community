@@ -4,7 +4,7 @@ description: Creates complete, importable HINTEK Workflow form files (JSON, form
 license: Free to use for creating forms for HINTEK Workflow. See README.md.
 metadata:
   title: HINTEK Workflow Form Builder
-  version: "1.0.0"
+  version: "1.1.0"
   format: hintek-workflow-forms
   format-version: "1"
   languages: "en, sv"

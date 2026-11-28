@@ -13,6 +13,9 @@
 #   BACKUP_AGE_RECIPIENT (required since K1.6, 2026-11-28, else read from ./.env; an age public key age1…, or
 #   BACKUP_AGE_RECIPIENTS_FILE with one key per line): after both files are read back, they are encrypted with age and only the .age files are kept, also in the copy
 #   to OFFSITE_TARGET. The private key must not be on this server (review P6, 2026-11-24). Restore: age -d -i <key file>.
+#   BACKUP_ENCRYPTION (age, the default; else read from ./.env): gpg encrypts with GnuPG instead (2026-11-28, a second choice
+#   for Community): AES-256 for the data to the RSA public key in BACKUP_GPG_RECIPIENT_FILE (a path, relative to the folder the
+#   cron line runs in; install.sh writes it to .env), and the files end in .gpg. Restore: gpg --import <key file>, gpg -d.
 #   The database is the compose service, or db-server when the production .env sets APP_DATABASE_URL (db-source.sh).
 set -Eeuo pipefail
 umask 077
@@ -33,6 +36,12 @@ if [[ -z "${BACKUP_AGE_RECIPIENT:-}" && -z "${BACKUP_AGE_RECIPIENTS_FILE:-}" && 
 fi
 readonly BACKUP_AGE_RECIPIENT="${BACKUP_AGE_RECIPIENT:-}"
 readonly BACKUP_AGE_RECIPIENTS_FILE="${BACKUP_AGE_RECIPIENTS_FILE:-}"
+# The program (2026-11-28): age unless BACKUP_ENCRYPTION=gpg, from the environment or that one line of ./.env.
+env_line() { sed -n "s/^$1=//p" ./.env | tail -n 1 | tr -d '\r'; }
+if [[ -z "${BACKUP_ENCRYPTION:-}" && -r ./.env ]]; then BACKUP_ENCRYPTION="$(env_line BACKUP_ENCRYPTION)"; fi
+readonly BACKUP_ENCRYPTION="${BACKUP_ENCRYPTION:-age}"
+if [[ "$BACKUP_ENCRYPTION" == gpg && -z "${BACKUP_GPG_RECIPIENT_FILE:-}" && -r ./.env ]]; then BACKUP_GPG_RECIPIENT_FILE="$(env_line BACKUP_GPG_RECIPIENT_FILE)"; fi
+readonly BACKUP_GPG_RECIPIENT_FILE="${BACKUP_GPG_RECIPIENT_FILE:-}"
 read -r -a TAR_FLAGS <<< "${TAR_OPTIONS:---numeric-owner --acls --xattrs --one-file-system}"
 
 fail() { printf 'ERROR: %s\n' "$*" >&2; mkdir -p "$STATE_DIR"; date -u +%FT%TZ > "$STATE_DIR/backup.last-failure"; exit 1; }
@@ -48,14 +57,40 @@ for command_name in docker tar gzip sha256sum find sort; do
   command -v "$command_name" >/dev/null 2>&1 || fail "Required command is missing: $command_name"
 done
 AGE_ARGS=()
-if [[ -n "$BACKUP_AGE_RECIPIENT" ]]; then AGE_ARGS+=(-r "$BACKUP_AGE_RECIPIENT"); fi
-if [[ -n "$BACKUP_AGE_RECIPIENTS_FILE" ]]; then
-  [[ -r "$BACKUP_AGE_RECIPIENTS_FILE" ]] || fail "BACKUP_AGE_RECIPIENTS_FILE cannot be read: $BACKUP_AGE_RECIPIENTS_FILE"
-  AGE_ARGS+=(-R "$BACKUP_AGE_RECIPIENTS_FILE")
+ENCRYPTED=""
+if [[ "$BACKUP_ENCRYPTION" == gpg ]]; then
+  command -v gpg >/dev/null 2>&1 || fail "BACKUP_ENCRYPTION=gpg but gpg is missing (install gnupg)."
+  command -v mktemp >/dev/null 2>&1 || fail "Required command is missing: mktemp"
+  [[ -n "$BACKUP_GPG_RECIPIENT_FILE" && -r "$BACKUP_GPG_RECIPIENT_FILE" ]] \
+    || fail "BACKUP_ENCRYPTION=gpg needs BACKUP_GPG_RECIPIENT_FILE, a readable public key file (install.sh writes it to .env). See INSTALLATION.md, section 6."
+  ENCRYPTED=gpg
+elif [[ "$BACKUP_ENCRYPTION" != age ]]; then
+  fail "BACKUP_ENCRYPTION must be age or gpg."
+else
+  if [[ -n "$BACKUP_AGE_RECIPIENT" ]]; then AGE_ARGS+=(-r "$BACKUP_AGE_RECIPIENT"); fi
+  if [[ -n "$BACKUP_AGE_RECIPIENTS_FILE" ]]; then
+    [[ -r "$BACKUP_AGE_RECIPIENTS_FILE" ]] || fail "BACKUP_AGE_RECIPIENTS_FILE cannot be read: $BACKUP_AGE_RECIPIENTS_FILE"
+    AGE_ARGS+=(-R "$BACKUP_AGE_RECIPIENTS_FILE")
+  fi
+  if (( ${#AGE_ARGS[@]} )); then command -v age >/dev/null 2>&1 || fail "A BACKUP_AGE recipient is set but age is missing (install age)."; ENCRYPTED=age
+  elif [[ "${BACKUP_ALLOW_UNENCRYPTED:-}" == 1 ]]; then echo "WARNING: BACKUP_ALLOW_UNENCRYPTED=1 – this backup is NOT encrypted (only for a throwaway test machine)." >&2
+  else fail "The backup is always encrypted: set BACKUP_AGE_RECIPIENT=age1… (the public key; install.sh writes it to .env) and install age. See INSTALLATION.md, section 6."; fi
 fi
-if (( ${#AGE_ARGS[@]} )); then command -v age >/dev/null 2>&1 || fail "A BACKUP_AGE recipient is set but age is missing (install age)."
-elif [[ "${BACKUP_ALLOW_UNENCRYPTED:-}" == 1 ]]; then echo "WARNING: BACKUP_ALLOW_UNENCRYPTED=1 – this backup is NOT encrypted (only for a throwaway test machine)." >&2
-else fail "The backup is always encrypted: set BACKUP_AGE_RECIPIENT=age1… (the public key; install.sh writes it to .env) and install age. See INSTALLATION.md, section 6."; fi
+readonly ENCRYPTED
+
+# GnuPG: the public key is read from the file (--recipient-file) in a GNUPGHOME of its own that is removed again, so no
+# keyring is used or changed; AES-256 for the data, no compression. Prints gpg's own message only when it fails.
+gpg_encrypt_file() { # <public key file> <plain file> <encrypted file>
+  local home status=0
+  home="$(mktemp -d)"
+  gpg --homedir "$home" --batch --yes --no-tty --trust-model always --cipher-algo AES256 --compress-algo none \
+    --recipient-file "$1" -o "$3" --encrypt "$2" >/dev/null 2>"$home/gpg.err" || { status=$?; cat "$home/gpg.err" >&2; }
+  gpgconf --homedir "$home" --kill all >/dev/null 2>&1 || true; rm -rf -- "$home"
+  return "$status"
+}
+encrypt_file() { # <plain file> <encrypted file>
+  if [[ "$ENCRYPTED" == gpg ]]; then gpg_encrypt_file "$BACKUP_GPG_RECIPIENT_FILE" "$1" "$2"; else age "${AGE_ARGS[@]}" -o "$2" "$1"; fi
+}
 [[ -d "$SOURCE_STORAGE" ]] || fail "Storage directory is missing: $SOURCE_STORAGE"
 [[ "$KEEP_DAILY" =~ ^[0-9]+$ && "$KEEP_WEEKLY" =~ ^[0-9]+$ && "$KEEP_DAILY" -ge 3 ]] || fail "Retention must keep at least 3 daily backups."
 source_db_ready || fail "PostgreSQL is not reachable."
@@ -83,17 +118,17 @@ tar -tzf "${TARGET}/storage.tar.gz" > /dev/null || fail "The storage archive can
   printf 'database_bytes=%s\nstorage_bytes=%s\n' "$(wc -c < "${TARGET}/database.dump")" "$(wc -c < "${TARGET}/storage.tar.gz")"
 } > "${TARGET}/MANIFEST"
 
-# 3b. Optional encryption (BACKUP_AGE_RECIPIENT / BACKUP_AGE_RECIPIENTS_FILE): the files were read back above, then each is
-#     encrypted and the plain file removed. SHA256SUMS.plain keeps the sums of the plain files (to check after decrypting);
-#     SHA256SUMS then covers the .age files.
-if (( ${#AGE_ARGS[@]} )); then
+# 3b. Encryption (age: BACKUP_AGE_RECIPIENT / BACKUP_AGE_RECIPIENTS_FILE; gpg: BACKUP_GPG_RECIPIENT_FILE): the files were read
+#     back above, then each is encrypted and the plain file removed. SHA256SUMS.plain keeps the sums of the plain files (to
+#     check after decrypting); SHA256SUMS then covers the .age (.gpg) files.
+if [[ -n "$ENCRYPTED" ]]; then
   for file in database.dump storage.tar.gz; do
-    age "${AGE_ARGS[@]}" -o "${TARGET}/${file}.age" "${TARGET}/${file}" || fail "age could not encrypt ${file}."
-    [[ -s "${TARGET}/${file}.age" ]] || fail "The encrypted ${file} is empty."
+    encrypt_file "${TARGET}/${file}" "${TARGET}/${file}.${ENCRYPTED}" || fail "${ENCRYPTED} could not encrypt ${file}."
+    [[ -s "${TARGET}/${file}.${ENCRYPTED}" ]] || fail "The encrypted ${file} is empty."
     rm -f -- "${TARGET}/${file}"
   done
-  ( cd "$TARGET" && mv SHA256SUMS SHA256SUMS.plain && sha256sum database.dump.age storage.tar.gz.age > SHA256SUMS && sha256sum --check --quiet SHA256SUMS )
-  printf 'encrypted=age\n' >> "${TARGET}/MANIFEST"
+  ( cd "$TARGET" && mv SHA256SUMS SHA256SUMS.plain && sha256sum "database.dump.${ENCRYPTED}" "storage.tar.gz.${ENCRYPTED}" > SHA256SUMS && sha256sum --check --quiet SHA256SUMS )
+  printf 'encrypted=%s\n' "$ENCRYPTED" >> "${TARGET}/MANIFEST"
 fi
 
 # 4. Retention: keep the newest KEEP_DAILY daily and KEEP_WEEKLY weekly backups; only directories named like a stamp.

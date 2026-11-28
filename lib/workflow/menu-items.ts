@@ -393,7 +393,7 @@ export function menuKeyOfView(view: string, /** Fakturor is a button for the per
     // Uppgifter is a tab of Arbetsordrar (2026-11-01): every job's page marks Arbetsordrar.
     case "tasks": case "new_task": case "controls": case "new": case "workflow_task": case "work_orders": return "work_orders";
     case "place": return "customers";
-    case "place_labels": return "rounds";
+    case "place_labels": case "round_paper": return "rounds";
     // The two tabs of Webb och inlägg mark its button.
     case "company_posts": case "company_website": case "company_videos": return "web_posts";
     default: return (MENU_HIDEABLE as readonly string[]).includes(view) ? view as MenuHideable : null;

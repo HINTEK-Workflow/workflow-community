@@ -34,8 +34,11 @@ const ACTION_WORDS = /^(skapa|lägg till|lägg in|registrera|boka|planera in|sta
 const STOP_WORDS = new Set(["jag", "du", "vi", "min", "mitt", "mina", "en", "ett", "den", "det", "de", "om", "för", "på", "i", "till", "med", "och", "eller", "som", "vad", "hur", "var", "när", "vilka", "vilken", "vilket", "är", "har", "kan", "ska", "finns", "alla", "någon", "något", "visa", "sök", "hitta", "leta", "efter", "lista", "status", "läget", "info", "information", "berätta", "ge", "mig", "gärna", "snälla", "tack"]);
 /** Everyday topics that are not work in Workflow. */
 const OUTSIDE_WORKFLOW = /\b(väder|vädret|väderprognos|prognos(en)?|regn|regnar|snö|snöar|blåsigt|temperatur(en)? ute|grader ute|soligt|nyhet(er|erna)?|sport|fotboll|hockey|matchen|resultat(et)? i|aktie|aktier|börs(en)?|bitcoin|valuta(kurs)?|recept|middag|lunch|restaurang|film|filmer|serie|serier|musik|låt(en)?|skämt|vits|dikt|horoskop|lotto|trav|semester|flyg|tåg(et)?|hotell|vem vann|vem är kung|huvudstad|översätt)\b/;
-/** Words about work, places of work and electrical installations – a question with any of them may need AI. */
-const WORK_DOMAIN = /\b(uppgift|arbetsorder|arbetsordrar|projekt|kund|kontroll|protokoll|risk|tid|timmar|planering|anläggning|central|elcentral|kabel|säkring|jordfel|isolation|mätning|spänning|ström|installation|el|elarbete|elsäkerhet|arbetsplats|bygg|montage|service|rond|formulär|rapport)/;
+/**
+ * Words about work, places of work and installations – a question with any of them may need AI. Since 2026-11-28 also the words of
+ * drift and underhåll in VA, fjärrvärme, elnät, vattenkraft, gata och park ("Bräddade det vid regnet i natt?", "Hur går snöröjningen?").
+ */
+const WORK_DOMAIN = /\b(uppgift|arbetsorder|arbetsordrar|projekt|kund|kontroll|protokoll|risk|tid|timmar|planering|anläggning|central|elcentral|kabel|säkring|jordfel|isolation|mätning|spänning|ström|installation|el|elarbete|elsäkerhet|arbetsplats|bygg|montage|service|rond|formulär|rapport|underhåll|drift|maskin|pump|brunn|brädd|dagvatten|avlopp|spillvatten|ledning|vattenverk|reningsverk|reservoar|vattentorn|tryckstegring|ventil|flöde|nivå|larm|avvikelse|läck|fjärrvärme|undercentral|värmeväxlare|nätstation|kopplingsstation|transformator|kraftstation|turbin|damm|snöröjning|plogning|sandning|halk|gata|park|lekplats|fordon|avfall|station)/;
 const WEEKDAYS = ["måndag", "tisdag", "onsdag", "torsdag", "fredag", "lördag", "söndag"];
 
 /**

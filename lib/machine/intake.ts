@@ -40,7 +40,9 @@ export type ParsedMachineEvent = {
 /** Orsakerna är fasta koder, aldrig text ur kroppen, så svaret inte kan användas för att läsa något tillbaka. */
 export type RejectReason =
   | "not_an_object" | "unknown_field" | "missing_field" | "bad_event_id" | "bad_time" | "time_window" | "bad_type"
-  | "bad_code" | "bad_severity" | "bad_state" | "bad_text" | "bad_basis" | "bad_values";
+  | "bad_code" | "bad_severity" | "bad_state" | "bad_text" | "bad_basis" | "bad_values"
+  // K2.5 (2026-11-28): the source's key is limited to some machines and the event would land on another one (decided when saved).
+  | "machine_not_allowed";
 export type EnvelopeError = "invalid_json" | "not_an_object" | "unknown_field" | "unsupported_version" | "bad_events" | "bad_batch_size";
 
 export type EventResult = {

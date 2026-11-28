@@ -51,6 +51,9 @@ export const EXPORT_REGISTER: Record<string, ExportEntry> = {
   OrganizationInvitation: excluded("Invitations carry a one-time token; open invitations are not business data."),
   OAuthClient: excluded(secrets), OAuthAuthorizationCode: excluded(secrets), OAuthGrant: excluded(secrets), OAuthToken: excluded(secrets),
   IntegrationKey: excluded(secrets), OrganizationDataKey: excluded(secrets),
+  // Supportåtkomst (K2.3, 2026-11-28): who let support read, when, and what was read; access control, not business data.
+  SupportAccessGrant: excluded("Access-control record of a time-limited support consent; it ends with the company."),
+  SupportAccessRead: excluded("Log of what support read during a consent: the part and a count, never the content."),
   OrganizationMember: archive("personer", "Staff list: role, working hours, permissions, with the person's name and e-mail joined from the user (no login data)."),
   Organization: excluded("The company row holds billing and platform state; the name and working hours are in foretag.json."),
   LocalWorkspaceBinding: excluded("Bookkeeping of earlier Cloud copies."), CloudImport: excluded("Bookkeeping of earlier re-imports."),
@@ -95,6 +98,11 @@ export const EXPORT_REGISTER: Record<string, ExportEntry> = {
   PersonalFilmLink: excluded("Workflow's own personal links to the landing page's films."),
   NoticeDelivery: excluded(log), RoundReminderDelivery: excluded(log),
   AdministrationEvent: archive("administrationshistorik", "The company's administration history (who changed what)."),
+  // Spårbarhet (K3, 2026-11-27): the change history of the company's records is its own; the chain's bookkeeping is not.
+  RecordChange: archive("andringshistorik", "Who changed what on work orders, protocols, deviations, maintenance plans and machines, from what to what."),
+  AuditChainHead: excluded("The end of a log chain (a number and a hash) for the nightly integrity check; no business content."),
+  AuditChainCheckpoint: excluded("A starting hash of a log chain for the integrity check; no business content."),
+  AuditChainGap: excluded("Hashes kept for log rows that were erased or removed, so the chain can still be checked; no content."),
 
   // Workflow billing, credits and AI usage
   CreditWallet: excluded(billing), CreditLot: excluded(billing), CreditExpiryNotice: excluded(billing), CreditEntry: excluded(billing), CreditAllocation: excluded(billing),

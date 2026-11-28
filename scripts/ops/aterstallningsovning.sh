@@ -8,7 +8,9 @@
 #
 # TORRKÖRNING (standard): visar vilka filer som skulle användas och vad som skulle kontrolleras. Ingenting dekrypteras,
 # ingen container startas och nyckelfilen öppnas inte (bara att den finns kontrolleras).
-# Med --apply: dekrypterar LOKALT med nyckelfilen (--key / AGE_KEY), återställer databasen i en transaktion i en
+# Med --apply: dekrypterar LOKALT med nyckelfilen (--key / AGE_KEY: den privata age-nyckeln, eller för .gpg-filer den
+# exporterade privata GnuPG-nyckeln, workflow-backup.gpgkey, som läses in i en tillfällig GNUPGHOME som tas bort efteråt),
+# återställer databasen i en transaktion i en
 # PostgreSQL-container på ett eget internt Docker-nät utan väg ut och utan öppen port, packar upp filerna och kontrollerar:
 #   - kontrollsummorna mot förteckningen bredvid backupen (SHA256SUMS, SHA256SUMS.txt; efter dekrypteringen SHA256SUMS.plain)
 #   - antalet rader per tabell: det återställda mot arkivets egna rader, och mot ROWS när backupen har en (Community)
@@ -26,8 +28,9 @@
 #   <datum>/workflow-*.dump.age + storage-*.tar.gz.age   (kopian av nattbackupen på en annan dator)
 #   daily|weekly/<tid>/database.dump.age + storage.tar.gz.age   (scripts/ops/nightly-backup.sh)
 #   update-<tid>/database.dump.age + storage.tar.gz.age   (installationsskriptets backup före en uppdatering)
-# eller exakt de filer som --db och --files anger. En okrypterad fil (utan .age) används som den är, för prov.
-# Kräver bash, docker, sha256sum, tar och age (bara med --apply och krypterade filer). Utgångskod 0 = godkänd.
+# eller exakt de filer som --db och --files anger. Med BACKUP_ENCRYPTION=gpg slutar filerna på .gpg i stället för .age.
+# En okrypterad fil (utan .age eller .gpg) används som den är, för prov.
+# Kräver bash, docker, sha256sum, tar och age eller gpg (bara med --apply och krypterade filer). Utgångskod 0 = godkänd.
 set -euo pipefail
 export MSYS_NO_PATHCONV=1
 
@@ -49,13 +52,14 @@ while (( $# )); do
     --no-app) APP_CHECK=false ;;
     --db) DB_FILE="${2:?--db needs a file}"; shift ;;
     --files) FILES_FILE="${2:?--files needs a file}"; shift ;;
-    -h|--help) sed -n '2,32p' "$0"; exit 0 ;;
+    -h|--help) awk 'NR > 1 && /^set -euo/ { exit } NR > 1' "$0"; exit 0 ;;
     *) echo "Okänt val: $1 (se --help)" >&2; exit 64 ;;
   esac
   shift
 done
 
 AGE="${AGE:-$(command -v age 2>/dev/null || true)}"
+GPG="${GPG:-$(command -v gpg 2>/dev/null || true)}"
 RTO_HOURS="${RTO_HOURS:-8}"
 RPO_HOURS="${RPO_HOURS:-24}"
 PG_IMAGE="${PG_IMAGE:-postgres:16-alpine}"
@@ -71,7 +75,7 @@ winpath() { if command -v cygpath >/dev/null 2>&1; then cygpath -w "$1"; else pr
 # --- The backup to use ---------------------------------------------------------------------------------------------------
 storage_beside() { # the file backup in the same folder as the database backup
   local dir; dir="$(dirname "$1")"
-  ls -t "$dir"/storage-*.tar.gz.age "$dir"/storage-*.tar.gz "$dir"/storage.tar.gz.age "$dir"/storage.tar.gz 2>/dev/null | head -1 || true
+  ls -t "$dir"/storage-*.tar.gz.age "$dir"/storage-*.tar.gz.gpg "$dir"/storage-*.tar.gz "$dir"/storage.tar.gz.age "$dir"/storage.tar.gz.gpg "$dir"/storage.tar.gz 2>/dev/null | head -1 || true
 }
 if [[ -z "$DB_FILE" ]]; then
   [[ -n "$BACKUP_DIR" ]] || { say "Ange --backup-dir (mappen med backuperna) eller --db och --files." >&2; exit 64; }
@@ -80,7 +84,7 @@ if [[ -z "$DB_FILE" ]]; then
     [[ -n "$candidate" ]] || continue
     files="$(storage_beside "$candidate")"
     if [[ -n "$files" ]]; then DB_FILE="$candidate"; FILES_FILE="${FILES_FILE:-$files}"; break; fi
-  done < <(find "$BACKUP_DIR" -maxdepth 3 -type f \( -name 'workflow-*.dump.age' -o -name 'workflow-*.dump' -o -name 'database.dump.age' -o -name 'database.dump' \) \
+  done < <(find "$BACKUP_DIR" -maxdepth 3 -type f \( -name 'workflow-*.dump.age' -o -name 'workflow-*.dump.gpg' -o -name 'workflow-*.dump' -o -name 'database.dump.age' -o -name 'database.dump.gpg' -o -name 'database.dump' \) \
              -not -path '*aterstallningsovning-tmp*' -printf '%T@ %p\n' 2>/dev/null | sort -rn | cut -d' ' -f2-)
 fi
 [[ -n "$DB_FILE" && -f "$DB_FILE" ]] || { say "Ingen databasbackup med en filbackup bredvid hittades i ${BACKUP_DIR:-(ingen mapp)}. Ange --db och --files." >&2; exit 1; }
@@ -91,8 +95,13 @@ SRC_DIR="$(cd "$(dirname "$DB_FILE")" && pwd)"
 PROTOCOL_DIR="${PROTOCOL_DIR:-$BACKUP_DIR/aterstallning}"
 REPORT="${REPORT:-$PROTOCOL_DIR/aterstallning-$(date +%Y-%m-%d).md}"
 WORK="${WORK_DIR:-$BACKUP_DIR/aterstallningsovning-tmp-$RUN_ID}"
-encrypted() { [[ "$1" == *.age ]]; }
+encrypted() { [[ "$1" == *.age || "$1" == *.gpg ]]; }
 NEEDS_KEY=false; { encrypted "$DB_FILE" || encrypted "$FILES_FILE"; } && NEEDS_KEY=true
+# The program the encrypted files need: gpg for .gpg, otherwise age.
+TOOL=age; [[ "$DB_FILE" == *.gpg || "$FILES_FILE" == *.gpg ]] && TOOL=gpg
+TOOL_PATH="$AGE"; [[ "$TOOL" == gpg ]] && TOOL_PATH="$GPG"
+# Git Bash's own gpg (/usr/bin) reads paths as /c/…; Gpg4win's gpg.exe, like age.exe, reads C:\….
+gpgpath() { if [[ "$GPG" == /usr/* ]]; then printf '%s' "$1"; else winpath "$1"; fi; }
 
 # The backup's time: from the name (workflow-ÅÅÅÅ-MM-DDTHHMMSS…, update-ÅÅÅÅMMDDTHHMMSSZ, <ÅÅÅÅMMDDTHHMMSSZ>/), else the file's.
 backup_time() {
@@ -112,7 +121,7 @@ if ! $APPLY; then
   say "Filer:   $FILES_FILE (tagen $FILES_TIME, $(stat -c %s "$FILES_FILE") byte$(encrypted "$FILES_FILE" && echo ', krypterad' || echo ', OKRYPTERAD'))"
   say "Förteckning bredvid: $(cd "$SRC_DIR" && ls SHA256SUMS SHA256SUMS.txt SHA256SUMS.plain MANIFEST ROWS status-db.txt status-files.txt 2>/dev/null | tr '\n' ' ')"
   if $NEEDS_KEY; then
-    say "age: ${AGE:-SAKNAS} · nyckelfil (--key): ${AGE_KEY:-INTE ANGIVEN}$([[ -n "$AGE_KEY" ]] && { [[ -f "$AGE_KEY" ]] && echo ' (finns)' || echo ' (SAKNAS)'; })"
+    say "$TOOL: ${TOOL_PATH:-SAKNAS} · nyckelfil (--key): ${AGE_KEY:-INTE ANGIVEN}$([[ -n "$AGE_KEY" ]] && { [[ -f "$AGE_KEY" ]] && echo ' (finns)' || echo ' (SAKNAS)'; })"
   fi
   say "docker: $(command -v docker >/dev/null && echo finns || echo SAKNAS) · appen: $($APP_CHECK && echo "$APP_IMAGE$(docker image inspect "$APP_IMAGE" >/dev/null 2>&1 && echo ' (finns)' || echo ' (SAKNAS)')" || echo 'startas inte (--no-app)')"
   if [[ -n "${MARKER_TASK_ID:-}" && -n "${MARKER_ATTACHMENT_ID:-}" && -n "${MARKER_SHA256:-}" ]]; then say "Markör: angiven"; else say "Markör: inte angiven – kontrollen av en känd bilaga hoppas över"; fi
@@ -123,8 +132,13 @@ fi
 
 command -v docker >/dev/null 2>&1 || { say "docker saknas." >&2; exit 1; }
 if $NEEDS_KEY; then
-  [[ -n "$AGE" && -x "$AGE" ]] || { say "age saknas (installera age, eller ange AGE=<sökväg>)." >&2; exit 1; }
-  [[ -n "$AGE_KEY" && -f "$AGE_KEY" ]] || { say "Nyckelfilen saknas: ange --key <fil> (den privata age-nyckeln)." >&2; exit 1; }
+  if [[ "$TOOL" == gpg ]]; then
+    [[ -n "$GPG" && -x "$GPG" ]] || { say "gpg saknas (installera GnuPG, eller ange GPG=<sökväg>)." >&2; exit 1; }
+    [[ -n "$AGE_KEY" && -f "$AGE_KEY" ]] || { say "Nyckelfilen saknas: ange --key <fil> (den privata GnuPG-nyckeln, workflow-backup.gpgkey)." >&2; exit 1; }
+  else
+    [[ -n "$AGE" && -x "$AGE" ]] || { say "age saknas (installera age, eller ange AGE=<sökväg>)." >&2; exit 1; }
+    [[ -n "$AGE_KEY" && -f "$AGE_KEY" ]] || { say "Nyckelfilen saknas: ange --key <fil> (den privata age-nyckeln)." >&2; exit 1; }
+  fi
 fi
 if $APP_CHECK && ! docker image inspect "$APP_IMAGE" >/dev/null 2>&1; then say "Avbildningen $APP_IMAGE finns inte här (ange --app-image, eller --no-app)." >&2; exit 1; fi
 
@@ -143,11 +157,29 @@ wipe() { # overwrite before removing: a plain copy never stays on disk
   dd if=/dev/zero of="$1" bs=1M count=$(( size / 1048576 + 1 )) conv=notrunc status=none 2>/dev/null || true
   rm -f -- "$1"
 }
+GPG_HOME=""
 cleanup() {
   docker rm -f "$APP_NAME" "$NAME" >/dev/null 2>&1 || true
   docker network rm "$NET" >/dev/null 2>&1 || true
   wipe "$WORK/workflow.dump"; wipe "$WORK/storage.tar.gz"
   rm -rf -- "$WORK"
+  gpg_home_remove
+}
+# The temporary GNUPGHOME with the imported private key: its agent stopped, every file overwritten, then removed.
+gpg_home_remove() {
+  [[ -n "$GPG_HOME" && -d "$GPG_HOME" ]] || return 0
+  gpgconf --homedir "$(gpgpath "$GPG_HOME")" --kill all >/dev/null 2>&1 || true
+  local file; while IFS= read -r -d '' file; do wipe "$file"; done < <(find "$GPG_HOME" -type f -print0 2>/dev/null)
+  rm -rf -- "$GPG_HOME"; GPG_HOME=""
+}
+# GnuPG: the exported private key is read into a GNUPGHOME of its own (a short path in the temporary folder, for the agent's
+# socket), never into the user's own keyring. <key file> <encrypted file> <plain target>
+gpg_decrypt() {
+  if [[ -z "$GPG_HOME" ]]; then
+    GPG_HOME="$(mktemp -d)"; chmod 700 "$GPG_HOME"
+    "$GPG" --homedir "$(gpgpath "$GPG_HOME")" --batch --quiet --import "$(gpgpath "$1")" >/dev/null 2>&1 || { say "Nyckelfilen gick inte att läsa in i gpg." >&2; return 1; }
+  fi
+  "$GPG" --homedir "$(gpgpath "$GPG_HOME")" --quiet --yes -o "$(gpgpath "$3")" --decrypt "$(gpgpath "$2")"
 }
 trap cleanup EXIT
 
@@ -177,10 +209,12 @@ log "- Backupens ålder när övningen startade: ${AGE_H} h. Nattbackupen tas va
 log ""; log "## Återställningen"
 T=$(date +%s)
 open_copy() { # <backup file> <plain target>
-  if encrypted "$1"; then "$AGE" --decrypt -i "$(winpath "$AGE_KEY")" -o "$(winpath "$2")" "$(winpath "$1")"; else cp -- "$1" "$2"; fi
+  if [[ "$1" == *.gpg ]]; then gpg_decrypt "$AGE_KEY" "$1" "$2"
+  elif encrypted "$1"; then "$AGE" --decrypt -i "$(winpath "$AGE_KEY")" -o "$(winpath "$2")" "$(winpath "$1")"; else cp -- "$1" "$2"; fi
 }
 open_copy "$DB_FILE" "$WORK/workflow.dump"
 open_copy "$FILES_FILE" "$WORK/storage.tar.gz"
+gpg_home_remove
 ok "$($NEEDS_KEY && echo 'dekrypterat lokalt' || echo 'kopierat (okrypterade provfiler)') på $(( $(date +%s) - T )) s"
 if [[ -f "$SRC_DIR/SHA256SUMS.plain" ]]; then
   status=0

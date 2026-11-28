@@ -30,6 +30,7 @@ import { clientExtensions } from "@ee/client";
 import { useConfirm } from "./confirm";
 import { StaffRegisterDisclosure } from "./staff-register-disclosure";
 import { CompanyClosurePanel } from "./company-closure-panel";
+import { SupportAccessPanel } from "./support-access-panel";
 import { AdvancedFold } from "@/features/workflow/section-tabs";
 import { PageActionsSlotProvider, PageHeader, usePageTrail } from "@/components/page-shell";
 import { useInstance } from "@/components/instance-provider";
@@ -73,6 +74,8 @@ type CustomerCompany = {
   creditExpiryOverrideAt: string | null;
   /** Maskinlarm: automatiska arbetsordrar per dygn (20 som förval). */
   machineDailyOrderCap?: number;
+  /** Justerbart tak i Underhåll (0.92.0): null = förvalet. */
+  maintenanceMachineCap?: number | null; maintenancePlaceCap?: number | null;
 };
 
 type CustomerAuditEvent = { id: string; label: string; createdAt: string };
@@ -283,6 +286,8 @@ export function CustomerCompanies() {
               </div>
           </Panel>
           <CompanyEvents key={item.id} companyId={item.id} revision={revision} />
+          {/* Supportläsning (K2.3): the company's data only with its admin's grant, read only and logged for the company. */}
+          {item.storageMode !== "LOCAL" ? <SupportAccessPanel key={`support-${item.id}`} companyId={item.id} /> : null}
           {!item.owner && item.ownerInvitationStatus === "PENDING" ? <Panel icon={ShieldCheck} title="Admininbjudan" description={`Skickad till ${item.preparedOwnerEmail ?? ""}${item.ownerInvitationSentAt ? `, ${formatSwedish(item.ownerInvitationSentAt, { dateStyle: "medium", timeStyle: "short" })}` : ""}.`}>
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               <Button type="button" variant="outline" className="w-full sm:w-auto" disabled={busy || !invitationDelivery} data-testid="company-owner-resend" onClick={() => void sendOwnerInvitation(item, true)}>Skicka igen</Button>

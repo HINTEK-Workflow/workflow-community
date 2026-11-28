@@ -24,7 +24,8 @@ export const NOTICE_KINDS = [
   { key: "FOLLOW_UP", label: "Uppföljning av avvikelser", description: "När en arbetsorder som skapats från en avvikelse är färdigställd och protokollet ska följas upp." },
   // Offert per e-post, steg E (2026-10-09): a new kind, off for everyone until they choose it.
   { key: "QUOTES", label: "Svar på offerter", description: "När en kund accepterar eller avböjer en offert via länken i e-posten." },
-  { key: "SELF_INSPECTION", label: "Egenkontroll", description: "Årlig översyn, ny version av programmet att läsa, åtgärder, kompetens och kalibrering." },
+  // Neutral since 2026-11-28: the deviation log's reminders come here also for a company without an egenkontrollprogram.
+  { key: "SELF_INSPECTION", label: "Avvikelser, kompetens och kalibrering", description: "Avvikelser som behöver åtgärd, kompetens och kalibrering som går ut, och egenkontrollprogrammets översyn och nya versioner när företaget har ett." },
   // S4 (2026-10-20): company admins who never saved their choices get it; for others it is off until they pick it.
   { key: "MACHINE_ALARM", label: "Maskinlarm", description: "När ett maskinlarm gett en automatisk arbetsorder, eller ett förslag väntar på godkännande. Du kan kvittera med Jag tar den." },
   // Nyheter (2026-11-21): a new kind, off for everyone until they choose it; the bell shows the news anyway.

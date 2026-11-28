@@ -17,6 +17,7 @@ export const REJECT_REASON_TEXT: Record<RejectReason, string> = {
   bad_text: "Texten är för lång eller har styrtecken.",
   bad_basis: "Underlag får bara finnas på en diagnos, och det är för långt eller har styrtecken.",
   bad_values: "Värdena är fel: 1–20 namn med tal, sant/falskt eller kort text.",
+  machine_not_allowed: "Nyckeln får inte skriva händelser för den här maskinen.",
 };
 
 export const ENVELOPE_ERROR_TEXT: Record<EnvelopeError, string> = {

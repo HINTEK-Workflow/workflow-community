@@ -50,6 +50,8 @@ export const VIEW_ICON = {
   // Platser etapp 3 (2026-10-04): a place's page (opened from its QR label) and the label sheet.
   place: MapPinHouse,
   place_labels: MapPinHouse,
+  // Rondprotokoll på papper (0.92.0): the round's printable protocol, under Driftronder.
+  round_paper: Repeat,
   customers: Users,
   // Egenkontroll (2026-10-06): the company's self-inspection programme; every active member reads it.
   self_inspection: BadgeCheck,

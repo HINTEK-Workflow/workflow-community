@@ -14,6 +14,10 @@
 # always encrypted with age to BACKUP_AGE_RECIPIENT in .env; without one a key pair is made in backup-key/ and the admin is
 # told to move the private key somewhere safe (age must be installed). INSTALLATION.md, "Återställ", tells how to go back.
 #
+# Encryption (2026-11-28): age is the default. GnuPG (OpenPGP, AES-256 and RSA 4096) is a second choice for organisations
+# whose rules ask for algorithms from the BSI or NIST lists: --encryption gpg (curl … | bash -s -- --encryption gpg) or
+# WORKFLOW_BACKUP_ENCRYPTION=gpg. The choice is kept in .env as BACKUP_ENCRYPTION; without it nothing more is asked than before.
+#
 # Optional: WORKFLOW_DIR (install folder), WORKFLOW_SOURCE (git repository to install from), WORKFLOW_VERSION, and
 # WORKFLOW_KEEP_BACKUPS (how many update backups are kept, 5). WORKFLOW_SKIP_BACKUP=1 skips the backup (not recommended).
 # Without questions: WORKFLOW_ADMIN_EMAIL, WORKFLOW_ADMIN_PASSWORD, WORKFLOW_NAME; WORKFLOW_NO_BROWSER=1 opens no browser.
@@ -40,6 +44,18 @@ set_value() { # key value file
   else printf '%s=%s\n' "$1" "$2" >> "$3"; fi
 }
 env_value() { sed -n "s/^$1=//p" "$DIR/.env" | tail -n 1; }
+# The encryption chosen on the command line (--encryption age|gpg) or with WORKFLOW_BACKUP_ENCRYPTION; empty = what .env says.
+ENCRYPTION_CHOICE="${WORKFLOW_BACKUP_ENCRYPTION:-}"
+while (( $# )); do
+  case "$1" in
+    --encryption) ENCRYPTION_CHOICE="${2:-}"; (( $# < 2 )) || shift ;;
+    --encryption=*) ENCRYPTION_CHOICE="${1#*=}" ;;
+    *) fail "Okänt val: $1 (installationen tar bara --encryption age eller --encryption gpg)." ;;
+  esac
+  shift
+done
+[[ -z "$ENCRYPTION_CHOICE" || "$ENCRYPTION_CHOICE" == age || "$ENCRYPTION_CHOICE" == gpg ]] \
+  || fail "--encryption (eller WORKFLOW_BACKUP_ENCRYPTION) ska vara age eller gpg."
 new_folder_hint="Vill du installera en ny, separat Workflow i stället? Välj en ny mapp, till exempel:
   curl -fsSL https://raw.githubusercontent.com/HINTEK-Workflow/workflow-community/main/install.sh | WORKFLOW_DIR=\"\$HOME/workflow-ny\" bash"
 # Tells the user when the folder already holds an installation that is running now, before it is restarted.
@@ -190,19 +206,23 @@ backup_before_update() {
     echo "$live $copy"' | tail -n 1) || return 1
   [[ -n "$files_live" && "$files_live" == "$files_copy" ]] || { echo "Arkivet har $files_copy poster, lagringen $files_live." >&2; return 1; }
   echo "  arkivet listat tillbaka: $files_copy filer och mappar"
-  # Always encrypted (K1.6, 2026-11-28): ensure_backup_encryption has made sure there is a recipient and age. The sums of the
-  # plain files are kept to check after decrypting; only the .age files stay.
-  recipient="$(env_value BACKUP_AGE_RECIPIENT)"
-  [[ -n "$recipient" ]] && command -v age >/dev/null 2>&1 || { echo "Backupen krypteras alltid, men BACKUP_AGE_RECIPIENT eller programmet age saknas." >&2; rm -f "$target/database.dump" "$target/storage.tar.gz"; return 1; }
+  # Always encrypted (K1.6, 2026-11-28): ensure_backup_encryption has made sure there is a recipient and the program (age,
+  # or gpg with BACKUP_ENCRYPTION=gpg). The sums of the plain files are kept to check after decrypting; only the .age (.gpg)
+  # files stay.
+  local encryption setting
+  encryption="$(env_value BACKUP_ENCRYPTION)"; encryption="${encryption:-age}"
+  if [[ "$encryption" == gpg ]]; then setting=BACKUP_GPG_RECIPIENT_FILE; else encryption=age; setting=BACKUP_AGE_RECIPIENT; fi
+  recipient="$(env_value "$setting")"
+  [[ -n "$recipient" ]] && command -v "$encryption" >/dev/null 2>&1 || { echo "Backupen krypteras alltid, men $setting eller programmet $encryption saknas." >&2; rm -f "$target/database.dump" "$target/storage.tar.gz"; return 1; }
   ( cd "$target" && sha256 database.dump storage.tar.gz > SHA256SUMS.plain ) || return 1
   local file
   for file in database.dump storage.tar.gz; do
-    age -r "$recipient" -o "$target/$file.age" "$target/$file" && [[ -s "$target/$file.age" ]] && rm -f "$target/$file" \
-      || { rm -f "$target/database.dump" "$target/storage.tar.gz"; return 1; }
+    encrypt_backup_file "$encryption" "$recipient" "$target/$file" "$target/$file.$encryption" && [[ -s "$target/$file.$encryption" ]] && rm -f "$target/$file" \
+      || { rm -f "$target/database.dump" "$target/storage.tar.gz" "$target/$file.$encryption"; return 1; }
   done
-  echo "  krypterad med age till BACKUP_AGE_RECIPIENT"
-  ( cd "$target" && sha256 database.dump.age storage.tar.gz.age > SHA256SUMS ) || return 1
-  printf 'created=%s\nfrom=%s\ntables=%s\nfiles=%s\nencrypted=age\n' "$stamp" "${previous_version:-okänd}" "$tables_copy" "$files_copy" > "$target/MANIFEST"
+  echo "  krypterad med $encryption till $setting"
+  ( cd "$target" && sha256 "database.dump.$encryption" "storage.tar.gz.$encryption" > SHA256SUMS ) || return 1
+  printf 'created=%s\nfrom=%s\ntables=%s\nfiles=%s\nencrypted=%s\n' "$stamp" "${previous_version:-okänd}" "$tables_copy" "$files_copy" "$encryption" > "$target/MANIFEST"
   [[ -s "$target/ROWS" ]] || rm -f "$target/ROWS"
   echo "Backup klar: $target"
   # Retention: the newest KEEP_BACKUPS update backups stay; only folders named like a stamp are removed.
@@ -217,7 +237,108 @@ backup_before_update() {
 # one, a key pair is made here in backup-key/ (only this user can read it) and the admin is told to move a copy of the private
 # key somewhere safe: without it no backup can be opened. age is needed on this computer either way.
 age_hint="Installera age (Debian/Ubuntu: sudo apt install age, Fedora: sudo dnf install age, macOS: brew install age) och kör igen."
+gpg_hint="Installera GnuPG (Debian/Ubuntu: sudo apt install gnupg, Fedora: sudo dnf install gnupg2, macOS: brew install gnupg) och kör igen."
 ensure_backup_encryption() {
+  local encryption
+  encryption="${ENCRYPTION_CHOICE:-$(env_value BACKUP_ENCRYPTION)}"; encryption="${encryption:-age}"
+  [[ "$encryption" == age || "$encryption" == gpg ]] || fail "BACKUP_ENCRYPTION i .env ska vara age eller gpg."
+  [[ -z "$ENCRYPTION_CHOICE" ]] || set_value BACKUP_ENCRYPTION "$encryption" "$DIR/.env"
+  if [[ "$encryption" == gpg ]]; then ensure_gpg_encryption; else ensure_age_encryption; fi
+  BACKUP_ENCRYPTION="$encryption"
+}
+
+# A path in .env is relative to the install folder (the cron line of nightly-backup.sh runs there too).
+gpg_key_path() { if [[ "$1" == /* ]]; then printf '%s' "$1"; else printf '%s/%s' "$DIR" "$1"; fi; }
+
+# Makes the backups' GnuPG key pair (RSA 4096 with an RSA 4096 subkey for encryption) in its own GNUPGHOME: <home> <private
+# key file> <public key file>. No expiry, so the backups never stop silently when a date passes; without a passphrase, like
+# the age key, because the nightly backup only needs the public key and the private one is meant to leave this computer.
+gpg_make_key() {
+  local home="$1" fpr
+  mkdir -p "$home" && chmod 700 "$home" || return 1
+  gpg --homedir "$home" --batch --gen-key >/dev/null 2>&1 <<'GPGKEY' || return 1
+%no-protection
+Key-Type: RSA
+Key-Length: 4096
+Key-Usage: cert
+Subkey-Type: RSA
+Subkey-Length: 4096
+Subkey-Usage: encrypt
+Name-Real: Workflow backup
+Expire-Date: 0
+%commit
+GPGKEY
+  fpr="$(gpg --homedir "$home" --batch --with-colons --list-secret-keys 2>/dev/null | awk -F: '$1 == "fpr" { print $10; exit }')"
+  [[ "$fpr" =~ ^([0-9A-F]{40}|[0-9A-F]{64})$ ]] || return 1
+  ( umask 077; gpg --homedir "$home" --batch --armor --export-secret-keys "$fpr" > "$2" 2>/dev/null ) && [[ -s "$2" ]] || return 1
+  gpg --homedir "$home" --batch --armor --export "$fpr" > "$3" 2>/dev/null && [[ -s "$3" ]]
+}
+
+# Empty when the file is a public key that can encrypt with RSA of at least 3072 bits; otherwise the reason.
+gpg_key_problem() {
+  local home lines
+  [[ -s "$1" ]] || { printf 'filen %s finns inte' "$1"; return; }
+  home="$(mktemp -d)"
+  lines="$(gpg --homedir "$home" --batch --with-colons --show-keys "$1" 2>/dev/null || true)"
+  gpgconf --homedir "$home" --kill all >/dev/null 2>&1 || true; rm -rf -- "$home"
+  if grep -qE '^(sec|ssb):' <<< "$lines"; then printf 'filen innehåller en privat nyckel; ange bara den publika'
+  elif ! awk -F: '($1 == "pub" || $1 == "sub") && $2 !~ /[rei]/ && $4 == 1 && $3 >= 3072 && $12 ~ /e/ { found = 1 } END { exit !found }' <<< "$lines"; then
+    printf 'nyckeln ska vara en publik RSA-nyckel med minst 3072 bitar som kan kryptera'
+  fi
+}
+
+# One backup file encrypted: <age|gpg> <recipient: age1… or the public key file> <plain file> <encrypted file>. gpg reads the
+# public key from the file (--recipient-file) in a GNUPGHOME of its own that is removed again; no keyring is used or changed.
+encrypt_backup_file() {
+  [[ "$1" == gpg ]] || { age -r "$2" -o "$4" "$3"; return; }
+  gpg_encrypt_file "$(gpg_key_path "$2")" "$3" "$4"
+}
+gpg_encrypt_file() { # <public key file> <plain file> <encrypted file>
+  local home status=0
+  home="$(mktemp -d)"
+  gpg --homedir "$home" --batch --yes --no-tty --trust-model always --cipher-algo AES256 --compress-algo none \
+    --recipient-file "$1" -o "$3" --encrypt "$2" >/dev/null 2>"$home/gpg.err" || { status=$?; cat "$home/gpg.err" >&2; }
+  gpgconf --homedir "$home" --kill all >/dev/null 2>&1 || true; rm -rf -- "$home"
+  return "$status"
+}
+
+# GnuPG (BACKUP_ENCRYPTION=gpg): BACKUP_GPG_RECIPIENT_FILE in .env (or WORKFLOW_BACKUP_GPG_RECIPIENT_FILE the first time, then
+# copied to backup-key/) is the public key; without one a key pair is made in a temporary GNUPGHOME of its own, the private
+# key exported to backup-key/workflow-backup.gpgkey (like the age key) and that GNUPGHOME removed again.
+ensure_gpg_encryption() {
+  local file pub key home problem
+  command -v gpg >/dev/null 2>&1 || fail "Backuperna ska krypteras med GnuPG, men programmet gpg finns inte. $gpg_hint"
+  file="$(env_value BACKUP_GPG_RECIPIENT_FILE)"
+  pub="$DIR/backup-key/workflow-backup.pub.asc"; key="$DIR/backup-key/workflow-backup.gpgkey"
+  if [[ -z "$file" && -n "${WORKFLOW_BACKUP_GPG_RECIPIENT_FILE:-}" ]]; then
+    [[ -s "$WORKFLOW_BACKUP_GPG_RECIPIENT_FILE" ]] || fail "Filen i WORKFLOW_BACKUP_GPG_RECIPIENT_FILE finns inte: $WORKFLOW_BACKUP_GPG_RECIPIENT_FILE"
+    mkdir -p "$DIR/backup-key"; chmod 700 "$DIR/backup-key"
+    cp -- "$WORKFLOW_BACKUP_GPG_RECIPIENT_FILE" "$pub" || fail "Kunde inte kopiera den publika nyckeln till $pub."
+    file=backup-key/workflow-backup.pub.asc
+    set_value BACKUP_GPG_RECIPIENT_FILE "$file" "$DIR/.env"
+  fi
+  if [[ -z "$file" ]]; then
+    if [[ ! -s "$pub" ]]; then
+      # Never a new key over an old private key: the backups made with it could no longer be opened.
+      [[ ! -s "$key" ]] || fail "$key finns men inte den publika nyckeln $pub. Exportera den publika delen dit (gpg --armor --export) och kör igen."
+      mkdir -p "$DIR/backup-key"; chmod 700 "$DIR/backup-key"
+      # The GNUPGHOME is a new folder of mktemp (only this user can read it), not one under the install folder: gpg-agent's
+      # socket lies in it on macOS and in Git Bash, and a long install path makes that socket path too long to open.
+      home="$(mktemp -d)/gnupg"
+      if ! gpg_make_key "$home" "$key" "$pub"; then
+        gpgconf --homedir "$home" --kill all >/dev/null 2>&1 || true; rm -rf -- "${home%/gnupg}"; rm -f -- "$key" "$pub"
+        fail "Kunde inte skapa en GnuPG-nyckel för backuperna i $DIR/backup-key."
+      fi
+      gpgconf --homedir "$home" --kill all >/dev/null 2>&1 || true; rm -rf -- "${home%/gnupg}"
+    fi
+    file=backup-key/workflow-backup.pub.asc
+    set_value BACKUP_GPG_RECIPIENT_FILE "$file" "$DIR/.env"
+  fi
+  problem="$(gpg_key_problem "$(gpg_key_path "$file")")"
+  [[ -z "$problem" ]] || fail "BACKUP_GPG_RECIPIENT_FILE i .env ($file): $problem."
+}
+
+ensure_age_encryption() {
   local recipient key
   recipient="$(env_value BACKUP_AGE_RECIPIENT)"
   if [[ -z "$recipient" && -n "${WORKFLOW_BACKUP_AGE_RECIPIENT:-}" ]]; then
@@ -293,7 +414,8 @@ fi
 app_port="$(env_value APP_PORT)"; admin_email="$(env_value INSTANCE_ADMIN_EMAIL)"
 step "Kontrollerar krypteringen av backuperna"
 ensure_backup_encryption
-echo "Backuperna krypteras med age till BACKUP_AGE_RECIPIENT i .env."
+if [[ "$BACKUP_ENCRYPTION" == gpg ]]; then echo "Backuperna krypteras med GnuPG (AES-256, RSA) till nyckeln i BACKUP_GPG_RECIPIENT_FILE i .env."
+else echo "Backuperna krypteras med age till BACKUP_AGE_RECIPIENT i .env."; fi
 
 if $updating; then
   # The new version is built while the old one keeps running; then the old one stops, the backup is taken and read back,
@@ -370,11 +492,13 @@ echo "  Starta igen:      docker compose up -d"
 echo "  Uppdatera:        kör installationsraden igen (tar en backup först)"
 echo "  Gå tillbaka:      INSTALLATION.md, avsnittet Återställ (backuperna ligger i $DIR/backups)"
 echo "  Ta bort allt:     docker compose down -v   (raderar även datan)"
-if [[ -s "$DIR/backup-key/workflow-backup.agekey" ]]; then
-  printf '\n\033[33mViktigt: den privata nyckeln till backuperna ligger i %s\n' "$DIR/backup-key/workflow-backup.agekey"
+for backup_key in "$DIR/backup-key/workflow-backup.agekey" "$DIR/backup-key/workflow-backup.gpgkey"; do
+  [[ -s "$backup_key" ]] || continue
+  printf '\n\033[33mViktigt: den privata nyckeln till backuperna ligger i %s\n' "$backup_key"
   echo "Kopiera den nu till en säker plats utanför den här datorn (en lösenordshanterare eller ett USB-minne i ett kassaskåp),"
   echo "helst två ställen. Utan den går ingen backup att öppna. Ligger den bara här försvinner den med datorn."
+  [[ "$backup_key" != *.gpgkey ]] || echo "Nyckeln har ingen utgångstid, så backuperna slutar aldrig fungera av sig själva."
   printf 'Flytta den sedan härifrån, så att den som kommer åt datorn inte också kan läsa backuperna (INSTALLATION.md, avsnitt 6).\033[0m\n'
-fi
+done
 if [[ -n "${WORKFLOW_NO_BROWSER:-}" ]]; then :
 elif command -v open >/dev/null; then open "$url"; elif command -v xdg-open >/dev/null; then xdg-open "$url" >/dev/null 2>&1 || true; fi

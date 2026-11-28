@@ -4,6 +4,7 @@ import { maintenanceDowntimeMinutes, maintenanceFactsSchema, MARKING_MAX_LENGTH 
 import { hasWorkflowPermission, type WorkflowPermissionProfile } from "@/lib/workflow/permissions";
 import { roundOre } from "@/lib/workflow/material-prices";
 import { RUN_HOURS_MAX } from "@/lib/machine/run-hours";
+import { positionFields, positionProblem } from "./location";
 
 /**
  * Underhåll (2026-10-30, the design proposal app/design-lab/arbetsorder-hallare, view underhall): the rules of the
@@ -71,12 +72,16 @@ export const partInputSchema = z.object({
   /** Null = none; left out on a save = unchanged (a machine may have moved them since the form was opened). */
   runHours: z.number().min(0).max(RUN_HOURS_MAX).nullable().optional(),
   isActive: z.boolean().default(true),
-});
+  /** Kartnål (0.92.0), only a machine: null = Samma som platsen, left out = unchanged (Flytta sends none). */
+  ...positionFields,
+}).superRefine((value, context) => { const problem = positionProblem(value); if (problem) context.addIssue({ code: "custom", path: ["latitude"], message: problem }); });
 export type PartInput = z.output<typeof partInputSchema>;
 
 export type PartListItem = {
   id: string; parentId: string | null; placeId: string | null; customerId: string | null; ownerName: string; name: string; partType: string; marking: string;
   status: PartStatus; isActive: boolean; mainImageId: string | null; openItems: number;
+  /** The machine's own pin (0.92.0); null = Samma som platsen. Always null on a part under a machine. */
+  latitude: number | null; longitude: number | null;
   /** Open fault reports on the part itself: corrective items with Felanmäld set, and operator reports waiting for approval. */
   reported: number;
 };

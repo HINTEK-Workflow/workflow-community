@@ -15,6 +15,7 @@ import {
   roundPlanStep, roundWaitingText, tickChecklist, type ChecklistRow, type FollowUpOccurrence, type PlanUnit, type PlanningMaintenance, type RoundHolder,
 } from "@/lib/maintenance/plan-model";
 import { scheduleRuleText } from "@/lib/workflow/form-schedule";
+import { plantTemplate, plantTemplateNotes } from "@/lib/maintenance/plant-templates";
 import type { DemoDatabase, DemoMaintenanceItem, DemoTask, DemoUser } from "./demo-data";
 
 /**
@@ -340,8 +341,10 @@ function treeAnswer(ctx: MaintenanceContext, s: State) {
     status: part.status, isActive: part.isActive, mainImageId: null,
     openItems: rows.filter((row) => row.partId === part.id && row.status === "OPEN").length,
     reported: rows.filter((row) => row.partId === part.id && row.status === "OPEN" && row.type === "CORRECTIVE" && row.reportedAt).length,
+    // Kartnål (0.92.0): the demo's machines stand where their places are, and the demo's places have no pins.
+    latitude: null, longitude: null,
   }));
-  const places: PlaceListItem[] = s.places.map((place) => ({ ...place, level: placeLevelOf(place.level) }));
+  const places: PlaceListItem[] = s.places.map((place) => ({ ...place, level: placeLevelOf(place.level), latitude: null, longitude: null }));
   const owners = ctx.can("maintenance", "edit") ? ctx.db.customers.map((customer) => ({ id: customer.id, name: customer.company || customer.name })) : [];
   return { parts, truncated: false, places, owners, canEdit: ctx.can("maintenance", "edit") };
 }
@@ -863,6 +866,15 @@ function mutate(ctx: MaintenanceContext, s: State, body: Record<string, unknown>
       s.places = s.places.filter((place) => place.id !== id);
       return { ok: true };
     case "create_part": return savePart(ctx, s, null, null, body.part);
+    // Skapa från mall (2026-11-28): the machine, then its suggested parts under it, as the server does.
+    case "create_from_template": {
+      const template = plantTemplate(typeof body.template === "string" ? body.template : null);
+      if (!template) return fail(404, "Mallen finns inte.");
+      const input = record(body.part);
+      const made = savePart(ctx, s, null, null, { ...input, parentId: null, partType: text(input.partType, 80) || template.name, notes: text(input.notes, 2000) || plantTemplateNotes(template) });
+      for (const name of template.parts) savePart(ctx, s, null, null, { name, parentId: made.id });
+      return made;
+    }
     case "update_part": return savePart(ctx, s, id, version, body.part);
     case "delete_part": {
       const ids = subtreeIds(shape(s), id);

@@ -10,6 +10,7 @@ import { useLoadEffect } from "@/lib/use-load-effect";
 import { useConfirm } from "@/features/kfid/confirm";
 import { Panel } from "@/features/kfid/ui";
 import { SECURITY_LOG_NOTE, SecurityLogList, type SecurityLogPage } from "./security-settings";
+import { SupportAccessSection } from "./support-access";
 
 type Member = { id: string; name: string; email: string; role: string; twoFactor: boolean; google: boolean };
 type Data = { required: boolean; me: string; members: Member[]; log: SecurityLogPage; microsoftAvailable?: boolean; microsoftTenantId?: string | null };
@@ -52,7 +53,7 @@ export function CompanySecurity({ notify }: { notify: (message: string, error?: 
     catch (error) { notify((error as Error).message, true); }
     finally { setBusy(false); }
   }
-  return <Panel title="Säkerhet" description="Tvåstegsverifiering för företagets medarbetare, utloggning och säkerhetslogg." collapsible defaultCollapsed
+  return <Panel title="Säkerhet" description="Tvåstegsverifiering, supportåtkomst, utloggning och säkerhetslogg." collapsible defaultCollapsed
     icon={ShieldCheck}>
     {confirmElement}
     {!data ? <p className="text-sm text-muted-foreground" role="status">Hämtar…</p> : <div className="space-y-6" data-testid="company-security">
@@ -60,8 +61,10 @@ export function CompanySecurity({ notify }: { notify: (message: string, error?: 
         <Checkbox className="mt-0.5" checked={data.required} disabled={busy} aria-label="Kräv tvåstegsverifiering"
           onCheckedChange={(value) => void post({ action: "require", on: value === true }, value === true ? "Tvåstegsverifiering krävs nu för medarbetarna." : "Tvåstegsverifiering krävs inte längre.")} />
         <span><span className="block font-medium">Kräv tvåstegsverifiering</span>
-          <span className="block text-xs text-muted-foreground">På: alla måste ha en kod från en autentiseringsapp, också de som loggar in med Google eller Microsoft. Passkey räknas som två steg. Sparas direkt.</span></span>
+          <span className="block text-xs text-muted-foreground">Av från början. På: alla måste ha en kod från en autentiseringsapp, också de som loggar in med Google eller Microsoft. Den som saknar koden får lägga in den vid nästa inloggning, innan arbetsytan öppnas. Passkey räknas som två steg, och Microsoft när Microsoft har bekräftat sitt eget tvåsteg. Sparas direkt.</span></span>
       </label>
+
+      <SupportAccessSection notify={notify} />
 
       {data.microsoftAvailable || data.microsoftTenantId ? <MicrosoftTenantLock key={data.microsoftTenantId ?? "none"} saved={data.microsoftTenantId} busy={busy} save={(tenantId) => post({ action: "microsoft_tenant", tenantId }, tenantId ? "Microsoft-inloggning är låst till företagets katalog." : "Microsoft-inloggning är inte längre låst.")} /> : null}
 

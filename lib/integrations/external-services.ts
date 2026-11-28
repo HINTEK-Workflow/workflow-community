@@ -18,7 +18,7 @@ import type { ExternalProvider } from "@/lib/integrations/key-catalog";
 export type ServiceDirection = "out" | "in" | "both";
 /** Whose key: the installation's central key, the company's own key, a key Workflow issues, or none. */
 export type KeyOwner = "central" | "company" | "issued" | "none";
-export type ServiceGroup = "ai" | "login" | "payment" | "wholesale" | "lookup" | "messages" | "accounting" | "clients" | "keys";
+export type ServiceGroup = "ai" | "login" | "payment" | "wholesale" | "lookup" | "messages" | "accounting" | "clients" | "keys" | "updates";
 
 /** A place in the app: an address (/?view=…, a public path such as /login) or the AI panel ("panel:ai"). */
 export type ServicePlace = { label: string; at: string };
@@ -67,6 +67,7 @@ export const SERVICE_GROUPS: Record<ServiceGroup, string> = {
   accounting: "Bokföring",
   clients: "Kopplingar in till Workflow",
   keys: "Nyckelförvaring",
+  updates: "Uppdateringar",
 };
 
 /** The legend for whose key it is; `type` is the --type-* colour the box is drawn in. */
@@ -236,6 +237,15 @@ export const EXTERNAL_SERVICES: readonly ExternalService[] = [
     incoming: ["/api/youtube/callback"],
     hosts: ["accounts.google.com", "oauth2.googleapis.com", "www.googleapis.com", "www.youtube.com"],
     modules: ["lib/youtube/"],
+  },
+  {
+    // Kontrollera nya versioner (K4.8, 2026-11-28): Community only, off from the start, one anonymous GET of a public list a day.
+    id: "github-releases", name: "GitHub (versionslistan)", group: "updates", direction: "out",
+    purpose: "Bara i Community och när administratören slagit på det: läser listan över nya versioner en gång om dygnet.",
+    key: { owner: "none", label: "Ingen nyckel (en publik lista)" },
+    admin: [{ label: "Hjälp → Om Workflow → Kontrollera nya versioner", at: "/?view=help" }],
+    hosts: ["api.github.com"],
+    modules: ["lib/updates/version-check-server.ts"],
   },
   {
     id: "api-v1", name: "Egna system via API", group: "clients", direction: "in",

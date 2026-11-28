@@ -42,8 +42,9 @@ const statements: Record<HistoryCategory, (org: string, before: Date) => Stateme
     count: Prisma.sql`SELECT count(*)::int AS n FROM "AiProposal" p WHERE p."organizationId" = ${org} AND p."conversationId" IS NULL AND p."createdAt" < ${before}`,
     remove: Prisma.sql`DELETE FROM "AiProposal" p WHERE p."organizationId" = ${org} AND p."conversationId" IS NULL AND p."createdAt" < ${before}`,
   }],
+  // The administration log itself (AdministrationEvent) is chained and follows the company's log retention since 2026-11-27
+  // (Spårbarhet K3.3, lib/traceability/retention-server.ts); it is never removed by hand or with the work history.
   administration: (org, before) => [
-    direct("AdministrationEvent", org, before),
     direct("WorkScheduleEvent", org, before),
     {
       count: Prisma.sql`SELECT count(*)::int AS n FROM "FormTemplateEvent" e WHERE e."templateId" IN (SELECT f.id FROM "FormTemplate" f WHERE f."organizationId" = ${org}) AND e."createdAt" < ${before}`,

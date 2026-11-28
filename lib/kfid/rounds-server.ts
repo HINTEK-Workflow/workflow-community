@@ -12,6 +12,11 @@ import { loadRoundWorkOrders } from "@/lib/kfid/round-work-orders-server";
 import { roundHolderOf, roundOrderSummary } from "@/lib/workflow/round-work-orders";
 import { swedishClock, swedishDayKey } from "@/lib/swedish-time";
 import { roundNotDoneOf } from "@/lib/workflow/round-outcome";
+import { formDocumentSchema } from "@/lib/workflow/form-document";
+import { scheduleRuleText } from "@/lib/workflow/form-schedule";
+import { paperModel } from "@/lib/workflow/round-paper";
+import { companySenderOf } from "@/lib/kfid/company";
+import { senderLegal } from "@/lib/workflow/report-kit";
 
 export const ROUND_WINDOW_DAYS = 45;
 
@@ -121,6 +126,36 @@ export async function loadRoundLabelPlaces(ctx: RoundsContext, roundId: string) 
     round: { id: round.id, title: round.title, customerId: holder?.customerId ?? null, facilityId: holder?.facilityId ?? null, facilityName: holder?.facilityName ?? "", customerName: holder?.customerName ?? "",
       workOrder: holder ? { id: holder.id, title: holder.title ?? "" } : null },
     places,
+  };
+}
+
+/**
+ * Rondprotokoll på papper (0.92.0): the round, its points (as the QR sheet has them) and the published form it is done with, read
+ * within the round's visibility, and the company's name and legal line for the footer. Only the company's own round and form
+ * (or Workflow's published form); nothing is written. The form is the company's own published version of a Workflow original when it
+ * has one, as a started round uses.
+ */
+export async function loadRoundPaper(ctx: RoundsContext, roundId: string) {
+  const { round, places } = await loadRoundLabelPlaces(ctx, roundId);
+  const schedule = await prisma.formSchedule.findFirst({ where: { id: roundId, organizationId: ctx.organizationId, deletedAt: null }, select: { templateId: true, rule: true, assignedToName: true } });
+  if (!schedule) throw new ApiError(404, "Ronden finns inte, eller så får du inte se den.");
+  const copy = await prisma.formTemplate.findFirst({ where: { organizationId: ctx.organizationId, baseTemplateId: schedule.templateId, status: "PUBLISHED", publishedVersion: { not: null } }, select: { id: true, publishedVersion: true } });
+  const template = copy ?? await prisma.formTemplate.findFirst({ where: { id: schedule.templateId, status: "PUBLISHED", publishedVersion: { not: null }, ...visibleFormsWhere(ctx.organizationId) }, select: { id: true, publishedVersion: true } });
+  const version = template?.publishedVersion ? await prisma.formTemplateVersion.findUnique({ where: { templateId_version: { templateId: template.id, version: template.publishedVersion } }, select: { name: true, displayName: true, document: true } }) : null;
+  if (!version) throw new ApiError(409, "Rondens formulär är inte publicerat. Publicera eller byt formuläret under Driftronder, så går protokollet att skriva ut.");
+  const parsed = formDocumentSchema.safeParse(version.document);
+  if (!parsed.success) throw new ApiError(409, "Rondens formulär går inte att läsa. Öppna formuläret och publicera det igen.");
+  const [organization, settings] = await Promise.all([
+    prisma.organization.findUnique({ where: { id: ctx.organizationId }, select: { name: true } }),
+    prisma.workspaceSettings.findUnique({ where: { organizationId: ctx.organizationId }, select: { companyName: true, profile: true } }),
+  ]);
+  const rule = formScheduleRuleSchema.safeParse(schedule.rule);
+  return {
+    round: { ...round, ruleText: rule.success ? scheduleRuleText(rule.data) : "", assignedToName: schedule.assignedToName },
+    formName: version.displayName || version.name,
+    paper: paperModel(parsed.data, version.displayName || version.name),
+    places,
+    company: { name: settings?.companyName || organization?.name || "", legal: senderLegal(companySenderOf(settings?.profile)) },
   };
 }
 

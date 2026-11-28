@@ -6,6 +6,7 @@ import { memoryPseudonyms } from "@/lib/ai/memory";
 import { deleteCompetenceCards, deleteCredentialLines } from "@/lib/self-inspection/credentials-server";
 import { contentSchema, redactPersonInContent } from "@/lib/self-inspection/model";
 import { swedishDayKey } from "@/lib/swedish-time";
+import { markRedacted, removeChainedRows } from "@/lib/traceability/chain-server";
 
 /**
  * Radering av personuppgifter (2026-10-03, GDPR art. 17, three levels): a person erases their own account, a
@@ -69,7 +70,8 @@ export async function erasePersonTx(tx: Tx, userId: string, options: { keepCompe
   // Kommentarer (2026-11-01): the text stays with the job, without the person's name; a mention of them in others' comments too.
   await tx.comment.updateMany({ where: { authorUserId: userId }, data: { authorUserId: null, authorName: ERASED_NAME } });
   // Säkerhet (2026-10-10): the person's security log, sessions and backup codes; the TOTP secret goes with the user update.
-  await tx.securityEvent.deleteMany({ where: { userId } });
+  // The log is chained (Spårbarhet K3, 2026-11-27): the rows go, their links stay as hashes so the chain can still be checked.
+  await removeChainedRows(tx, "security", Prisma.sql`"userId" = ${userId}`, "erased");
   await tx.userSession.deleteMany({ where: { userId } });
   await tx.userBackupCode.deleteMany({ where: { userId } });
   // Passkeys (2026-10-11): the public keys and any started ceremony; linked Microsoft accounts went with authAccount.
@@ -78,7 +80,12 @@ export async function erasePersonTx(tx: Tx, userId: string, options: { keepCompe
   // Names and addresses written into the administration history of the person's companies.
   for (const text of [user.email, user.name].filter((value): value is string => Boolean(value && value.trim().length >= 3))) {
     await tx.$executeRaw`UPDATE "Comment" SET body = replace(body, ${text}, '[borttagen]'), "authorName" = replace("authorName", ${text}, '[borttagen]') WHERE "organizationId" = ANY(${organizations})`;
+    // A rewritten row keeps the hash it was written with, marked as rewritten on purpose (Spårbarhet K3, 2026-11-27).
+    await markRedacted(tx, "admin", Prisma.sql`"organizationId" = ANY(${organizations}) AND position(${text} in detail) > 0`);
     await tx.$executeRaw`UPDATE "AdministrationEvent" SET detail = replace(detail, ${text}, '[borttagen]') WHERE "organizationId" = ANY(${organizations}) AND position(${text} in detail) > 0`;
+    // Ändringshistoriken names people by id; a name typed into a text (a title, a responsible person's name) goes the same way.
+    await markRedacted(tx, "change", Prisma.sql`"organizationId" = ANY(${organizations}) AND position(${text} in "changes") > 0`);
+    await tx.$executeRaw`UPDATE "RecordChange" SET "changes" = replace("changes", ${text}, '[borttagen]') WHERE "organizationId" = ANY(${organizations}) AND position(${text} in "changes") > 0`;
   }
   // Egenkontroll (2026-10-06): the authorisation number and level are personal data; the role itself stays with the anonymised person.
   await tx.selfInspectionRoleMember.updateMany({ where: { userId }, data: { authorizationNumber: "", authorizationLevel: "" } });

@@ -58,6 +58,7 @@ const load = {
   rounds: () => import("@/features/workflow/form-rounds"),
   place: () => import("@/features/workflow/place-page"),
   placeLabels: () => import("@/features/workflow/place-labels"),
+  roundPaper: () => import("@/features/workflow/round-paper"),
   companyValues: () => import("@/features/workflow/company-values"),
   historyRetention: () => import("@/features/workflow/history-retention"),
   mailings: () => import("@/features/workflow/mailings"),
@@ -74,6 +75,7 @@ const load = {
   serverUpdates: () => import("@/features/workflow/server-updates"),
   serverJobs: () => import("@/features/workflow/server-jobs"),
   companySecurity: () => import("@/features/security/company-security"),
+  accessReview: () => import("@/features/security/access-review"),
   operatorAccounts: () => import("@/features/operator/operator-accounts-admin"),
   operatorProduct: () => import("@/features/operator/operator-product-settings"),
   providerKey: () => import("@/features/ai/provider-key-panel"),
@@ -129,6 +131,7 @@ export const FormRounds = dynamic(() => load.rounds().then((module) => module.Fo
 export const PlacePage = dynamic(() => load.place().then((module) => module.PlacePage), { loading: ViewLoading });
 export const PlaceLabels = dynamic(() => load.placeLabels().then((module) => module.PlaceLabels), { loading: ViewLoading });
 export const PlaceLabelsMoved = dynamic(() => load.placeLabels().then((module) => module.PlaceLabelsMoved), { loading: ViewLoading });
+export const RoundPaper = dynamic(() => load.roundPaper().then((module) => module.RoundPaper), { loading: ViewLoading });
 export const CloudCompanyValues = dynamic(() => load.companyValues().then((module) => {
   return function CloudValues(props: Omit<ComponentProps<typeof module.CompanyValues>, "backend">) { return <module.CompanyValues backend={module.cloudCompanyValues} {...props} />; };
 }), { loading: ViewLoading });
@@ -146,12 +149,15 @@ export const LantmaterietSettings = dynamic(() => load.lantmateriet().then((modu
 export const MicrosoftSignInSettings = dynamic(() => load.microsoft().then((module) => module.MicrosoftSignInSettings), { loading: PartLoading });
 export const PlatformSecurity = dynamic(() => load.platformSecurity().then((module) => module.PlatformSecurity), { loading: PartLoading });
 export const PlatformSecurityLog = dynamic(() => load.platformSecurity().then((module) => module.PlatformSecurityLog), { loading: PartLoading });
+export const PlatformLogChains = dynamic(() => load.platformSecurity().then((module) => module.PlatformLogChains), { loading: PartLoading });
 // Webbplatskartan under Avancerat on Drift och säkerhet: its code comes when the part is drawn, its data when asked for.
 export const SiteMap = dynamic(() => load.siteMap().then((module) => module.SiteMap), { loading: PartLoading });
 // Servrar och uppdateringar on Drift och säkerhet (2026-10-25): the servers' status, read when the part is drawn.
 export const ServerUpdates = dynamic(() => load.serverUpdates().then((module) => module.ServerUpdates), { loading: PartLoading });
 export const ServerJobs = dynamic(() => load.serverJobs().then((module) => module.ServerJobs), { loading: PartLoading });
 export const CompanySecurity = dynamic(() => load.companySecurity().then((module) => module.CompanySecurity), { loading: PartLoading });
+// Granska behörigheter (K2.4, 2026-11-28), under Användare for the company's admin.
+export const AccessReview = dynamic(() => load.accessReview().then((module) => module.AccessReview), { loading: PartLoading });
 // Operatörskonton (2026-10-30; a menu button of its own 2026-10-31), Cloud admins.
 export const OperatorAccountsAdmin = dynamic(() => load.operatorAccounts().then((module) => module.OperatorAccountsAdmin), { loading: ViewLoading });
 export const OperatorProductSettings = dynamic(() => load.operatorProduct().then((module) => module.OperatorProductSettings), { loading: PartLoading });
@@ -174,7 +180,7 @@ const VIEW_CODE: Record<string, Loader[]> = {
   quotes: [load.quotes], quote: [load.quote], purchases: [load.purchases], maintenance: [load.maintenance], boards: [load.boards], news: [load.news], documents: [load.documents], purchase: [load.purchase], articles: [load.articles], invoice_bases: [load.invoiceBases],
   company_features: [load.priceSettings, load.accounting, load.companyGoals], quote_settings: [load.priceSettings, load.accounting], ai_settings: [load.priceSettings, load.accounting],
   calculators: [load.calculators], project_summary: [load.projectSummary], project_planning: [load.projectPlanning], capacity: [load.capacity],
-  report_archive: [load.reportArchive], rounds: [load.rounds], place: [load.place], place_labels: [load.placeLabels],
+  report_archive: [load.reportArchive], rounds: [load.rounds], place: [load.place], place_labels: [load.placeLabels], round_paper: [load.roundPaper],
   company_values: [load.companyValues], history_retention: [load.administration, load.historyRetention],
   mailings: [load.mailings], behavior_analytics: [load.behavior], pdf_templates: [load.pdfTemplates], plc_devices: [load.plcDevices],
   login_settings: [load.loginSettings, load.mailSettings, load.platformSecurity, load.viewAs], view_as: [load.loginSettings, load.mailSettings, load.platformSecurity, load.viewAs],

@@ -3,7 +3,7 @@ import { formatSwedish, formatSwedishDate, swedishDayKey } from "@/lib/swedish-t
 import { continuationOf, createReportKit, isJpeg, isPng, mm, REPORT_TONES, type KitIdentity } from "@/lib/workflow/report-kit";
 import type { ReportFontBytes } from "@/lib/workflow/report-fonts";
 import { deviationClosedText, deviationOrderText } from "./deviation-link";
-import { DEVIATION_PHOTO_PHASES, DEVIATION_SEVERITIES, DEVIATION_SEVERITY_STEP, DEVIATION_TYPES, deviationSeverity, deviationType, isIncidentType, mayReadDeviation, type DeviationViewer } from "./incidents";
+import { DEVIATION_PHOTO_PHASES, DEVIATION_SEVERITIES, DEVIATION_SEVERITY_STEP, DEVIATION_TYPES, deviationSeverity, deviationType, deviationTypeChoices, deviationTypeLabel, isIncidentType, mayReadDeviation, storedDeviationType, type DeviationViewer } from "./incidents";
 import { DEVIATION_CATEGORIES, DEVIATION_KINDS, DEVIATION_STATUSES, type DeviationView } from "./model";
 import { pdfTexts } from "@/lib/pdf-templates/catalog";
 import type { PdfTexts } from "@/lib/pdf-templates/model";
@@ -36,9 +36,10 @@ export const DEVIATION_EXPORT_PHOTO_MAX = 60;
 
 export type DeviationExportEntry = Omit<DeviationView, "mine"> & { mine?: boolean };
 
-/** "Tillbud 4", "Avvikelse 2" (an Elinstallation entry keeps its kind's name), "Förbättring 3". */
+/** "Tillbud 4", "Avvikelse 2" (Elinstallation, the neutral types and the company's own keep the kind's name), "Förbättring 3". */
+const NAMED_BY_TYPE: readonly string[] = ["RISK_OBSERVATION", "NEAR_MISS", "ACCIDENT"];
 export const deviationEntryLabel = (item: { kind: keyof typeof DEVIATION_KINDS; number: number; type?: string | null }) =>
-  `${item.kind === "IMPROVEMENT" || deviationType(item.type) === "SELF_INSPECTION" ? DEVIATION_KINDS[item.kind] : DEVIATION_TYPES[deviationType(item.type)]} ${item.number}`;
+  `${item.kind === "IMPROVEMENT" || !NAMED_BY_TYPE.includes(deviationType(item.type)) ? DEVIATION_KINDS[item.kind] : DEVIATION_TYPES[deviationType(item.type)]} ${item.number}`;
 
 /**
  * The entries a file holds: those asked for, in the log's order, and only those the reader may read. The list the page
@@ -83,7 +84,7 @@ export function deviationCsvRow(entry: DeviationExportEntry, sections: Deviation
   const type = deviationType(entry.type);
   const incident = isIncidentType(type);
   return [
-    deviationEntryLabel(entry), entry.kind === "IMPROVEMENT" ? DEVIATION_KINDS.IMPROVEMENT : DEVIATION_TYPES[type], entry.title, severityText(entry), DEVIATION_STATUSES[entry.status],
+    deviationEntryLabel(entry), entry.kind === "IMPROVEMENT" ? DEVIATION_KINDS.IMPROVEMENT : deviationTypeLabel(entry.type), entry.title, severityText(entry), DEVIATION_STATUSES[entry.status],
     type === "SELF_INSPECTION" && entry.kind !== "IMPROVEMENT" ? DEVIATION_CATEGORIES[entry.category] : "", day(entry.createdAt), entry.reportedByName ?? "", entry.responsibleName ?? "",
     entry.dueDate ?? "", entry.status === "DONE" ? day(entry.closedAt) : "",
     ...(on(sections, "description") ? [entry.description] : []),
@@ -170,7 +171,7 @@ export async function createDeviationsPdf(input: { identity: KitIdentity; fontBy
     // In a log every part of an entry may land on a new page: the page then says whose part it is.
     kit.running = "";
     if (!single) {
-      kit.section(`${deviationEntryLabel(entry)} · ${entry.title}`, { note: [entry.kind === "IMPROVEMENT" ? DEVIATION_KINDS.IMPROVEMENT : DEVIATION_TYPES[type], DEVIATION_STATUSES[entry.status], marks(entry, t)].filter(Boolean).join(" · "), keep: 60 });
+      kit.section(`${deviationEntryLabel(entry)} · ${entry.title}`, { note: [entry.kind === "IMPROVEMENT" ? DEVIATION_KINDS.IMPROVEMENT : deviationTypeLabel(entry.type), DEVIATION_STATUSES[entry.status], marks(entry, t)].filter(Boolean).join(" · "), keep: 60 });
       kit.running = `${deviationEntryLabel(entry)} · ${entry.title}`;
     }
     const late = entry.status !== "DONE" && entry.dueDate && entry.dueDate < swedishDayKey(createdAt);
@@ -185,7 +186,9 @@ export async function createDeviationsPdf(input: { identity: KitIdentity; fontBy
       ...(type === "SELF_INSPECTION" && entry.kind !== "IMPROVEMENT" ? [{ label: t.text("fact.class"), value: DEVIATION_CATEGORIES[entry.category] }] : []),
       ...(entry.workOrder || entry.source ? [{ label: t.text("fact.related"), value: [entry.workOrder ? deviationOrderText(entry.workOrder) : "", entry.source ? t.text("related.protocol", { titel: entry.source.title || t.text("source.none") }) : ""].filter(Boolean).join(" · ") }] : []),
       // The type as choices, as the template prints "Typ av avvikelse" – the chosen one ticked.
-      { label: t.text(entry.kind === "IMPROVEMENT" ? "fact.type" : "fact.type.deviation"), span: 12, choices: entry.kind === "IMPROVEMENT" ? [{ text: DEVIATION_KINDS.IMPROVEMENT, checked: true }] : (Object.keys(DEVIATION_TYPES) as (keyof typeof DEVIATION_TYPES)[]).map((key) => ({ text: DEVIATION_TYPES[key], checked: key === type })) },
+      { label: t.text(entry.kind === "IMPROVEMENT" ? "fact.type" : "fact.type.deviation"), span: 12, choices: entry.kind === "IMPROVEMENT" ? [{ text: DEVIATION_KINDS.IMPROVEMENT, checked: true }]
+        // The types every company has, Elinstallation and the company's own type only when it is the entry's (2026-11-28).
+        : deviationTypeChoices({ hasProgram: type === "SELF_INSPECTION", current: entry.type }).map((choice) => ({ text: choice.label, checked: choice.value === storedDeviationType(entry.type) })) },
     ], { cols: 3 });
     // The parts in the template's order (the group "parts"); a part the owner hid is never printed.
     for (const part of t.order("parts")) {

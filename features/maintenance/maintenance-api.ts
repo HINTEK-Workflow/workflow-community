@@ -3,6 +3,7 @@
 import { api } from "@/features/kfid/api";
 import type { ItemFields, ItemSource, ItemStatus, PartListItem, PartStatus, StoreLocationKind } from "@/lib/maintenance/model";
 import type { PlaceListItem } from "@/lib/maintenance/place-model";
+import type { MachinePosition } from "@/lib/maintenance/location";
 import type { ChecklistRow, PlanFollowUp, PlanOccurrenceState } from "@/lib/maintenance/plan-model";
 
 /** Förfallet och i tid (2026-11-27): the answer of ?part=follow_up (lib/maintenance/follow-up-server.ts). */
@@ -38,6 +39,8 @@ export type PartDetail = {
     runHoursFeed: { signalName: string; sourceName: string } | null; runHoursHeld: { value: number; reason: string; at: string | null } | null;
     isActive: boolean; version: number; path: string[];
     depth: number; placePath: string[]; machinePlaceId: string | null;
+    /** Kartnål (0.92.0): the machine's own pin (null = Samma som platsen) and where the machine is shown. Older answers (the demo) may lack them. */
+    latitude?: number | null; longitude?: number | null; position?: MachinePosition | null;
   };
   images: { id: string; name: string; isMain: boolean }[];
   spares: Spare[];

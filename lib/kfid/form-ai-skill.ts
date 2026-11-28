@@ -19,11 +19,12 @@ import { ZipWriter } from "./zip-writer";
  * fingerprint here and run `npx tsx scripts/form-ai-skill/build-schema.ts`.
  */
 export const FORM_AI_SKILL_NAME = "hintek-workflow-form-builder";
-export const FORM_AI_SKILL_VERSION = "1.0.0";
+export const FORM_AI_SKILL_VERSION = "1.1.0";
 /** The format version of the form file the package writes (formSharePackageSchema's formatVersion). */
 export const FORM_AI_SKILL_FORMAT_VERSION = 1;
 /** sha256 of the generated schema without its version fields: changes exactly when the import format changes. */
-export const FORM_AI_SKILL_SCHEMA_SHA256 = "7097c37a9c15d2dd1b0dc5b4acffb4eea1d3fec05682c19406be136a1d97bcbe";
+// 1.1.0 (2026-11-28): the form categories VA och värme, Tillsyn och besiktning and Miljö.
+export const FORM_AI_SKILL_SCHEMA_SHA256 = "c47cd0df9d49983e8d3b6fbae0e6c7d636acaa8696ab9c6650e0479fb528f7e9";
 export const FORM_AI_SKILL_DIR = path.join("skills", FORM_AI_SKILL_NAME);
 /** Every file of the package, in the order they are zipped. Nothing else from the folder is ever sent. */
 export const FORM_AI_SKILL_FILES = [

@@ -24,6 +24,11 @@ const ALLOWED_OPTIONAL: Record<string, string> = {
   "User.activeOrganizationId": "session pointer to the chosen company, not business content",
   // Tavlor etapp 2 (2026-11-18): a screen's ten-minute pairing request belongs to no company until a person approves it.
   "ScreenPairing.organizationId": "a screen's pairing request is anonymous until a company approves it; no business content",
+  // Spårbarhet K3.1 (2026-11-27): the chain over the security log also covers its events without a company (the "platform"
+  // chain); these rows hold numbers and hashes only, never content.
+  "AuditChainHead.organizationId": "the end of a log chain; the platform chain of person-level security events has no company",
+  "AuditChainCheckpoint.organizationId": "a starting hash of a log chain; the platform chain has no company",
+  "AuditChainGap.organizationId": "a kept link (hashes only) of a log chain; the platform chain has no company",
 };
 
 function optionalOrganizationFields(schema: string) {

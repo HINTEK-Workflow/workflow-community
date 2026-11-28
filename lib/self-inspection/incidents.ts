@@ -10,15 +10,89 @@
  */
 
 // SELF_INSPECTION is shown as Elinstallation (2026-10-30): a deviation in the electrical installation work; "Egenkontroll" alone was too broad.
-export const DEVIATION_TYPES = { SELF_INSPECTION: "Elinstallation", RISK_OBSERVATION: "Riskobservation", NEAR_MISS: "Tillbud", ACCIDENT: "Olycksfall" } as const;
+// Avvikelseloggen för alla verksamheter (2026-11-27): the neutral types Driftfel, Säkerhet och arbetsmiljö, Kvalitet, Miljö and
+// Övrigt, and the company's own types (OWN, stored as "OWN:<namn>"). Elinstallation is offered only to a company with an egenkontrollprogram
+// (deviationTypeChoices); entries that have it keep it.
+export const DEVIATION_TYPES = {
+  SELF_INSPECTION: "Elinstallation", OPERATING_FAULT: "Driftfel", SAFETY: "Säkerhet och arbetsmiljö", QUALITY: "Kvalitet", ENVIRONMENT: "Miljö", OTHER: "Övrigt",
+  RISK_OBSERVATION: "Riskobservation", NEAR_MISS: "Tillbud", ACCIDENT: "Olycksfall", OWN: "Egen typ",
+} as const;
 export type DeviationType = keyof typeof DEVIATION_TYPES;
 export const DEVIATION_TYPE_KEYS = Object.keys(DEVIATION_TYPES) as [DeviationType, ...DeviationType[]];
 /** The types only a few may see (rule 2). */
 export const INCIDENT_TYPES = ["NEAR_MISS", "ACCIDENT"] as const satisfies readonly DeviationType[];
-/** The types that keep the log's own rule. */
-export const OPEN_TYPES = ["SELF_INSPECTION", "RISK_OBSERVATION"] as const satisfies readonly DeviationType[];
+/** The types that keep the log's own rule: every type but the incidents, the company's own included (a database filter uses NOT IN INCIDENT_TYPES). */
+export const OPEN_TYPES = DEVIATION_TYPE_KEYS.filter((key) => key !== "NEAR_MISS" && key !== "ACCIDENT");
 export const isIncidentType = (type: string | null | undefined): boolean => type === "NEAR_MISS" || type === "ACCIDENT";
-export const deviationType = (type: string | null | undefined): DeviationType => type && type in DEVIATION_TYPES ? type as DeviationType : "SELF_INSPECTION";
+
+// ---------- the company's own types ----------
+export const OWN_TYPE_PREFIX = "OWN:";
+export const OWN_TYPE_NAME_MAX = 60;
+export const OWN_TYPES_MAX = 20;
+/** A name of the company's own type as kept: trimmed, one space between words, at most 60 characters. */
+export const ownTypeName = (name: string) => name.replace(/\s+/g, " ").trim().slice(0, OWN_TYPE_NAME_MAX);
+/** The company's own types as stored (WorkspaceSettings.profile.deviationTypes, or the Local file): known names once, in order. */
+export function normalizeOwnTypes(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  const names = value.filter((item): item is string => typeof item === "string").map(ownTypeName).filter(Boolean);
+  const builtIn = new Set(Object.values(DEVIATION_TYPES).map((label) => label.toLocaleLowerCase("sv")));
+  const seen = new Set<string>();
+  return names.filter((name) => { const key = name.toLocaleLowerCase("sv"); if (seen.has(key) || builtIn.has(key)) return false; seen.add(key); return true; }).slice(0, OWN_TYPES_MAX);
+}
+/** The stored value of an entry of the company's own type. */
+export const ownTypeValue = (name: string) => `${OWN_TYPE_PREFIX}${ownTypeName(name)}`;
+export const isOwnTypeValue = (type: string | null | undefined): type is string => typeof type === "string" && type.startsWith(OWN_TYPE_PREFIX) && ownTypeName(type.slice(OWN_TYPE_PREFIX.length)).length > 0;
+/** The type key of a stored value; an older entry or file without one is Elinstallation, as before. */
+export const deviationType = (type: string | null | undefined): DeviationType => isOwnTypeValue(type) ? "OWN" : type && type !== "OWN" && type in DEVIATION_TYPES ? type as DeviationType : "SELF_INSPECTION";
+/** What an entry's type is called: the built-in name, or the company's own name as it was written on the entry. */
+export const deviationTypeLabel = (type: string | null | undefined): string => isOwnTypeValue(type) ? ownTypeName(type.slice(OWN_TYPE_PREFIX.length)) : DEVIATION_TYPES[deviationType(type)];
+/** A stored type value as the action takes it: a built-in key (not OWN itself) or "OWN:<namn>". */
+export const isStoredTypeValue = (value: unknown): value is string => typeof value === "string" && (isOwnTypeValue(value) || (value !== "OWN" && value in DEVIATION_TYPES));
+/** The value kept on an entry: a built-in type, or the company's own as "OWN:<namn>". */
+export type StoredDeviationType = Exclude<DeviationType, "OWN"> | `OWN:${string}`;
+export const storedDeviationType = (type: string | null | undefined): StoredDeviationType =>
+  isOwnTypeValue(type) ? `${OWN_TYPE_PREFIX}${ownTypeName(type.slice(OWN_TYPE_PREFIX.length))}` : deviationType(type) as Exclude<DeviationType, "OWN">;
+
+/** The neutral built-in types every company has, in the order they are offered. */
+export const NEUTRAL_DEVIATION_TYPES = ["OPERATING_FAULT", "SAFETY", "QUALITY", "ENVIRONMENT", "OTHER"] as const satisfies readonly DeviationType[];
+export type DeviationTypeChoice = { value: string; label: string };
+/**
+ * The types offered when an entry is reported or changed: the neutral ones, Riskobservation, Tillbud and Olycksfall, the company's
+ * own, and Elinstallation only with an egenkontrollprogram. An entry that already has a type keeps it in the list, so a change never
+ * takes it away.
+ */
+export function deviationTypeChoices(input: { hasProgram: boolean; ownTypes?: readonly string[]; current?: string | null }): DeviationTypeChoice[] {
+  const keys: DeviationType[] = [...(input.hasProgram ? ["SELF_INSPECTION" as const] : []), ...NEUTRAL_DEVIATION_TYPES, "RISK_OBSERVATION", "NEAR_MISS", "ACCIDENT"];
+  const choices: DeviationTypeChoice[] = [...keys.map((key) => ({ value: key, label: DEVIATION_TYPES[key] })), ...normalizeOwnTypes(input.ownTypes ?? []).map((name) => ({ value: ownTypeValue(name), label: name }))];
+  if (input.current && isStoredTypeValue(input.current) && !choices.some((choice) => choice.value === input.current)) choices.push({ value: input.current, label: deviationTypeLabel(input.current) });
+  return choices;
+}
+/**
+ * The type of a new entry when none was chosen (a protocol row, a round's brist, an older client): Elinstallation as before with a
+ * programme, otherwise Övrigt – so a company without electrical installation work never gets an electrical entry it did not choose.
+ */
+export const defaultDeviationType = (hasProgram: boolean): DeviationType => hasProgram ? "SELF_INSPECTION" : "OTHER";
+/**
+ * Whether a type may be stored on a new entry or a change (checked on the server): a built-in type, Elinstallation only with a
+ * programme, an own type only when it is among the company's own – and always the type the entry already has.
+ */
+export function deviationTypeRefusal(type: string, input: { hasProgram: boolean; ownTypes: readonly string[]; current?: string | null }): string | null {
+  if (input.current && type === input.current) return null;
+  if (!isStoredTypeValue(type)) return "Välj en typ i listan.";
+  if (type === "SELF_INSPECTION" && !input.hasProgram) return "Elinstallation hör till egenkontrollprogrammet. Välj en annan typ.";
+  if (isOwnTypeValue(type) && !normalizeOwnTypes(input.ownTypes).some((name) => ownTypeValue(name) === type)) return "Typen finns inte längre bland företagets egna typer. Välj en annan typ.";
+  return null;
+}
+/**
+ * The type a save stores, the same in Cloud, the Local file and the demo: what was sent, else what the entry has, else the default
+ * for a new one. A Förbättring keeps the plain type (model.ts improvementWithoutType) and is never refused for it.
+ */
+export function resolvedDeviationType(input: { kind: string; sent?: string | null; current?: string | null; hasProgram: boolean; ownTypes: readonly string[] }): { type: StoredDeviationType; refusal: string | null } {
+  const current = input.current === undefined ? undefined : storedDeviationType(input.current);
+  const type = storedDeviationType(input.sent ?? current ?? defaultDeviationType(input.hasProgram));
+  if (input.kind === "IMPROVEMENT") return { type, refusal: null };
+  return { type, refusal: deviationTypeRefusal(type, { hasProgram: input.hasProgram, ownTypes: input.ownTypes, current }) };
+}
 
 /** Photos on an entry: taken when it is reported (Före) or when it is marked done (Efter). */
 export const DEVIATION_PHOTO_PHASES = { BEFORE: "Före", AFTER: "Efter" } as const;
@@ -67,7 +141,8 @@ export function deviationReadWhere(viewer: DeviationViewer) {
   if (viewer.admin) return {};
   return {
     OR: [
-      { type: { in: [...OPEN_TYPES] }, OR: [{ reportedById: viewer.id }, { responsibleUserId: viewer.id }] },
+      // Every type but the incidents (the company's own types are "OWN:<namn>", so a list of the open types would leave them out).
+      { type: { notIn: [...INCIDENT_TYPES] }, OR: [{ reportedById: viewer.id }, { responsibleUserId: viewer.id }] },
       { type: { in: [...INCIDENT_TYPES] }, ...(viewer.team ? {} : { reportedById: viewer.id }) },
     ],
   };
@@ -133,7 +208,7 @@ export function reportToAuthorityRefusal(entry: { type?: string | null; serious?
 export function incidentFields(value: { type?: string | null; occurredAt?: string | null; whatHappened?: string | null; cause?: string | null; serious?: boolean | null; personalInjury?: boolean | null; electrical?: boolean | null }) {
   const incident = isIncidentType(value.type);
   return {
-    type: deviationType(value.type),
+    type: storedDeviationType(value.type),
     occurredAt: incident ? value.occurredAt ?? null : null,
     whatHappened: incident ? value.whatHappened ?? "" : "",
     cause: incident ? value.cause ?? "" : "",

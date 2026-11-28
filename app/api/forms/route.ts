@@ -5,7 +5,8 @@ import { ApiError, context, failure } from "@/lib/kfid/server";
 import { formDocumentSchema } from "@/lib/workflow/form-document";
 import { formMetaOf, visibleFormsWhere } from "@/lib/kfid/form-server";
 import { publisherLabel } from "@/lib/kfid/form-share";
-import { formDisplayName } from "@/lib/workflow/form-publish";
+import { formDisplayName, formHiddenForCompany } from "@/lib/workflow/form-publish";
+import { electricalWorkChosen, normalizeWorkAreas } from "@/lib/workflow/work-profile";
 
 /** How many limits a form declares: its card links to Värden och referenser only when there is something to enter there. */
 const limitCount = (document: unknown) => { const limits = (document as { limits?: unknown } | null)?.limits; return Array.isArray(limits) ? limits.length : 0; };
@@ -58,8 +59,13 @@ export async function GET(request: Request) {
     const bases = new Map(templates.map((template) => [template.id, template.baseTemplateId]));
     const areas = new Map(templates.map((template) => [template.id, template.permissionArea]));
     const versions = templates.length ? await prisma.formTemplateVersion.findMany({ where: { OR: templates.map((template) => ({ templateId: template.id, version: template.publishedVersion! })) } }) : [];
+    // Arbetsområdet styr vad som visas (2026-11-28): Workflow's electrical forms are left out of the catalog for a company that works
+    // with no electrical area (lib/workflow/form-publish.ts formHiddenForCompany); one form by its id above is read as before.
+    const settings = await prisma.workspaceSettings.findUnique({ where: { organizationId: ctx.organizationId }, select: { profile: true } });
+    const electrical = electricalWorkChosen(normalizeWorkAreas((settings?.profile as { workAreas?: unknown } | null)?.workAreas));
     return NextResponse.json({
-      forms: versions.map((version) => publishedCard(version.templateId, templates.find((template) => template.id === version.templateId)!, version, own.has(version.templateId), bases.get(version.templateId) ?? null, areas.get(version.templateId))).sort((a, b) => a.name.localeCompare(b.name, "sv")),
+      forms: versions.map((version) => publishedCard(version.templateId, templates.find((template) => template.id === version.templateId)!, version, own.has(version.templateId), bases.get(version.templateId) ?? null, areas.get(version.templateId)))
+        .filter((card) => !formHiddenForCompany(card, electrical)).sort((a, b) => a.name.localeCompare(b.name, "sv")),
     });
   } catch (error) {
     return failure(error);

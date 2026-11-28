@@ -1,6 +1,6 @@
 import { swedishDayKey } from "@/lib/swedish-time";
 import { retentionCutoff } from "@/lib/workflow/history-retention";
-import { INCIDENT_TYPES, isIncidentType, OPEN_TYPES } from "./incidents";
+import { INCIDENT_TYPES, isIncidentType } from "./incidents";
 
 /**
  * Lagringstid för avvikelser, tillbud och olycksfall (the owner's decision 2026-11-04; reasons and sources in
@@ -40,7 +40,8 @@ export const deviationRetentionCutoffs = (now = new Date()): DeviationRetentionC
 /** The whole entry goes (a database filter), or null when nothing can. Always bound to one company; open and held entries never match. */
 export function deviationRemovalWhere(organizationId: string, cutoffs: DeviationRetentionCutoffs) {
   const steps = [
-    ...(cutoffs.general ? [{ type: { in: [...OPEN_TYPES] as string[] }, closedAt: { lt: cutoffs.general } }] : []),
+    // Every type but the incidents, the company's own types ("OWN:<namn>") included.
+    ...(cutoffs.general ? [{ type: { notIn: [...INCIDENT_TYPES] as string[] }, closedAt: { lt: cutoffs.general } }] : []),
     ...(cutoffs.incident ? [{ type: { in: [...INCIDENT_TYPES] as string[] }, closedAt: { lt: cutoffs.incident } }] : []),
   ];
   return steps.length ? { organizationId, status: "DONE", retentionHoldAt: null, OR: steps } : null;

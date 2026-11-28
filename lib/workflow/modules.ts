@@ -38,7 +38,7 @@ export const MODULE_DEFINITIONS: readonly ModuleDefinition[] = [
   { key: "invoicing", title: "Fakturaunderlag", short: "Underlag av tid och material från färdiga jobb.", historyHref: "/?view=invoice_bases" },
   { key: "purchasing", title: "Inköp och artiklar", short: "Inköp, artikelregister och prisfiler. Av: materialrader skrivs som fritext.", historyHref: "/?view=purchases" },
   { key: "staff_register", title: "Personalliggare", short: "In- och utcheckning på byggarbetsplats. Kontrollvyn och exporten går alltid att nå.", historyHref: "/?view=projects" },
-  { key: "self_inspection", title: "Egenkontroll", short: "Egenkontrollprogram, roller med nivå och kompetenskort. Avvikelser och Instrument finns alltid.", historyHref: "/?view=self_inspection" },
+  { key: "self_inspection", title: "Egenkontroll", short: "Egenkontrollprogram för elinstallationsarbete, roller med nivå och kompetenskort. Avvikelser och Instrument finns alltid.", historyHref: "/?view=self_inspection" },
   // Tavlor och skärmar (2026-11-18): dashboards, connected screens and shared links; in every package, as it belongs to no line of business.
   { key: "boards", title: "Tavlor och skärmar", short: "Tavlor med nyckeltal, kopplade skärmar och delningslänkar.", historyHref: "/?view=boards" },
   // Webb och inlägg (2026-11-20): Inlägg and Min webbsida under Mer, off from the start for a new company (NEW_COMPANY_DISABLED_MODULES).
@@ -164,7 +164,7 @@ const MODULE_OF_VIEW: Readonly<Record<string, ModuleKey>> = {
   customers: "customers",
   projects: "projects", project: "projects", new_project: "projects", project_summary: "projects",
   planning: "planning", capacity: "planning", project_planning: "planning",
-  rounds: "rounds", place_labels: "rounds",
+  rounds: "rounds", place_labels: "rounds", round_paper: "rounds",
   maintenance: "upkeep",
   time: "time",
   quotes: "quotes", quote: "quotes",
@@ -236,7 +236,7 @@ export const ALWAYS_ON_ROUTES: readonly string[] = ["self-inspection/deviation-e
  * have their actions on the same route. Everything else on it is the programme, its roles and its competence.
  */
 export const ALWAYS_ON_SELF_INSPECTION_ACTIONS: readonly string[] = [
-  "save_deviation", "withdraw_deviation", "save_investigation", "mark_deviation_done", "reopen_deviation", "mark_reported_to_authority", "set_deviation_hold",
+  "save_deviation", "withdraw_deviation", "save_investigation", "mark_deviation_done", "reopen_deviation", "mark_reported_to_authority", "set_deviation_hold", "save_deviation_types",
   "save_instrument", "remove_instrument",
 ];
 export const selfInspectionActionNeedsModule = (action: string) => !ALWAYS_ON_SELF_INSPECTION_ACTIONS.includes(action);
@@ -263,6 +263,9 @@ export const MODULE_PACKAGES: Record<WorkArea, readonly ModuleKey[]> = {
   automation: ["customers", "projects", "planning", "upkeep", "time", "purchasing", "self_inspection", "boards"],
   industry: ["planning", "rounds", "upkeep", "time", "purchasing", "boards"],
   property: ["customers", "planning", "rounds", "time", "self_inspection", "boards"],
+  // Kommunal teknisk verksamhet (2026-11-28): the municipality's own plants – rounds, machines and the store, without customers,
+  // quotes or invoicing. Egenkontroll is the electrical programme and is turned on by whoever also does electrical installation work.
+  municipal: ["planning", "rounds", "upkeep", "time", "purchasing", "boards"],
   projects: ["customers", "projects", "planning", "time", "staff_register", "boards"],
   office: ["customers", "time", "quotes", "invoicing", "boards"],
 };

@@ -7,6 +7,7 @@ import { knownSignals, recordSignals } from "@/lib/machine/signal-store";
 import { codeSignalKey, readingsOfEvents, signalsOfEvents, steeringSignal, type CatalogueSignal } from "@/lib/machine/signals";
 import { runRules } from "@/lib/machine/rule-engine";
 import { feedRunHours } from "@/lib/machine/run-hours-store";
+import { machinePartAllowed } from "@/lib/security/access-rules";
 
 /**
  * Saves a checked batch for one source. A valid event is written once: (sourceId, eventId) is unique, so a resent event is
@@ -21,7 +22,7 @@ import { feedRunHours } from "@/lib/machine/run-hours-store";
 export async function storeBatch(principal: { sourceId: string; organizationId: string }, items: BatchItem[], now = new Date(), steer: CatalogueSignal | null = null): Promise<EventResult[]> {
   const results: EventResult[] = [];
   const accepted: { id: string; event: ParsedMachineEvent; signalKnown: boolean }[] = [];
-  const source = await prisma.machineSource.findFirst({ where: { id: principal.sourceId, organizationId: principal.organizationId }, select: { name: true, machinePartId: true } });
+  const source = await prisma.machineSource.findFirst({ where: { id: principal.sourceId, organizationId: principal.organizationId }, select: { name: true, machinePartId: true, allowedMachinePartIds: true } });
   const valid = items.flatMap((item) => (item.kind === "valid" ? [item.event] : []));
   const known = await knownSignals(principal, valid.flatMap((event) => [codeSignalKey(event.code), ...Object.keys(event.values ?? {})]));
   for (const item of items) {
@@ -30,6 +31,11 @@ export async function storeBatch(principal: { sourceId: string; organizationId: 
     const signal = known.get(codeSignalKey(event.code));
     // Underhåll (2026-10-30): the event keeps the machine part it was received for.
     const machinePartId = steeringSignal(steer)?.partId ?? steeringSignal(signal)?.partId ?? source?.machinePartId ?? null;
+    // Nyckel med minsta behörighet (K2.5): a key limited to some machines writes nothing for another machine or for none.
+    if (!machinePartAllowed(source?.allowedMachinePartIds, machinePartId)) {
+      results.push({ index: item.index, eventId: event.eventId, status: "rejected", reason: "machine_not_allowed" });
+      continue;
+    }
     try {
       const row = await prisma.machineEvent.create({
         data: {

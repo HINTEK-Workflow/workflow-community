@@ -1,6 +1,6 @@
 # HINTEK Workflow Form Builder
 
-Version 1.0.0 · writes form files in the format `hintek-workflow-forms`, formatVersion 1. Svenska: se `LASMIG.md`.
+Version 1.1.0 · writes form files in the format `hintek-workflow-forms`, formatVersion 1. Svenska: se `LASMIG.md`.
 
 This package lets an external AI system – ChatGPT, Claude, Gemini, Copilot or any other – create a complete form that can be imported straight into HINTEK Workflow.
 

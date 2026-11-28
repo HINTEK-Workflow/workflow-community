@@ -1,8 +1,8 @@
 import type { LucideIcon } from "lucide-react";
-import { Eye, Lightbulb, Siren, TriangleAlert, Zap } from "lucide-react";
+import { BadgeCheck, CircleDot, Eye, Leaf, Lightbulb, ShieldAlert, Siren, Tag, TriangleAlert, Wrench, Zap } from "lucide-react";
 import { AreaIcon } from "@/components/area-icon";
 import { scaleBadge, scaleSurface, type ScaleStep } from "@/features/workflow/indicator-tone";
-import { DEVIATION_SEVERITIES, DEVIATION_SEVERITY_STEP, DEVIATION_TYPES, deviationSeverity, deviationType, type DeviationView } from "@/lib/self-inspection/model";
+import { DEVIATION_SEVERITIES, DEVIATION_SEVERITY_STEP, DEVIATION_TYPES, deviationSeverity, deviationType, deviationTypeLabel, type DeviationView } from "@/lib/self-inspection/model";
 import type { TypeKey } from "@/lib/workflow/native-mode";
 
 /**
@@ -16,6 +16,13 @@ import type { TypeKey } from "@/lib/workflow/native-mode";
 export type DeviationLookKey = keyof typeof DEVIATION_TYPES | "IMPROVEMENT";
 export const DEVIATION_LOOK: Record<DeviationLookKey, { label: string; icon: LucideIcon; area: TypeKey }> = {
   SELF_INSPECTION: { label: DEVIATION_TYPES.SELF_INSPECTION, icon: Zap, area: "risk" },
+  // The neutral types and the company's own (2026-11-28): plain line icons in the same colour.
+  OPERATING_FAULT: { label: DEVIATION_TYPES.OPERATING_FAULT, icon: Wrench, area: "risk" },
+  SAFETY: { label: DEVIATION_TYPES.SAFETY, icon: ShieldAlert, area: "risk" },
+  QUALITY: { label: DEVIATION_TYPES.QUALITY, icon: BadgeCheck, area: "risk" },
+  ENVIRONMENT: { label: DEVIATION_TYPES.ENVIRONMENT, icon: Leaf, area: "risk" },
+  OTHER: { label: DEVIATION_TYPES.OTHER, icon: CircleDot, area: "risk" },
+  OWN: { label: DEVIATION_TYPES.OWN, icon: Tag, area: "risk" },
   RISK_OBSERVATION: { label: DEVIATION_TYPES.RISK_OBSERVATION, icon: Eye, area: "risk" },
   NEAR_MISS: { label: DEVIATION_TYPES.NEAR_MISS, icon: TriangleAlert, area: "risk" },
   ACCIDENT: { label: DEVIATION_TYPES.ACCIDENT, icon: Siren, area: "risk" },
@@ -23,7 +30,11 @@ export const DEVIATION_LOOK: Record<DeviationLookKey, { label: string; icon: Luc
 };
 export const deviationLookKey = (item: Pick<DeviationView, "kind"> & { type?: string | null }): DeviationLookKey =>
   item.kind === "IMPROVEMENT" ? "IMPROVEMENT" : deviationType(item.type);
-export const deviationLook = (item: Pick<DeviationView, "kind"> & { type?: string | null }) => DEVIATION_LOOK[deviationLookKey(item)];
+/** The type's look; a company's own type is called by its own name. */
+export const deviationLook = (item: Pick<DeviationView, "kind"> & { type?: string | null }) => {
+  const look = DEVIATION_LOOK[deviationLookKey(item)];
+  return item.kind !== "IMPROVEMENT" && deviationType(item.type) === "OWN" ? { ...look, label: deviationTypeLabel(item.type) } : look;
+};
 
 /** The entry's Allvarlighetsgrad: its label, step, pill and tint classes (the shared scale); a Förbättring has none (null). */
 export function severityOf(item: Pick<DeviationView, "kind" | "severity">): { key: string; label: string; step: ScaleStep; badge: string; surface: string } | null {

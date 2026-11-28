@@ -17,6 +17,10 @@ export const FORM_CATEGORIES = [
   ["POWER", "Elkraft"],
   ["INDUSTRY", "Industri"],
   ["ROUNDS", "Underhåll och driftronder"],
+  // Fler verksamheter (2026-11-27): neutral names only, for the company's own forms.
+  ["UTILITIES", "VA och värme"],
+  ["SUPERVISION", "Tillsyn och besiktning"],
+  ["ENVIRONMENT", "Miljö"],
   ["PROPERTY", "Fastigheter"],
   ["SAFETY", "Arbetsmiljö och säkerhet"],
   ["OTHER", "Övrigt"],
@@ -25,6 +29,17 @@ export type FormCategory = (typeof FORM_CATEGORIES)[number][0];
 const LEGACY_CATEGORIES: Record<string, FormCategory> = { INSPECTION: "ELECTRICAL", SERVICE: "ROUNDS", SELF_CHECK: "ELECTRICAL" };
 export const formCategory = (category: unknown): FormCategory => { const value = typeof category === "string" ? LEGACY_CATEGORIES[category] ?? category : "OTHER"; return FORM_CATEGORIES.some(([item]) => item === value) ? value as FormCategory : "OTHER"; };
 export const formCategoryLabel = (category: string) => FORM_CATEGORIES.find(([value]) => value === formCategory(category))?.[1] ?? "Övrigt";
+
+/** The categories of electrical work: Workflow's built-in forms in them are offered only to a company that does electrical work. */
+export const ELECTRICAL_FORM_CATEGORIES: readonly FormCategory[] = ["ELECTRICAL", "POWER"];
+/**
+ * Arbetsområdet styr vad som visas (2026-11-27): Workflow's own electrical forms are left out of the pickers (Ny uppgift,
+ * Ny driftrond, the search) for a company that has chosen what it works with and chosen no electrical area. Nothing is removed: the
+ * form is read and its protocols opened as before, a company's own version of one is always shown, and choosing El brings it back.
+ * `electrical` is electricalWorkChosen(the company's areas).
+ */
+export const formHiddenForCompany = (form: { hintek: boolean; own: boolean; baseId?: string | null; category: string }, electrical: boolean) =>
+  !electrical && form.hintek && !form.own && !form.baseId && ELECTRICAL_FORM_CATEGORIES.includes(formCategory(form.category));
 
 export const formMetaSchema = z.object({
   name: z.string().trim().max(120).default(""),

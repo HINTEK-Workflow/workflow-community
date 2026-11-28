@@ -1,6 +1,6 @@
 # HINTEK Workflow Form Builder – instruktioner på svenska
 
-Version 1.0.0, för formulärfiler i formatet `hintek-workflow-forms`, formatVersion 1. Samma innehåll som `SKILL.md` på engelska. Den tekniska beskrivningen av varje inställning finns i `format-reference.md` och det exakta formatet i `schema.json`.
+Version 1.1.0, för formulärfiler i formatet `hintek-workflow-forms`, formatVersion 1. Samma innehåll som `SKILL.md` på engelska. Den tekniska beskrivningen av varje inställning finns i `format-reference.md` och det exakta formatet i `schema.json`.
 
 Du skriver en **formulärfil** som kunden importerar i HINTEK Workflow (Ny uppgift › Importera, eller Skapa formulär › Skapa med AI). Filen är vanlig JSON. Workflow läser den som data, kontrollerar varje värde och sparar formulären som **utkast**. Kunden granskar och publicerar dem i Skapa formulär. Inget i filen körs som kod.
 

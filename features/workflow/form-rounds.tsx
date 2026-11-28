@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Ban, Bell, CalendarClock, CalendarPlus, FileText, CheckCircle2, CircleDashed, CircleAlert, CircleSlash, ClipboardList, Pencil, Play, QrCode, Repeat, Trash2, MapPin } from "lucide-react";
+import { Ban, Bell, CalendarClock, CalendarPlus, FileText, CheckCircle2, CircleDashed, CircleAlert, CircleSlash, ClipboardList, Pencil, Play, Printer, QrCode, Repeat, Trash2, MapPin } from "lucide-react";
 import { notDoneLine } from "@/lib/workflow/round-outcome";
 import { RoundNotDoneDialog } from "./round-not-done-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -32,7 +32,7 @@ import { ListEmpty, ListFact, ListGroup, ListRow, NativeActions, NativeLargeTitl
 import { returnToWork } from "@/components/history-nav";
 import { announce } from "@/lib/workflow/toast";
 import { groupByDate, withScreen } from "@/lib/workflow/native-mode";
-import { roundLabelsHref } from "@/lib/workflow/navigation";
+import { roundLabelsHref, roundPaperHref } from "@/lib/workflow/navigation";
 import { useNativeMode } from "./use-detail-level";
 import { IconButton } from "@/components/ui/icon-button";
 import { RemoveButton } from "@/components/ui/remove-button";
@@ -185,7 +185,9 @@ export function FormRounds({ backend = cloudRoundsBackend, revision, personId = 
     // Förenkling 0.77.0 (kvar-till-2026-12-31 F, Driftronder): a tap on the round opens the round – start or continue it,
     // its facts – not Ändra rond. Ändra rond is a row of its own there (`&edit=1`) for someone who may change the round.
     const roundScreen = own ? roundUrl("rond", own.id) : "";
-    if (own && !(allowed && params.get("edit") === "1")) return <>{notDoneDialog}<RoundReadOnly schedule={own} action={action} labels={labels} notice={roundFormNotice(own)} notDone={notDoneRow} edit={allowed ? `${roundScreen}&edit=1` : null} /></>;
+    // Rondprotokoll på papper (0.92.0): also from the phone, while the round's form is published.
+    const paper = own && backend === cloudRoundsBackend && !own.templateMissing ? roundPaperHref(own.id) : null;
+    if (own && !(allowed && params.get("edit") === "1")) return <>{notDoneDialog}<RoundReadOnly schedule={own} action={action} labels={labels} paper={paper} notice={roundFormNotice(own)} notDone={notDoneRow} edit={allowed ? `${roundScreen}&edit=1` : null} /></>;
     const closeEdit = own ? () => returnToWork(roundScreen, (address) => router.push(address)) : closeScreen;
     return <>{confirmCard}{notDoneDialog}<ScheduleDialog screen schedule={own} backend={backend} planOthers={data?.canPlanOthers} onClose={closeEdit} onSaved={() => { closeEdit(); void reload(); }}
       onRemove={own ? () => { void remove(own).then((done) => { if (done) closeScreen(); }); } : undefined} /></>;
@@ -248,7 +250,8 @@ export function FormRounds({ backend = cloudRoundsBackend, revision, personId = 
         // Rader: one round per row across the list; Kort: the same round cards side by side, as many as the list's width holds.
         : <div className="@container"><ul className={cn("grid gap-3", prefs.view === "cards" && "@3xl:grid-cols-2 @7xl:grid-cols-3")} data-testid="round-list">{shown.slice(0, rows).map((schedule) => <RoundCard key={schedule.id} schedule={schedule} canPlan={mayEdit(data, schedule)} todayKey={data.today} onEdit={() => setEditing(schedule)} onRemove={() => void remove(schedule)}
           onNotDone={canMarkNotDone ? (date) => markNotDone(schedule, date) : undefined} onRevokeNotDone={canMarkNotDone ? (id) => void revokeNotDone(id) : undefined}
-          labels={backend === cloudRoundsBackend && schedule.holder?.facilityId ? roundLabelsHref(schedule.id) : null} />)}</ul><ShowMore shown={Math.min(rows, shown.length)} total={shown.length} onMore={() => setRows((value) => value + ROUND_PAGE)} testId="round-more" /></div>}
+          labels={backend === cloudRoundsBackend && schedule.holder?.facilityId ? roundLabelsHref(schedule.id) : null}
+          paper={backend === cloudRoundsBackend && !schedule.templateMissing ? roundPaperHref(schedule.id) : null} />)}</ul><ShowMore shown={Math.min(rows, shown.length)} total={shown.length} onMore={() => setRows((value) => value + ROUND_PAGE)} testId="round-more" /></div>}
     </Panel>
     {/* Lika är rätt (2026-11-13): nothing between the heading and the toolbar, so the list starts where every other list's
         does – the map (its button is in the header) and the numbers stand under the list. */}
@@ -277,14 +280,16 @@ function NoRoundsAccess({ native = false }: { native?: boolean }) {
 }
 
 /** The round's own screen at level 1: the way to start it, its facts, and Ändra rond for someone who may change it. */
-function RoundReadOnly({ schedule, action, labels, notice, notDone, edit = null }: { schedule: ScheduleView; action: { href: string; label: string; kind: string } | null; labels: string | null; notice: string | null; notDone?: { date: string; onClick: () => void }; edit?: string | null }) {
+function RoundReadOnly({ schedule, action, labels, paper = null, notice, notDone, edit = null }: { schedule: ScheduleView; action: { href: string; label: string; kind: string } | null; labels: string | null; paper?: string | null; notice: string | null; notDone?: { date: string; onClick: () => void }; edit?: string | null }) {
   useNativeTopBar({ title: schedule.title, back: { label: "Driftronder" } });
   return <NativePage testId="native-round-readonly">
-    {action || labels || notice || notDone ? <ListGroup testId="native-round-start">
+    {action || labels || paper || notice || notDone ? <ListGroup testId="native-round-start">
       {notice ? <RoundFormNoticeRow notice={notice} /> : null}
       {action ? <ListRow type="round" icon={action.kind === "create" ? ClipboardList : Play} title={action.label} href={action.href} testId={action.kind === "create" ? "round-create-order" : "round-start"} /> : null}
       {notDone ? <RoundNotDoneRow {...notDone} /> : null}
       {labels ? <RoundLabelsRow href={labels} /> : null}
+      {/* Rondprotokoll på papper (0.92.0): the round's points to tick by hand when the service cannot be reached. */}
+      {paper ? <ListRow type="round" icon={Printer} title="Rondprotokoll på papper" subtitle="Skriv ut rondens punkter att kryssa för hand" href={paper} testId="round-paper" /> : null}
     </ListGroup> : null}
     <ListGroup>
       <ListFact label="Formulär">{schedule.templateName}</ListFact>
@@ -328,9 +333,11 @@ function roundStatus(schedule: ScheduleView): { label: string; tone: "success" |
  */
 const roundAction = (schedule: ScheduleView) => roundStartAction(schedule);
 
-function RoundCard({ schedule, canPlan, todayKey, onEdit, onRemove, labels = null, onNotDone, onRevokeNotDone }: { schedule: ScheduleView; canPlan: boolean; todayKey: string; onEdit: () => void; onRemove: () => void;
+function RoundCard({ schedule, canPlan, todayKey, onEdit, onRemove, labels = null, paper = null, onNotDone, onRevokeNotDone }: { schedule: ScheduleView; canPlan: boolean; todayKey: string; onEdit: () => void; onRemove: () => void;
   /** QR hör till driftronden (2026-10-22): the round's label sheet, for its work order's place and the objects under it (Cloud, a work order with a register place). */
   labels?: string | null;
+  /** Rondprotokoll på papper (0.92.0, Cloud): the round's printable protocol, while its form is published. */
+  paper?: string | null;
   /** Ej utfört (2026-10-28, Cloud): mark an occurrence without a protocol going, and revoke a marking. The server decides. */
   onNotDone?: (date: string) => void; onRevokeNotDone?: (id: string) => void }) {
   const today = schedule.overview.today;
@@ -367,6 +374,8 @@ function RoundCard({ schedule, canPlan, todayKey, onEdit, onRemove, labels = nul
         {/* Driftrond i arbetsordern (2026-10-27): the round's work orders – the ones holding it for a period (and 0.24.0's per day). */}
         <Button asChild size="icon" variant="ghost" aria-label={`Arbetsordrar för ${schedule.title}`} title="Rondens arbetsordrar"><Link href={`/?view=work_orders&round=${encodeURIComponent(schedule.id)}`} data-testid="round-work-orders"><ClipboardList /></Link></Button>
         {labels ? <Button asChild size="icon" variant="ghost" aria-label={`QR-etiketter för ${schedule.title}`} title="QR-etiketter"><Link href={labels} data-testid="round-labels"><QrCode /></Link></Button> : <span aria-hidden="true" className="size-8 shrink-0" data-testid="round-labels-place" />}
+        {/* Rondprotokoll på papper (0.92.0): the round's points to tick by hand when the service cannot be reached. */}
+        {paper ? <Button asChild size="icon" variant="ghost" aria-label={`Rondprotokoll på papper för ${schedule.title}`} title="Rondprotokoll på papper"><Link href={paper} data-testid="round-paper"><Printer /></Link></Button> : <span aria-hidden="true" className="size-8 shrink-0" data-testid="round-paper-place" />}
         {canPlan ? <IconButton label={`Ändra ${schedule.title}`} onClick={onEdit}><Pencil /></IconButton> : null}
         {canPlan ? <RemoveButton label={`Ta bort ${schedule.title}`} onClick={onRemove} /> : null}
         </div>

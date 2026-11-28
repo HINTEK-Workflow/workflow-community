@@ -48,6 +48,7 @@ import { AzureProviderPanel } from "@/features/ai/azure-provider-panel";
 import { ReauthHost } from "@/features/security/reauth-host";
 import { SessionExpiredHost } from "@/features/security/session-expired-host";
 import { TWO_FACTOR_SETUP_REQUIRED } from "@/lib/auth/session-rules";
+import { ACCESS_REVIEW_ANCHOR, accessReviewDue } from "@/lib/security/access-rules";
 import { NoticeSettings } from "./notice-settings";
 import { CalendarLinkSettings } from "./calendar-link-settings";
 import { MENU_VISIBILITY_EVENT, calendarAllowed, menuItemAllowed } from "@/lib/workflow/menu-items";
@@ -66,7 +67,7 @@ import dynamic from "next/dynamic";
 import { useLoadEffect } from "@/lib/use-load-effect";
 // Laddtid på mobil (U1/T2, 2026-10-23): the heavy pages load when they open (features/kfid/workspace-views.tsx); the
 // phone's Hem, Jobb, Tid and Mer stay in the first bundle.
-import { ProductOverviewPage, CapacityPage, Administration, UsersAdministration, OperatorAccountsAdmin, OperatorProductSettings, PdfTemplatesPage, PlcDevicesPage, CompanyGoalsPanel, Analytics, OverviewPage, ArticlesPage, BehaviorAnalytics, CalculatorsPage, CloudCompanyValues, InstrumentsPage, InvoiceBasesList, SelfInspectionPage, CompanyLookupSettings, CompanySecurity, CustomerCard, CustomerCompanies, CustomerEditPage, CustomerRegisterSwitch, FormRounds, HistoryRetention, LantmaterietSettings, LocalWorkspace, LoginSettings, Mailings, MailSettings, MicrosoftSignInSettings, PlaceLabels, PlaceLabelsMoved, PlacePage, PlatformSecurity, PlatformSecurityLog, preloadLikely, preloadView, PriceSettingsPanel, ProjectPlanningPage, ProjectSummaryPage, ProviderKeyPanel, PurchaseEditorFromAddress, PurchasesList, QuoteEditorFromAddress, QuotesList, RecordArchive, ReportArchive, SandboxBillingPanel, ServerJobs, ServerUpdates, SetupGuide, SiteMap, TaskTypePicker, ToolsHub, ViewAsPanel, WorkflowProjects, WorkflowTaskEditor, MaintenancePage, BoardsPage, NewsPage, DocumentsPage } from "./workspace-views";
+import { AccessReview, ProductOverviewPage, CapacityPage, Administration, UsersAdministration, OperatorAccountsAdmin, OperatorProductSettings, PdfTemplatesPage, PlcDevicesPage, CompanyGoalsPanel, Analytics, OverviewPage, ArticlesPage, BehaviorAnalytics, CalculatorsPage, CloudCompanyValues, InstrumentsPage, InvoiceBasesList, SelfInspectionPage, CompanyLookupSettings, CompanySecurity, CustomerCard, CustomerCompanies, CustomerEditPage, CustomerRegisterSwitch, FormRounds, HistoryRetention, LantmaterietSettings, LocalWorkspace, LoginSettings, Mailings, MailSettings, MicrosoftSignInSettings, PlaceLabels, PlaceLabelsMoved, PlacePage, RoundPaper, PlatformSecurity, PlatformSecurityLog, PlatformLogChains, preloadLikely, preloadView, PriceSettingsPanel, ProjectPlanningPage, ProjectSummaryPage, ProviderKeyPanel, PurchaseEditorFromAddress, PurchasesList, QuoteEditorFromAddress, QuotesList, RecordArchive, ReportArchive, SandboxBillingPanel, ServerJobs, ServerUpdates, SetupGuide, SiteMap, TaskTypePicker, ToolsHub, ViewAsPanel, WorkflowProjects, WorkflowTaskEditor, MaintenancePage, BoardsPage, NewsPage, DocumentsPage } from "./workspace-views";
 import { InstanceIconSettings } from "@/features/workflow/instance-icon-settings";
 import { TasksPage } from "./tasks-page";
 // The form builder is only for the superadmin; its code (and drag and drop) loads only when the view opens.
@@ -95,6 +96,9 @@ import type { View, ShellUser } from "@/components/app-shell";
 import { UpgradeToCloud } from "@/features/workflow/upgrade-cloud";
 import { ReleaseNotesPanel, ReleaseNotice, unseenReleaseVersion } from "@/features/workflow/release-notes";
 import { currentAppVersion } from "@/lib/release-notes";
+import { describeAge, versionAge } from "@/lib/updates/version-check";
+import { formatSwedishDate } from "@/lib/swedish-time";
+import { UpdateCheck } from "@/features/workflow/update-check";
 import { LegalLinks } from "@/components/legal-links";
 import { EraseAccount } from "@/features/workflow/erase-account";
 import {
@@ -144,6 +148,11 @@ function PlaceLabelsFromAddress() {
   if (roundId) return <PlaceLabels key={roundId} roundId={roundId} />;
   return <PlaceLabelsMoved customerId={customerId} placeIds={placeIds} />;
 }
+/** Rondprotokoll på papper (0.92.0): a round's printable protocol (`&roundId=`). */
+function RoundPaperFromAddress() {
+  const roundId = useSearchParams().get("roundId") ?? "";
+  return <RoundPaper key={roundId} roundId={roundId} />;
+}
 /**
  * One answer for a page the person may not use here (2026-10-07: a member met an empty page, "Företagsadministratör
  * krävs." from an API or a jump to Översikt): a short sentence and the way back. The server decides either way.
@@ -153,7 +162,7 @@ function PlaceLabelsFromAddress() {
 // Priser och offert (2026-10-09 natt) is the company's too: admins in Cloud.
 export const COMPANY_ADMIN_VIEWS = ["company", "administration", "operator_accounts", "quote_settings", "company_features", "company_settings", "company_values", "credits", "ai_settings", "integrations", "history_retention", "advanced", "company_website", "company_posts", "company_videos", "forms"] as const;
 /** Views that need the server's storage; a Local workspace keeps its data in its file. */
-export const CLOUD_ONLY_VIEWS = ["operator_accounts", "integrations", "history_retention", "advanced", "quote_settings", "forms", "place", "place_labels", "project_planning", "capacity"] as const;
+export const CLOUD_ONLY_VIEWS = ["operator_accounts", "integrations", "history_retention", "advanced", "quote_settings", "forms", "place", "place_labels", "round_paper", "project_planning", "capacity"] as const;
 /** The visible text on the page (not the toast) that could already say what a message says. */
 function sentenceShownOnPage(text: string) {
   const shown: string[] = [];
@@ -539,6 +548,14 @@ export function Workspace({
     <Button asChild className="mobile-form-action"><Link href="/?view=setup">Starta guiden</Link></Button>
     <Button type="button" variant="ghost" className="mobile-form-action" onClick={() => { setPreferences((current) => ({ ...current, tours: { ...current.tours, setup: new Date().toISOString() } })); void action({ action: "tour", tour: "setup" }).catch(() => undefined); }}>Inte nu</Button>
   </div> : null;
+  // Granska behörigheter (K2.4, 2026-11-28): only when the admin turned the quarterly reminder on and the quarter has passed.
+  const reviewBanner = view === "stats" && !loading && !error && overview && !overview.legalRequired && shownAdmin && overview.organization.storageMode !== "LOCAL"
+    && accessReviewDue({ reminderOn: Boolean(overview.settings?.accessReviewReminder), lastReviewedAt: overview.settings?.accessReviewedAt ? new Date(overview.settings.accessReviewedAt) : null, since: new Date(overview.organization.createdAt ?? 0) })
+    ? <div className="mb-6 flex flex-wrap items-center gap-3 rounded-xl border bg-secondary/40 p-4" data-testid="access-review-banner">
+      <span className="area-icon panel-icon" data-tone="solid" aria-hidden="true"><ClipboardCheck className="size-4" /></span>
+      <div className="min-w-0 flex-1"><p className="font-medium">Granska behörigheter</p><p className="text-xs text-muted-foreground">Det har gått ett kvartal. Se över vem som har vilken roll, nyckel och koppling, och tryck Granskad.</p></div>
+      <Button asChild className="mobile-form-action"><Link href={`/?view=administration#${ACCESS_REVIEW_ANCHOR}`}>Granska</Link></Button>
+    </div> : null;
   if (loading)
     content = (
       // Sidskelett (steg 5): the page's own shape in grey instead of one line of text that a page several screens high replaces.
@@ -604,6 +621,7 @@ export function Workspace({
       operatorAccounts={menuItemAllowed("operator_accounts", { memberRole: shownAdmin ? "ADMIN" : "MEMBER", workflowPermissions: normalizeWorkflowPermissionProfile(user?.workflowPermissions), localStorageMode: localMode, modules: user?.modules })}
       log={!localMode ? (searchParams?.get("section") === "log" ? "open" : "folded") : null} local={localMode}>
       {shownAdmin && !localMode ? <CompanySecurity notify={notify} /> : null}
+      {shownAdmin && !localMode ? <AccessReview notify={notify} /> : null}
     </UsersAdministration>;
   // Operatörskonton (a button on Användare, 2026-11-02): Cloud admins, and the demo's invented accounts.
   else if (view === "operator_accounts")
@@ -888,6 +906,8 @@ export function Workspace({
       {/* Appikonen (2026-11-10): the installation's own icon, where it may have one (Community); ?section=icon. */}
       {instance.features.ownIcon ? <SettingsPart id="icon"><InstanceIconSettings notify={notify} /></SettingsPart> : null}
       <PlatformSecurity notify={notify} />
+      {/* Loggarnas kedja (K3.1, 2026-11-27): the nightly check of the hash-chained logs; ?section=log-chain. */}
+      <SettingsPart id="log-chain"><PlatformLogChains notify={notify} /></SettingsPart>
       <SettingsPart id="view-as"><ViewAsPanel current={user.viewAs ?? null} notify={notify} /></SettingsPart>
       {/* Operatörssidan (2026-10-30): the product owner's switch for the prepared AI troubleshooting; ?section=operator. */}
       <SettingsPart id="operator"><OperatorProductSettings notify={notify} /></SettingsPart>
@@ -995,6 +1015,8 @@ export function Workspace({
     content = <PlaceFromAddress />;
   else if (view === "place_labels" && overview?.organization.storageMode !== "LOCAL")
     content = <PlaceLabelsFromAddress />;
+  else if (view === "round_paper" && overview?.organization.storageMode !== "LOCAL")
+    content = <RoundPaperFromAddress />;
   else if (view === "new_task")
     content = <TaskTypePicker projectId={projectId} customerId={customerId} permissions={user?.workflowPermissions} admin={Boolean(overview?.admin)} superadmin={user?.role === "SUPERADMIN"}
       canBuildForms={shownBuildForms} canEditValues={shownAdmin} riskLevels={overview?.organization.storageMode !== "LOCAL"}
@@ -1398,6 +1420,10 @@ export function Workspace({
   else {
     // The help's chapters, drawn where they are and handed to the phone's search as its index (svar 5, 2026-10-24:
     // the search reads the whole texts, not only the titles).
+    // Om Workflow says how old the running version is (K4.8, 2026-11-28): its own day in the release notes.
+    const runningAge = versionAge(currentAppVersion());
+    const versionAgeLine = !runningAge ? "" : runningAge.days === 0 ? "släppt i dag"
+      : `släppt ${formatSwedishDate(`${runningAge.releasedOn}T12:00:00Z`, { dateStyle: "medium" })}, ${describeAge(runningAge.days)}`;
     const helpChapters = <>
       {/* Nytt i version … (2026-10-06): the running version's notes first. */}
       <NativeScreen show={["nytt"]} lead><div className="mb-6"><ReleaseNotesPanel /></div></NativeScreen>
@@ -1424,7 +1450,9 @@ export function Workspace({
           (2026-10-21) also the version and the installation's legal links, which left the menu and the footer. */}
       <NativeScreen show={["om"]} lead><div className="mt-6"><Panel icon={Info} title="Om Workflow" description="Version, juridiska dokument, källor och licenser.">
         <div className="mb-4 space-y-2 border-b pb-4 text-sm leading-6" data-testid="about-workflow">
-          <p><span className="font-medium">{instance.name}</span> · <span data-testid="app-version">Version {currentAppVersion()}</span></p>
+          <p><span className="font-medium">{instance.name}</span> · <span data-testid="app-version">Version {currentAppVersion()}</span>{versionAgeLine ? <span className="text-muted-foreground" data-testid="app-version-age"> · {versionAgeLine}</span> : null}</p>
+          {/* Kontrollera nya versioner (K4.8, 2026-11-28): Community only, the installation's administrator, off from the start. */}
+          {instance.community && !demo && user?.role === "SUPERADMIN" && !user.viewAs ? <UpdateCheck /> : null}
           {/* The same row of legal links as the public pages (components/legal-links.tsx), without Priser: no price link
               inside the app (2026-10-24, analysens fråga 5). */}
           <LegalLinks linkClassName="text-primary underline-offset-4 hover:underline" />
@@ -1469,7 +1497,7 @@ export function Workspace({
   const usersSubPage = view === "administration" && Boolean(searchParams.get("person") || searchParams.get("invitation") || searchParams.get("page"));
   const releaseLine = releaseNotice && view === "stats" && !nativeHomeShown ? <ReleaseNotice version={releaseNotice} onSeen={markReleaseSeen} /> : null;
   const serverLine = serverUpdates ? <ServerUpdatesNotice notice={serverUpdates} /> : null;
-  const underHeadingNow = underHeading || setupBanner || releaseLine || serverLine ? <>{serverLine}{underHeading}{setupBanner}{releaseLine}</> : null;
+  const underHeadingNow = underHeading || setupBanner || reviewBanner || releaseLine || serverLine ? <>{serverLine}{underHeading}{setupBanner}{reviewBanner}{releaseLine}</> : null;
   const sectionTabs = usersSubPage ? null : view === "administration" && !overview && user && tabRow ? <SectionTabsReserve />
     : (SETTINGS_VIEWS as readonly string[]).includes(view) && !overview?.legalRequired && user && tabRow
     ? <SectionTabs label="Inställningar" current={view} tabs={settingsTabs({ admin: shownAdmin, credits: instance.features.billing || instance.features.credits, cloud: !localMode, ai: Boolean(SharingPolicyPanel) && instance.features.ai, integrations: Boolean(IntegrationKeys) && instance.features.integrations })} />
